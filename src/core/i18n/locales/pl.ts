@@ -94,12 +94,12 @@ export const PL: LocaleData = {
 
   // -- Port Scene --
   "port.trade_goods": "TOWARY HANDLOWE",
-  "port.price": "{{price}}zł",
+  "port.price": "{{price}} Złoto",
   "port.stock": "Zapas: {{qty}}",
   "port.own": "Własne: {{qty}}",
   "port.buy": "[Kup]",
   "port.sell": "[Sprzedaj]",
-  "port.repair": "[ NAPRAW STATEK (2zł/PŻ) ]",
+  "port.repair": "[ NAPRAW STATEK (2 Złoto/PŻ) ]",
   "port.set_sail": "[ WYPŁYŃ ]",
 
   // -- Port Approach --
@@ -188,9 +188,9 @@ export const PL: LocaleData = {
   // -- Event Log --
   "event.departed": "Wypłynięto z {{port}}",
   "event.arrived": "Przybito do {{port}}",
-  "event.trade_buy": "Kupiono {{qty}} {{item}} za {{gold}}zł",
-  "event.trade_sell": "Sprzedano {{qty}} {{item}} za {{gold}}zł",
-  "event.repaired": "Naprawiono statek za {{gold}}zł",
+  "event.trade_buy": "Kupiono {{qty}} {{item}} za {{gold}} Złoto",
+  "event.trade_sell": "Sprzedano {{qty}} {{item}} za {{gold}} Złoto",
+  "event.repaired": "Naprawiono statek za {{gold}} Złoto",
   "event.food_low": "Zapasy jedzenia się kończą!",
   "event.water_low": "Zapasy wody się kończą!",
   "event.food_out": "Jedzenie się skończyło! Załoga głoduje!",
@@ -238,9 +238,9 @@ export const PL: LocaleData = {
 
   // -- Tavern --
   "tavern.title": "TAWERNA",
-  "tavern.recruit_crew": "Zwerbuj załogę ({{cost}}zł/os.)",
+  "tavern.recruit_crew": "Zwerbuj załogę ({{cost}} Złoto/os.)",
   "tavern.hear_rumors": "Posłuchaj plotek",
-  "tavern.buy_drinks": "Postaw kolejkę ({{cost}}zł)",
+  "tavern.buy_drinks": "Postaw kolejkę ({{cost}} Złoto)",
   "tavern.back": "[ WRÓĆ DO PORTU ]",
   "tavern.hint": "W/S \u2014 Wybierz   Enter \u2014 Potwierdź   Esc \u2014 Wróć",
   "tavern.rumor_treasure": "\"Słyszałem o skarbie zakopanym na małej wyspie na południe od Jamajki...\"",
@@ -254,8 +254,8 @@ export const PL: LocaleData = {
 
   // -- New events --
   "event.letter_of_marque": "Otrzymano List Kaperski od {{faction}}.",
-  "event.recruited_crew": "Zwerbowano {{count}} członków załogi za {{cost}}zł.",
-  "event.bought_drinks": "Postawiono kolejkę za {{cost}}zł. Morale podniesione!",
+  "event.recruited_crew": "Zwerbowano {{count}} członków załogi za {{cost}} Złoto.",
+  "event.bought_drinks": "Postawiono kolejkę za {{cost}} Złoto. Morale podniesione!",
 
   // -- Tavern: crew pool --
   "tavern.crew_available": "{{count}} dostępnych, {{berths}} koi",
@@ -263,7 +263,7 @@ export const PL: LocaleData = {
   // -- Shipyard --
   "port.visit_shipyard": "Odwiedź Stocznię",
   "shipyard.title": "STOCZNIA",
-  "shipyard.repair": "[ NAPRAW KADŁUB: {{damage}} PŻ ({{cost}}zł) ]",
+  "shipyard.repair": "[ NAPRAW KADŁUB: {{damage}} PŻ ({{cost}} Złoto) ]",
   "shipyard.no_damage": "Kadłub w doskonałym stanie.",
   "shipyard.ships_for_sale": "STATKI NA SPRZEDAŻ",
   "shipyard.col_name": "Statek",
@@ -275,7 +275,7 @@ export const PL: LocaleData = {
   "shipyard.col_price": "Cena",
   "shipyard.buy": "[Kup]",
   "shipyard.current": "(obecny)",
-  "event.bought_ship": "Zakupiono {{ship}} za {{cost}}zł.",
+  "event.bought_ship": "Zakupiono {{ship}} za {{cost}} Złoto.",
 
   // -- Ranks: Spain --
   "rank.spain.0": "Sin rango",
@@ -320,6 +320,16 @@ export const PL: LocaleData = {
   // -- Rank UI --
   "rank.label": "Ranga: {{rank}}",
   "rank.unknown": "Nieznany",
+
+  // -- Game Speed --
+  "speed.label": "Prędkość gry: {{speed}}",
+  "speed.fast": "Szybko",
+  "speed.normal": "Normalnie",
+  "speed.slow": "Wolno",
+
+  // -- Start Screen --
+  "creation.load_game": "WCZYTAJ GRĘ",
+  "creation.no_saves": "Brak zapisanych gier",
 
   // -- Language --
   "lang.current": "Język: Polski",

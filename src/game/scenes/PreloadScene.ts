@@ -58,6 +58,16 @@ export class PreloadScene extends Phaser.Scene {
 
     // Pirate theme music
     this.load.audio("pirate_theme", "assets/audio/pirate_theme.mp3");
+
+    // Wind loop (CC BY 3.0 — Jonathan Shaw / InspectorJ, looped by AntumDeluge)
+    this.load.audio("wind_loop", "assets/audio/wind_loop.ogg");
+
+    // Caribbean map background (3200x2400, matches game world)
+    this.load.image("caribbean_bg", "assets/map/caribbean_bg.png");
+
+    // Wind rose compass (CC-BY 4.0 — Deco / prushik, opengameart.org)
+    this.load.image("windrose", "assets/sprites/windrose.png");
+    this.load.image("compass_needle", "assets/sprites/compass_needle.png");
   }
 
   create(): void {

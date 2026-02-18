@@ -94,12 +94,12 @@ export const EN: LocaleData = {
 
   // -- Port Scene --
   "port.trade_goods": "TRADE GOODS",
-  "port.price": "{{price}}g",
+  "port.price": "{{price}} Gold",
   "port.stock": "Stock: {{qty}}",
   "port.own": "Own: {{qty}}",
   "port.buy": "[Buy]",
   "port.sell": "[Sell]",
-  "port.repair": "[ REPAIR SHIP (2g/HP) ]",
+  "port.repair": "[ REPAIR SHIP (2 Gold/HP) ]",
   "port.set_sail": "[ SET SAIL ]",
 
   // -- Port Approach --
@@ -188,9 +188,9 @@ export const EN: LocaleData = {
   // -- Event Log --
   "event.departed": "Departed from {{port}}",
   "event.arrived": "Arrived at {{port}}",
-  "event.trade_buy": "Bought {{qty}} {{item}} for {{gold}}g",
-  "event.trade_sell": "Sold {{qty}} {{item}} for {{gold}}g",
-  "event.repaired": "Ship repaired for {{gold}}g",
+  "event.trade_buy": "Bought {{qty}} {{item}} for {{gold}} Gold",
+  "event.trade_sell": "Sold {{qty}} {{item}} for {{gold}} Gold",
+  "event.repaired": "Ship repaired for {{gold}} Gold",
   "event.food_low": "Food supplies running low!",
   "event.water_low": "Water supplies running low!",
   "event.food_out": "Food has run out! Crew is starving!",
@@ -238,9 +238,9 @@ export const EN: LocaleData = {
 
   // -- Tavern --
   "tavern.title": "THE TAVERN",
-  "tavern.recruit_crew": "Recruit Crew ({{cost}}g each)",
+  "tavern.recruit_crew": "Recruit Crew ({{cost}} Gold each)",
   "tavern.hear_rumors": "Hear Rumors",
-  "tavern.buy_drinks": "Buy Round of Drinks ({{cost}}g)",
+  "tavern.buy_drinks": "Buy Round of Drinks ({{cost}} Gold)",
   "tavern.back": "[ BACK TO PORT ]",
   "tavern.hint": "W/S \u2014 Select   Enter \u2014 Confirm   Esc \u2014 Back",
   "tavern.rumor_treasure": "\"I heard tell of a treasure buried on a small island south of Jamaica...\"",
@@ -254,8 +254,8 @@ export const EN: LocaleData = {
 
   // -- New events --
   "event.letter_of_marque": "Received Letter of Marque from {{faction}}.",
-  "event.recruited_crew": "Recruited {{count}} crew members for {{cost}}g.",
-  "event.bought_drinks": "Bought a round of drinks for {{cost}}g. Morale boosted!",
+  "event.recruited_crew": "Recruited {{count}} crew members for {{cost}} Gold.",
+  "event.bought_drinks": "Bought a round of drinks for {{cost}} Gold. Morale boosted!",
 
   // -- Tavern: crew pool --
   "tavern.crew_available": "{{count}} available, {{berths}} berths",
@@ -263,7 +263,7 @@ export const EN: LocaleData = {
   // -- Shipyard --
   "port.visit_shipyard": "Visit the Shipyard",
   "shipyard.title": "THE SHIPYARD",
-  "shipyard.repair": "[ REPAIR HULL: {{damage}} HP ({{cost}}g) ]",
+  "shipyard.repair": "[ REPAIR HULL: {{damage}} HP ({{cost}} Gold) ]",
   "shipyard.no_damage": "Hull is in perfect condition.",
   "shipyard.ships_for_sale": "SHIPS FOR SALE",
   "shipyard.col_name": "Ship",
@@ -275,7 +275,7 @@ export const EN: LocaleData = {
   "shipyard.col_price": "Price",
   "shipyard.buy": "[Buy]",
   "shipyard.current": "(current)",
-  "event.bought_ship": "Purchased a {{ship}} for {{cost}}g.",
+  "event.bought_ship": "Purchased a {{ship}} for {{cost}} Gold.",
 
   // -- Ranks: Spain --
   "rank.spain.0": "Sin rango",
@@ -320,6 +320,16 @@ export const EN: LocaleData = {
   // -- Rank UI --
   "rank.label": "Rank: {{rank}}",
   "rank.unknown": "Unknown",
+
+  // -- Game Speed --
+  "speed.label": "Game Speed: {{speed}}",
+  "speed.fast": "Fast",
+  "speed.normal": "Normal",
+  "speed.slow": "Slow",
+
+  // -- Start Screen --
+  "creation.load_game": "LOAD GAME",
+  "creation.no_saves": "No saved games",
 
   // -- Language --
   "lang.current": "Language: English",

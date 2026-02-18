@@ -12,10 +12,10 @@ import { txt } from "../ui/textStyle.ts";
 type PortAction = "enter" | "sneak" | "attack" | "leave";
 
 // Dialog dimensions
-const DLG_W = 420;
-const DLG_H = 380;
+const DLG_W = 380;
+const DLG_H = 340;
 const BORDER = 3;
-const PAD = 18;
+const PAD = 14;
 
 export class PortApproachScene extends Phaser.Scene {
   private worldState!: WorldState;
@@ -66,7 +66,7 @@ export class PortApproachScene extends Phaser.Scene {
     let y = dlgY + PAD;
 
     // --- City thumbnail / harbor illustration ---
-    const thumbH = 80;
+    const thumbH = 65;
     const thumbW = DLG_W - PAD * 2;
     const thumbX = dlgX + PAD;
     const thumbY = y;

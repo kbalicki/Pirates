@@ -21,10 +21,10 @@ import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 
-const DLG_W = 520;
-const DLG_H = 480;
+const DLG_W = 470;
+const DLG_H = 420;
 const BORDER = 3;
-const PAD = 20;
+const PAD = 16;
 
 type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard";
 
@@ -115,13 +115,13 @@ export class PortScene extends Phaser.Scene {
     const player = this.worldState.player;
     const playerShip = this.worldState.entities[player.shipId as string];
 
-    this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(13, { bold: true }));
+    this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(12, { bold: true }));
     if (playerShip?.ship) {
       const totalCargo = Math.floor(Object.values(playerShip.ship.cargo).reduce<number>((s, q) => s + q, 0));
-      this.add.text(this.infoX + 140, y,
-        t("hud.cargo", { current: totalCargo, max: playerShip.ship.cargoCap }), txt(12));
-      this.add.text(this.infoX + 300, y,
-        t("hud.crew", { current: playerShip.ship.crew.current, max: playerShip.ship.crew.max }), txt(12));
+      this.add.text(this.infoX + 120, y,
+        t("hud.cargo", { current: totalCargo, max: playerShip.ship.cargoCap }), txt(11));
+      this.add.text(this.infoX + 270, y,
+        t("hud.crew", { current: playerShip.ship.crew.current, max: playerShip.ship.crew.max }), txt(11));
     }
     y += 20;
 
@@ -505,11 +505,11 @@ export class PortScene extends Phaser.Scene {
 
     // Table header
     const colName = this.infoX;
-    const colPrice = this.infoX + 150;
-    const colStock = this.infoX + 220;
-    const colOwn = this.infoX + 310;
-    const colBuy = this.infoX + 380;
-    const colSell = this.infoX + 430;
+    const colPrice = this.infoX + 130;
+    const colStock = this.infoX + 200;
+    const colOwn = this.infoX + 275;
+    const colBuy = this.infoX + 340;
+    const colSell = this.infoX + 390;
 
     this.contentContainer.add(this.add.text(colName, y, "Item", txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colPrice, y, "Price", txt(10, { bold: true, color: "#666666" })));
@@ -617,12 +617,12 @@ export class PortScene extends Phaser.Scene {
 
     // Column headers
     const colName = this.infoX;
-    const colSpeed = this.infoX + 110;
-    const colHull = this.infoX + 160;
-    const colCannons = this.infoX + 210;
-    const colCargo = this.infoX + 260;
-    const colCrew = this.infoX + 310;
-    const colPrice = this.infoX + 380;
+    const colSpeed = this.infoX + 100;
+    const colHull = this.infoX + 145;
+    const colCannons = this.infoX + 190;
+    const colCargo = this.infoX + 235;
+    const colCrew = this.infoX + 280;
+    const colPrice = this.infoX + 345;
 
     this.contentContainer.add(this.add.text(colName, y, t("shipyard.col_name"), txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colSpeed, y, t("shipyard.col_speed"), txt(10, { bold: true, color: "#666666" })));
@@ -654,7 +654,7 @@ export class PortScene extends Phaser.Scene {
       this.contentContainer.add(this.add.text(colCannons, y, String(cls.cannons), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colCargo, y, String(cls.cargoCap), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colCrew, y, `${cls.crewMin}-${cls.crewMax}`, txt(11, { color: "#555555" })));
-      this.contentContainer.add(this.add.text(colPrice, y, `${cls.buyPrice}g`, txt(11, { bold: true })));
+      this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price: cls.buyPrice }), txt(11, { bold: true })));
 
       if (!isCurrent) {
         const canAfford = this.worldState.player.gold >= cls.buyPrice;

@@ -1,7 +1,7 @@
 import type Phaser from "phaser";
 
 /** Default font stack used across all game UI. */
-export const UI_FONT = "Arial, Helvetica, sans-serif";
+export const UI_FONT = "'Treasure Map Deadhand', Arial, Helvetica, sans-serif";
 
 /** Text resolution — accounts for device pixel ratio so text stays crisp. */
 export const TEXT_RES = Math.max(2, Math.ceil(window.devicePixelRatio ?? 1));

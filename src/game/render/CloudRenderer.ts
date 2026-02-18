@@ -42,12 +42,10 @@ export class CloudRenderer {
     const cam = this.scene.cameras.main;
 
     // Clouds drift in the OPPOSITE direction of windDirRad
-    // (wind blows FROM windDirRad, so clouds move away from that direction)
     const moveAngle = windDirRad + Math.PI;
     const dxUnit = Math.sin(moveAngle);
     const dyUnit = -Math.cos(moveAngle);
 
-    // Update each cloud position
     for (const cloud of this.clouds) {
       const speed = CLOUD_BASE_SPEED * windStrength * cloud.speedMultiplier;
       cloud.x += dxUnit * speed;
@@ -117,38 +115,29 @@ export class CloudRenderer {
     windDirRad: number,
     cam: Phaser.Cameras.Scene2D.Camera,
   ): { x: number; y: number } | null {
-    // Clouds come FROM the windDirRad direction, so they spawn on that side
     const margin = 120;
     const sinW = Math.sin(windDirRad);
     const cosW = -Math.cos(windDirRad);
 
-    // Determine which edge to spawn on based on wind direction
     let x: number;
     let y: number;
 
-    // Predominantly horizontal wind component
     if (Math.abs(sinW) > Math.abs(cosW)) {
       if (sinW > 0) {
-        // Wind from east side, spawn on right edge
         x = cam.scrollX + cam.width + margin;
       } else {
-        // Wind from west side, spawn on left edge
         x = cam.scrollX - margin;
       }
       y = cam.scrollY + this.rand() * cam.height;
     } else {
-      // Predominantly vertical wind component
       if (cosW > 0) {
-        // Wind from south side, spawn on bottom edge
         y = cam.scrollY + cam.height + margin;
       } else {
-        // Wind from north side, spawn on top edge
         y = cam.scrollY - margin;
       }
       x = cam.scrollX + this.rand() * cam.width;
     }
 
-    // Clamp to world bounds + small tolerance
     x = Math.max(-50, Math.min(this.mapWidth + 50, x));
     y = Math.max(-50, Math.min(this.mapHeight + 50, y));
 
@@ -160,10 +149,10 @@ export class CloudRenderer {
     const g = this.scene.add.graphics();
     g.setDepth(CLOUD_DEPTH);
 
-    const width = 40 + Math.floor(this.rand() * 61);   // 40-100
-    const height = 15 + Math.floor(this.rand() * 21);   // 15-35
-    const alpha = 0.15 + this.rand() * 0.20;            // 0.15-0.35
-    const speedMultiplier = 0.7 + this.rand() * 0.6;    // 0.7-1.3
+    const width = 30 + Math.floor(this.rand() * 121);   // 30-150
+    const height = 15 + Math.floor(this.rand() * 66);    // 15-80
+    const alpha = 0.20 + this.rand() * 0.60;             // 0.20-0.80
+    const speedMultiplier = 0.7 + this.rand() * 0.6;     // 0.7-1.3
 
     this.drawCloudShape(g, width, height, alpha);
 
@@ -181,9 +170,9 @@ export class CloudRenderer {
   }
 
   /**
-   * Draw a blocky pixel-art cloud shape using overlapping fillRect calls.
-   * All rectangles are drawn centered around (0,0) so the Graphics
-   * position controls the world placement.
+   * Draw an organic cloud shape using many overlapping circles (puffs).
+   * The arrangement follows a natural cloud profile: wider in the middle
+   * with bumpy top and flatter bottom. All centered at (0,0).
    */
   private drawCloudShape(
     g: Phaser.GameObjects.Graphics,
@@ -191,40 +180,49 @@ export class CloudRenderer {
     h: number,
     alpha: number,
   ): void {
-    const halfW = Math.floor(w / 2);
-    const halfH = Math.floor(h / 2);
-
-    // Main body rectangle (widest, centered)
-    g.fillStyle(0xffffff, alpha);
-    g.fillRect(-halfW, -halfH + Math.floor(h * 0.2), w, Math.floor(h * 0.6));
-
-    // Top bumps: 2-3 smaller rectangles above center for blobby look
-    const numBumps = 2 + (w > 70 ? 1 : 0);
-    const bumpSpacing = w / (numBumps + 1);
-    for (let i = 0; i < numBumps; i++) {
-      const bx = -halfW + Math.floor(bumpSpacing * (i + 1)) - Math.floor(bumpSpacing * 0.35);
-      const bw = Math.floor(bumpSpacing * 0.7);
-      const bh = Math.floor(h * 0.35 + this.rand() * h * 0.15);
-      g.fillStyle(0xffffff, alpha);
-      g.fillRect(bx, -halfH, bw, bh);
+    // Main body: row of overlapping puffs spread horizontally
+    const numPuffs = 6 + Math.floor(this.rand() * 5); // 6-10
+    for (let i = 0; i < numPuffs; i++) {
+      const t = i / (numPuffs - 1); // 0..1
+      // Horizontal spread across cloud width
+      const px = (t - 0.5) * w * 0.85;
+      // Vertical: parabolic envelope — highest in center, lower at edges
+      const envelope = 1 - 4 * (t - 0.5) * (t - 0.5);
+      const py = -(envelope * h * 0.15) + (this.rand() - 0.4) * h * 0.12;
+      // Radius: larger in center, smaller at edges
+      const r = (h * 0.18 + envelope * h * 0.18) * (0.7 + this.rand() * 0.35);
+      g.fillStyle(0xffffff, alpha * (0.45 + this.rand() * 0.35));
+      g.fillCircle(px, py, r);
     }
 
-    // Side extensions (small rectangles sticking out left and right)
-    const extH = Math.floor(h * 0.3);
-    const extW = Math.floor(w * 0.12);
-    // Left extension
-    g.fillStyle(0xffffff, alpha * 0.9);
-    g.fillRect(-halfW - extW, -halfH + Math.floor(h * 0.3), extW, extH);
-    // Right extension
-    g.fillRect(halfW, -halfH + Math.floor(h * 0.25), extW, extH);
+    // Top bumps: random small puffs above the main body for billowy look
+    const topBumps = 2 + Math.floor(this.rand() * 3); // 2-4
+    for (let i = 0; i < topBumps; i++) {
+      const px = (this.rand() - 0.5) * w * 0.5;
+      const py = -h * 0.25 - this.rand() * h * 0.15;
+      const r = h * 0.08 + this.rand() * h * 0.14;
+      g.fillStyle(0xffffff, alpha * (0.55 + this.rand() * 0.3));
+      g.fillCircle(px, py, r);
+    }
 
-    // Light gray shadow rectangle along the bottom
-    g.fillStyle(0xcccccc, alpha * 0.7);
-    g.fillRect(
-      -halfW + Math.floor(w * 0.05),
-      halfH - Math.floor(h * 0.25),
-      Math.floor(w * 0.9),
-      Math.floor(h * 0.25),
-    );
+    // Fill gaps with a few medium puffs in the center mass
+    const fillPuffs = 2 + Math.floor(this.rand() * 2); // 2-3
+    for (let i = 0; i < fillPuffs; i++) {
+      const px = (this.rand() - 0.5) * w * 0.4;
+      const py = (this.rand() - 0.45) * h * 0.2;
+      const r = h * 0.15 + this.rand() * h * 0.1;
+      g.fillStyle(0xffffff, alpha * (0.5 + this.rand() * 0.25));
+      g.fillCircle(px, py, r);
+    }
+
+    // Bottom shadow: a few darker puffs along the underside
+    const shadowPuffs = 2 + Math.floor(this.rand() * 2); // 2-3
+    for (let i = 0; i < shadowPuffs; i++) {
+      const px = (this.rand() - 0.5) * w * 0.45;
+      const py = h * 0.08 + this.rand() * h * 0.08;
+      const r = w * 0.12 + this.rand() * w * 0.08;
+      g.fillStyle(0xdddde8, alpha * 0.2);
+      g.fillCircle(px, py, r);
+    }
   }
 }

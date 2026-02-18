@@ -1,9 +1,10 @@
 import { launchGame } from "./game/GameApp.ts";
 
-// Launch Pirates Chronicles
-const game = launchGame("game-container");
+// Ensure custom font is loaded before Phaser renders text
+document.fonts.load('16px "Treasure Map Deadhand"').then(() => {
+  const game = launchGame("game-container");
 
-// Handle window cleanup
-window.addEventListener("beforeunload", () => {
-  game.destroy(true);
+  window.addEventListener("beforeunload", () => {
+    game.destroy(true);
+  });
 });

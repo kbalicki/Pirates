@@ -78,6 +78,7 @@ export type WorldState = {
   playerName: string;
   eraId: string;
   startYear: number;
+  gameSpeed: number; // time minutes per tick: 0.6=slow, 1.2=normal, 2.4=fast
 };
 
 // Re-export EntityState from its own module

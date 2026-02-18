@@ -105,6 +105,7 @@ export function createNewWorldState(
     playerName,
     eraId,
     startYear,
+    gameSpeed: 1.2, // "normal" — 1 day ≈ 1 minute real time
   };
 
   return world;

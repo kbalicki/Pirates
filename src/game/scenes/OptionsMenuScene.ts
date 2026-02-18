@@ -21,10 +21,10 @@ import { txt } from "../ui/textStyle.ts";
 
 type TabId = "cabin" | "calendar" | "save" | "map";
 
-const DLG_W = 620;
-const DLG_H = 500;
+const DLG_W = 560;
+const DLG_H = 440;
 const BORDER = 3;
-const PAD = 18;
+const PAD = 14;
 
 export class OptionsMenuScene extends Phaser.Scene {
   private worldState!: WorldState;
@@ -218,6 +218,27 @@ export class OptionsMenuScene extends Phaser.Scene {
     // Gold
     this.contentContainer.add(
       this.add.text(x, y, `${t("hud.gold")}: ${player.gold}`, txt(14, { bold: true })));
+    y += 28;
+
+    // Game Speed toggle
+    const speedValue = this.worldState.gameSpeed ?? 1.2;
+    const speedName = speedValue >= 2.0 ? t("speed.fast") : speedValue <= 0.8 ? t("speed.slow") : t("speed.normal");
+    const speedLabel = this.add.text(x, y,
+      t("speed.label", { speed: speedName }), txt(12, { bold: true, color: "#2266aa" }));
+    speedLabel.setInteractive({ useHandCursor: true });
+    speedLabel.on("pointerdown", () => {
+      // Cycle: Normal → Fast → Slow → Normal
+      if (speedValue >= 2.0) {
+        this.worldState = { ...this.worldState, gameSpeed: 0.6 };
+      } else if (speedValue <= 0.8) {
+        this.worldState = { ...this.worldState, gameSpeed: 1.2 };
+      } else {
+        this.worldState = { ...this.worldState, gameSpeed: 2.4 };
+      }
+      this.registry.set("worldState", this.worldState);
+      this.switchTab("cabin");
+    });
+    this.contentContainer.add(speedLabel);
   }
 
   // ---- Tab 2: Calendar & Events ----

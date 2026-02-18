@@ -81,7 +81,7 @@ export class WorldRenderer {
     const textureKey = entity.kind === "ship" ? "sailship" : "fx_default";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
-    if (entity.kind === "ship") sprite.setScale(0.5);
+    if (entity.kind === "ship") sprite.setScale(0.33);
     return sprite;
   }
 
