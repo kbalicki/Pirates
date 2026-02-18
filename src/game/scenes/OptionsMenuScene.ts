@@ -19,7 +19,7 @@ import { saveSlotId } from "../../core/model/ids.ts";
 import type { SavePayload } from "../../persistence/SaveSchema.ts";
 import { txt } from "../ui/textStyle.ts";
 
-type TabId = "cabin" | "calendar" | "save" | "map";
+type TabId = "cabin" | "calendar" | "options" | "map";
 
 const DLG_W = 560;
 const DLG_H = 440;
@@ -66,7 +66,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     const tabs: { id: TabId; labelKey: string }[] = [
       { id: "cabin", labelKey: "menu.tab_cabin" },
       { id: "calendar", labelKey: "menu.tab_calendar" },
-      { id: "save", labelKey: "menu.tab_save" },
+      { id: "options", labelKey: "menu.tab_options" },
       { id: "map", labelKey: "menu.tab_map" },
     ];
 
@@ -112,7 +112,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-SPACE", () => this.closeMenu());
       this.input.keyboard.on("keydown-ONE", () => this.switchTab("cabin"));
       this.input.keyboard.on("keydown-TWO", () => this.switchTab("calendar"));
-      this.input.keyboard.on("keydown-THREE", () => this.switchTab("save"));
+      this.input.keyboard.on("keydown-THREE", () => this.switchTab("options"));
       this.input.keyboard.on("keydown-FOUR", () => this.switchTab("map"));
     }
 
@@ -120,7 +120,7 @@ export class OptionsMenuScene extends Phaser.Scene {
   }
 
   private switchTab(tab: TabId): void {
-    const allTabs: TabId[] = ["cabin", "calendar", "save", "map"];
+    const allTabs: TabId[] = ["cabin", "calendar", "options", "map"];
     for (let i = 0; i < this.tabButtons.length; i++) {
       if (allTabs[i] === tab) {
         this.tabButtons[i].setColor("#1a1a1a");
@@ -134,7 +134,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     switch (tab) {
       case "cabin": this.renderCabin(); break;
       case "calendar": this.renderCalendar(); break;
-      case "save": this.renderSaveLoad(); break;
+      case "options": this.renderOptions(); break;
       case "map": this.renderMap(); break;
     }
   }
@@ -340,17 +340,40 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
   }
 
-  // ---- Tab 3: Save/Load ----
+  // ---- Tab 3: Options (Sound, Save/Load, Language) ----
 
-  private renderSaveLoad(): void {
-    const cx = this.cameras.main.width / 2;
+  private renderOptions(): void {
+    const x = this.dlgX + PAD + 8;
     let y = 0;
 
-    const title = this.add.text(cx, y, t("save.title"), txt(14, { bold: true }));
-    title.setOrigin(0.5, 0);
-    this.contentContainer.add(title);
-    y += 26;
+    // --- Sound toggle ---
+    const isMuted = this.sound.mute;
+    const soundLabel = isMuted ? t("options.sound_off") : t("options.sound_on");
+    const soundColor = isMuted ? "#aa2222" : "#2a7a2a";
+    const soundBtn = this.add.text(x, y, soundLabel, txt(13, { bold: true, color: soundColor }));
+    soundBtn.setInteractive({ useHandCursor: true });
+    soundBtn.on("pointerdown", () => {
+      this.sound.mute = !this.sound.mute;
+      this.switchTab("options");
+    });
+    this.contentContainer.add(soundBtn);
+    y += 28;
 
+    // --- Divider ---
+    const div1 = this.add.graphics();
+    div1.lineStyle(1, 0xcccccc, 1);
+    div1.lineBetween(this.dlgX + PAD, y, this.dlgX + DLG_W - PAD, y);
+    this.contentContainer.add(div1);
+    y += 10;
+
+    // --- Save / Load title ---
+    const cx = this.cameras.main.width / 2;
+    const saveTitle = this.add.text(cx, y, t("save.title"), txt(13, { bold: true }));
+    saveTitle.setOrigin(0.5, 0);
+    this.contentContainer.add(saveTitle);
+    y += 22;
+
+    // Async: load save slots then render them + language below
     listSaves().then((existingSaves) => {
       this.renderSaveSlots(existingSaves, y);
     });
@@ -399,11 +422,18 @@ export class OptionsMenuScene extends Phaser.Scene {
         this.contentContainer.add(delBtn);
       }
 
-      y += 28;
+      y += 24;
     }
 
-    // Language switch
-    y += 16;
+    // --- Divider ---
+    y += 6;
+    const div2 = this.add.graphics();
+    div2.lineStyle(1, 0xcccccc, 1);
+    div2.lineBetween(this.dlgX + PAD, y, this.dlgX + DLG_W - PAD, y);
+    this.contentContainer.add(div2);
+    y += 10;
+
+    // --- Language switch ---
     this.contentContainer.add(
       this.add.text(x, y, t("lang.current"), txt(12, { color: "#555555" })));
 
@@ -430,7 +460,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       world: this.worldState,
     };
     await saveGame(payload);
-    this.switchTab("save");
+    this.switchTab("options");
   }
 
   private async doLoad(slotId: string): Promise<void> {
@@ -445,7 +475,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
   private async doDelete(slotId: string): Promise<void> {
     await removeSave(saveSlotId(slotId));
-    this.switchTab("save");
+    this.switchTab("options");
   }
 
   // ---- Tab 4: Caribbean Map ----

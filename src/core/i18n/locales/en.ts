@@ -146,7 +146,7 @@ export const EN: LocaleData = {
   "menu.title": "Captain's Log",
   "menu.tab_cabin": "Captain's Cabin",
   "menu.tab_calendar": "Calendar & Events",
-  "menu.tab_save": "Save / Load",
+  "menu.tab_options": "Options",
   "menu.tab_map": "Caribbean Map",
   "menu.close": "[ CLOSE ]",
   "menu.close_hint": "ESC / SPACE to close",
@@ -330,6 +330,10 @@ export const EN: LocaleData = {
   // -- Start Screen --
   "creation.load_game": "LOAD GAME",
   "creation.no_saves": "No saved games",
+
+  // -- Options --
+  "options.sound_on": "Sound: ON",
+  "options.sound_off": "Sound: OFF",
 
   // -- Language --
   "lang.current": "Language: English",

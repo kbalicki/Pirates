@@ -146,7 +146,7 @@ export const PL: LocaleData = {
   "menu.title": "Dziennik Kapitana",
   "menu.tab_cabin": "Kajuta Kapitana",
   "menu.tab_calendar": "Kalendarz i Zdarzenia",
-  "menu.tab_save": "Zapis / Odczyt",
+  "menu.tab_options": "Opcje",
   "menu.tab_map": "Mapa Karaibów",
   "menu.close": "[ ZAMKNIJ ]",
   "menu.close_hint": "ESC / SPACE aby zamknąć",
@@ -330,6 +330,10 @@ export const PL: LocaleData = {
   // -- Start Screen --
   "creation.load_game": "WCZYTAJ GRĘ",
   "creation.no_saves": "Brak zapisanych gier",
+
+  // -- Options --
+  "options.sound_on": "Dźwięk: WŁ.",
+  "options.sound_off": "Dźwięk: WYŁ.",
 
   // -- Language --
   "lang.current": "Język: Polski",
