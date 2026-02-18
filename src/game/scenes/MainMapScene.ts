@@ -19,6 +19,7 @@ import { vec2Dist, pointInPolygon } from "../../core/services/Geometry.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { APP_VERSION } from "../../version.ts";
 
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
@@ -112,6 +113,15 @@ export class MainMapScene extends Phaser.Scene {
 
     this.portDialogOpen = false;
     this.wasNearPort = false;
+
+    // Version label — bottom-right
+    const versionText = this.add.text(
+      this.cameras.main.width - 6, this.cameras.main.height - 4,
+      `v${APP_VERSION}`, txt(8, { color: "#666666" }),
+    );
+    versionText.setOrigin(1, 1);
+    versionText.setScrollFactor(0);
+    versionText.setDepth(9500);
 
     // Wind ambient sound
     if (this.cache.audio.exists("wind_loop")) {

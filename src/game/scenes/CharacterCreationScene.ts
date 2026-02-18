@@ -4,6 +4,7 @@ import { createNewWorldState } from "../GameApp.ts";
 import { t } from "../../core/i18n/index.ts";
 import { TEXT_RES } from "../ui/textStyle.ts";
 import { txt } from "../ui/textStyle.ts";
+import { APP_VERSION } from "../../version.ts";
 import { listSaves, loadGame } from "../../persistence/SaveRepository.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
 import {
@@ -34,6 +35,11 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Background
     this.cameras.main.setBackgroundColor("#0a0a1a");
+
+    // Version label — bottom-right
+    const cam = this.cameras.main;
+    this.add.text(cam.width - 6, cam.height - 4, `v${APP_VERSION}`, txt(8, { color: "#444444" }))
+      .setOrigin(1, 1);
 
     // Play pirate theme music once (no loop)
     if (this.cache.audio.exists("pirate_theme")) {
