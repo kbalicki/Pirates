@@ -117,7 +117,11 @@ export class MainMapScene extends Phaser.Scene {
     // Version label — bottom-right
     const versionText = this.add.text(
       this.cameras.main.width - 6, this.cameras.main.height - 4,
-      `v${APP_VERSION}`, txt(12, { color: "#666666" }),
+      `v${APP_VERSION}`, {
+        ...txt(12, { color: "#aaaaaa" }),
+        stroke: "#000000",
+        strokeThickness: 2,
+      },
     );
     versionText.setOrigin(1, 1);
     versionText.setScrollFactor(0);

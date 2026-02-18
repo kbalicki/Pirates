@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { MusicManager } from "../audio/MusicManager.ts";
 import { txt } from "../ui/textStyle.ts";
 
 export class PreloadScene extends Phaser.Scene {
@@ -71,6 +72,16 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Set NEAREST filtering on pixel-art sprite textures (keep them crisp)
+    for (const key of ["sailship", "tilepack", "water_anim", "windrose", "compass_needle"]) {
+      if (this.textures.exists(key)) {
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+      }
+    }
+
+    // Initialize music manager (accessible from all scenes via registry)
+    this.registry.set("musicManager", new MusicManager(this.game));
+
     this.scene.start("CharacterCreationScene");
   }
 }

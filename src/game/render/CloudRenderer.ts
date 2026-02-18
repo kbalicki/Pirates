@@ -180,49 +180,53 @@ export class CloudRenderer {
     h: number,
     alpha: number,
   ): void {
-    // Main body: row of overlapping puffs spread horizontally
+    // Main body: row of overlapping ellipses spread horizontally
     const numPuffs = 6 + Math.floor(this.rand() * 5); // 6-10
     for (let i = 0; i < numPuffs; i++) {
       const t = i / (numPuffs - 1); // 0..1
-      // Horizontal spread across cloud width
       const px = (t - 0.5) * w * 0.85;
-      // Vertical: parabolic envelope — highest in center, lower at edges
       const envelope = 1 - 4 * (t - 0.5) * (t - 0.5);
       const py = -(envelope * h * 0.15) + (this.rand() - 0.4) * h * 0.12;
-      // Radius: larger in center, smaller at edges
       const r = (h * 0.18 + envelope * h * 0.18) * (0.7 + this.rand() * 0.35);
+      const ew = r * (1.2 + this.rand() * 0.8);
+      const eh = r * (0.6 + this.rand() * 0.5);
       g.fillStyle(0xffffff, alpha * (0.45 + this.rand() * 0.35));
-      g.fillCircle(px, py, r);
+      g.fillEllipse(px, py, ew * 2, eh * 2);
     }
 
-    // Top bumps: random small puffs above the main body for billowy look
-    const topBumps = 2 + Math.floor(this.rand() * 3); // 2-4
+    // Top bumps: random ellipses above the main body for billowy look
+    const topBumps = 3 + Math.floor(this.rand() * 3); // 3-5
     for (let i = 0; i < topBumps; i++) {
-      const px = (this.rand() - 0.5) * w * 0.5;
-      const py = -h * 0.25 - this.rand() * h * 0.15;
-      const r = h * 0.08 + this.rand() * h * 0.14;
-      g.fillStyle(0xffffff, alpha * (0.55 + this.rand() * 0.3));
-      g.fillCircle(px, py, r);
+      const px = (this.rand() - 0.5) * w * 0.6;
+      const py = -h * 0.2 - this.rand() * h * 0.2;
+      const r = h * 0.1 + this.rand() * h * 0.14;
+      const ew = r * (1.0 + this.rand() * 1.0);
+      const eh = r * (0.5 + this.rand() * 0.6);
+      g.fillStyle(0xffffff, alpha * (0.5 + this.rand() * 0.3));
+      g.fillEllipse(px, py, ew * 2, eh * 2);
     }
 
-    // Fill gaps with a few medium puffs in the center mass
-    const fillPuffs = 2 + Math.floor(this.rand() * 2); // 2-3
+    // Fill gaps with medium ellipses in the center mass
+    const fillPuffs = 2 + Math.floor(this.rand() * 3); // 2-4
     for (let i = 0; i < fillPuffs; i++) {
-      const px = (this.rand() - 0.5) * w * 0.4;
-      const py = (this.rand() - 0.45) * h * 0.2;
-      const r = h * 0.15 + this.rand() * h * 0.1;
-      g.fillStyle(0xffffff, alpha * (0.5 + this.rand() * 0.25));
-      g.fillCircle(px, py, r);
+      const px = (this.rand() - 0.5) * w * 0.5;
+      const py = (this.rand() - 0.45) * h * 0.25;
+      const r = h * 0.12 + this.rand() * h * 0.12;
+      const ew = r * (1.1 + this.rand() * 0.7);
+      const eh = r * (0.7 + this.rand() * 0.5);
+      g.fillStyle(0xffffff, alpha * (0.45 + this.rand() * 0.3));
+      g.fillEllipse(px, py, ew * 2, eh * 2);
     }
 
-    // Bottom shadow: a few darker puffs along the underside
+    // Bottom shadow: flat ellipses along the underside
     const shadowPuffs = 2 + Math.floor(this.rand() * 2); // 2-3
     for (let i = 0; i < shadowPuffs; i++) {
-      const px = (this.rand() - 0.5) * w * 0.45;
-      const py = h * 0.08 + this.rand() * h * 0.08;
-      const r = w * 0.12 + this.rand() * w * 0.08;
+      const px = (this.rand() - 0.5) * w * 0.5;
+      const py = h * 0.05 + this.rand() * h * 0.1;
+      const rw = w * 0.15 + this.rand() * w * 0.1;
+      const rh = h * 0.06 + this.rand() * h * 0.06;
       g.fillStyle(0xdddde8, alpha * 0.2);
-      g.fillCircle(px, py, r);
+      g.fillEllipse(px, py, rw * 2, rh * 2);
     }
   }
 }

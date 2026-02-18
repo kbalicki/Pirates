@@ -117,8 +117,7 @@ export function launchGame(containerId: string): Phaser.Game {
     parent: containerId,
     width: 800,
     height: 600,
-    pixelArt: true,
-    roundPixels: true,
+    antialias: true,
     backgroundColor: "#0a0a1a",
     scale: {
       mode: Phaser.Scale.FIT,
