@@ -117,7 +117,7 @@ export class MainMapScene extends Phaser.Scene {
     // Version label — bottom-right
     const versionText = this.add.text(
       this.cameras.main.width - 6, this.cameras.main.height - 4,
-      `v${APP_VERSION}`, txt(8, { color: "#666666" }),
+      `v${APP_VERSION}`, txt(12, { color: "#666666" }),
     );
     versionText.setOrigin(1, 1);
     versionText.setScrollFactor(0);
@@ -239,39 +239,6 @@ export class MainMapScene extends Phaser.Scene {
       detail.fillCircle(fx, fy, 1 + rand() * 2);
     }
 
-    // --- Beach fringe along coastlines ---
-    const beach = this.add.graphics();
-    beach.setDepth(-850);
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      // Outer sandy glow
-      beach.lineStyle(8, 0xd4c07a, 0.25);
-      beach.beginPath();
-      beach.moveTo(lm.polygon[0].x, lm.polygon[0].y);
-      for (let i = 1; i < lm.polygon.length; i++) {
-        beach.lineTo(lm.polygon[i].x, lm.polygon[i].y);
-      }
-      beach.closePath();
-      beach.strokePath();
-      // Inner sand edge
-      beach.lineStyle(3, 0xe8d9a0, 0.35);
-      beach.beginPath();
-      beach.moveTo(lm.polygon[0].x, lm.polygon[0].y);
-      for (let i = 1; i < lm.polygon.length; i++) {
-        beach.lineTo(lm.polygon[i].x, lm.polygon[i].y);
-      }
-      beach.closePath();
-      beach.strokePath();
-      // Foam highlight
-      beach.lineStyle(1.5, 0xffffff, 0.12);
-      beach.beginPath();
-      beach.moveTo(lm.polygon[0].x, lm.polygon[0].y);
-      for (let i = 1; i < lm.polygon.length; i++) {
-        beach.lineTo(lm.polygon[i].x, lm.polygon[i].y);
-      }
-      beach.closePath();
-      beach.strokePath();
-    }
   }
 
   private createTerrainQuery(): (wx: number, wy: number) => TerrainType {

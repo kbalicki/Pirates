@@ -38,7 +38,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Version label — bottom-right
     const cam = this.cameras.main;
-    this.add.text(cam.width - 6, cam.height - 4, `v${APP_VERSION}`, txt(8, { color: "#444444" }))
+    this.add.text(cam.width - 6, cam.height - 4, `v${APP_VERSION}`, txt(12, { color: "#444444" }))
       .setOrigin(1, 1);
 
     // Play pirate theme music once (no loop)
