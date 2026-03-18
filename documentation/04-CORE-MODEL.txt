@@ -1,0 +1,227 @@
+================================================================================
+  04 — MODEL DANYCH (src/core/model/)
+================================================================================
+
+1. IDENTYFIKATORY (ids.ts)
+--------------------------------------------------------------------------------
+  Branded string types dla bezpieczeństwa typów:
+
+    EntityId    — identyfikator encji (statek, efekt)
+    PortId      — identyfikator portu
+    FactionId   — identyfikator frakcji
+    ItemId      — identyfikator towaru
+    ShipClassId — identyfikator klasy statku
+    QuestId     — identyfikator questa
+    SaveSlotId  — identyfikator slotu zapisu
+
+  Fabryki: entityId(), portId(), factionId(), itemId(), shipClassId(),
+           questId(), saveSlotId()
+
+2. STAN ŚWIATA (WorldState.ts)
+--------------------------------------------------------------------------------
+
+  WorldState {
+    version:     number                          — wersja formatu
+    time:        GameTime                        — zegar gry
+    rng:         RngState                        — stan generatora losowego
+    player:      PlayerState                     — dane gracza
+    entities:    Record<EntityId, EntityState>    — wszystkie encje
+    ports:       Record<PortId, PortRuntimeState> — stany portów
+    weather:     WeatherState                    — pogoda
+    worldFlags:  Record<string, boolean>         — flagi globalne
+    eventLog:    GameEventEntry[]                — log wydarzeń (max 200)
+    playerName:  string                          — imię gracza
+    eraId:       string                          — era historyczna
+    startYear:   number                          — rok startowy
+    gameSpeed:   number                          — 0.6 / 1.2 / 2.4
+  }
+
+  GameTime {
+    day:    number      — dzień gry (od 1)
+    hour:   number      — godzina (0-23)
+    minute: number      — minuta (0-59)
+    tick:   number      — tick bezwzględny
+  }
+
+  PlayerState {
+    id:         EntityId
+    shipId:     EntityId
+    gold:       number
+    notoriety:  number
+    reputation: Record<FactionId, number>    — -100..+100 per frakcja
+    ranks:      Record<FactionId, number>    — 0..5 per frakcja
+    location:   PlayerLocation
+    questLog:   QuestRuntimeState[]
+  }
+
+  PlayerLocation {
+    type:    "sea" | "port"
+    portId?: PortId            — gdy type = "port"
+    pos:     Vec2              — pozycja na mapie
+  }
+
+  WeatherState {
+    windDirRad:   HeadingRad    — kierunek wiatru (0..2π)
+    windStrength: number        — siła (0..1)
+    stormActive:  boolean       — czy aktywna burza
+    stormTimer:   number        — czas do końca burzy
+  }
+
+  PortRuntimeState {
+    portId:        PortId
+    factionId:     FactionId
+    prices:        Record<ItemId, number>
+    inventory:     Record<ItemId, number>
+    shipyardQueue: string[]
+    availableCrew: number
+  }
+
+3. STAN ENCJI (EntityState.ts)
+--------------------------------------------------------------------------------
+
+  EntityState {
+    id:          EntityId
+    kind:        "ship" | "fleet" | "fx"
+    pos:         Vec2             — pozycja w świecie
+    vel:         Vec2             — wektor prędkości
+    heading:     HeadingRad       — kierunek (0=N, π/2=E, π=S, 3π/2=W)
+    sailLevel:   number           — poziom żagli (0..1)
+    depthOffset: number           — offset dla depth sort
+    ship?:       ShipData         — dane statku (jeśli kind="ship")
+    ai?:         AiData           — dane AI (jeśli NPC)
+  }
+
+  ShipData {
+    classId:  ShipClassId
+    factionId: FactionId
+    hullHp:   number          — aktualne HP kadłuba
+    hullMax:  number
+    sailsHp:  number          — aktualne HP żagli
+    sailsMax: number
+    cannons:  number
+    cargo:    Record<ItemId, number>
+    cargoCap: number
+    crew: {
+      current: number
+      max:     number
+      morale:  number         — 0..1
+    }
+  }
+
+  AiData {
+    behavior:        "trader"|"pirate"|"navy"|"escort"
+    state:           "patrol"|"travel"|"chase"|"flee"|"dock"
+    targetEntityId?: EntityId
+    targetPortId?:   PortId
+    aggression:      number    — 0..1
+    awarenessRadius: number    — promień wykrywania
+  }
+
+4. KOMENDY (Commands.ts)
+--------------------------------------------------------------------------------
+
+  WorldCommand (unia typów):
+    SetSailLevel     { value: 0..1 }
+    Turn             { dir: "left"|"right", amount: number }
+    SetHeading       { heading: HeadingRad }
+    Interact         { at: Vec2 }
+    EnterPort        { portId: PortId }
+    ExitPort         {}
+    TradeBuy         { portId, itemId, qty }
+    TradeSell        { portId, itemId, qty }
+    RepairShip       { portId, amount }
+    AcceptQuest      { questId }
+    AbandonQuest     { questId }
+    StartEncounterResolution { encounterId }
+    StartSeaBattle   { enemyEntityId }
+    SaveGame         { slotId }
+    LoadGame         { slotId }
+    NewGame          { seed }
+
+  CombatCommand (unia typów):
+    SetSailLevel     { value: 0..1 }
+    Turn             { dir: "left"|"right", amount: number }
+    FireCannons      { side: "left"|"right" }
+    CeaseFire        {}
+    AttemptDisengage {}
+    EndBattleAcknowledge {}
+
+5. EVENTY (Events.ts)
+--------------------------------------------------------------------------------
+
+  WorldEvent (unia typów):
+    Sound            { id: string }
+    Toast            { message: string }
+    SpawnFx          { id: string, pos: Vec2 }
+    Encounter        { encounterId, kind }
+    PortEntered      { portId }
+    BattleStarted    { enemyId }
+    Trade            { itemId, qty, goldDelta }
+
+  CombatEvent (unia typów):
+    Sound            { id }
+    FxHit            { pos }
+    CannonFired      { side, shipId }
+    ShipDamaged      { shipId, hullDelta, sailsDelta }
+    BattleEnded      { outcome: "win"|"lose"|"disengaged", loot? }
+
+  Transition {
+    type:     "GoToScene"
+    scene:    "MainMap"|"Port"|"SeaBattle"|"Dialogue"|"SaveLoad"
+    payload?: unknown
+  }
+
+  EngineResult<S, E> {
+    state:        S          — nowy stan
+    events:       E[]        — lista eventów
+    transitions?: Transition[] — tranzycje scen
+  }
+
+6. STAN WALKI (CombatState.ts)
+--------------------------------------------------------------------------------
+
+  CombatState {
+    version:       number
+    time:          { tick: number }
+    arena:         { width: number, height: number }  — 800×600
+    wind:          { dirRad: HeadingRad, strength: number }
+    playerShipId:  EntityId
+    enemyShipId:   EntityId
+    entities:      Record<EntityId, CombatEntityState>
+    events:        CombatEvent[]
+  }
+
+7. USŁUGI (services/)
+--------------------------------------------------------------------------------
+
+  RNG (RNG.ts) — Mulberry32 deterministyczny PRNG:
+    createRng(seed) → RngState { seed, state }
+    rngNext(rng)              → { value: [0,1), state }
+    rngNextInt(rng, min, max) → { value: integer, state }
+    rngNextFloat(rng, min, max) → { value: float, state }
+
+  Geometria (Geometry.ts) — Matematyka wektorowa:
+    vec2(x, y), vec2Add, vec2Sub, vec2Scale, vec2Length,
+    vec2Normalize, vec2Dist, vec2Dot
+    headingToVec(heading) → Vec2
+    vecToHeading(vec)     → HeadingRad
+    normalizeHeading(h)   → [0, 2π)
+    headingDiff(from, to) → [-π, π]
+    headingToDir8(heading) → 0..7    (kompas 8-kierunkowy)
+    clamp, lerp, pointInRect, pointInPolygon
+    TWO_PI = Math.PI × 2
+
+  Walidacja (Validation.ts):
+    validateWorldState(world) → ValidationError[]
+    Sprawdza: istnienie encji, zakresy HP, cargo, NaN, reputacja
+
+  Serializacja (Serializer.ts):
+    serializeWorld(world) → string (JSON)
+    deserializeWorld(json) → WorldState
+    serializePayload(payload) → string
+    deserializePayload(json)  → SavePayload
+
+  Pathfinding (Pathfinding.ts):
+    findPath() → null (placeholder dla fazy 9)
+
+================================================================================

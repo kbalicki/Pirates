@@ -1,0 +1,8 @@
+# Ship sprites - 512x512 pixel art
+# Each line = one prompt (lines starting with # are ignored)
+
+small sloop single mast sailing ship, fast light vessel, one cannon per side
+brigantine two-mast pirate ship, medium size, square rigged sails, four cannons
+large frigate warship three masts, heavy armament, eight cannons per side, naval vessel
+massive galleon four masts, treasure ship, ornate stern castle, heavy cannons
+wide merchant ship, cargo vessel, two masts, lateen sails, low armament, trade ship

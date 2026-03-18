@@ -1,0 +1,168 @@
+# 10 — Poradnik deweloperski
+
+## Wymagania
+
+- Node.js 18+
+- npm 9+
+- (Opcjonalnie) Python 3.13+ z PyTorch (do generowania assetów)
+
+## Instalacja i uruchomienie
+
+```bash
+# 1. Klonowanie repo
+git clone <repo-url>
+cd PiratesChronicles
+
+# 2. Instalacja zależności
+npm install
+
+# 3. Dev server (port 3000)
+npm run dev
+```
+
+**Ważne:**
+- Zawsze restartuj na porcie 3000
+- Przed uruchomieniem zabij wszystkie procesy node: `taskkill //F //IM node.exe`
+- Nie zostawiaj wielu instancji serwera
+
+## Skrypty npm
+
+| Skrypt | Opis |
+|--------|------|
+| `npm run dev` | Serwer Vite z hot-reload (port 3000) |
+| `npm run build` | Build TypeScript + Vite → `dist/` |
+| `npm run preview` | Podgląd builda produkcyjnego |
+| `npm test` | Uruchom testy (vitest) |
+| `npm run test:watch` | Testy w trybie watch |
+
+## Struktura kodu — konwencje
+
+### Separacja warstw
+
+```
+src/core/  → ZERO importów z Phaser. Czysta logika gry.
+src/game/  → Warstwa Phaser. Importuje z core/ i persistence/.
+src/persistence/ → IndexedDB. Importuje z core/model/.
+```
+
+**Nigdy nie importuj Phaser w `src/core/`!** To kluczowa zasada architektury.
+
+### TypeScript
+
+- Strict mode (`tsconfig.json`)
+- Branded ID types dla bezpieczeństwa typów (EntityId, PortId, etc.)
+- Immutable state — spreads, nie mutacje
+- Funkcje czyste w systemach gry
+
+### Fonty
+
+- Zawsze używaj `UI_FONT` lub `txt()` z `src/game/ui/textStyle.ts`
+- Nigdy nie hardkoduj fontów
+- `txt()` auto-skaluje rozmiar ×1.3
+
+### Nazewnictwo
+
+- Pliki: PascalCase (np. `WorldEngine.ts`, `NavigationSystem.ts`)
+- Typy: PascalCase (np. `WorldState`, `EntityState`)
+- Funkcje: camelCase (np. `updateNavigation`, `executeBuy`)
+- Stałe: UPPER_SNAKE (np. `TICK_MS`, `DIRECTION_REVERSION_RATE`)
+- ID: camelCase string (np. `"spain"`, `"sloop"`, `"sugar"`)
+
+## Dodawanie nowej funkcjonalności
+
+### Nowy system gry
+
+1. Utwórz `src/core/systems/NowySystem.ts`
+2. Eksportuj czystą funkcję: `updateNowy(state, ...) → state`
+3. Zintegruj w `WorldEngine.apply()` (w odpowiedniej kolejności)
+4. Dodaj testy w `src/core/systems/__tests__/`
+
+### Nowa komenda gracza
+
+1. Dodaj typ do `src/core/model/Commands.ts`
+2. Dodaj reducer w `src/core/engine/reducers.ts`
+3. Dodaj mapowanie klawiszy w `src/game/input/InputMapper.ts`
+
+### Nowa scena
+
+1. Utwórz `src/game/scenes/NowaScene.ts` (extends `Phaser.Scene`)
+2. Zarejestruj w `src/game/GameApp.ts`
+3. Dodaj transitions w odpowiednich scenach
+
+### Nowy asset pack
+
+1. Utwórz katalog `public/assets/packs/nazwa/`
+2. Dodaj wpis w `src/game/settings/AssetPack.ts`
+3. Umieść assety wg struktury istniejących packów
+
+## Testowanie
+
+```bash
+# Uruchom wszystkie testy
+npm test
+
+# Testy w trybie watch
+npm run test:watch
+
+# Konkretny plik
+npx vitest run src/core/systems/__tests__/NavigationSystem.test.ts
+```
+
+Framework: **Vitest 4.0.18** (kompatybilny z Jest API).
+
+## Build produkcyjny
+
+```bash
+npm run build
+```
+
+Wynik w `dist/`:
+- `index.html` — główna strona
+- `assets/` — bundled JS, CSS, zasoby
+- Gotowe do statycznego hostingu (nginx, Apache, Netlify, etc.)
+
+## Deploy
+
+Build produkcyjny można wrzucić na dowolny serwer statyczny:
+
+```bash
+# Build
+npm run build
+
+# Upload dist/ na serwer
+scp -r dist/* user@server:/path/to/webroot/
+```
+
+## Generowanie geografii
+
+```bash
+# Regeneracja caribbean_geo.json (wymaga internetu)
+node scripts/generate_caribbean_geo.mjs
+```
+
+Pobiera dane z Natural Earth + OpenStreetMap Overpass API.
+
+## Generowanie assetów (ComfyUI)
+
+Wymaga uruchomionego ComfyUI na `localhost:8188`:
+
+```bash
+# Start ComfyUI (z C:\AI)
+start_comfyui.bat
+
+# Generuj assety
+python scripts/generate_assets_v3.py
+```
+
+Szczegóły w `sd-pipeline/README.md` i `ai-assets/README.md`.
+
+## Screenshoty
+
+```bash
+# Screenshot gry (wymaga uruchomionego dev servera)
+node scripts/screenshot.mjs http://localhost:3000 screenshot.png 5000
+```
+
+Opcje:
+- URL, ścieżka wyjściowa, czas oczekiwania (ms)
+- Akcje: `--action=start` (start gry), `--action=options` (menu opcji)

@@ -2,8 +2,9 @@ import type { WorldState } from "../core/model/WorldState.ts";
 import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
 import { CITIES } from "../core/data/cities.ts";
 import { portId } from "../core/model/ids.ts";
+import { createDefaultCaptainProfile } from "../core/model/CaptainState.ts";
 
-export const CURRENT_WORLD_VERSION = 4;
+export const CURRENT_WORLD_VERSION = 6;
 
 type Migration = (world: unknown) => unknown;
 
@@ -89,6 +90,24 @@ const migrations: Record<number, Migration> = {
     }
 
     return { ...world, version: 4, ports };
+  },
+
+  5: (world: any) => {
+    // Add captain profile to old saves
+    return {
+      ...world,
+      version: 5,
+      captain: world.captain ?? createDefaultCaptainProfile(),
+    };
+  },
+
+  6: (world: any) => {
+    // Add mode field to all entities
+    const entities: Record<string, any> = {};
+    for (const [id, entity] of Object.entries(world.entities as Record<string, any>)) {
+      entities[id] = { ...entity, mode: entity.mode ?? "sailing" };
+    }
+    return { ...world, version: 6, entities };
   },
 };
 

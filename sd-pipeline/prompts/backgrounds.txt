@@ -1,0 +1,9 @@
+# Map backgrounds - large tiled images pixel art
+# Each line = one prompt (lines starting with # are ignored)
+
+caribbean sea aerial view, islands scattered, turquoise water, tropical ocean
+port town harbor, wooden docks, colonial buildings, palm trees, busy waterfront
+open ocean stormy, dark waves, thunderclouds, dramatic lighting
+tropical island paradise, white sand beach, coconut palms, clear water lagoon
+pirate cove hidden bay, skull rock, wrecked ships, dark waters
+naval fort fortress, stone walls, cannons, british colonial architecture

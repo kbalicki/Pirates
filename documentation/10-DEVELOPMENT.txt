@@ -1,0 +1,171 @@
+================================================================================
+  10 — ROZWÓJ: URUCHAMIANIE, BUDOWANIE, KONWENCJE
+================================================================================
+
+1. WYMAGANIA SYSTEMOWE
+--------------------------------------------------------------------------------
+  Node.js:    18+ (dla Vite 7)
+  npm:        9+
+  GPU:        NVIDIA GTX 1060 6GB (dla generowania assetów)
+  OS:         Windows 11 (testowane)
+  Przeglądarka: Chrome/Edge (WebGL, IndexedDB)
+
+2. URUCHAMIANIE PROJEKTU
+--------------------------------------------------------------------------------
+
+  Instalacja zależności:
+    cd C:\GIT\PiratesChronicles
+    npm install
+
+  Tryb deweloperski (hot-reload):
+    npm run dev
+    → Vite dev server na http://localhost:3000
+    → Auto-open w przeglądarce
+    → Hot Module Replacement (HMR)
+
+  Build produkcyjny:
+    npm run build
+    → TypeScript compile + Vite bundle
+    → Output: dist/
+
+  Podgląd builda:
+    npm run preview
+    → Serwuje dist/ lokalnie
+
+3. SKRYPTY NPM
+--------------------------------------------------------------------------------
+  "dev":      vite (dev server z HMR)
+  "build":    tsc && vite build
+  "preview":  vite preview
+
+4. KONFIGURACJA VITE (vite.config.ts)
+--------------------------------------------------------------------------------
+  base:        "./"           — ścieżki relatywne
+  publicDir:   "public"       — pliki kopiowane 1:1 do dist
+  build.target: "esnext"      — nowoczesne przeglądarki
+  build.outDir: "dist"
+  server.port:  3000
+  server.open:  true          — auto-open w przeglądarce
+
+5. KONFIGURACJA TYPESCRIPT (tsconfig.json)
+--------------------------------------------------------------------------------
+  target:              ES2022
+  module:              ESNext
+  moduleResolution:    bundler
+  strict:              true
+  noUnusedLocals:      true
+  noUnusedParameters:  true
+  noFallthroughCasesInSwitch: true
+
+6. KONWENCJE KODU
+--------------------------------------------------------------------------------
+  Język:        TypeScript (strict)
+  Styl:         camelCase dla zmiennych/funkcji, PascalCase dla typów/klas
+  Identyfikatory: Branded string types (EntityId, PortId, etc.)
+  Stan:         Immutable — funkcje zwracają nowy stan, nie mutują
+  Engine:       Czyste funkcje (pure): (state, input) → (newState, events)
+  Pliki:        PascalCase.ts dla modułów (WorldEngine.ts, NavigationSystem.ts)
+  Dane:         camelCase.ts dla danych (ships.ts, cities.ts)
+  Eksporty:     Named exports (nie default)
+
+7. ARCHITEKTURA WARSTW — ZASADY
+--------------------------------------------------------------------------------
+  1. src/core/ NIE importuje z src/game/ ani src/persistence/
+  2. src/game/ importuje z src/core/ (model, engine, systems)
+  3. src/persistence/ importuje z src/core/model/ (typy)
+  4. Nowe systemy gry → src/core/systems/
+  5. Nowe dane statyczne → src/core/data/
+  6. Nowe sceny → src/game/scenes/
+  7. Nowe renderery → src/game/render/
+
+8. PRZEPŁYW DODAWANIA NOWEJ FUNKCJI
+--------------------------------------------------------------------------------
+  Przykład: dodanie nowego towaru
+
+  1. Dodaj ItemDef w src/core/data/items.ts
+  2. Dodaj cenę/produkcję w src/core/data/prices.ts
+  3. Dodaj tłumaczenia w src/core/i18n/locales/en.ts i pl.ts
+  4. Opcjonalnie: dodaj ikonę w public/assets/sprites/icons/
+  5. Przeładowanie PreloadScene (jeśli nowy asset)
+
+  Przykład: dodanie nowego systemu
+
+  1. Stwórz XxxSystem.ts w src/core/systems/
+  2. Zintegruj z WorldEngine.apply() w odpowiednim kroku
+  3. Dodaj potrzebne typy do model/
+  4. Dodaj tłumaczenia do i18n
+
+9. GENEROWANIE ASSETÓW — WORKFLOW
+--------------------------------------------------------------------------------
+  1. Uruchom ComfyUI:
+     C:\AI\start_comfyui.bat
+
+  2. Wygeneruj assety (wybierz narzędzie):
+     a. ComfyUI (szybkie, ~22s/obraz):
+        .\sd-pipeline\tools\generate.ps1 -PromptsFile ".\sd-pipeline\prompts\icons.txt" ...
+
+     b. Tiled Diffusion (seamless, ~28min/obraz):
+        .\sd-pipeline\tools\generate_tiled.ps1 -Prompt "ocean water" -Resize 32 ...
+
+  3. Przejrzyj wyniki w sd-pipeline/assets_raw/
+
+  4. Wybierz najlepsze → skopiuj do sd-pipeline/assets_game/
+
+  5. Skopiuj gotowe do public/assets/ (odpowiedni podkatalog)
+
+  6. Zaktualizuj PreloadScene.ts jeśli nowy asset
+
+  7. Przetestuj: npm run dev
+
+10. FAZY ROZWOJU
+--------------------------------------------------------------------------------
+  Zrealizowane:
+    Faza 1-2: Fundament (architektura, WorldState, nawigacja)
+    Faza 3:   Porty i handel
+    Faza 4:   Pogoda i wiatr
+    Faza 5:   Reputacja i dyplomacja
+    Faza 6:   Walka morska
+    Faza 7:   Zapis/odczyt gry
+
+  W toku:
+    Faza 8:   Questy (placeholder w quests.ts, QuestSystem.ts)
+
+  Planowane:
+    Faza 9:   AI i pathfinding (placeholder w Pathfinding.ts)
+    Faza 10:  Finalne assety (SD pipeline)
+
+11. INTERNACJONALIZACJA (i18n)
+--------------------------------------------------------------------------------
+  Wspierane języki: en (angielski), pl (polski)
+
+  Użycie w kodzie:
+    import { t } from "../core/i18n/I18n";
+    t("key.name")                    → tłumaczenie
+    t("key.name", { gold: 500 })     → z interpolacją {{gold}}
+
+  Dodawanie nowego klucza:
+    1. Dodaj do src/core/i18n/locales/en.ts
+    2. Dodaj do src/core/i18n/locales/pl.ts
+    3. Użyj t("nowy.klucz") w kodzie
+
+  Zmiana języka:
+    setLang("pl")   — zapisuje do localStorage
+    getLang()        → aktualny język
+
+12. DEBUGOWANIE
+--------------------------------------------------------------------------------
+  Vite DevTools:
+    - Hot reload przy zmianach w src/
+    - Source maps w przeglądarce
+    - Console.log w Phaser scenes
+
+  Walidacja stanu:
+    import { validateWorldState } from "./services/Validation";
+    const errors = validateWorldState(world);
+    // Sprawdza: encje, HP, cargo, NaN, reputacja
+
+  Phaser Debug:
+    - physics.arcade.debug: false (zmień na true w GameApp.ts)
+    - Minimap pokazuje pozycje encji
+
+================================================================================

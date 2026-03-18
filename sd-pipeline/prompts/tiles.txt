@@ -1,0 +1,23 @@
+# Map tiles - 32x32 seamless pixel art
+# Each line = one prompt (lines starting with # are ignored)
+
+deep ocean water dark blue
+shallow water turquoise
+sandy beach shore
+grass green terrain
+dense tropical jungle
+rocky cliff terrain
+dirt path road
+cobblestone port town road
+wooden dock planks
+coral reef underwater
+swamp murky water with reeds
+volcanic rock dark
+snow ice terrain
+desert sand dunes
+river freshwater
+waterfall edge
+palm tree canopy
+mountain peak rocky
+cave entrance dark
+port town wooden buildings rooftops

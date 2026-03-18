@@ -8,6 +8,7 @@ import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { usesParchmentUI } from "../settings/AssetPack.ts";
 
 type PortAction = "enter" | "sneak" | "attack" | "leave";
 
@@ -49,10 +50,15 @@ export class PortApproachScene extends Phaser.Scene {
     const dlgX = cx - DLG_W / 2;
     const dlgY = cy - DLG_H / 2;
 
-    // Outer border (dark)
-    this.add.rectangle(cx, cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
-    // Inner white fill
-    this.add.rectangle(cx, cy, DLG_W, DLG_H, 0xffffff);
+    // Dialog panel
+    if (usesParchmentUI() && this.textures.exists("parchment_panel")) {
+      const panel = this.add.image(cx, cy, "parchment_panel");
+      panel.setDisplaySize(DLG_W + 40, DLG_H + 30);
+      panel.setAlpha(0.95);
+    } else {
+      this.add.rectangle(cx, cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
+      this.add.rectangle(cx, cy, DLG_W, DLG_H, 0xffffff);
+    }
 
     // --- Port info ---
     const portKey = this.portId as string;
@@ -163,6 +169,13 @@ export class PortApproachScene extends Phaser.Scene {
     const hint = this.add.text(cx, hintY, "W/S \u2014 Select   Enter \u2014 Confirm   Esc \u2014 Leave",
       txt(10, { color: "#888888" }));
     hint.setOrigin(0.5, 1);
+
+    // Dynamic resize — restart scene to recenter dialog
+    const onResize = () => {
+      this.scale.off("resize", onResize);
+      this.scene.restart({ worldState: this.worldState, portId: this.portId });
+    };
+    this.scale.on("resize", onResize);
 
     // --- Keyboard navigation ---
     if (this.input.keyboard) {

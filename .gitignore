@@ -4,3 +4,24 @@ temp/
 *.log
 .DS_Store
 *conflicted copy*
+
+# SD Pipeline - raw generated PNGs (large files)
+sd-pipeline/assets_raw/**/*.png
+sd-pipeline/assets_game/**/*.png
+# Keep metadata JSON files tracked
+!sd-pipeline/assets_raw/**/*.json
+sd-pipeline/assets_raw/**/*.gif
+# Cloned tiled-diffusion repo (external dependency)
+sd-pipeline/tools/tiled-diffusion/
+# Temp test scripts
+sd-pipeline/tools/_*.ps1
+
+# Screenshots (dev only)
+screenshot_*.png
+
+# AI assets - generated outputs (large files)
+ai-assets/output/*.png
+ai-assets/output/*.jpg
+
+# Claude settings
+.claude/

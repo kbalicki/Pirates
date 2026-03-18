@@ -18,7 +18,8 @@
  */
 import Phaser from "phaser";
 import { LANDMASSES } from "../../core/data/geography.ts";
-import { pointInPolygon } from "../../core/services/Geometry.ts";
+import { pointInLandmass, pointInPolygon } from "../../core/services/Geometry.ts";
+import { getAssetPack } from "../settings/AssetPack.ts";
 
 const TS = 32;
 const MAP_W = 3200;
@@ -31,8 +32,6 @@ const TP_E = 2, TP_W = 8, TP_NE = 16, TP_SW = 64;
 const TP_N = 1, TP_S = 4, TP_SE = 32, TP_NW = 128;
 
 // Frame indices in the spritesheet (0-based).
-const SEA_SHALLOW = 1;
-
 // coast_ls_blob: blobMask → spritesheet frame index
 const COAST: Record<number, number> = {
   0:51, 2:52, 8:53, 10:54, 11:55, 16:56, 18:57, 22:58,
@@ -55,7 +54,8 @@ const DECOR_ALL = [98, 99, 100, 101, 102, 103, 104];
 
 /** Test if a world-pixel is inside any landmass. */
 function isLand(px: number, py: number): boolean {
-  return LANDMASSES.some(lm => pointInPolygon({ x: px, y: py }, lm.polygon));
+  const pt = { x: px, y: py };
+  return LANDMASSES.some(lm => pointInLandmass(pt, lm));
 }
 
 /**
@@ -211,6 +211,44 @@ function blobMask(
 // ──────────────────────────────────────────────────────────
 
 /**
+ * Compute Manhattan distance from each cell to the nearest water tile.
+ * Only computes up to maxDist; cells farther get maxDist.
+ */
+function computeCoastDistance(land: boolean[][], maxDist: number): number[][] {
+  const dist: number[][] = [];
+  for (let r = 0; r < ROWS; r++) {
+    dist[r] = new Array(COLS).fill(maxDist);
+  }
+
+  // BFS from all water cells
+  const queue: [number, number][] = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!land[r][c]) {
+        dist[r][c] = 0;
+        queue.push([r, c]);
+      }
+    }
+  }
+
+  let head = 0;
+  while (head < queue.length) {
+    const [cr, cc] = queue[head++];
+    const nd = dist[cr][cc] + 1;
+    if (nd > maxDist) continue;
+    for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
+      const nr = cr + dr;
+      const nc = cc + dc;
+      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && dist[nr][nc] > nd) {
+        dist[nr][nc] = nd;
+        queue.push([nr, nc]);
+      }
+    }
+  }
+  return dist;
+}
+
+/**
  * Build the tile-based map. Returns the landGrid for terrain queries.
  */
 export function buildTileMap(scene: Phaser.Scene): boolean[][] {
@@ -229,7 +267,96 @@ export function buildTileMap(scene: Phaser.Scene): boolean[][] {
   // Fill water holes < 4 tiles (pinholes inside landmasses)
   removeSmallClusters(land, false, 4);
 
-  // --- 4. Create Phaser tilemap ---
+  // --- 4. Render the map visually ---
+  const usePolygonMap = getAssetPack() === "buccaneer";
+
+  if (usePolygonMap) {
+    renderPolygonContours(scene);
+  } else {
+    renderBlobTileMap(scene, land);
+  }
+
+  return land;
+}
+
+// ──────────────────────────────────────────────────────────
+// Polygon contour rendering (generated pack)
+// ──────────────────────────────────────────────────────────
+
+function renderPolygonContours(scene: Phaser.Scene): void {
+  const g = scene.add.graphics();
+  g.setDepth(-500);
+
+  // Beach ring: thick sandy stroke behind the green fill
+  for (const lm of LANDMASSES) {
+    if (lm.polygon.length < 3) continue;
+    g.lineStyle(10, 0xd4be8a, 0.5);
+    g.beginPath();
+    g.moveTo(lm.polygon[0].x, lm.polygon[0].y);
+    for (let i = 1; i < lm.polygon.length; i++) {
+      g.lineTo(lm.polygon[i].x, lm.polygon[i].y);
+    }
+    g.closePath();
+    g.strokePath();
+  }
+
+  // Land fill: green interior
+  for (const lm of LANDMASSES) {
+    if (lm.polygon.length < 3) continue;
+    g.fillStyle(0x5a8a4a, 1);
+    g.beginPath();
+    g.moveTo(lm.polygon[0].x, lm.polygon[0].y);
+    for (let i = 1; i < lm.polygon.length; i++) {
+      g.lineTo(lm.polygon[i].x, lm.polygon[i].y);
+    }
+    g.closePath();
+    g.fillPath();
+  }
+
+  // Subtle interior shading — slightly darker patches for depth
+  let seed = 77777;
+  const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  for (const lm of LANDMASSES) {
+    if (lm.polygon.length < 3) continue;
+    // Compute bounding box
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of lm.polygon) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    // Scatter a few dark green patches inside the polygon
+    const area = (maxX - minX) * (maxY - minY);
+    const patches = Math.min(40, Math.floor(area / 3000));
+    for (let i = 0; i < patches; i++) {
+      const px = minX + rnd() * (maxX - minX);
+      const py = minY + rnd() * (maxY - minY);
+      if (!pointInPolygon({ x: px, y: py }, lm.polygon)) continue;
+      g.fillStyle(0x4a7a3a, 0.3 + rnd() * 0.3);
+      g.fillCircle(px, py, 4 + rnd() * 12);
+    }
+  }
+
+  // Coastline outline: dark border
+  for (const lm of LANDMASSES) {
+    if (lm.polygon.length < 3) continue;
+    g.lineStyle(2, 0x3a5a2a, 0.8);
+    g.beginPath();
+    g.moveTo(lm.polygon[0].x, lm.polygon[0].y);
+    for (let i = 1; i < lm.polygon.length; i++) {
+      g.lineTo(lm.polygon[i].x, lm.polygon[i].y);
+    }
+    g.closePath();
+    g.strokePath();
+  }
+}
+
+// ──────────────────────────────────────────────────────────
+// Blob tile rendering (classic pack)
+// ──────────────────────────────────────────────────────────
+
+function renderBlobTileMap(scene: Phaser.Scene, land: boolean[][]): void {
   const map = scene.make.tilemap({
     tileWidth: TS, tileHeight: TS, width: COLS, height: ROWS,
   });
@@ -238,10 +365,7 @@ export function buildTileMap(scene: Phaser.Scene): boolean[][] {
 
   const gid = (frame: number) => frame + 1;
 
-  // Layer 1: Shallow sea base (fills entire map)
-  const seaLayer = map.createBlankLayer("sea", ts)!;
-  seaLayer.setDepth(-1000);
-  seaLayer.fill(gid(SEA_SHALLOW));
+  // No sea fill — let caribbean_bg.png show through as dark navy water
 
   // Layer 2: Land + coastline
   const landLayer = map.createBlankLayer("land", ts)!;
@@ -258,7 +382,8 @@ export function buildTileMap(scene: Phaser.Scene): boolean[][] {
     }
   }
 
-  // Layer 3: Land decorations (palms on all land cells, denser)
+  // Land decorations
+  const coastDist = computeCoastDistance(land, 3);
   const decorLayer = map.createBlankLayer("decor", ts)!;
   decorLayer.setDepth(-400);
 
@@ -272,27 +397,25 @@ export function buildTileMap(scene: Phaser.Scene): boolean[][] {
     for (let c = 0; c < COLS; c++) {
       if (!land[r][c]) continue;
 
-      const interior =
-        (r > 0 && land[r - 1][c]) &&
-        (r < ROWS - 1 && land[r + 1][c]) &&
-        (c > 0 && land[r][c - 1]) &&
-        (c < COLS - 1 && land[r][c + 1]);
+      const d = coastDist[r][c];
+      let chance: number;
+      let pool: number[];
 
-      if (interior) {
-        // Interior cells: 50% chance of decoration (palms, hills, rocks)
-        if (rnd() < 0.5) {
-          const idx = DECOR_ALL[Math.floor(rnd() * DECOR_ALL.length)];
-          decorLayer.putTileAt(gid(idx), c, r);
-        }
+      if (d <= 1) {
+        chance = 0.60;
+        pool = PALMS;
+      } else if (d === 2) {
+        chance = 0.45;
+        pool = rnd() < 0.7 ? PALMS : DECOR_ALL;
       } else {
-        // Coastal land cells: 35% chance of palms only (no hills/rocks)
-        if (rnd() < 0.35) {
-          const idx = PALMS[Math.floor(rnd() * PALMS.length)];
-          decorLayer.putTileAt(gid(idx), c, r);
-        }
+        chance = 0.25;
+        pool = DECOR_ALL;
+      }
+
+      if (rnd() < chance) {
+        const idx = pool[Math.floor(rnd() * pool.length)];
+        decorLayer.putTileAt(gid(idx), c, r);
       }
     }
   }
-
-  return land;
 }

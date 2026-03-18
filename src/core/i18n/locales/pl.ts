@@ -84,6 +84,11 @@ export const PL: LocaleData = {
   "hud.speed": "Prd: {{value}}",
   "hud.pos": "Poz: {{x}},{{y}}",
   "hud.controls": "W/S/Strzałki: Żagle i Ster  E: Port  SPACE: Menu",
+  "hud.controls_land": "W/S/Strzałki: Marsz  E: Na statek  SPACE: Menu",
+  "hud.disembark_prompt": "Naciśnij L aby zejść na ląd",
+  "hud.embark_prompt": "Podejdź do statku, aby wsiadać",
+  "hud.embark_ship_prompt": "Naciśnij E aby wsiąść na statek",
+  "hud.mode_land": "NA LĄDZIE",
   "hud.crew": "Załoga: {{current}}/{{max}}",
   "hud.morale": "Morale: {{pct}}%",
   "hud.cargo": "Ładunek: {{current}}/{{max}}",
@@ -144,10 +149,11 @@ export const PL: LocaleData = {
 
   // -- Options Menu --
   "menu.title": "Dziennik Kapitana",
-  "menu.tab_cabin": "Kajuta Kapitana",
-  "menu.tab_calendar": "Kalendarz i Zdarzenia",
+  "menu.tab_cabin": "Kajuta",
+  "menu.tab_calendar": "Kalendarz",
   "menu.tab_options": "Opcje",
-  "menu.tab_map": "Mapa Karaibów",
+  "menu.tab_save": "Zapis",
+  "menu.tab_map": "Mapa",
   "menu.close": "[ ZAMKNIJ ]",
   "menu.close_hint": "ESC / SPACE aby zamknąć",
 
@@ -200,13 +206,22 @@ export const PL: LocaleData = {
   "event.storm_start": "Rozpoczął się sztorm!",
   "event.storm_end": "Sztorm minął.",
   "event.day_passed": "Rozpoczął się dzień {{day}}.",
+  "event.disembarked": "Załoga zeszła na ląd.",
+  "event.embarked": "Załoga wróciła na statek.",
 
   // -- Character Creation --
   "creation.title": "PIRATES CHRONICLES",
   "creation.name_label": "Podaj swoje imię, Kapitanie:",
   "creation.era_label": "Wybierz epokę:",
   "creation.era_hint": "Użyj strzałek, Enter aby potwierdzić",
-  "creation.confirm": "[ WYRUSZAJ ]",
+  "creation.confirm": "ZACZYNAJMY",
+  "creation.step2_title": "STWÓRZ KAPITANA",
+  "creation.nationality_label": "Kraj pochodzenia:",
+  "creation.skills_label": "Punkty umiejętności:",
+  "creation.points_remaining": "Pozostałe punkty: {{pts}}",
+  "creation.skill_hint": "+/- aby przydzielić",
+  "creation.back": "WSTECZ",
+  "creation.start_game": "WYPŁYŃ",
 
   // -- Eras --
   "era.silver_empire.name": "Srebrne Imperium",
@@ -238,7 +253,7 @@ export const PL: LocaleData = {
 
   // -- Tavern --
   "tavern.title": "TAWERNA",
-  "tavern.recruit_crew": "Zwerbuj załogę ({{cost}} Złoto/os.)",
+  "tavern.recruit_crew": "Zwerbuj załogę (za darmo)",
   "tavern.hear_rumors": "Posłuchaj plotek",
   "tavern.buy_drinks": "Postaw kolejkę ({{cost}} Złoto)",
   "tavern.back": "[ WRÓĆ DO PORTU ]",
@@ -321,6 +336,10 @@ export const PL: LocaleData = {
   "rank.label": "Ranga: {{rank}}",
   "rank.unknown": "Nieznany",
 
+  // -- Sound --
+  "sound.on": "Dźwięk: WŁ",
+  "sound.off": "Dźwięk: WYŁ",
+
   // -- Game Speed --
   "speed.label": "Prędkość gry: {{speed}}",
   "speed.fast": "Szybko",
@@ -338,4 +357,40 @@ export const PL: LocaleData = {
   // -- Language --
   "lang.current": "Język: Polski",
   "lang.switch": "[ English ]",
+
+  // -- Settings Tab --
+  "menu.tab_settings": "Opcje",
+  "settings.title": "SKRYTKA KWATERMISTRZA",
+  "settings.style_label": "Styl grafiki",
+  "settings.style_hint": "* Zrestartuj grę, aby zobaczyć pełen efekt",
+  "settings.pack.basic": "1. Podstawowy — kontury OSM",
+  "settings.pack.buccaneer": "2. Bukanier — wkrótce",
+  "settings.pack.corsair": "3. Korsarz — wkrótce",
+
+  // -- Zoom --
+  "settings.zoom_label": "Luneta",
+  "settings.zoom.far": "Daleko (przegląd)",
+  "settings.zoom.normal": "Normalnie",
+  "settings.zoom.close": "Z bliska",
+  "settings.zoom_hint": "* Działa natychmiast",
+
+  // -- Skills --
+  "skill.fencing": "Szermierka",
+  "skill.gunnery": "Artyleria",
+  "skill.navigation": "Nawigacja",
+  "skill.medicine": "Medycyna",
+  "skill.charm": "Urok",
+
+  // -- Captain Tab --
+  "menu.tab_captain": "Kapitan",
+  "captain.name_label": "Kapitan {{name}}",
+  "captain.age_label": "Wiek: {{age}}",
+  "captain.experience_label": "Doświadczenie: {{value}}",
+  "captain.nationality_label": "Pochodzenie: {{nation}}",
+  "captain.skills_title": "Umiejętności",
+  "captain.ranks_title": "Rangi",
+
+  // -- Changelog --
+  "changelog.title": "LOG ZMIAN",
+  "changelog.version": "v{{version}} ({{date}})",
 };

@@ -8,6 +8,8 @@ import { SHIP_CLASSES } from "../core/data/ships.ts";
 import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
 import { CURRENT_WORLD_VERSION } from "../persistence/Migrations.ts";
 import { DEFAULT_ERA, ERAS } from "../core/data/eras.ts";
+import type { CaptainProfile } from "../core/model/CaptainState.ts";
+import { createDefaultCaptainProfile } from "../core/model/CaptainState.ts";
 import { BootScene } from "./scenes/BootScene.ts";
 import { PreloadScene } from "./scenes/PreloadScene.ts";
 import { CharacterCreationScene } from "./scenes/CharacterCreationScene.ts";
@@ -25,7 +27,13 @@ export function createNewWorldState(
   playerName = "Captain",
   eraId = DEFAULT_ERA,
   startYear = ERAS[DEFAULT_ERA].startYear,
+  captain?: Partial<CaptainProfile>,
 ): WorldState {
+  const captainProfile: CaptainProfile = {
+    ...createDefaultCaptainProfile(),
+    ...captain,
+    skills: { ...createDefaultCaptainProfile().skills, ...captain?.skills },
+  };
   const playerShipId = entityId("player_ship");
 
   // Initialize port runtime states from all cities
@@ -46,11 +54,26 @@ export function createNewWorldState(
   for (const [key, faction] of Object.entries(FACTIONS)) {
     reputation[key] = faction.defaultReputation;
   }
+  // Bonus reputation with own nation
+  if (reputation[captainProfile.nationality] !== undefined) {
+    reputation[captainProfile.nationality] += 20;
+  }
 
   const sloopClass = SHIP_CLASSES["sloop"];
 
-  // Start near open sea in central Caribbean (close to Nassau)
-  const startPos = { x: 1600, y: 480 };
+  // Start at home port based on nationality
+  const homePortKey: Record<string, string> = {
+    france: "tortuga",
+    england: "port_royal",
+    spain: "havana",
+    netherlands: "curacao",
+  };
+  const portKey = homePortKey[captainProfile.nationality] ?? "port_royal";
+  const homePort = PORTS[portKey];
+  // Start in water near the home port (offset south beyond dock detection range)
+  const startPos = homePort
+    ? { x: homePort.pos.x, y: homePort.pos.y + homePort.dockRadius + 50 }
+    : { x: 1600, y: 480 };
 
   const world: WorldState = {
     version: CURRENT_WORLD_VERSION,
@@ -70,6 +93,7 @@ export function createNewWorldState(
       [playerShipId as string]: {
         id: playerShipId,
         kind: "ship",
+        mode: "sailing",
         pos: startPos,
         vel: { x: 0, y: 0 },
         heading: 0,
@@ -77,7 +101,7 @@ export function createNewWorldState(
         depthOffset: 0,
         ship: {
           classId: shipClassId("sloop"),
-          factionId: factionId("england"),
+          factionId: factionId(captainProfile.nationality),
           hullHp: sloopClass.hullMax,
           hullMax: sloopClass.hullMax,
           sailsHp: sloopClass.sailsMax,
@@ -106,6 +130,7 @@ export function createNewWorldState(
     eraId,
     startYear,
     gameSpeed: 1.2, // "normal" — 1 day ≈ 1 minute real time
+    captain: captainProfile,
   };
 
   return world;
@@ -115,13 +140,14 @@ export function launchGame(containerId: string): Phaser.Game {
   const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
     parent: containerId,
-    width: 800,
-    height: 600,
+    width: window.innerWidth,
+    height: window.innerHeight,
+    pixelArt: true,
+    roundPixels: true,
     antialias: true,
     backgroundColor: "#0a0a1a",
     scale: {
-      mode: Phaser.Scale.FIT,
-      autoCenter: Phaser.Scale.CENTER_BOTH,
+      mode: Phaser.Scale.RESIZE,
     },
     scene: [
       BootScene,
@@ -146,6 +172,8 @@ export function launchGame(containerId: string): Phaser.Game {
   };
 
   const game = new Phaser.Game(config);
+  (window as unknown as Record<string, unknown>).__PHASER_GAME__ = game;
+  (window as unknown as Record<string, unknown>).__CREATE_WORLD__ = createNewWorldState;
 
   // Override Phaser's "image-rendering: pixelated" CSS on the canvas.
   // Sprite textures stay pixel-perfect (WebGL NEAREST filtering is set

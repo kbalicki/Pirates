@@ -1,4 +1,5 @@
 import type { Vec2, HeadingRad } from "../model/WorldState.ts";
+import type { LandmassDef } from "../data/geography.ts";
 
 export const TWO_PI = Math.PI * 2;
 
@@ -76,6 +77,17 @@ export function lerp(a: number, b: number, t: number): number {
 
 export function pointInRect(p: Vec2, rect: { x: number; y: number; w: number; h: number }): boolean {
   return p.x >= rect.x && p.x < rect.x + rect.w && p.y >= rect.y && p.y < rect.y + rect.h;
+}
+
+/**
+ * Fast point-in-landmass test with bbox pre-check.
+ */
+export function pointInLandmass(point: Vec2, lm: LandmassDef): boolean {
+  if (lm.bbox) {
+    if (point.x < lm.bbox.minX || point.x > lm.bbox.maxX ||
+        point.y < lm.bbox.minY || point.y > lm.bbox.maxY) return false;
+  }
+  return pointInPolygon(point, lm.polygon);
 }
 
 /**

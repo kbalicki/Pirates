@@ -15,7 +15,7 @@ export type GovernorResult = {
   error?: string;
 };
 
-const RECRUIT_COST_PER_SAILOR = 5;
+const RECRUIT_COST_PER_SAILOR = 0;
 const DRINKS_COST = 10;
 const MORALE_BOOST = 0.15;
 const REPAIR_COST_PER_HP = 2;
@@ -110,7 +110,7 @@ export type RecruitResult = {
 };
 
 /**
- * Recruit crew at the tavern. Cost: 5g per sailor.
+ * Recruit crew at the tavern. Free of charge.
  * Limited by port's availableCrew pool.
  */
 export function recruitCrew(

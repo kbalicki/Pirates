@@ -1,0 +1,159 @@
+================================================================================
+  06 — RENDEROWANIE (src/game/render/)
+================================================================================
+
+1. WORLD RENDERER (WorldRenderer.ts)
+--------------------------------------------------------------------------------
+  Synchronizuje sprite'y Phaser z encjami WorldState.
+
+  sync(scene, world):
+    - Utrzymuje Map<EntityId, Phaser.Sprite>
+    - Dla każdej encji:
+      — Utwórz sprite jeśli nowy
+      — Ustaw pozycję z entity.pos
+      — Ustaw klatkę z headingToDir8(heading)
+      — Depth sort wg y + depthOffset
+    - Usuń sprite'y dla encji, które zniknęły
+
+  applyEvents(scene, events):
+    - Toast → wyświetl tekst powiadomienia
+    - SpawnFx → stwórz efekt cząsteczkowy
+    - Sound → odtwórz dźwięk
+
+  Mapowanie kierunków na klatki spritesheet "sailship":
+    DIR8_TO_FRAME:
+      0 (N)  → klatka 5
+      1 (NE) → klatka 4
+      2 (E)  → klatka 3
+      3 (SE) → klatka 2
+      4 (S)  → klatka 1
+      5 (SW) → klatka 0
+      6 (W)  → klatka 7
+      7 (NW) → klatka 6
+
+2. ENTITY VIEW FACTORY (EntityViewFactory.ts)
+--------------------------------------------------------------------------------
+  Tworzy sprite'y dla encji.
+
+  createEntityView(scene, entity) → Phaser.Sprite
+    — texture = entity.kind === "ship" ? "sailship" : "fx_default"
+    — origin = (0.5, 0.5) — wycentrowany
+    — klatka startowa: 0
+
+3. TILE MAP BUILDER (TileMapBuilder.ts)
+--------------------------------------------------------------------------------
+  Generuje tilemapę z poligonów lądowych (geography.ts).
+
+  Parametry:
+    Mapa świata:     3200 × 2400 pikseli
+    Rozmiar tile'a:  32 × 32 pikseli
+    Grid:            100 × 75 tile'ów
+
+  Algorytm klasyfikacji terenu:
+    - 9-punktowy sampling na tile (3×3 grid wewnątrz)
+    - Próg: >= 4 punkty w poligonie = ląd
+    - Binarne: ląd / woda
+
+  System blob tiling (8-bitowa maska sąsiedztwa):
+    Bity kierunkowe:
+      TP_N  = 1,   TP_E  = 2,   TP_S  = 4,   TP_W  = 8
+      TP_NE = 16,  TP_SE = 32,  TP_SW = 64,  TP_NW = 128
+
+    Maska = suma bitów sąsiednich tile'ów lądowych
+    COAST map: blobMask → indeks klatki w tilepack (51-97)
+
+  Dekoracje:
+    Palmy:        klatki 101-104 (losowo na tile'ach lądowych)
+    Wzgórza/skały: klatki 98-100
+
+  Wyjście: Phaser.Tilemaps.TilemapLayer
+
+4. CAMERA CONTROLLER (CameraController.ts)
+--------------------------------------------------------------------------------
+  Płynne podążanie kamery za graczem.
+
+  Stałe:
+    CAMERA_LERP:   0.08      — współczynnik interpolacji (niższy = płynniejszy)
+    DEFAULT_ZOOM:  1.5       — domyślny zoom
+
+  Metody:
+    setTarget(pos)   — ustaw cel kamery
+    snapTo(pos)      — natychmiastowy skok (bez lerp)
+    setBounds()      — granice mapy
+    setZoom(zoom)    — zmień zoom
+    update()         — lerp w kierunku celu (wywoływany co klatkę)
+    shake()          — efekt trzęsienia (np. przy obrażeniach)
+
+5. MINIMAP RENDERER (MinimapRenderer.ts)
+--------------------------------------------------------------------------------
+  Minimapa w rogu ekranu.
+  - Renderuje uproszczoną mapę świata
+  - Pokazuje pozycję gracza
+  - Porty jako kolorowe punkty (kolor frakcji)
+
+6. CLOUD RENDERER (CloudRenderer.ts)
+--------------------------------------------------------------------------------
+  Animowane chmury dla atmosfery.
+  - Przesuwają się z wiatrem
+  - Warstwa nad mapą, pod UI
+
+7. WIND COMPASS RENDERER (WindCompassRenderer.ts)
+--------------------------------------------------------------------------------
+  Kompas kierunku wiatru (real-time).
+  - Igła wskazuje kierunek wiatru
+  - Siła wiatru jako wizualny wskaźnik
+
+8. FX MANAGER (FxManager.ts)
+--------------------------------------------------------------------------------
+  Zarządzanie efektami cząsteczkowymi.
+  - Wybuchy (trafienia dział)
+  - Splash (woda)
+  - Dym (uszkodzenia)
+
+9. DEPTH SORT (DepthSort.ts)
+--------------------------------------------------------------------------------
+  Sortowanie głębokości (painter's algorithm).
+  - Encje sortowane wg y + depthOffset
+  - Obiekty niżej na ekranie = dalej od kamery
+
+10. SPRITESHEET SAILSHIP — LAYOUT
+--------------------------------------------------------------------------------
+  Plik: public/assets/sprites/sailship.png
+  Format: 4 kolumny × 2 wiersze, 96×64 na klatkę
+
+  Indeksy klatek:
+    0: SW   1: S    2: SE   3: E
+    4: NE   5: N    6: NW   7: W
+
+  Użycie: headingToDir8(heading) → DIR8_TO_FRAME[dir] → frame index
+
+11. TILEPACK — LAYOUT
+--------------------------------------------------------------------------------
+  Plik: public/assets/sprites/tilepack.png
+  Format: 12 kolumn × 10 wierszy, 32×32 na tile
+
+  Zakres klatek:
+    0-50:     Woda, teren bazowy
+    51-97:    Wybrzeże (blob tiling — 47 wariantów krawędzi)
+    98-100:   Wzgórza, skały
+    101-104:  Palmy i drzewa
+
+12. WATER ANIMATION — LAYOUT
+--------------------------------------------------------------------------------
+  Plik: public/assets/tiles/water_anim.png
+  Format: 8 kolumn × 5 wierszy, 128×128 na klatkę
+  Klatki: 40 (pełna pętla animacji wody)
+
+13. STYL TEKSTU (ui/textStyle.ts)
+--------------------------------------------------------------------------------
+  UI_FONT: "'Treasure Map Deadhand', Arial, Helvetica, sans-serif"
+  TEXT_RES: Math.max(2, Math.ceil(window.devicePixelRatio))
+
+  txt(size, opts?) → Phaser.TextStyle
+    — fontFamily: UI_FONT
+    — fontSize: "{size}px"
+    — color: opts.color ?? "#1a1a1a"
+    — bold: opcjonalny
+    — resolution: TEXT_RES (retina-aware)
+
+================================================================================

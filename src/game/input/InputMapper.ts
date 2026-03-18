@@ -19,6 +19,8 @@ export class InputMapper {
   } | null = null;
 
   private currentSailLevel = 0;
+  /** When true, movement uses hold-to-walk instead of sail level. */
+  private landed = false;
 
   constructor(scene: Phaser.Scene, queue: CommandQueue) {
     this.scene = scene;
@@ -41,26 +43,59 @@ export class InputMapper {
   update(): void {
     if (!this.keys) return;
 
-    // W / Up: increase sail level
-    if (Phaser.Input.Keyboard.JustDown(this.keys.W) || Phaser.Input.Keyboard.JustDown(this.keys.UP)) {
-      this.currentSailLevel = Math.min(1, this.currentSailLevel + SAIL_STEP);
-      this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
-    }
+    if (this.landed) {
+      // ---- LANDED MODE: directional walking ----
+      // Arrow keys / WASD directly control movement direction (top-down style).
+      // UP=north, DOWN=south, LEFT=west, RIGHT=east. Diagonals supported.
+      let dx = 0, dy = 0;
+      if (this.keys.W.isDown || this.keys.UP.isDown) dy -= 1;
+      if (this.keys.S.isDown || this.keys.DOWN.isDown) dy += 1;
+      if (this.keys.A.isDown || this.keys.LEFT.isDown) dx -= 1;
+      if (this.keys.D.isDown || this.keys.RIGHT.isDown) dx += 1;
 
-    // S / Down: decrease sail level
-    if (Phaser.Input.Keyboard.JustDown(this.keys.S) || Phaser.Input.Keyboard.JustDown(this.keys.DOWN)) {
-      this.currentSailLevel = Math.max(0, this.currentSailLevel - SAIL_STEP);
-      this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
-    }
+      if (dx !== 0 || dy !== 0) {
+        // Set heading to the arrow direction, set sail to walk
+        const heading = Math.atan2(dx, -dy); // heading: 0=N, PI/2=E, PI=S, 3PI/2=W
+        this.queue.push({ type: "SetHeading", heading });
+        this.queue.push({ type: "SetSailLevel", value: 1 });
+      } else {
+        this.queue.push({ type: "SetSailLevel", value: 0 });
+      }
+    } else {
+      // ---- SAILING MODE: incremental sail level ----
+      // W / Up: increase sail level
+      if (Phaser.Input.Keyboard.JustDown(this.keys.W) || Phaser.Input.Keyboard.JustDown(this.keys.UP)) {
+        this.currentSailLevel = Math.min(1, this.currentSailLevel + SAIL_STEP);
+        this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
+      }
 
-    // A / Left: turn left (held)
-    if (this.keys.A.isDown || this.keys.LEFT.isDown) {
-      this.queue.push({ type: "Turn", dir: "left", amount: TURN_AMOUNT });
-    }
+      // S / Down: decrease sail level
+      if (Phaser.Input.Keyboard.JustDown(this.keys.S) || Phaser.Input.Keyboard.JustDown(this.keys.DOWN)) {
+        this.currentSailLevel = Math.max(0, this.currentSailLevel - SAIL_STEP);
+        this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
+      }
 
-    // D / Right: turn right (held)
-    if (this.keys.D.isDown || this.keys.RIGHT.isDown) {
-      this.queue.push({ type: "Turn", dir: "right", amount: TURN_AMOUNT });
+      // A / Left: turn left (held)
+      if (this.keys.A.isDown || this.keys.LEFT.isDown) {
+        this.queue.push({ type: "Turn", dir: "left", amount: TURN_AMOUNT });
+      }
+
+      // D / Right: turn right (held)
+      if (this.keys.D.isDown || this.keys.RIGHT.isDown) {
+        this.queue.push({ type: "Turn", dir: "right", amount: TURN_AMOUNT });
+      }
+    }
+  }
+
+  setLandedMode(landed: boolean, entitySailLevel?: number): void {
+    if (this.landed !== landed) {
+      this.landed = landed;
+      if (landed) {
+        this.currentSailLevel = 0;
+      } else {
+        // Sync sail level when transitioning back to sailing (e.g. after embark)
+        this.currentSailLevel = entitySailLevel ?? 0;
+      }
     }
   }
 

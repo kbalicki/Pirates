@@ -1,0 +1,164 @@
+================================================================================
+  05 — SCENY GRY (src/game/scenes/)
+================================================================================
+
+  Gra ma 11 scen Phaser. Przepływ:
+
+  BootScene → PreloadScene → CharacterCreationScene → MainMapScene
+                                                       ↕
+                                                    PortScene
+                                                    SeaBattleScene
+                                                    DialogueScene
+                                                    PauseMenuScene
+                                                    SaveLoadScene
+                                                    PortApproachScene
+                                                    OptionsMenuScene
+
+1. BOOT SCENE
+--------------------------------------------------------------------------------
+  Plik: BootScene.ts
+  - Minimalna scena startowa
+  - Inicjalizuje i18n (setLang)
+  - Natychmiast przechodzi do PreloadScene
+
+2. PRELOAD SCENE
+--------------------------------------------------------------------------------
+  Plik: PreloadScene.ts
+  - Ładuje WSZYSTKIE assety gry:
+
+  Sprite'y:
+    "sailship"      — spritesheet 8 klatek, 4×2 grid, 96×64/frame
+    "tilepack"      — spritesheet 384×320, grid 12×10, tile 32×32
+    "water_anim"    — spritesheet 40 klatek, 128×128, 8 kolumn × 5 wierszy
+    "caribbean_bg"  — obraz 3200×2400
+
+  Audio:
+    "pirate_theme"  — mp3 muzyka tła
+    "wind_loop"     — ogg ambient
+
+  Fonty:
+    "TreasureMapDeadhand" — TTF (ładowany przez CSS)
+
+  Ikony:
+    64 pliki PNG z public/assets/sprites/icons/
+
+  Po załadowaniu → CharacterCreationScene
+
+3. CHARACTER CREATION SCENE
+--------------------------------------------------------------------------------
+  Plik: CharacterCreationScene.ts
+  - Input nazwy gracza (max 20 znaków)
+  - Wybór ery historycznej (dropdown)
+  - Włącza muzykę piracką
+  - Po potwierdzeniu → tworzy WorldState i startuje MainMapScene
+
+4. MAIN MAP SCENE (główna scena gry)
+--------------------------------------------------------------------------------
+  Plik: MainMapScene.ts
+
+  Tick rate: 20 ticks/sek (TICK_MS = 50ms)
+
+  Inicjalizacja (create):
+    - Buduje tilemapę z poligonów lądowych (TileMapBuilder)
+    - Tworzy WorldEngine z funkcją terrainAt
+    - Inicjalizuje: WorldRenderer, CameraController, MinimapRenderer,
+      CloudRenderer, WindCompassRenderer
+    - Konfiguruje InputMapper + CommandQueue
+    - Tworzy HUD (złoto, data, załoga, wiatr, prędkość)
+
+  Główna pętla (update):
+    1. Zbierz input → komendy
+    2. Akumuluj ticki (tickAccumulator += delta)
+    3. Dopóki accumulated >= TICK_MS:
+       — engine.apply(state, commands, dtTicks=1)
+       — sync renderer
+       — przetwórz eventy i tranzycje
+    4. Aktualizuj kamerę (smooth follow, lerp 0.08)
+    5. Sprawdź bliskość portu (prompt dokowania)
+    6. Odśwież HUD
+
+  Sterowanie:
+    W / ↑     — żagle w górę (+0.34 za naciśnięcie)
+    S / ↓     — żagle w dół (-0.34)
+    A / ←     — skręt lewo (0.04 rad/tick, ciągły)
+    D / →     — skręt prawo
+    E / Enter — interakcja (wejście do portu)
+    Esc       — pauza
+
+5. PORT SCENE
+--------------------------------------------------------------------------------
+  Plik: PortScene.ts
+
+  Widoki (views): "menu", "governor", "tavern", "merchant", "shipyard"
+
+  Wygląd:
+    - Ciemna nakładka + biała ramka dialogu (470×420 px)
+    - Nagłówek: nazwa frakcji, kolor, reputacja
+    - Nawigacja strzałkami (arrow-selector)
+
+  Menu główne portu:
+    1. Gubernator — Letter of Marque, dialog dyplomatyczny
+    2. Tawerna    — plotki, rekrutacja, rum (+morale)
+    3. Kupiec     — kupno/sprzedaż towarów
+    4. Stocznia   — naprawy, kupno statków (zależne od tier)
+    5. Wyjdź      — powrót na morze
+
+  Stocznia (SHIPYARD_TIERS):
+    Tier 1: [sloop]
+    Tier 2: [sloop, brigantine, merchantman]
+    Tier 3: [sloop, brigantine, merchantman, frigate]
+    Tier 4: [sloop, brigantine, merchantman, frigate, galleon]
+
+6. SEA BATTLE SCENE
+--------------------------------------------------------------------------------
+  Plik: SeaBattleScene.ts
+
+  Arena: 800×600 pikseli
+  Buduje CombatState z encji WorldState
+  Osobny CombatEngine + FxManager
+
+  Pętla:
+    1. Input gracza → CombatCommand
+    2. engine.apply(state, commands, dtTicks=1)
+    3. Aktualizuj sprite'y (pozycje, klatki)
+    4. Renderuj HUD walki (HP kadłuba, żagli, załoga)
+    5. Sprawdź koniec bitwy
+    6. Po zakończeniu → powrót do MainMapScene
+
+  Sterowanie:
+    W/↑       — żagle w górę
+    S/↓       — żagle w dół
+    A/←       — skręt lewo
+    D/→       — skręt prawo
+    Spacja    — ogień z dział
+    F         — próba ucieczki
+
+7. DIALOGUE SCENE
+--------------------------------------------------------------------------------
+  Plik: DialogueScene.ts
+  - Rozmowy z NPC (w budowie)
+  - Bazowe okno dialogu z tekstem i opcjami
+
+8. PAUSE MENU SCENE
+--------------------------------------------------------------------------------
+  Plik: PauseMenuScene.ts
+  - Nakładka pauzy
+  - Opcje: kontynuuj, zapisz, wczytaj, opcje, wyjdź
+
+9. SAVE/LOAD SCENE
+--------------------------------------------------------------------------------
+  Plik: SaveLoadScene.ts
+  - Lista slotów zapisu (3+)
+  - Zapisz / wczytaj / usuń
+
+10. PORT APPROACH SCENE
+--------------------------------------------------------------------------------
+  Plik: PortApproachScene.ts
+  - Opcjonalna scena przejściowa morze → port
+
+11. OPTIONS MENU SCENE
+--------------------------------------------------------------------------------
+  Plik: OptionsMenuScene.ts
+  - Ustawienia: język (en/pl), głośność, inne
+
+================================================================================

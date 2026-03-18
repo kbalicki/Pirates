@@ -1,0 +1,139 @@
+================================================================================
+  08 — ZASOBY GRY (public/assets/)
+================================================================================
+
+1. STRUKTURA KATALOGÓW
+--------------------------------------------------------------------------------
+  public/assets/
+  ├── sprites/
+  │   ├── sailship.png            — statek 8 kierunków (4×2, 96×64/frame)
+  │   ├── ship_player.png         — wariant gracza (walka)
+  │   ├── ship_enemy.png          — wariant wroga (walka)
+  │   ├── ships.png               — kolekcja statków
+  │   ├── windrose.png            — róża wiatrów
+  │   ├── compass_needle.png      — igła kompasu
+  │   ├── tilepack.png            — tileset (12×10, 32×32/tile)
+  │   └── icons/                  — 64 ikony (64×64 PNG)
+  │       ├── treasure_chest.png
+  │       ├── sword.png
+  │       ├── shield.png
+  │       ├── rum_bottle.png
+  │       ├── compass_rose.png
+  │       ├── spyglass.png
+  │       ├── anchor.png
+  │       ├── skull_flag.png
+  │       ├── rope.png
+  │       ├── cannon.png
+  │       ├── cannonball.png
+  │       ├── treasure_map.png
+  │       ├── key.png
+  │       ├── ship_wheel.png
+  │       ├── lantern.png
+  │       ├── fishing_net.png
+  │       ├── barrel.png
+  │       ├── pirate_hat.png
+  │       ├── hook_hand.png
+  │       ├── wooden_leg.png
+  │       ├── gold_coin.png
+  │       ├── silver_coin.png
+  │       ├── emerald.png
+  │       ├── ruby.png
+  │       ├── sapphire.png
+  │       ├── pearl.png
+  │       ├── hammer_nails.png
+  │       ├── sail_cloth.png
+  │       ├── plank.png
+  │       ├── chain.png
+  │       ├── food_rations.png
+  │       ├── water_flask.png
+  │       ├── bandage.png
+  │       ├── poison.png
+  │       ├── torch.png
+  │       ├── fishing_rod.png
+  │       ├── harpoon.png
+  │       ├── grappling_hook.png
+  │       ├── lockpick.png
+  │       ├── ledger_book.png
+  │       └── ... (łącznie 64 ikon)
+  ├── tiles/
+  │   └── water_anim.png          — animacja wody (8×5, 128×128/frame, 40 kl.)
+  ├── map/
+  │   └── caribbean_bg.png        — tło mapy (3200×2400)
+  ├── audio/
+  │   ├── pirate_theme.mp3        — muzyka tła
+  │   └── wind_loop.ogg           — ambient wiatru
+  └── fonts/
+      └── TreasureMapDeadhand-yLA3.ttf — font piracki
+
+2. SPRITESHEET SAILSHIP — SZCZEGÓŁY
+--------------------------------------------------------------------------------
+  Plik:     sailship.png
+  Grid:     4 kolumny × 2 wiersze
+  Klatka:   96 × 64 pikseli
+  Klatek:   8
+
+  Layout (indeks → kierunek):
+    0: SW    1: S     2: SE    3: E
+    4: NE    5: N     6: NW    7: W
+
+  Ładowanie w PreloadScene:
+    this.load.spritesheet("sailship", "assets/sprites/sailship.png", {
+      frameWidth: 96, frameHeight: 64
+    })
+
+3. TILEPACK — SZCZEGÓŁY
+--------------------------------------------------------------------------------
+  Plik:     tilepack.png
+  Grid:     12 kolumn × 10 wierszy
+  Tile:     32 × 32 pikseli
+  Total:    120 tile'ów
+
+  Zakresy klatek:
+    0-50:     Woda, teren bazowy, trawa
+    51-97:    Wybrzeże blob tiling (47 wariantów krawędzi ląd/woda)
+    98-100:   Wzgórza, skały, elementy terenu
+    101-104:  Palmy, drzewa tropikalne
+
+  Ładowanie:
+    this.load.spritesheet("tilepack", "assets/sprites/tilepack.png", {
+      frameWidth: 32, frameHeight: 32
+    })
+
+4. WATER ANIMATION — SZCZEGÓŁY
+--------------------------------------------------------------------------------
+  Plik:     water_anim.png
+  Grid:     8 kolumn × 5 wierszy
+  Klatka:   128 × 128 pikseli
+  Klatek:   40 (pełna pętla)
+
+  Ładowanie:
+    this.load.spritesheet("water_anim", "assets/tiles/water_anim.png", {
+      frameWidth: 128, frameHeight: 128
+    })
+
+5. IKONY — KONWENCJE
+--------------------------------------------------------------------------------
+  Rozmiar:  64 × 64 pikseli (pixel art, upscaled z generacji 512×512)
+  Format:   PNG z przezroczystością
+  Styl:     16-bit pixel art, widok z góry, czyste krawędzie
+  Nazwy:    snake_case, opisowe (np. treasure_chest.png)
+
+6. BRAKUJĄCE ASSETY (referencjonowane w kodzie, ale brak plików)
+--------------------------------------------------------------------------------
+  Priorytet 1:
+    - ship_sloop.png, ship_brigantine.png, ship_frigate.png,
+      ship_galleon.png, ship_merchantman.png
+      (spritesheet 96×64/frame, 8 kierunków — jak sailship.png)
+    - fx_default.png — placeholder cząsteczek
+
+  Priorytet 2:
+    - Ulepszone caribbean_bg.png (obecnie placeholder)
+    - Ulepszone tilepack.png (spójniejszy styl)
+    - Nowa water_anim.png (lepsza jakość)
+
+  Priorytet 3:
+    - Portrety NPC
+    - Tło bitwy morskiej
+    - Dodatkowe ikony questów
+
+================================================================================

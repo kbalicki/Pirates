@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { MusicManager } from "../audio/MusicManager.ts";
 import { txt } from "../ui/textStyle.ts";
+import { getPackPrefix } from "../settings/AssetPack.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -39,6 +40,8 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   private loadAssets(): void {
+    // ──── Common assets (always loaded) ────
+
     // Sail ship spritesheet (8 directions, 4×2 grid, 96×64 per frame)
     this.load.spritesheet("sailship", "assets/sprites/sailship.png", {
       frameWidth: 96,
@@ -58,7 +61,7 @@ export class PreloadScene extends Phaser.Scene {
     });
 
     // Pirate theme music
-    this.load.audio("pirate_theme", "assets/audio/pirate_theme.mp3");
+    this.load.audio("pirate_theme", "assets/audio/pirate_adventure.wav");
 
     // Wind loop (CC BY 3.0 — Jonathan Shaw / InspectorJ, looped by AntumDeluge)
     this.load.audio("wind_loop", "assets/audio/wind_loop.ogg");
@@ -66,9 +69,56 @@ export class PreloadScene extends Phaser.Scene {
     // Caribbean map background (3200x2400, matches game world)
     this.load.image("caribbean_bg", "assets/map/caribbean_bg.png");
 
+    // Real geography data (Natural Earth coastlines + OSM cities)
+    this.load.json("caribbean_geo", "data/caribbean_geo.json");
+
     // Wind rose compass (CC-BY 4.0 — Deco / prushik, opengameart.org)
     this.load.image("windrose", "assets/sprites/windrose.png");
     this.load.image("compass_needle", "assets/sprites/compass_needle.png");
+
+    // Start screen background
+    this.load.image("start_bg", "assets/ui/start_bg.jpg");
+
+    // Parchment panel (used on start screen for all packs)
+    this.load.image("parchment_panel", "assets/ui/parchment_panel.png");
+
+    // ──── Pack-specific assets (only for enhanced pack) ────
+
+    const prefix = getPackPrefix();
+    if (!prefix) return; // all packs use procedural rendering — no extra map assets
+
+    // Water tile (seamless)
+    this.load.image("water_tile", `${prefix}tiles/water_tile.png`);
+
+    // Beach/sand tile (seamless, 32x32)
+    this.load.image("beach_tile", `${prefix}tiles/beach_tile.png`);
+
+    // Green grass/jungle tile (seamless, 32x32)
+    this.load.image("grass_tile", `${prefix}tiles/grass_tile.png`);
+
+    // Cloud sprites (6 variants)
+    for (let i = 1; i <= 6; i++) {
+      this.load.image(`cloud_${i}`, `${prefix}sprites/clouds/cloud_${i}.png`);
+    }
+
+    // Palm tree sprites (4 variants)
+    for (let i = 1; i <= 4; i++) {
+      this.load.image(`palm_${i}`, `${prefix}sprites/palms/palm_${i}.png`);
+    }
+
+    // City building sprites (3 sizes)
+    this.load.image("city_small", `${prefix}sprites/cities/city_small.png`);
+    this.load.image("city_medium", `${prefix}sprites/cities/city_medium.png`);
+    this.load.image("city_large", `${prefix}sprites/cities/city_large.png`);
+
+    // Ship spritesheets (5 types, 8 directions each)
+    const shipTypes = ["sloop", "brigantine", "frigate", "galleon", "merchant"];
+    for (const type of shipTypes) {
+      this.load.spritesheet(`ship_${type}`, `${prefix}sprites/ships/ship_${type}.png`, {
+        frameWidth: 96,
+        frameHeight: 64,
+      });
+    }
   }
 
   create(): void {

@@ -17,12 +17,20 @@ import {
 } from "../../persistence/SaveRepository.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
 import type { SavePayload } from "../../persistence/SaveSchema.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, PIRATE_ICONS_FONT, TEXT_RES } from "../ui/textStyle.ts";
+import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
+import type { AssetPackId } from "../settings/AssetPack.ts";
+import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
+import type { ZoomLevel } from "../settings/ZoomSetting.ts";
+import { FACTIONS } from "../../core/data/factions.ts";
+import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
+import { CHANGELOG } from "../../changelog.ts";
 
-type TabId = "cabin" | "calendar" | "options" | "map";
+type TabId = "cabin" | "captain" | "calendar" | "options" | "save" | "map" | "settings";
 
-const DLG_W = 560;
-const DLG_H = 440;
+const ALL_TABS: TabId[] = ["cabin", "captain", "calendar", "options", "save", "map", "settings"];
+const DLG_W = 672;
+const DLG_H = 528;
 const BORDER = 3;
 const PAD = 14;
 
@@ -32,13 +40,26 @@ export class OptionsMenuScene extends Phaser.Scene {
   private contentContainer!: Phaser.GameObjects.Container;
   private dlgX = 0;
   private dlgY = 0;
+  private contentBaseY = 0;
+  private contentH = 0;
+
+  // Keyboard navigation state
+  private activeTabIndex = 0;
+  private selectedItemIndex = 0;
+  private tabKeyCleanup: (() => void)[] = [];
+
+  // Save/Load slot data cache for keyboard actions
+  private saveSlotData: { slotId: string; hasData: boolean }[] = [];
 
   constructor() {
     super({ key: "OptionsMenuScene" });
   }
 
-  init(data: { worldState: WorldState }): void {
+  init(data: { worldState: WorldState; initialTab?: number }): void {
     this.worldState = data.worldState;
+    if (data.initialTab !== undefined) {
+      this.activeTabIndex = data.initialTab;
+    }
   }
 
   create(): void {
@@ -52,9 +73,15 @@ export class OptionsMenuScene extends Phaser.Scene {
     // Dark overlay
     this.add.rectangle(cx, cy, cam.width, cam.height, 0x000000, 0.55);
 
-    // White dialog frame
-    this.add.rectangle(cx, cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
-    this.add.rectangle(cx, cy, DLG_W, DLG_H, 0xffffff);
+    // Dialog frame
+    if (usesParchmentUI() && this.textures.exists("parchment_panel")) {
+      const panel = this.add.image(cx, cy, "parchment_panel");
+      panel.setDisplaySize(DLG_W + 40, DLG_H + 30);
+      panel.setAlpha(0.95);
+    } else {
+      this.add.rectangle(cx, cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
+      this.add.rectangle(cx, cy, DLG_W, DLG_H, 0xffffff);
+    }
 
     let y = this.dlgY + PAD;
 
@@ -65,9 +92,12 @@ export class OptionsMenuScene extends Phaser.Scene {
     // Tab bar
     const tabs: { id: TabId; labelKey: string }[] = [
       { id: "cabin", labelKey: "menu.tab_cabin" },
+      { id: "captain", labelKey: "menu.tab_captain" },
       { id: "calendar", labelKey: "menu.tab_calendar" },
       { id: "options", labelKey: "menu.tab_options" },
+      { id: "save", labelKey: "menu.tab_save" },
       { id: "map", labelKey: "menu.tab_map" },
+      { id: "settings", labelKey: "menu.tab_settings" },
     ];
 
     const tabSpacing = (DLG_W - PAD * 2) / tabs.length;
@@ -90,8 +120,20 @@ export class OptionsMenuScene extends Phaser.Scene {
     tabDiv.lineBetween(this.dlgX + PAD, y, this.dlgX + DLG_W - PAD, y);
     y += 6;
 
-    // Content container
+    // Content container with scroll mask
+    this.contentBaseY = y;
+    this.contentH = this.dlgY + DLG_H - PAD - 30 - y; // space above close button
     this.contentContainer = this.add.container(0, y);
+
+    const maskShape = this.make.graphics({ x: 0, y: 0 });
+    maskShape.fillStyle(0xffffff);
+    maskShape.fillRect(this.dlgX, y, DLG_W, this.contentH);
+    this.contentContainer.setMask(new Phaser.Display.Masks.GeometryMask(this, maskShape));
+
+    // Scroll with mouse wheel
+    this.input.on("wheel", (_pointer: Phaser.Input.Pointer, _gos: unknown, _dx: number, _dy: number, dz: number) => {
+      this.scrollContent(dz > 0 ? 20 : -20);
+    });
 
     // Close hint (bottom)
     this.add.text(cx, this.dlgY + DLG_H - PAD + 2,
@@ -106,23 +148,69 @@ export class OptionsMenuScene extends Phaser.Scene {
     closeBtn.on("pointerout", () => closeBtn.setColor("#1a1a1a"));
     closeBtn.on("pointerdown", () => this.closeMenu());
 
-    // Keyboard
+    // Global keyboard bindings
     if (this.input.keyboard) {
       this.input.keyboard.on("keydown-ESC", () => this.closeMenu());
       this.input.keyboard.on("keydown-SPACE", () => this.closeMenu());
       this.input.keyboard.on("keydown-ONE", () => this.switchTab("cabin"));
-      this.input.keyboard.on("keydown-TWO", () => this.switchTab("calendar"));
-      this.input.keyboard.on("keydown-THREE", () => this.switchTab("options"));
-      this.input.keyboard.on("keydown-FOUR", () => this.switchTab("map"));
+      this.input.keyboard.on("keydown-TWO", () => this.switchTab("captain"));
+      this.input.keyboard.on("keydown-THREE", () => this.switchTab("calendar"));
+      this.input.keyboard.on("keydown-FOUR", () => this.switchTab("options"));
+      this.input.keyboard.on("keydown-FIVE", () => this.switchTab("save"));
+      this.input.keyboard.on("keydown-SIX", () => this.switchTab("map"));
+      this.input.keyboard.on("keydown-SEVEN", () => this.switchTab("settings"));
+
+      // Left/Right arrow for tab switching
+      this.input.keyboard.on("keydown-LEFT", () => {
+        if (this.activeTabIndex > 0) {
+          this.switchTab(ALL_TABS[this.activeTabIndex - 1]);
+        }
+      });
+      this.input.keyboard.on("keydown-RIGHT", () => {
+        if (this.activeTabIndex < ALL_TABS.length - 1) {
+          this.switchTab(ALL_TABS[this.activeTabIndex + 1]);
+        }
+      });
+
+      // PageUp / PageDown for scrolling
+      this.input.keyboard.on("keydown-PAGE_UP", () => this.scrollContent(-100));
+      this.input.keyboard.on("keydown-PAGE_DOWN", () => this.scrollContent(100));
     }
 
-    this.switchTab("cabin");
+    // Dynamic resize — restart scene to recenter dialog
+    const onResize = () => {
+      this.scale.off("resize", onResize);
+      this.scene.restart({ worldState: this.worldState });
+    };
+    this.scale.on("resize", onResize);
+
+    this.switchTab(ALL_TABS[this.activeTabIndex]);
+  }
+
+  private scrollContent(amount: number): void {
+    const newY = this.contentContainer.y - amount;
+    const minY = this.contentBaseY - Math.max(0, this.getContentHeight() - this.contentH);
+    this.contentContainer.y = Phaser.Math.Clamp(newY, minY, this.contentBaseY);
+  }
+
+  private clearTabKeyboard(): void {
+    for (const cleanup of this.tabKeyCleanup) cleanup();
+    this.tabKeyCleanup = [];
+  }
+
+  private bindTabKey(event: string, handler: () => void): void {
+    if (!this.input.keyboard) return;
+    this.input.keyboard.on(event, handler);
+    this.tabKeyCleanup.push(() => this.input.keyboard?.off(event, handler));
   }
 
   private switchTab(tab: TabId): void {
-    const allTabs: TabId[] = ["cabin", "calendar", "options", "map"];
+    this.activeTabIndex = ALL_TABS.indexOf(tab);
+    this.selectedItemIndex = 0;
+    this.clearTabKeyboard();
+
     for (let i = 0; i < this.tabButtons.length; i++) {
-      if (allTabs[i] === tab) {
+      if (ALL_TABS[i] === tab) {
         this.tabButtons[i].setColor("#1a1a1a");
       } else {
         this.tabButtons[i].setColor("#999999");
@@ -130,12 +218,16 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
 
     this.contentContainer.removeAll(true);
+    this.contentContainer.y = this.contentBaseY;
 
     switch (tab) {
       case "cabin": this.renderCabin(); break;
+      case "captain": this.renderCaptain(); break;
       case "calendar": this.renderCalendar(); break;
       case "options": this.renderOptions(); break;
+      case "save": this.renderSave(); break;
       case "map": this.renderMap(); break;
+      case "settings": this.renderSettings(); break;
     }
   }
 
@@ -218,30 +310,95 @@ export class OptionsMenuScene extends Phaser.Scene {
     // Gold
     this.contentContainer.add(
       this.add.text(x, y, `${t("hud.gold")}: ${player.gold}`, txt(14, { bold: true })));
-    y += 28;
-
-    // Game Speed toggle
-    const speedValue = this.worldState.gameSpeed ?? 1.2;
-    const speedName = speedValue >= 2.0 ? t("speed.fast") : speedValue <= 0.8 ? t("speed.slow") : t("speed.normal");
-    const speedLabel = this.add.text(x, y,
-      t("speed.label", { speed: speedName }), txt(12, { bold: true, color: "#2266aa" }));
-    speedLabel.setInteractive({ useHandCursor: true });
-    speedLabel.on("pointerdown", () => {
-      // Cycle: Normal → Fast → Slow → Normal
-      if (speedValue >= 2.0) {
-        this.worldState = { ...this.worldState, gameSpeed: 0.6 };
-      } else if (speedValue <= 0.8) {
-        this.worldState = { ...this.worldState, gameSpeed: 1.2 };
-      } else {
-        this.worldState = { ...this.worldState, gameSpeed: 2.4 };
-      }
-      this.registry.set("worldState", this.worldState);
-      this.switchTab("cabin");
-    });
-    this.contentContainer.add(speedLabel);
   }
 
-  // ---- Tab 2: Calendar & Events ----
+  // ---- Tab 2: Captain ----
+
+  private renderCaptain(): void {
+    const captain = this.worldState.captain;
+    const player = this.worldState.player;
+    const x = this.dlgX + PAD + 8;
+    let y = 0;
+
+    // Captain name
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.name_label", { name: this.worldState.playerName }),
+        txt(15, { bold: true })));
+    y += 24;
+
+    // Age
+    const age = calculateAge(this.worldState.time.day, captain.startAge);
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.age_label", { age }), txt(12)));
+    y += 18;
+
+    // Experience (notoriety)
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.experience_label", { value: player.notoriety }), txt(12)));
+    y += 18;
+
+    // Nationality
+    const nationName = t("faction." + captain.nationality + ".name");
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.nationality_label", { nation: nationName }), txt(12)));
+    y += 26;
+
+    // Skills
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.skills_title"), txt(13, { bold: true })));
+    y += 20;
+
+    for (const skillId of SKILL_IDS) {
+      const val = captain.skills[skillId];
+      const name = t("skill." + skillId);
+
+      // Skill name
+      this.contentContainer.add(
+        this.add.text(x + 10, y, `${name}:`, txt(11)));
+
+      // Bar
+      const barX = x + 120;
+      const barW = 100;
+      const barH = 10;
+      const barBg = this.add.rectangle(barX, y + 5, barW, barH, 0xdddddd);
+      barBg.setOrigin(0, 0.5);
+      this.contentContainer.add(barBg);
+
+      const fillW = (val / SKILL_MAX) * barW;
+      const fillColor = val >= 8 ? 0x44aa44 : val >= 5 ? 0x88aa44 : 0xbbaa44;
+      const barFill = this.add.rectangle(barX, y + 5, fillW, barH, fillColor);
+      barFill.setOrigin(0, 0.5);
+      this.contentContainer.add(barFill);
+
+      const barBorder = this.add.graphics();
+      barBorder.lineStyle(1, 0x999999, 1);
+      barBorder.strokeRect(barX, y, barW, barH);
+      this.contentContainer.add(barBorder);
+
+      // Value
+      this.contentContainer.add(
+        this.add.text(barX + barW + 8, y, String(val), txt(11, { bold: true })));
+
+      y += 18;
+    }
+    y += 12;
+
+    // Ranks
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.ranks_title"), txt(13, { bold: true })));
+    y += 20;
+
+    for (const fKey of Object.keys(FACTIONS)) {
+      const rankIdx = player.ranks[fKey] ?? 0;
+      const rankName = t("rank." + fKey + "." + rankIdx);
+      const factionName = t("faction." + fKey + ".name");
+      this.contentContainer.add(
+        this.add.text(x + 10, y, `${factionName}: ${rankName}`, txt(11)));
+      y += 16;
+    }
+  }
+
+  // ---- Tab 3: Calendar & Events ----
 
   private renderCalendar(): void {
     const cx = this.cameras.main.width / 2;
@@ -340,7 +497,23 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
   }
 
-  // ---- Tab 3: Options (Sound, Save/Load, Language) ----
+  // ---- Save Tab (dedicated) ----
+
+  private renderSave(): void {
+    const cx = this.cameras.main.width / 2;
+    let y = 0;
+
+    const saveTitle = this.add.text(cx, y, t("save.title"), txt(13, { bold: true }));
+    saveTitle.setOrigin(0.5, 0);
+    this.contentContainer.add(saveTitle);
+    y += 22;
+
+    listSaves().then((existingSaves) => {
+      this.renderSaveSlots(existingSaves, y);
+    });
+  }
+
+  // ---- Options Tab: Sound, Save/Load, Language ----
 
   private renderOptions(): void {
     const x = this.dlgX + PAD + 8;
@@ -388,9 +561,22 @@ export class OptionsMenuScene extends Phaser.Scene {
     const x = this.dlgX + PAD + 8;
     const rightX = this.dlgX + DLG_W - PAD - 8;
 
+    this.saveSlotData = [];
+    const slotBars: Phaser.GameObjects.Rectangle[] = [];
+
     for (let slotIdx = 0; slotIdx < MAX_SLOTS; slotIdx++) {
       const slotId = `slot_${slotIdx + 1}`;
       const existing = existingSaves.find((s) => (s.slotId as string) === slotId);
+      this.saveSlotData.push({ slotId, hasData: !!existing });
+
+      const isFocused = slotIdx === this.selectedItemIndex;
+
+      // Selection bar
+      const barW = DLG_W - PAD * 2;
+      const selBar = this.add.rectangle(this.dlgX + PAD + barW / 2, y + 10, barW, 24,
+        0x222244, isFocused ? 0.15 : 0);
+      this.contentContainer.add(selBar);
+      slotBars.push(selBar);
 
       let label: string;
       if (existing) {
@@ -401,8 +587,12 @@ export class OptionsMenuScene extends Phaser.Scene {
         label = `Slot ${slotIdx + 1}: ${t("save.slot_empty")}`;
       }
 
+      const marker = isFocused ? "\u25B6 " : "  ";
       this.contentContainer.add(
-        this.add.text(x, y, label, txt(12, { color: existing ? "#1a1a1a" : "#999999" })));
+        this.add.text(x, y, marker + label, txt(12, {
+          color: isFocused ? "#000000" : (existing ? "#1a1a1a" : "#999999"),
+          bold: isFocused,
+        })));
 
       // Save button
       const saveBtn = this.add.text(rightX - 140, y, t("save.btn_save"), txt(12, { bold: true, color: "#2a7a2a" }));
@@ -425,6 +615,14 @@ export class OptionsMenuScene extends Phaser.Scene {
       y += 24;
     }
 
+    // Keyboard hint for save/load
+    const hint = this.add.text(this.cameras.main.width / 2, y + 8,
+      "\u2191\u2193 \u2014 Select slot   Enter \u2014 Save   L \u2014 Load   Delete/X \u2014 Remove",
+      txt(10, { color: "#888888" }));
+    hint.setOrigin(0.5, 0);
+    this.contentContainer.add(hint);
+    y += 28;
+
     // --- Divider ---
     y += 6;
     const div2 = this.add.graphics();
@@ -437,7 +635,171 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(
       this.add.text(x, y, t("lang.current"), txt(12, { color: "#555555" })));
 
-    const langBtn = this.add.text(x, y + 20, t("lang.switch"), txt(13, { bold: true, color: "#2266aa" }));
+    // Keyboard for save/load navigation
+    const currentTab = ALL_TABS[this.activeTabIndex];
+    const moveUp = () => {
+      if (this.selectedItemIndex > 0) {
+        this.selectedItemIndex--;
+        this.switchTab(currentTab);
+      }
+    };
+    const moveDown = () => {
+      if (this.selectedItemIndex < MAX_SLOTS - 1) {
+        this.selectedItemIndex++;
+        this.switchTab(currentTab);
+      }
+    };
+    const doSaveSelected = () => {
+      const slot = this.saveSlotData[this.selectedItemIndex];
+      if (slot) this.doSave(slot.slotId);
+    };
+    const doLoadSelected = () => {
+      const slot = this.saveSlotData[this.selectedItemIndex];
+      if (slot?.hasData) this.doLoad(slot.slotId);
+    };
+    const doDeleteSelected = () => {
+      const slot = this.saveSlotData[this.selectedItemIndex];
+      if (slot?.hasData) this.doDelete(slot.slotId);
+    };
+
+    this.bindTabKey("keydown-UP", moveUp);
+    this.bindTabKey("keydown-W", moveUp);
+    this.bindTabKey("keydown-DOWN", moveDown);
+    this.bindTabKey("keydown-S", moveDown);
+    this.bindTabKey("keydown-ENTER", doSaveSelected);
+    this.bindTabKey("keydown-L", doLoadSelected);
+    this.bindTabKey("keydown-DELETE", doDeleteSelected);
+    this.bindTabKey("keydown-X", doDeleteSelected);
+  }
+
+  // ---- Tab 5: Settings (Quartermaster) ----
+
+  private renderSettings(): void {
+    const x = this.dlgX + PAD + 8;
+    const cx = this.cameras.main.width / 2;
+    let y = 0;
+
+    const title = this.add.text(cx, y, t("settings.title"), txt(14, { bold: true }));
+    title.setOrigin(0.5, 0);
+    this.contentContainer.add(title);
+    y += 32;
+
+    // Build list of focusable settings items
+    // 0 = Speed, 1 = Sound, 2..2+PACK_LIST.length-1 = packs, then zooms, then language
+    const settingsItems: { type: string; y: number }[] = [];
+
+    // Game Speed toggle
+    const speedIdx = settingsItems.length;
+    settingsItems.push({ type: "speed", y });
+    const iSpeedFocused = this.selectedItemIndex === speedIdx;
+    const speedValue = this.worldState.gameSpeed ?? 1.2;
+    const speedName = speedValue >= 2.0 ? t("speed.fast") : speedValue <= 0.8 ? t("speed.slow") : t("speed.normal");
+    const speedMarker = iSpeedFocused ? "\u25B6 " : "";
+    const speedLabel = this.add.text(x, y,
+      speedMarker + t("speed.label", { speed: speedName }),
+      txt(12, { bold: true, color: iSpeedFocused ? "#000000" : "#2266aa" }));
+    speedLabel.setInteractive({ useHandCursor: true });
+    speedLabel.on("pointerdown", () => this.cycleSpeed());
+    this.contentContainer.add(speedLabel);
+    y += 22;
+
+    // Sound toggle
+    const soundIdx = settingsItems.length;
+    settingsItems.push({ type: "sound", y });
+    const iSoundFocused = this.selectedItemIndex === soundIdx;
+    const isMuted = this.sound.mute;
+    const soundMarker = iSoundFocused ? "\u25B6 " : "";
+    const soundLabel = this.add.text(x, y,
+      soundMarker + (isMuted ? t("sound.off") : t("sound.on")),
+      txt(12, { bold: true, color: iSoundFocused ? "#000000" : (isMuted ? "#aa4444" : "#2266aa") }));
+    soundLabel.setInteractive({ useHandCursor: true });
+    soundLabel.on("pointerdown", () => {
+      this.sound.mute = !this.sound.mute;
+      this.switchTab("settings");
+    });
+    this.contentContainer.add(soundLabel);
+    y += 28;
+
+    // Visual Style (asset pack) — numbered radio list
+    this.contentContainer.add(
+      this.add.text(x, y, t("settings.style_label"), txt(13, { bold: true })));
+    y += 22;
+
+    const currentPack = getAssetPack();
+    for (const packId of PACK_LIST) {
+      const packIdx = settingsItems.length;
+      settingsItems.push({ type: "pack:" + packId, y });
+      const isActive = packId === currentPack;
+      const isItemFocused = this.selectedItemIndex === packIdx;
+      const marker = isActive ? "\u25b8 " : isItemFocused ? "\u25B6 " : "  ";
+      const color = isItemFocused ? "#000000" : isActive ? "#1a1a1a" : "#888888";
+      const label = marker + t("settings.pack." + packId);
+      const packBtn = this.add.text(x + 10, y, label, txt(12, { bold: isActive || isItemFocused, color }));
+      if (!isActive) {
+        packBtn.setInteractive({ useHandCursor: true });
+        packBtn.on("pointerdown", () => {
+          setAssetPack(packId);
+          this.switchTab("settings");
+        });
+      }
+      this.contentContainer.add(packBtn);
+      y += 20;
+    }
+
+    const hint = this.add.text(x + 10, y, t("settings.style_hint"), txt(10, { color: "#888888" }));
+    this.contentContainer.add(hint);
+    y += 32;
+
+    // Zoom (Spyglass)
+    this.contentContainer.add(
+      this.add.text(x, y, t("settings.zoom_label"), txt(13, { bold: true })));
+    y += 22;
+
+    const zoomLevels: ZoomLevel[] = ["far", "normal", "close"];
+    const currentZoom = getZoomLevel();
+
+    for (const level of zoomLevels) {
+      const zoomIdx = settingsItems.length;
+      settingsItems.push({ type: "zoom:" + level, y });
+      const isActive = level === currentZoom;
+      const isItemFocused = this.selectedItemIndex === zoomIdx;
+      const label = isActive
+        ? `\u25B8 ${t("settings.zoom." + level)}`
+        : isItemFocused
+          ? `\u25B6 ${t("settings.zoom." + level)}`
+          : `  ${t("settings.zoom." + level)}`;
+      const color = isItemFocused ? "#000000" : isActive ? "#1a1a1a" : "#888888";
+      const zoomBtn = this.add.text(x + 10, y, label, txt(12, { bold: isActive || isItemFocused, color }));
+      if (!isActive) {
+        zoomBtn.setInteractive({ useHandCursor: true });
+        zoomBtn.on("pointerdown", () => {
+          setZoomLevel(level);
+          const mainScene = this.scene.get("MainMapScene");
+          if (mainScene) {
+            mainScene.cameras.main.setZoom(ZOOM_VALUES[level]);
+          }
+          this.switchTab("settings");
+        });
+      }
+      this.contentContainer.add(zoomBtn);
+      y += 20;
+    }
+
+    const zoomHint = this.add.text(x + 10, y, t("settings.zoom_hint"), txt(10, { color: "#888888" }));
+    this.contentContainer.add(zoomHint);
+    y += 32;
+
+    // Language
+    const langIdx = settingsItems.length;
+    settingsItems.push({ type: "lang", y });
+    const isLangFocused = this.selectedItemIndex === langIdx;
+    this.contentContainer.add(
+      this.add.text(x, y, t("lang.current"), txt(13, { bold: true })));
+    y += 22;
+
+    const langMarker = isLangFocused ? "\u25B6 " : "";
+    const langBtn = this.add.text(x + 10, y, langMarker + t("lang.switch"),
+      txt(13, { bold: true, color: isLangFocused ? "#000000" : "#2266aa" }));
     langBtn.setInteractive({ useHandCursor: true });
     langBtn.on("pointerdown", () => {
       const current = getLang();
@@ -445,6 +807,120 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.scene.restart({ worldState: this.worldState });
     });
     this.contentContainer.add(langBtn);
+    y += 32;
+
+    // Changelog with pirate icon decorations
+    const iconLeft = this.add.text(cx - 80, y - 2, "A", {
+      fontFamily: PIRATE_ICONS_FONT, fontSize: "28px", color: "#3a2a1a", resolution: TEXT_RES,
+    });
+    iconLeft.setOrigin(0.5, 0);
+    this.contentContainer.add(iconLeft);
+
+    this.contentContainer.add(
+      this.add.text(cx, y, t("changelog.title"), txt(13, { bold: true })).setOrigin(0.5, 0));
+
+    const iconRight = this.add.text(cx + 80, y - 2, "A", {
+      fontFamily: PIRATE_ICONS_FONT, fontSize: "28px", color: "#3a2a1a", resolution: TEXT_RES,
+    });
+    iconRight.setOrigin(0.5, 0);
+    this.contentContainer.add(iconRight);
+    y += 32;
+
+    // Pirate icon sampler — each letter = different pirate symbol
+    const sampleRow = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    const sampler = this.add.text(x, y, sampleRow, {
+      fontFamily: PIRATE_ICONS_FONT, fontSize: "18px", color: "#555555", resolution: TEXT_RES,
+      wordWrap: { width: DLG_W - PAD * 2 - 16 },
+    });
+    this.contentContainer.add(sampler);
+    y += sampler.height + 8;
+
+    // Label each char for identification
+    const labelRow = sampleRow.split("").join(" ");
+    const labels = this.add.text(x, y, labelRow, txt(7, { color: "#999999" }));
+    this.contentContainer.add(labels);
+    y += labels.height + 12;
+
+    for (const entry of CHANGELOG) {
+      const header = t("changelog.version", { version: entry.version, date: entry.date });
+      this.contentContainer.add(
+        this.add.text(x + 4, y, header, txt(11, { bold: true, color: "#333333" })));
+      y += 16;
+
+      for (const change of entry.changes) {
+        this.contentContainer.add(
+          this.add.text(x + 14, y, `\u2022 ${change}`, txt(10, { color: "#555555" })));
+        y += 14;
+      }
+      y += 6;
+    }
+
+    // Keyboard hint for settings
+    const settingsHint = this.add.text(cx, this.contentH - 4,
+      "\u2191\u2193 \u2014 Navigate   Enter \u2014 Toggle/Select",
+      txt(10, { color: "#888888" }));
+    settingsHint.setOrigin(0.5, 1);
+    this.contentContainer.add(settingsHint);
+
+    // Keyboard navigation for settings
+    const maxIdx = settingsItems.length - 1;
+    const moveUp = () => {
+      if (this.selectedItemIndex > 0) {
+        this.selectedItemIndex--;
+        this.switchTab("settings");
+      }
+    };
+    const moveDown = () => {
+      if (this.selectedItemIndex < maxIdx) {
+        this.selectedItemIndex++;
+        this.switchTab("settings");
+      }
+    };
+    const confirmSetting = () => {
+      const item = settingsItems[this.selectedItemIndex];
+      if (!item) return;
+      if (item.type === "speed") {
+        this.cycleSpeed();
+      } else if (item.type === "sound") {
+        this.sound.mute = !this.sound.mute;
+        this.switchTab("settings");
+      } else if (item.type.startsWith("pack:")) {
+        const packId = item.type.split(":")[1] as AssetPackId;
+        setAssetPack(packId);
+        this.switchTab("settings");
+      } else if (item.type.startsWith("zoom:")) {
+        const level = item.type.split(":")[1] as ZoomLevel;
+        setZoomLevel(level);
+        const mainScene = this.scene.get("MainMapScene");
+        if (mainScene) {
+          mainScene.cameras.main.setZoom(ZOOM_VALUES[level]);
+        }
+        this.switchTab("settings");
+      } else if (item.type === "lang") {
+        const current = getLang();
+        setLang(current === "en" ? "pl" : "en");
+        this.scene.restart({ worldState: this.worldState });
+      }
+    };
+
+    this.bindTabKey("keydown-UP", moveUp);
+    this.bindTabKey("keydown-W", moveUp);
+    this.bindTabKey("keydown-DOWN", moveDown);
+    this.bindTabKey("keydown-S", moveDown);
+    this.bindTabKey("keydown-ENTER", confirmSetting);
+  }
+
+  private cycleSpeed(): void {
+    const speedValue = this.worldState.gameSpeed ?? 1.2;
+    if (speedValue >= 2.0) {
+      this.worldState = { ...this.worldState, gameSpeed: 0.6 };
+    } else if (speedValue <= 0.8) {
+      this.worldState = { ...this.worldState, gameSpeed: 1.2 };
+    } else {
+      this.worldState = { ...this.worldState, gameSpeed: 2.4 };
+    }
+    this.registry.set("worldState", this.worldState);
+    this.switchTab("settings");
   }
 
   private async doSave(slotId: string): Promise<void> {
@@ -460,7 +936,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       world: this.worldState,
     };
     await saveGame(payload);
-    this.switchTab("options");
+    this.switchTab(ALL_TABS[this.activeTabIndex]);
   }
 
   private async doLoad(slotId: string): Promise<void> {
@@ -475,7 +951,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
   private async doDelete(slotId: string): Promise<void> {
     await removeSave(saveSlotId(slotId));
-    this.switchTab("options");
+    this.switchTab(ALL_TABS[this.activeTabIndex]);
   }
 
   // ---- Tab 4: Caribbean Map ----
@@ -550,6 +1026,19 @@ export class OptionsMenuScene extends Phaser.Scene {
       g.fillStyle(0x666666, 0.6);
       g.fillCircle(ex, ey, 1.5);
     }
+  }
+
+  private getContentHeight(): number {
+    let maxY = 0;
+    this.contentContainer.each((child: Phaser.GameObjects.GameObject) => {
+      const go = child as unknown as { getBounds?: () => Phaser.Geom.Rectangle };
+      if (go.getBounds) {
+        const b = go.getBounds();
+        const localBottom = b.y + b.height - this.contentBaseY;
+        if (localBottom > maxY) maxY = localBottom;
+      }
+    });
+    return maxY + 10;
   }
 
   private closeMenu(): void {

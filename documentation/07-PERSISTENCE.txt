@@ -1,0 +1,109 @@
+================================================================================
+  07 — SYSTEM ZAPISU GRY (src/persistence/)
+================================================================================
+
+1. ARCHITEKTURA
+--------------------------------------------------------------------------------
+  Wzorzec Adapter — wymienne backendy zapisu:
+
+  SaveRepository (orkiestrator)
+    ├── LocalSaveAdapter   — IndexedDB (domyślny)
+    └── RemoteSaveAdapter  — Cloud saves (placeholder, nie zaimplementowany)
+
+  Interfejs SaveAdapter:
+    list()                    → Promise<SaveMeta[]>
+    save(payload)             → Promise<void>
+    load(slotId)              → Promise<SavePayload | null>
+    remove(slotId)            → Promise<void>
+
+2. LOCAL SAVE ADAPTER (LocalSaveAdapter.ts)
+--------------------------------------------------------------------------------
+  Backend: IndexedDB (via biblioteki idb 8.0.2)
+
+  Konfiguracja:
+    DB_NAME:    "pirates_chronicles_{userId}"
+    STORE_NAME: "saves"
+    DB_VERSION: 1
+    KEY_PATH:   "meta.slotId"
+
+  Operacje:
+    list()   — IDBDatabase.getAll() → SaveMeta[]
+    save()   — IDBDatabase.put(payload)
+    load()   — IDBDatabase.get(slotId)
+    remove() — IDBDatabase.delete(slotId)
+
+  Każdy użytkownik ma osobną bazę (per userId).
+
+3. FORMAT ZAPISU (SaveSchema.ts)
+--------------------------------------------------------------------------------
+
+  SaveMeta {
+    slotId:          SaveSlotId     — "slot_1", "slot_2", ...
+    title:           string         — tytuł zapisu (np. "Port Royal, Day 15")
+    createdAt:       number         — Unix timestamp (ms)
+    updatedAt:       number         — Unix timestamp (ms)
+    playtimeSeconds: number         — łączny czas gry
+    worldVersion:    number         — wersja formatu stanu
+  }
+
+  SavePayload {
+    meta:    SaveMeta              — metadane zapisu
+    world:   WorldState            — pełny stan świata (JSON)
+    combat?: CombatState           — stan walki (jeśli w trakcie bitwy)
+  }
+
+4. SAVE REPOSITORY (SaveRepository.ts)
+--------------------------------------------------------------------------------
+  Główne API:
+
+  listSaves()                      → Promise<SaveMeta[]>
+  saveGame(payload: SavePayload)   → Promise<void>
+  loadGame(slotId: SaveSlotId)     → Promise<SavePayload | null>
+  removeSave(slotId: SaveSlotId)   → Promise<void>
+  setAdapter(adapter: SaveAdapter) → void
+
+  Legacy migration:
+    - Kopiuje dane z niescopowanej bazy do per-user bazy
+    - Jednorazowa operacja przy pierwszym uruchomieniu
+
+5. SERIALIZACJA (services/Serializer.ts)
+--------------------------------------------------------------------------------
+  serializeWorld(world)        → string (JSON.stringify)
+  deserializeWorld(json)       → WorldState (JSON.parse)
+  serializePayload(payload)    → string
+  deserializePayload(json)     → SavePayload
+
+  Cały WorldState jest serializowany jako JSON.
+  Nie ma binarnego formatu — czytelne i łatwe do debug.
+
+6. IDENTYFIKACJA UŻYTKOWNIKA (UserIdentity.ts)
+--------------------------------------------------------------------------------
+  getUserId() → string
+    — Unikalny identyfikator per przeglądarka/urządzenie
+    — Używany do scopowania bazy IndexedDB
+
+7. MIGRACJE (Migrations.ts)
+--------------------------------------------------------------------------------
+  CURRENT_WORLD_VERSION: number
+
+  Przyszłe migracje wersji WorldState:
+    - Gdy format stanu się zmieni, funkcje migracyjne
+      przekształcą stare zapisy do nowego formatu
+    - Obecnie brak migracji (v1)
+
+8. PRZEPŁYW ZAPISU
+--------------------------------------------------------------------------------
+  1. Gracz wybiera slot zapisu
+  2. Tworzy się SavePayload { meta, world, combat? }
+  3. serializePayload() → JSON string
+  4. LocalSaveAdapter.save() → IndexedDB.put()
+  5. Potwierdzenie zapisu
+
+  Przepływ wczytywania:
+  1. Gracz wybiera slot
+  2. LocalSaveAdapter.load(slotId) → SavePayload
+  3. deserializePayload() → obiekty
+  4. WorldState przywrócony do MainMapScene
+  5. Renderer sync + camera snap
+
+================================================================================

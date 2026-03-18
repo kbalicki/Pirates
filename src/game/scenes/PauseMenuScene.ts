@@ -7,6 +7,10 @@ const DLG_H = 200;
 const BORDER = 3;
 
 export class PauseMenuScene extends Phaser.Scene {
+  private selectedIndex = 0;
+  private buttons: Phaser.GameObjects.Text[] = [];
+  private arrow!: Phaser.GameObjects.Text;
+
   constructor() {
     super({ key: "PauseMenuScene" });
   }
@@ -30,37 +34,79 @@ export class PauseMenuScene extends Phaser.Scene {
     const resumeBtn = this.add.text(cx, cy, t("pause.resume"), txt(16, { bold: true }));
     resumeBtn.setOrigin(0.5);
     resumeBtn.setInteractive({ useHandCursor: true });
-    resumeBtn.on("pointerover", () => resumeBtn.setColor("#555555"));
-    resumeBtn.on("pointerout", () => resumeBtn.setColor("#1a1a1a"));
-    resumeBtn.on("pointerdown", () => {
-      this.scene.stop();
-      this.scene.resume("MainMapScene");
-    });
+    resumeBtn.on("pointerover", () => { this.selectedIndex = 0; this.updateSelection(); });
+    resumeBtn.on("pointerout", () => this.updateSelection());
+    resumeBtn.on("pointerdown", () => this.doResume());
 
     // Save/Load button
     const saveBtn = this.add.text(cx, cy + 36, t("pause.save_load"), txt(16, { bold: true }));
     saveBtn.setOrigin(0.5);
     saveBtn.setInteractive({ useHandCursor: true });
-    saveBtn.on("pointerover", () => saveBtn.setColor("#555555"));
-    saveBtn.on("pointerout", () => saveBtn.setColor("#1a1a1a"));
-    saveBtn.on("pointerdown", () => {
-      this.scene.stop();
-      this.scene.launch("OptionsMenuScene", {
-        worldState: this.registry.get("worldState"),
-        initialTab: 2,
-      });
-    });
+    saveBtn.on("pointerover", () => { this.selectedIndex = 1; this.updateSelection(); });
+    saveBtn.on("pointerout", () => this.updateSelection());
+    saveBtn.on("pointerdown", () => this.doSaveLoad());
+
+    this.buttons = [resumeBtn, saveBtn];
+
+    // Arrow marker
+    this.arrow = this.add.text(0, 0, "\u25B6", txt(12, { bold: true }));
+    this.selectedIndex = 0;
+    this.updateSelection();
 
     // Keyboard hint
-    this.add.text(cx, cy + DLG_H / 2 - 12, "Esc \u2014 Resume", txt(10, { color: "#888888" }))
+    this.add.text(cx, cy + DLG_H / 2 - 12,
+      "\u2191\u2193 \u2014 Select   Enter \u2014 Confirm   Esc \u2014 Resume",
+      txt(10, { color: "#888888" }))
       .setOrigin(0.5, 1);
 
-    // ESC to resume
+    // Keyboard
     if (this.input.keyboard) {
-      this.input.keyboard.on("keydown-ESC", () => {
-        this.scene.stop();
-        this.scene.resume("MainMapScene");
-      });
+      this.input.keyboard.on("keydown-ESC", () => this.doResume());
+      this.input.keyboard.on("keydown-UP", () => this.moveSelection(-1));
+      this.input.keyboard.on("keydown-W", () => this.moveSelection(-1));
+      this.input.keyboard.on("keydown-DOWN", () => this.moveSelection(1));
+      this.input.keyboard.on("keydown-S", () => this.moveSelection(1));
+      this.input.keyboard.on("keydown-ENTER", () => this.confirmSelection());
+      this.input.keyboard.on("keydown-E", () => this.confirmSelection());
     }
+  }
+
+  private moveSelection(delta: number): void {
+    this.selectedIndex = Phaser.Math.Clamp(this.selectedIndex + delta, 0, this.buttons.length - 1);
+    this.updateSelection();
+  }
+
+  private updateSelection(): void {
+    for (let i = 0; i < this.buttons.length; i++) {
+      if (i === this.selectedIndex) {
+        this.buttons[i].setColor("#000000");
+        this.buttons[i].setFontStyle("bold");
+      } else {
+        this.buttons[i].setColor("#555555");
+        this.buttons[i].setFontStyle("bold");
+      }
+    }
+    const sel = this.buttons[this.selectedIndex];
+    if (sel && this.arrow) {
+      this.arrow.setPosition(sel.x - sel.width / 2 - 18, sel.y - 6);
+    }
+  }
+
+  private confirmSelection(): void {
+    if (this.selectedIndex === 0) this.doResume();
+    else this.doSaveLoad();
+  }
+
+  private doResume(): void {
+    this.scene.stop();
+    this.scene.resume("MainMapScene");
+  }
+
+  private doSaveLoad(): void {
+    this.scene.stop();
+    this.scene.launch("OptionsMenuScene", {
+      worldState: this.registry.get("worldState"),
+      initialTab: 2,
+    });
   }
 }

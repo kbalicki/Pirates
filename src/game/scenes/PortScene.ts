@@ -20,6 +20,7 @@ import {
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { usesParchmentUI } from "../settings/AssetPack.ts";
 
 const DLG_W = 470;
 const DLG_H = 420;
@@ -87,9 +88,15 @@ export class PortScene extends Phaser.Scene {
     // Dark overlay
     this.add.rectangle(this.cx, this.cy, cam.width, cam.height, 0x000000, 0.55);
 
-    // White dialog frame
-    this.add.rectangle(this.cx, this.cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
-    this.add.rectangle(this.cx, this.cy, DLG_W, DLG_H, 0xffffff);
+    // Dialog panel
+    if (usesParchmentUI() && this.textures.exists("parchment_panel")) {
+      const panel = this.add.image(this.cx, this.cy, "parchment_panel");
+      panel.setDisplaySize(DLG_W + 40, DLG_H + 30);
+      panel.setAlpha(0.95);
+    } else {
+      this.add.rectangle(this.cx, this.cy, DLG_W + BORDER * 2, DLG_H + BORDER * 2, 0x222222);
+      this.add.rectangle(this.cx, this.cy, DLG_W, DLG_H, 0xffffff);
+    }
 
     // --- Persistent header ---
     const faction = FACTIONS[portDef.factionId as string];
@@ -133,6 +140,17 @@ export class PortScene extends Phaser.Scene {
 
     this.contentStartY = y;
     this.contentContainer = this.add.container(0, 0);
+
+    // Dynamic resize — restart scene to recenter dialog
+    const onResize = () => {
+      this.scale.off("resize", onResize);
+      this.scene.restart({
+        worldState: this.worldState,
+        portId: this.currentPortId,
+        returnToView: this.currentView,
+      });
+    };
+    this.scale.on("resize", onResize);
 
     this.switchView(this.currentView);
   }
@@ -348,23 +366,28 @@ export class PortScene extends Phaser.Scene {
       this.contentContainer.add(offerText);
       y += 22;
 
-      const acceptBtn = this.add.text(
-        this.infoX, y,
-        t("governor.letter_accept"),
-        txt(13, { bold: true, color: "#2a7a2a" }),
-      );
-      acceptBtn.setInteractive({ useHandCursor: true });
-      acceptBtn.on("pointerover", () => acceptBtn.setColor("#44bb44"));
-      acceptBtn.on("pointerout", () => acceptBtn.setColor("#2a7a2a"));
-      acceptBtn.on("pointerdown", () => {
+      const acceptLetter = () => {
         const result = requestLetterOfMarque(this.worldState, portDef.factionId);
         if (result.granted) {
           this.worldState = result.world;
           this.registry.set("worldState", this.worldState);
           this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "governor" as PortView });
         }
-      });
+      };
+
+      const acceptBtn = this.add.text(
+        this.infoX, y,
+        "\u25B6 " + t("governor.letter_accept"),
+        txt(13, { bold: true, color: "#2a7a2a" }),
+      );
+      acceptBtn.setInteractive({ useHandCursor: true });
+      acceptBtn.on("pointerover", () => acceptBtn.setColor("#44bb44"));
+      acceptBtn.on("pointerout", () => acceptBtn.setColor("#2a7a2a"));
+      acceptBtn.on("pointerdown", () => acceptLetter());
       this.contentContainer.add(acceptBtn);
+
+      this.bindKey("keydown-ENTER", () => acceptLetter());
+      this.bindKey("keydown-E", () => acceptLetter());
     } else {
       const deniedText = this.add.text(
         this.infoX, y,
@@ -409,7 +432,7 @@ export class PortScene extends Phaser.Scene {
 
     const actions = [
       {
-        label: t("tavern.recruit_crew", { cost: 5 })
+        label: t("tavern.recruit_crew")
           + ` (${t("tavern.crew_available", { count: availableCrew, berths: crewSpace })})`,
         key: "recruit",
       },
@@ -517,39 +540,66 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(this.add.text(colOwn, y, "Own", txt(10, { bold: true, color: "#666666" })));
     y += 16;
 
-    // Table rows
-    for (const [key] of Object.entries(ITEMS)) {
+    // Table rows with keyboard navigation
+    const itemKeys = Object.keys(ITEMS);
+    const barW = DLG_W - PAD * 2;
+
+    // Selection bar
+    const selBar = this.add.rectangle(
+      this.cx, y + 11, barW, 20, 0x222244, 0.15,
+    );
+    this.contentContainer.add(selBar);
+
+    const arrow = this.add.text(0, 0, "\u25B6", txt(10, { bold: true }));
+    this.contentContainer.add(arrow);
+
+    for (let ri = 0; ri < itemKeys.length; ri++) {
+      const key = itemKeys[ri];
       const item = ITEMS[key];
       const price = portState?.prices[key] ?? item.basePrice;
       const stock = portState?.inventory[key] ?? 0;
       const owned = playerShip?.ship?.cargo[key] ?? 0;
+      const isFocused = ri === this.selectedIndex;
+      const rowColor = isFocused ? "#000000" : "#1a1a1a";
 
-      this.contentContainer.add(this.add.text(colName, y, t("item." + key + ".name"), txt(12)));
-      this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price }), txt(12, { bold: true })));
+      this.contentContainer.add(this.add.text(colName, y, t("item." + key + ".name"), txt(12, { color: rowColor, bold: isFocused })));
+      this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price }), txt(12, { bold: true, color: rowColor })));
       this.contentContainer.add(this.add.text(colStock, y, String(stock), txt(12, { color: "#555555" })));
       this.contentContainer.add(
         this.add.text(colOwn, y, String(Math.floor(owned)),
-          txt(12, { color: owned > 0 ? "#1a1a1a" : "#999999" })),
+          txt(12, { color: owned > 0 ? rowColor : "#999999" })),
       );
 
       // Buy button
       const buyBtn = this.add.text(colBuy, y, t("port.buy"), txt(12, { bold: true, color: "#2a7a2a" }));
       buyBtn.setInteractive({ useHandCursor: true });
-      buyBtn.on("pointerover", () => buyBtn.setColor("#44bb44"));
-      buyBtn.on("pointerout", () => buyBtn.setColor("#2a7a2a"));
+      buyBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
       buyBtn.on("pointerdown", () => this.handleBuy(key));
       this.contentContainer.add(buyBtn);
 
       // Sell button
       const sellBtn = this.add.text(colSell, y, t("port.sell"), txt(12, { bold: true, color: "#8b4513" }));
       sellBtn.setInteractive({ useHandCursor: true });
-      sellBtn.on("pointerover", () => sellBtn.setColor("#cc7733"));
-      sellBtn.on("pointerout", () => sellBtn.setColor("#8b4513"));
+      sellBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
       sellBtn.on("pointerdown", () => this.handleSell(key));
       this.contentContainer.add(sellBtn);
 
+      if (isFocused) {
+        selBar.setPosition(this.cx, y + 8);
+        arrow.setPosition(colName - 14, y + 1);
+      }
+
       y += 22;
     }
+
+    // Hint
+    const hint = this.add.text(
+      this.cx, this.dlgY + DLG_H - PAD - 4,
+      "\u2191\u2193 \u2014 Select   Enter \u2014 Buy   Backspace \u2014 Sell   Esc \u2014 Back",
+      txt(10, { color: "#888888" }),
+    );
+    hint.setOrigin(0.5, 1);
+    this.contentContainer.add(hint);
 
     // Back button
     const backBtn = this.add.text(
@@ -563,6 +613,35 @@ export class PortScene extends Phaser.Scene {
     backBtn.on("pointerdown", () => this.switchView("menu"));
     this.contentContainer.add(backBtn);
 
+    // Keyboard navigation
+    const moveUp = () => {
+      if (this.selectedIndex > 0) {
+        this.selectedIndex--;
+        this.switchView("merchant");
+      }
+    };
+    const moveDown = () => {
+      if (this.selectedIndex < itemKeys.length - 1) {
+        this.selectedIndex++;
+        this.switchView("merchant");
+      }
+    };
+    const buySelected = () => {
+      const key = itemKeys[this.selectedIndex];
+      if (key) this.handleBuy(key);
+    };
+    const sellSelected = () => {
+      const key = itemKeys[this.selectedIndex];
+      if (key) this.handleSell(key);
+    };
+
+    this.bindKey("keydown-UP", moveUp);
+    this.bindKey("keydown-W", moveUp);
+    this.bindKey("keydown-DOWN", moveDown);
+    this.bindKey("keydown-ENTER", buySelected);
+    this.bindKey("keydown-E", buySelected);
+    this.bindKey("keydown-BACKSPACE", sellSelected);
+    this.bindKey("keydown-Q", sellSelected);
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
   }
 
@@ -581,6 +660,10 @@ export class PortScene extends Phaser.Scene {
     y += 28;
 
     // Repair section
+    const hasDamage = playerShip?.ship
+      ? (playerShip.ship.hullMax - playerShip.ship.hullHp) > 0
+      : false;
+
     if (playerShip?.ship) {
       const damage = playerShip.ship.hullMax - playerShip.ship.hullHp;
       if (damage > 0) {
@@ -637,18 +720,30 @@ export class PortScene extends Phaser.Scene {
     const shipyardLevel = portDef.shipyardLevel;
     const currentClassId = playerShip?.ship?.classId as string;
     const availableShips = SHIPYARD_TIERS[shipyardLevel] ?? SHIPYARD_TIERS[1];
+    const barW = DLG_W - PAD * 2;
 
-    for (const classKey of availableShips) {
+    // Selection bar
+    const selBar = this.add.rectangle(
+      this.cx, y + 8, barW, 18, 0x222244, 0.15,
+    );
+    this.contentContainer.add(selBar);
+
+    const arrow = this.add.text(0, 0, "\u25B6", txt(9, { bold: true }));
+    this.contentContainer.add(arrow);
+
+    for (let si = 0; si < availableShips.length; si++) {
+      const classKey = availableShips[si];
       const cls = SHIP_CLASSES[classKey];
       if (!cls) continue;
 
       const isCurrent = classKey === currentClassId;
-      const color = isCurrent ? "#2a7a2a" : "#1a1a1a";
+      const isFocused = si === this.selectedIndex;
+      const color = isFocused ? "#000000" : isCurrent ? "#2a7a2a" : "#1a1a1a";
       const nameLabel = isCurrent
         ? `${t("ship." + classKey + ".name")} ${t("shipyard.current")}`
         : t("ship." + classKey + ".name");
 
-      this.contentContainer.add(this.add.text(colName, y, nameLabel, txt(11, { color })));
+      this.contentContainer.add(this.add.text(colName, y, nameLabel, txt(11, { color, bold: isFocused })));
       this.contentContainer.add(this.add.text(colSpeed, y, String(cls.speedBase), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colHull, y, String(cls.hullMax), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colCannons, y, String(cls.cannons), txt(11, { color: "#555555" })));
@@ -662,15 +757,28 @@ export class PortScene extends Phaser.Scene {
         const buyBtn = this.add.text(colPrice + 55, y, t("shipyard.buy"), txt(11, { bold: true, color: buyBtnColor }));
         if (canAfford) {
           buyBtn.setInteractive({ useHandCursor: true });
-          buyBtn.on("pointerover", () => buyBtn.setColor("#44bb44"));
-          buyBtn.on("pointerout", () => buyBtn.setColor("#2a7a2a"));
+          buyBtn.on("pointerover", () => { this.selectedIndex = si; this.switchView("shipyard"); });
           buyBtn.on("pointerdown", () => this.handleBuyShip(classKey));
         }
         this.contentContainer.add(buyBtn);
       }
 
+      if (isFocused) {
+        selBar.setPosition(this.cx, y + 8);
+        arrow.setPosition(colName - 14, y + 1);
+      }
+
       y += 20;
     }
+
+    // Hint
+    const hint = this.add.text(
+      this.cx, this.dlgY + DLG_H - PAD - 4,
+      "\u2191\u2193 \u2014 Select   Enter \u2014 Buy   R \u2014 Repair   Esc \u2014 Back",
+      txt(10, { color: "#888888" }),
+    );
+    hint.setOrigin(0.5, 1);
+    this.contentContainer.add(hint);
 
     // Back button
     const backBtn = this.add.text(
@@ -684,6 +792,34 @@ export class PortScene extends Phaser.Scene {
     backBtn.on("pointerdown", () => this.switchView("menu"));
     this.contentContainer.add(backBtn);
 
+    // Keyboard navigation
+    const moveUp = () => {
+      if (this.selectedIndex > 0) {
+        this.selectedIndex--;
+        this.switchView("shipyard");
+      }
+    };
+    const moveDown = () => {
+      if (this.selectedIndex < availableShips.length - 1) {
+        this.selectedIndex++;
+        this.switchView("shipyard");
+      }
+    };
+    const buySelected = () => {
+      const classKey = availableShips[this.selectedIndex];
+      if (classKey && classKey !== currentClassId) {
+        this.handleBuyShip(classKey);
+      }
+    };
+
+    this.bindKey("keydown-UP", moveUp);
+    this.bindKey("keydown-W", moveUp);
+    this.bindKey("keydown-DOWN", moveDown);
+    this.bindKey("keydown-ENTER", buySelected);
+    this.bindKey("keydown-B", buySelected);
+    if (hasDamage) {
+      this.bindKey("keydown-R", () => this.handleShipyardRepair());
+    }
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
   }
 
@@ -726,12 +862,26 @@ export class PortScene extends Phaser.Scene {
   }
 
   private leavePort(): void {
+    // Offset ship position south of port so it spawns in water, not on land
+    const portDef = PORTS[this.currentPortId as string];
+    const offset = portDef ? portDef.dockRadius + 50 : 100;
+    const portPos = this.worldState.player.location.pos;
+    const seaPos = { x: portPos.x, y: portPos.y + offset };
+
+    // Also update entity position
+    const shipId = this.worldState.player.shipId as string;
+    const entity = this.worldState.entities[shipId];
+    const updatedEntities = entity
+      ? { ...this.worldState.entities, [shipId]: { ...entity, pos: seaPos, vel: { x: 0, y: 0 }, sailLevel: 0 } }
+      : this.worldState.entities;
+
     this.worldState = {
       ...this.worldState,
       player: {
         ...this.worldState.player,
-        location: { type: "sea", pos: this.worldState.player.location.pos },
+        location: { type: "sea", pos: seaPos },
       },
+      entities: updatedEntities,
     };
     this.registry.set("worldState", this.worldState);
     this.scene.start("MainMapScene", { worldState: this.worldState });

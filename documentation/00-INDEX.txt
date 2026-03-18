@@ -1,0 +1,25 @@
+================================================================================
+  PIRATES CHRONICLES v0.8.2 — DOKUMENTACJA TECHNICZNA
+  Ostatnia aktualizacja: 2026-02-19
+================================================================================
+
+Spis dokumentów:
+
+  01-ARCHITECTURE.txt       Architektura projektu, warstwy, przepływ danych
+  02-CORE-DATA.txt          Dane statyczne: statki, porty, frakcje, itemy, ery
+  03-CORE-SYSTEMS.txt       Systemy gry: nawigacja, pogoda, ekonomia, walka, czas
+  04-CORE-MODEL.txt         Typy i interfejsy: WorldState, EntityState, Commands
+  05-GAME-SCENES.txt        Sceny Phaser: MainMap, Port, SeaBattle, itd.
+  06-RENDERING.txt          Renderowanie: tilemapy, sprite'y, kamera, efekty
+  07-PERSISTENCE.txt        System zapisu: IndexedDB, format, migracje
+  08-ASSETS.txt             Zasoby gry: sprite'y, audio, fonty, ikony
+  09-SD-PIPELINE.txt        Pipeline generowania assetów: ComfyUI + Tiled Diffusion
+  10-DEVELOPMENT.txt        Rozwój: jak uruchomić, buildy, testowanie, konwencje
+
+Konwencja nazewnictwa:
+  - Pliki numerowane dla łatwej nawigacji
+  - Każdy plik jest samowystarczalny (nie wymaga czytania innych)
+  - Sygnatury funkcji w formacie TypeScript
+  - Stałe i wartości liczbowe podane dokładnie z kodu
+
+================================================================================

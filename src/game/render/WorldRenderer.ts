@@ -23,9 +23,25 @@ export const DIR8_TO_FRAME = [
   6,  // 7 NW → frame 6
 ];
 
+/** Map 8-direction → crew spritesheet frame (4 frames: 0=S, 1=W, 2=E, 3=N). */
+const DIR8_TO_CREW_FRAME = [
+  3,  // 0 N
+  2,  // 1 NE → E
+  2,  // 2 E
+  0,  // 3 SE → S
+  0,  // 4 S
+  1,  // 5 SW → W
+  1,  // 6 W
+  3,  // 7 NW → N
+];
+
 export class WorldRenderer {
   private entitySprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  /** Anchor ship sprite shown at dock position when crew is on land. */
+  private anchorSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
+  /** Track mode per entity to detect mode changes. */
+  private entityModes: Map<string, string> = new Map();
 
   sync(scene: Phaser.Scene, world: WorldState): void {
     const seenIds = new Set<string>();
@@ -35,20 +51,56 @@ export class WorldRenderer {
     for (const [id, entity] of Object.entries(world.entities)) {
       seenIds.add(id);
 
+      const prevMode = this.entityModes.get(id);
+      const curMode = entity.mode ?? "sailing";
+
+      // If mode changed, destroy old sprite so we create new one with correct texture
+      if (prevMode && prevMode !== curMode) {
+        const oldSprite = this.entitySprites.get(id);
+        if (oldSprite) { oldSprite.destroy(); this.entitySprites.delete(id); }
+        // Also manage anchor sprite
+        if (curMode === "landed") {
+          // Show ghost ship at anchor
+          if (entity.anchorPos && id === playerShipId) {
+            const anchor = this.createShipSprite(scene, entity);
+            anchor.setPosition(entity.anchorPos.x, entity.anchorPos.y);
+            anchor.setAlpha(0.4);
+            anchor.setDepth(entity.anchorPos.y - 1);
+            this.anchorSprites.set(id, anchor);
+          }
+        } else {
+          // Remove anchor sprite
+          const anchorSpr = this.anchorSprites.get(id);
+          if (anchorSpr) { anchorSpr.destroy(); this.anchorSprites.delete(id); }
+        }
+      }
+      this.entityModes.set(id, curMode);
+
       let sprite = this.entitySprites.get(id);
 
       if (!sprite) {
-        sprite = this.createEntitySprite(scene, entity, id === playerShipId);
+        if (curMode === "landed" && id === playerShipId) {
+          sprite = this.createCrewSprite(scene, entity);
+        } else {
+          sprite = this.createEntitySprite(scene, entity, id === playerShipId);
+        }
         this.entitySprites.set(id, sprite);
       }
 
       // Update position
       sprite.setPosition(entity.pos.x, entity.pos.y);
 
-      // Update direction frame (sailship spritesheet)
+      // Update direction frame
       if (entity.kind === "ship") {
-        const dir8 = headingToDir8(entity.heading);
-        sprite.setFrame(DIR8_TO_FRAME[dir8]);
+        if (curMode === "landed") {
+          // Crew sprite: 4 direction frames (D, L, R, U)
+          const dir8 = headingToDir8(entity.heading);
+          const crewFrame = DIR8_TO_CREW_FRAME[dir8];
+          sprite.setFrame(crewFrame);
+        } else {
+          const dir8 = headingToDir8(entity.heading);
+          sprite.setFrame(DIR8_TO_FRAME[dir8]);
+        }
       }
 
       // Depth sort: y + offset
@@ -60,6 +112,9 @@ export class WorldRenderer {
       if (!seenIds.has(id)) {
         sprite.destroy();
         this.entitySprites.delete(id);
+        this.entityModes.delete(id);
+        const anchor = this.anchorSprites.get(id);
+        if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
       }
     }
   }
@@ -78,10 +133,56 @@ export class WorldRenderer {
   }
 
   private createEntitySprite(scene: Phaser.Scene, entity: EntityState, _isPlayer: boolean): Phaser.GameObjects.Sprite {
-    const textureKey = entity.kind === "ship" ? "sailship" : "fx_default";
+    let textureKey = "sailship";
+    if (entity.kind === "ship" && entity.ship) {
+      // Map ship classId to AI-generated spritesheet texture
+      const classId = entity.ship.classId as string;
+      const classToTexture: Record<string, string> = {
+        sloop: "ship_sloop",
+        brigantine: "ship_brigantine",
+        frigate: "ship_frigate",
+        galleon: "ship_galleon",
+        merchantman: "ship_merchant",
+      };
+      const aiKey = classToTexture[classId];
+      if (aiKey && scene.textures.exists(aiKey)) {
+        textureKey = aiKey;
+      }
+    } else if (entity.kind !== "ship") {
+      textureKey = "fx_default";
+    }
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
     if (entity.kind === "ship") sprite.setScale(0.33);
+    return sprite;
+  }
+
+  private createCrewSprite(scene: Phaser.Scene, entity: EntityState): Phaser.GameObjects.Sprite {
+    const key = scene.textures.exists("crew_party") ? "crew_party" : "sailship";
+    const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, key, 0);
+    sprite.setOrigin(0.5, 0.5);
+    sprite.setScale(key === "crew_party" ? 1.0 : 0.2);
+    return sprite;
+  }
+
+  private createShipSprite(scene: Phaser.Scene, entity: EntityState): Phaser.GameObjects.Sprite {
+    let textureKey = "sailship";
+    if (entity.ship) {
+      const classId = entity.ship.classId as string;
+      const classToTexture: Record<string, string> = {
+        sloop: "ship_sloop", brigantine: "ship_brigantine",
+        frigate: "ship_frigate", galleon: "ship_galleon", merchantman: "ship_merchant",
+      };
+      const aiKey = classToTexture[classId];
+      if (aiKey && scene.textures.exists(aiKey)) textureKey = aiKey;
+    }
+    const sprite = scene.add.sprite(0, 0, textureKey, 0);
+    sprite.setOrigin(0.5, 0.5);
+    sprite.setScale(0.33);
+    if (entity.kind === "ship") {
+      const dir8 = headingToDir8(entity.heading);
+      sprite.setFrame(DIR8_TO_FRAME[dir8]);
+    }
     return sprite;
   }
 
@@ -107,13 +208,12 @@ export class WorldRenderer {
   }
 
   destroy(): void {
-    for (const sprite of this.entitySprites.values()) {
-      sprite.destroy();
-    }
+    for (const sprite of this.entitySprites.values()) sprite.destroy();
     this.entitySprites.clear();
-    for (const marker of this.portMarkers.values()) {
-      marker.destroy();
-    }
+    for (const sprite of this.anchorSprites.values()) sprite.destroy();
+    this.anchorSprites.clear();
+    this.entityModes.clear();
+    for (const marker of this.portMarkers.values()) marker.destroy();
     this.portMarkers.clear();
   }
 }

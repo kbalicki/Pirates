@@ -84,6 +84,11 @@ export const EN: LocaleData = {
   "hud.speed": "Spd: {{value}}",
   "hud.pos": "Pos: {{x}},{{y}}",
   "hud.controls": "W/S/Arrows: Sails & Turn  E: Port  SPACE: Menu",
+  "hud.controls_land": "W/S/Arrows: Walk  E: Board ship  SPACE: Menu",
+  "hud.disembark_prompt": "Press L to disembark",
+  "hud.embark_prompt": "Walk to your ship to board it",
+  "hud.embark_ship_prompt": "Press E to board your ship",
+  "hud.mode_land": "ON LAND",
   "hud.crew": "Crew: {{current}}/{{max}}",
   "hud.morale": "Morale: {{pct}}%",
   "hud.cargo": "Cargo: {{current}}/{{max}}",
@@ -144,10 +149,11 @@ export const EN: LocaleData = {
 
   // -- Options Menu --
   "menu.title": "Captain's Log",
-  "menu.tab_cabin": "Captain's Cabin",
-  "menu.tab_calendar": "Calendar & Events",
+  "menu.tab_cabin": "Cabin",
+  "menu.tab_calendar": "Calendar",
   "menu.tab_options": "Options",
-  "menu.tab_map": "Caribbean Map",
+  "menu.tab_save": "Save",
+  "menu.tab_map": "Map",
   "menu.close": "[ CLOSE ]",
   "menu.close_hint": "ESC / SPACE to close",
 
@@ -200,13 +206,22 @@ export const EN: LocaleData = {
   "event.storm_start": "A storm has begun!",
   "event.storm_end": "The storm has passed.",
   "event.day_passed": "Day {{day}} has begun.",
+  "event.disembarked": "Crew has gone ashore.",
+  "event.embarked": "Crew has returned to ship.",
 
   // -- Character Creation --
   "creation.title": "PIRATES CHRONICLES",
   "creation.name_label": "Enter your name, Captain:",
   "creation.era_label": "Choose your era:",
   "creation.era_hint": "Use arrows to select, Enter to confirm",
-  "creation.confirm": "[ SET SAIL ]",
+  "creation.confirm": "LET'S BEGIN",
+  "creation.step2_title": "FORGE YOUR CAPTAIN",
+  "creation.nationality_label": "Country of Origin:",
+  "creation.skills_label": "Skill Points:",
+  "creation.points_remaining": "Points left: {{pts}}",
+  "creation.skill_hint": "+/- to allocate",
+  "creation.back": "BACK",
+  "creation.start_game": "SET SAIL",
 
   // -- Eras --
   "era.silver_empire.name": "The Silver Empire",
@@ -238,7 +253,7 @@ export const EN: LocaleData = {
 
   // -- Tavern --
   "tavern.title": "THE TAVERN",
-  "tavern.recruit_crew": "Recruit Crew ({{cost}} Gold each)",
+  "tavern.recruit_crew": "Recruit Crew (Free)",
   "tavern.hear_rumors": "Hear Rumors",
   "tavern.buy_drinks": "Buy Round of Drinks ({{cost}} Gold)",
   "tavern.back": "[ BACK TO PORT ]",
@@ -321,6 +336,10 @@ export const EN: LocaleData = {
   "rank.label": "Rank: {{rank}}",
   "rank.unknown": "Unknown",
 
+  // -- Sound --
+  "sound.on": "Sound: ON",
+  "sound.off": "Sound: OFF",
+
   // -- Game Speed --
   "speed.label": "Game Speed: {{speed}}",
   "speed.fast": "Fast",
@@ -338,4 +357,40 @@ export const EN: LocaleData = {
   // -- Language --
   "lang.current": "Language: English",
   "lang.switch": "[ Polski ]",
+
+  // -- Settings Tab --
+  "menu.tab_settings": "Options",
+  "settings.title": "QUARTERMASTER'S STASH",
+  "settings.style_label": "Visual Style",
+  "settings.style_hint": "* Restart game for full effect",
+  "settings.pack.basic": "1. Basic — OSM coastlines",
+  "settings.pack.buccaneer": "2. Buccaneer — coming soon",
+  "settings.pack.corsair": "3. Corsair — coming soon",
+
+  // -- Zoom --
+  "settings.zoom_label": "Spyglass",
+  "settings.zoom.far": "Far (overview)",
+  "settings.zoom.normal": "Normal",
+  "settings.zoom.close": "Close-up",
+  "settings.zoom_hint": "* Applies immediately",
+
+  // -- Skills --
+  "skill.fencing": "Fencing",
+  "skill.gunnery": "Gunnery",
+  "skill.navigation": "Navigation",
+  "skill.medicine": "Medicine",
+  "skill.charm": "Charm",
+
+  // -- Captain Tab --
+  "menu.tab_captain": "Captain",
+  "captain.name_label": "Captain {{name}}",
+  "captain.age_label": "Age: {{age}}",
+  "captain.experience_label": "Experience: {{value}}",
+  "captain.nationality_label": "Origin: {{nation}}",
+  "captain.skills_title": "Skills",
+  "captain.ranks_title": "Ranks",
+
+  // -- Changelog --
+  "changelog.title": "CHANGELOG",
+  "changelog.version": "v{{version}} ({{date}})",
 };

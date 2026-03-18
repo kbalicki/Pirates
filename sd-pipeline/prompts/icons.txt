@@ -1,0 +1,43 @@
+# Pirate game icons - 64x64 pixel art
+# Each line = one prompt (lines starting with # are ignored)
+
+treasure chest with gold coins
+rusty iron sword
+wooden pirate shield
+rum bottle
+compass rose
+spyglass telescope
+anchor
+skull and crossbones flag
+rope coil
+cannon
+cannonball pile
+treasure map scroll
+golden key
+ship wheel helm
+lantern oil lamp
+fishing net
+barrel of gunpowder
+pirate hat tricorn
+hook hand
+wooden leg peg
+gold doubloon coin
+silver piece of eight
+emerald gemstone
+ruby gemstone
+sapphire gemstone
+pearl necklace
+ship repair hammer and nails
+sail cloth roll
+wooden plank
+iron chain
+food rations bread and cheese
+water flask
+medical bandage kit
+poison vial
+fire torch
+fishing rod
+harpoon
+grappling hook
+lockpick set
+merchant ledger book

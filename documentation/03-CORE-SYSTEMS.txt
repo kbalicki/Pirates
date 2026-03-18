@@ -1,0 +1,236 @@
+================================================================================
+  03 — SYSTEMY GRY (src/core/systems/)
+================================================================================
+
+1. NAWIGACJA (NavigationSystem.ts)
+--------------------------------------------------------------------------------
+  Odpowiada za fizykę ruchu statków i kolizje z terenem.
+
+  Główna funkcja:
+    updateNavigation(entity, weather, terrainAt, dtTicks) → EntityState
+
+  Obliczanie prędkości:
+    effectiveSpeed = speedBase × sailLevel × windMod × sailsDamageFactor
+
+    windMod = windSpeedModifier(heading, windDir, windStrength)
+      — angleDiff = |heading - windDir|
+      — windAngle ∈ [0, π]
+      — Modifier = 0.7 + 0.8 × cos(windAngle)
+      — Zakres wynikowy: 0.3 (pod wiatr) → 1.5 (z wiatrem)
+
+    sailsDamageFactor = sailsHp / sailsMax (uszkodzone żagle = wolniej)
+
+  Ruch:
+    direction = headingToVec(heading)   — 0=N, π/2=E, π=S, 3π/2=W
+    newPos = oldPos + direction × effectiveSpeed × dtTicks
+
+  Kolizja z terenem (terrainAt query):
+    "land"    → blokada ruchu (nie przesuwaj)
+    "reef"    → 30% prędkości, 0.5 HP/tick obrażeń kadłuba
+    "shallow" → 60% prędkości
+    "sea"     → pełna prędkość
+
+  Skręcanie:
+    applyTurn(entity, "left"|"right", amount) → EntityState
+      — heading ±= amount, ograniczone do turnRate klasy statku
+
+    applySailLevel(entity, value: 0..1) → EntityState
+      — sailLevel = clamp(value, 0, 1)
+
+2. POGODA (WeatherSystem.ts)
+--------------------------------------------------------------------------------
+  Model pogody z mean-reversion i sezonowym szumem.
+
+  updateWeather(weather, rng, dtTicks, month, dayOfMonth, daysInMonth)
+    → { weather: WeatherState, rng: RngState }
+
+  Algorytm:
+    1. Pobierz bazę sezonową: MONTHLY_WIND[month - 1]
+    2. Kierunek wiatru:
+       — target = baseDirection + losowy szum
+       — windDirRad += (target - windDirRad) × DIRECTION_REVERSION_RATE
+       — DIRECTION_REVERSION_RATE = 0.004
+    3. Siła wiatru:
+       — target = baseStrength + losowy szum
+       — windStrength += (target - windStrength) × STRENGTH_REVERSION_RATE
+       — STRENGTH_REVERSION_RATE = 0.006
+    4. Burza:
+       — Szansa: stormChancePerTick × dtTicks
+       — Kiedy aktywna: windStrength += 0.3
+       — Timer odlicza czas trwania burzy
+
+3. EKONOMIA (EconomySystem.ts)
+--------------------------------------------------------------------------------
+  System handlu między graczem a portami.
+
+  executeBuy(world, portId, itemId, qty) → TradeResult
+    Warunki:
+    - gold >= cena × qty
+    - port.inventory[itemId] >= qty
+    - wolne miejsce w ładowni >= weight × qty
+    Efekt: gold -= koszt, cargo[itemId] += qty, port.inventory -= qty
+
+  executeSell(world, portId, itemId, qty) → TradeResult
+    Warunki:
+    - player.cargo[itemId] >= qty
+    Efekt: gold += zarobek, cargo[itemId] -= qty, port.inventory += qty
+
+  Oba emitują event: Trade { itemId, qty, goldDelta }
+
+4. CZAS (TimeSystem.ts)
+--------------------------------------------------------------------------------
+  Kalendarz i zegar gry.
+
+  advanceTime(time, dtTicks) → GameTime
+    — 1 tick = 1 minuta gry
+    — Minuta → godzina → dzień (automatyczne przeliczanie)
+
+  dayToCalendar(gameDay, startYear) → CalendarDate { year, month, dayOfMonth }
+    — Obsługuje lata przestępne
+    — Domyślny startYear: 1690
+
+  isDaytime(time) → boolean
+    — Dzień: godzina >= 6 && godzina < 20
+
+  Stałe:
+    MINUTES_PER_HOUR:  60
+    HOURS_PER_DAY:     24
+    DEFAULT_START_YEAR: 1690
+
+5. WALKA MORSKA (CombatEngine.ts + CombatSystem.ts)
+--------------------------------------------------------------------------------
+  Arena 800×600, izolowana od WorldState.
+
+  CombatEngine.apply(state, commands, dtTicks)
+    → EngineResult<CombatState, CombatEvent>
+
+  Pętla walki:
+    1. Redukuj komendy gracza (skręt, żagle, ogień)
+    2. Przesuń statki (heading, sails, wind modifier)
+    3. Odliczaj cooldowny dział
+    4. Uruchom AI wroga (proste ściganie/ucieczka)
+    5. Sprawdź koniec bitwy (hull <= 0)
+    6. Zwróć eventy: CannonFired, ShipDamaged, BattleEnded
+
+  Stałe:
+    CANNON_COOLDOWN_TICKS:  60    (3 sekundy przy 20 tick/sek)
+    CANNON_RANGE:           160   (units świata)
+    CANNON_DAMAGE_HULL:     8     (HP za salwę)
+    CANNON_DAMAGE_SAILS:    5     (HP za salwę)
+
+  Komendy walki:
+    FireCannons { side: "left"|"right" }
+    CeaseFire
+    AttemptDisengage
+    EndBattleAcknowledge
+
+  Wyniki bitwy: "win", "lose", "disengaged"
+  Po wygranej: loot (złoto, towary)
+
+6. REPUTACJA (ReputationSystem.ts)
+--------------------------------------------------------------------------------
+  System dyplomacji z 5 frakcjami.
+
+  changeReputation(reputation, factionId, delta) → Record
+    — Zakres: [-100, +100]
+
+  getReputationLevel(rep) → string
+    ≤ -60: "hostile"
+    ≤ -20: "unfriendly"
+    < +20: "neutral"
+    < +60: "friendly"
+    ≥ +60: "allied"
+
+  reputationPriceModifier(rep) → number
+    — hostile: ×1.30 (30% drożej)
+    — unfriendly: ×1.15
+    — neutral: ×1.00
+    — friendly: ×0.95
+    — allied: ×0.85 (15% taniej)
+
+7. ZAŁOGA I ZAOPATRZENIE (CrewConsumptionSystem.ts)
+--------------------------------------------------------------------------------
+  Mechanika przetrwania, przeliczana co godzinę gry.
+
+  processCrewConsumption(world) → ConsumptionResult
+
+  Zużycie na członka załogi na godzinę:
+    Jedzenie: 0.1 / 24 = 0.00417 units
+    Woda:     0.15 / 24 = 0.00625 units
+
+  Morale:
+    Brak jedzenia: -0.02/godzinę
+    Brak wody:     -0.03/godzinę
+    Nakarmieni:    +0.005/godzinę (regeneracja)
+
+  Śmierć załogi:
+    Próg morale:   0.2 (poniżej zaczyna ginąć)
+    Tempo śmierci: 2% załogi na godzinę
+    Ostrzeżenie:   po 3 dniach braku zapasów
+
+  hourBoundaryCrossed(oldTime, newTime) → boolean
+    — Sprawdza czy przekroczono granicę godziny/dnia
+
+8. ENCOUNTERS (EncounterSystem.ts)
+--------------------------------------------------------------------------------
+  Losowe spotkania na morzu.
+
+  checkEncounters(world, playerPos, dtTicks) → { events, rng }
+
+  Algorytm:
+    Dla każdej strefy w MAP_ZONES:
+      Jeśli gracz jest w rect strefy:
+        prawdopodobieństwo = zone.risk × 0.001 × dtTicks
+        Jeśli losowanie < prawdopodobieństwo:
+          Emituj Encounter { kind: "pirate"|"navy_patrol"|"storm" }
+          break (max 1 encounter na tick)
+
+  Typy encounters:
+    "pirate"       — atak piratów
+    "navy_patrol"  — patrol marynarki
+    "storm"        — burza na morzu
+
+9. LOG WYDARZEŃ (EventLogSystem.ts)
+--------------------------------------------------------------------------------
+  Historia zdarzeń (max 200 wpisów).
+
+  addLogEntry(world, key, vars?) → WorldState
+    — Dodaje wpis z timestampem i kluczem i18n
+
+  getRecentEvents(world, count) → GameEventEntry[]
+  getEventsForDay(world, day) → GameEventEntry[]
+
+10. INTERAKCJE W PORCIE (PortInteractionSystem.ts)
+--------------------------------------------------------------------------------
+  Mechaniki portowe:
+
+  requestLetterOfMarque(world, factionId) → GovernorResult
+    — Wymaga reputacji >= "friendly" (20)
+    — Ustawia worldFlag, loguje event
+
+  generateAvailableCrew(world, portId) → WorldState
+    — Losowa ilość rekrutów wg populacji:
+      small: 2-10, medium: 5-15, large: 10-25, capital: 10-30
+
+  recruitCrew(world, portId, count) → GovernorResult
+    — Dodaje do crew.current
+
+  buyRoundOfDrinks(world, portId) → GovernorResult
+    — Koszt: 10 złota, morale: +0.15
+
+  repairShip(world, portId, amount) → GovernorResult
+    — Koszt: 2 złota za 1 HP
+
+  buyShip(world, portId, newClassId) → GovernorResult
+    — Koszt: cena nowego - wartość starego
+
+  getRumorKey(world, portId, rng) → string
+    — Losowa plotka z tawerny (klucz i18n)
+
+  Dostępność stoczni (SHIPYARD_TIERS):
+    Tier 1: [sloop]
+    Tier 2: [sloop, brigantine, merchantman]
+    Tier 3: [sloop, brigantine, merchantman, frigate]
+    Tier 4: [sloop, brigantine, merchantman, frigate, galleon]
+
+================================================================================

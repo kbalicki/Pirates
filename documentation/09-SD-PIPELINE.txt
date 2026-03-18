@@ -1,0 +1,426 @@
+================================================================================
+  09 — PIPELINE GENEROWANIA ASSETÓW (sd-pipeline/)
+================================================================================
+
+  Pipeline do generowania assetów 2D przy użyciu Stable Diffusion.
+  Dwa narzędzia: ComfyUI (szybkie) i Tiled Diffusion (seamless).
+
+================================================================================
+  CZĘŚĆ A: COMFYUI PIPELINE
+================================================================================
+
+1. WYMAGANIA
+--------------------------------------------------------------------------------
+  ComfyUI:     0.3.68+ zainstalowany w C:\AI\ComfyUI
+  Python:      3.10.6 (C:\AI\ComfyUI\venv\)
+  PyTorch:     2.5.1+cu121
+  GPU:         NVIDIA GTX 1060 6GB
+  Checkpoint:  DreamShaper 8 (dreamshaper_8.safetensors, ~2 GB)
+               Lokalizacja: C:\AI\ComfyUI\models\checkpoints\
+  Custom Nodes:
+    - ComfyUI-Manager (C:\AI\ComfyUI\custom_nodes\ComfyUI-Manager\)
+    - ComfyUI-TiledDiffusion (C:\AI\ComfyUI\custom_nodes\ComfyUI-TiledDiffusion\)
+
+2. URUCHAMIANIE COMFYUI
+--------------------------------------------------------------------------------
+  Metoda 1 (bat):
+    C:\AI\start_comfyui.bat
+    — Uruchamia python main.py --listen 0.0.0.0 --port 8188
+    — Otwiera przeglądarkę na http://127.0.0.1:8188/
+
+  Metoda 2 (bezpośrednia):
+    cd C:\AI\ComfyUI
+    C:\AI\ComfyUI\venv\Scripts\python.exe main.py --listen 0.0.0.0 --port 8188
+
+  Weryfikacja:
+    Invoke-RestMethod http://127.0.0.1:8188/system_stats
+
+3. COMFYUI REST API
+--------------------------------------------------------------------------------
+  Baza: http://127.0.0.1:8188
+
+  Endpointy:
+
+  GET /system_stats
+    → Informacje o systemie, GPU, VRAM
+    Przykład odpowiedzi:
+    {
+      "system": {
+        "os": "nt",
+        "comfyui_version": "0.3.68",
+        "python_version": "3.10.6",
+        "pytorch_version": "2.5.1+cu121"
+      },
+      "devices": [{
+        "name": "cuda:0 NVIDIA GeForce GTX 1060 6GB",
+        "vram_total": 6442319872,
+        "vram_free": 5453643776
+      }]
+    }
+
+  POST /prompt
+    Body: { "prompt": <workflow_json> }
+    → Zwraca: { "prompt_id": "uuid" }
+    — Wysyła workflow do kolejki generowania
+
+  GET /history/{prompt_id}
+    → Status i wyniki generowania
+    — Polluj aż .status.completed == true
+    — Wyniki w .outputs.{node_id}.images[]
+
+  GET /view?filename={name}&subfolder={subfolder}
+    → Pobierz wygenerowany obraz (PNG)
+
+  GET /queue
+    → Stan kolejki (running, pending)
+
+  POST /interrupt
+    → Przerwij bieżące generowanie
+
+4. SKRYPT GENERATE.PS1
+--------------------------------------------------------------------------------
+  Lokalizacja: sd-pipeline\tools\generate.ps1
+
+  Parametry:
+    -Prompt       string    Pojedynczy prompt tekstowy
+    -PromptsFile  string    Plik z promptami (batch mode)
+    -Workflow      string    Ścieżka do workflow JSON
+                             (domyślnie: workflows\icon_64x64.json)
+    -OutputDir     string    Katalog wyjściowy
+                             (domyślnie: assets_raw)
+    -Seed          int       Seed (-1 = losowy)
+    -ComfyUrl      string    URL API (domyślnie: http://127.0.0.1:8188)
+
+  Przepływ:
+    1. Sprawdź czy ComfyUI działa (GET /system_stats)
+    2. Załaduj workflow JSON
+    3. Dla każdego promptu:
+       a. Zastąp {prompt} w workflow
+       b. Ustaw seed (losowy lub podany)
+       c. POST /prompt → prompt_id
+       d. Poll GET /history/{prompt_id} co 2s (timeout: 300s)
+       e. GET /view → pobierz PNG
+       f. Zapisz PNG + JSON metadane
+
+  Wyjście (per obraz):
+    {timestamp}_{safe_prompt_name}.png  — wygenerowany obraz
+    {timestamp}_{safe_prompt_name}.json — metadane:
+    {
+      "prompt": "oryginalny prompt",
+      "seed": 505331012,
+      "workflow": "icon_64x64.json",
+      "model": "dreamshaper_8.safetensors",
+      "timestamp": "2026-02-19T12:39:07",
+      "source_file": "icon_00001_.png",
+      "output_png": "20260219_123907_treasure_chest.png"
+    }
+
+  Przykłady użycia:
+
+    # Pojedynczy obraz
+    .\sd-pipeline\tools\generate.ps1 `
+      -Prompt "pixel art treasure chest, top-down" `
+      -OutputDir ".\sd-pipeline\assets_raw\test"
+
+    # Batch ikon
+    .\sd-pipeline\tools\generate.ps1 `
+      -PromptsFile ".\sd-pipeline\prompts\icons.txt" `
+      -Workflow ".\sd-pipeline\workflows\icon_64x64.json" `
+      -OutputDir ".\sd-pipeline\assets_raw\icons"
+
+    # Statki
+    .\sd-pipeline\tools\generate.ps1 `
+      -PromptsFile ".\sd-pipeline\prompts\ships.txt" `
+      -Workflow ".\sd-pipeline\workflows\ship_sprite.json" `
+      -OutputDir ".\sd-pipeline\assets_raw\ships"
+
+    # Tilesy
+    .\sd-pipeline\tools\generate.ps1 `
+      -PromptsFile ".\sd-pipeline\prompts\tiles.txt" `
+      -Workflow ".\sd-pipeline\workflows\tile_32x32.json" `
+      -OutputDir ".\sd-pipeline\assets_raw\tiles"
+
+    # Z konkretnym seedem (reprodukowalność)
+    .\sd-pipeline\tools\generate.ps1 `
+      -Prompt "pirate ship galleon" `
+      -Seed 42 `
+      -Workflow ".\sd-pipeline\workflows\ship_sprite.json"
+
+  Czas generowania: ~22 sekundy / obraz na GTX 1060 6GB
+
+5. WORKFLOW JSON — FORMAT API
+--------------------------------------------------------------------------------
+  Każdy workflow to słownik node'ów ComfyUI w formacie API.
+
+  Struktura node'a:
+    "{id}": {
+      "class_type": "NazwaKlasyNode",
+      "inputs": {
+        "parametr": wartość,
+        "połączenie": ["{id_źródła}", indeks_wyjścia]
+      }
+    }
+
+  Typowy pipeline:
+    CheckpointLoaderSimple → CLIPTextEncode (positive)
+                           → CLIPTextEncode (negative)
+    EmptyLatentImage       → KSampler → VAEDecode → [ImageScale] → SaveImage
+
+  Placeholder: {prompt} w tekście positive CLIPTextEncode
+  — zastępowany przez generate.ps1 przed wysłaniem
+
+6. DOSTĘPNE WORKFLOW
+--------------------------------------------------------------------------------
+
+  icon_64x64.json
+    Wejście:     512×512
+    Wyjście:     64×64 (nearest-exact resize)
+    Kroki:       25
+    CFG:         7.0
+    Sampler:     euler_ancestral
+    Prompt tpl:  "pixel art {prompt}, 16-bit style, top-down view,
+                  transparent background, clean edges, game icon, high contrast"
+    Negative:    "blurry, 3d render, photo, realistic, watermark, text,
+                  low quality, deformed"
+
+  tile_32x32.json
+    Wejście:     512×512
+    Wyjście:     32×32 (nearest-exact resize)
+    Kroki:       25
+    CFG:         7.0
+    Prompt tpl:  "pixel art {prompt}, seamless tileable texture, 16-bit style,
+                  top-down view, game tile, uniform lighting"
+
+  ship_sprite.json
+    Wejście:     512×512
+    Wyjście:     512×512 (bez resize)
+    Kroki:       30
+    CFG:         7.5
+    Prompt tpl:  "pixel art {prompt}, 16-bit style, side view, pirate ship
+                  sprite, wooden hull, sails, clean edges, dark ocean background"
+
+  map_bg.json
+    Wejście:     512×512
+    Wyjście:     512×512
+    Kroki:       30
+    CFG:         7.0
+    Prompt tpl:  "pixel art {prompt}, 16-bit style, top-down view, game map
+                  background, caribbean sea, ocean texture, seamless"
+
+7. PLIKI PROMPTÓW
+--------------------------------------------------------------------------------
+  Format: jeden prompt na linię, linie z # to komentarze.
+
+  prompts/icons.txt       — 40 promptów ikon (skrzynia, miecz, kompas...)
+  prompts/tiles.txt       — 20 promptów tile'ów (ocean, plaża, dżungla...)
+  prompts/ships.txt       — 5 promptów statków (sloop → galleon)
+  prompts/backgrounds.txt — 6 promptów tła (karaibskie morze, porty, burza...)
+
+================================================================================
+  CZĘŚĆ B: TILED DIFFUSION (madaror/tiled-diffusion)
+================================================================================
+
+8. CZYM JEST TILED DIFFUSION
+--------------------------------------------------------------------------------
+  Standalone Python tool (CVPR 2025) do generowania seamless tileable obrazów.
+  Repo: https://github.com/madaror/tiled-diffusion
+  Sklonowane do: sd-pipeline\tools\tiled-diffusion\
+
+  Kluczowa różnica vs ComfyUI:
+  - ComfyUI generuje zwykłe obrazy (mogą nie być seamless)
+  - Tiled Diffusion GWARANTUJE perfekcyjne seamless tiling
+  - Wolniejsze (~28 min/obraz vs ~22 sek), ale wynik kafelkuje idealnie
+
+  Zastosowania:
+  - Seamless tilesy mapy (32×32)
+  - Animacja wody (seamless looping GIF)
+  - Duże seamless tekstury (tła)
+
+9. TRYBY KAFELKOWANIA
+--------------------------------------------------------------------------------
+
+  "self" — Obraz kafelkuje SAM ZE SOBĄ na obu osiach (domyślny)
+    side_id:  [1, 1, 2, 2]   → R-L sparowane, U-D sparowane
+    side_dir: ["cw", "ccw", "cw", "ccw"]
+    Użycie:   Tilesy terenu, tekstury wody, tła
+
+  "x" — Kafelkuje tylko HORYZONTALNIE
+    side_id:  [1, 1, None, None]
+    Użycie:   Paski panoramiczne, horyzonty
+
+  "y" — Kafelkuje tylko WERTYKALNIE
+    side_id:  [None, None, 1, 1]
+    Użycie:   Kolumny, pionowe wzory
+
+  Zaawansowane (programowe):
+  - One-to-one: dwa obrazy łączą się ze sobą
+  - Many-to-many: wiele obrazów z tymi samymi ID krawędzi
+
+10. SKRYPT GENERATE_TILED.PS1
+--------------------------------------------------------------------------------
+  Lokalizacja: sd-pipeline\tools\generate_tiled.ps1
+
+  Parametry:
+    -Prompt        string    Pojedynczy prompt
+    -PromptsFile   string    Plik z promptami (batch)
+    -OutputDir     string    Katalog wyjściowy (domyślnie: assets_raw)
+    -Resize        int       Docelowy rozmiar (np. 32 dla tile'ów)
+    -Tiling        string    "self"|"x"|"y" (domyślnie: "self")
+    -Mode          string    "image"|"gif"|"both" (domyślnie: "image")
+    -GifDirection  string    "left"|"right"|"up"|"down"|"top_left"|
+                             "bottom_left"|"top_right"|"bottom_right"
+    -GifFrames     int       Klatki GIF (domyślnie: 40)
+    -GifSize       int       Rozmiar GIF (domyślnie: 128)
+    -Steps         int       Kroki denoising (domyślnie: 40)
+    -Cfg           float     CFG scale (domyślnie: 7.5)
+    -Seed          int       Seed (-1 = losowy)
+    -NoPixelArt    switch    Wyłącz automatyczny suffix "pixel art"
+
+  Przykłady:
+
+    # Seamless tile 32×32
+    .\sd-pipeline\tools\generate_tiled.ps1 `
+      -Prompt "ocean water texture" `
+      -Resize 32 `
+      -OutputDir ".\sd-pipeline\assets_raw\tiles"
+
+    # Animacja wody GIF
+    .\sd-pipeline\tools\generate_tiled.ps1 `
+      -Prompt "ocean water waves" `
+      -Mode gif `
+      -GifDirection right `
+      -GifFrames 40 `
+      -GifSize 128 `
+      -OutputDir ".\sd-pipeline\assets_raw\water"
+
+    # Obraz + GIF razem
+    .\sd-pipeline\tools\generate_tiled.ps1 `
+      -Prompt "tropical sea" `
+      -Mode both `
+      -OutputDir ".\sd-pipeline\assets_raw\water"
+
+    # Szybszy tryb (mniej kroków)
+    .\sd-pipeline\tools\generate_tiled.ps1 `
+      -Prompt "sandy beach" `
+      -Resize 32 `
+      -Steps 15 `
+      -OutputDir ".\sd-pipeline\assets_raw\tiles"
+
+    # Batch z pliku
+    .\sd-pipeline\tools\generate_tiled.ps1 `
+      -PromptsFile ".\sd-pipeline\prompts\tiles.txt" `
+      -Resize 32 `
+      -Steps 20 `
+      -OutputDir ".\sd-pipeline\assets_raw\tiles"
+
+  Czas generowania: ~28 minut / obraz (25 kroków) na GTX 1060 6GB
+  Tip: Zmniejsz -Steps do 15 → ~17 minut (niższa jakość)
+
+11. PARAMETRY TECHNICZNE TILED DIFFUSION
+--------------------------------------------------------------------------------
+  Model:              Stable Diffusion 1.5 (runwayml/stable-diffusion-v1-5)
+  Scheduler:          DDPM (domyślny) lub DDIM
+  max_width:          32 (szerokość kontekstu latentowego — większa = lepsze
+                          tiling, ale wolniejsze i więcej VRAM)
+  max_replica_width:  5 (region podobieństwa krawędzi)
+  strength:           0.92 (dla img2img)
+  cfg_scale:          7.5
+
+  Automatyczny suffix promptu (gdy --pixel-art):
+    ", pixel art, 16-bit style, top-down view, game texture, clean edges"
+
+  Negative prompt (domyślny):
+    "blurry, 3d render, photo, realistic, watermark, text, low quality,
+     deformed, border, frame, ugly"
+
+  Wyjście:
+    {timestamp}_{safe_name}.png  — obraz
+    {timestamp}_{safe_name}.json — metadane
+    {timestamp}_{safe_name}.gif  — (jeśli mode=gif/both)
+
+12. SKRYPT PYTHON GENERATE_TILED.PY
+--------------------------------------------------------------------------------
+  Lokalizacja: sd-pipeline\tools\generate_tiled.py
+  Python:      C:\AI\ComfyUI\venv\Scripts\python.exe
+
+  Pełna lista argumentów CLI:
+    --prompt TEXT           Pojedynczy prompt
+    --prompts-file PATH    Plik z promptami
+    --negative TEXT         Negative prompt (nadpisuje domyślny)
+    --output PATH           Katalog wyjściowy
+    --resize INT            Resize wynikowy (np. 32)
+    --tiling self|x|y       Tryb kafelkowania
+    --width INT             Szerokość generacji (domyślnie: 512)
+    --height INT            Wysokość generacji (domyślnie: 512)
+    --steps INT             Kroki denoising (domyślnie: 40)
+    --cfg FLOAT             CFG scale (domyślnie: 7.5)
+    --seed INT              Seed (-1 = losowy)
+    --max-width INT         Kontekst latentowy (domyślnie: 32)
+    --max-replica-width INT Region krawędzi (domyślnie: 5)
+    --strength FLOAT        Siła img2img (domyślnie: 0.92)
+    --scheduler ddpm|ddim   Scheduler (domyślnie: ddpm)
+    --pixel-art             Dodaj suffix pixel art (domyślnie: włączony)
+    --no-pixel-art          Wyłącz suffix
+    --mode image|gif|both   Tryb wyjścia
+    --gif-direction STR     Kierunek animacji GIF
+    --gif-duration INT      Czas GIF w ms (domyślnie: 5000)
+    --gif-frames INT        Klatki GIF (domyślnie: 40)
+    --gif-size INT          Rozmiar GIF (domyślnie: 128)
+
+================================================================================
+  CZĘŚĆ C: STRUKTURA I GITIGNORE
+================================================================================
+
+13. STRUKTURA KATALOGÓW SD-PIPELINE
+--------------------------------------------------------------------------------
+  sd-pipeline/
+  ├── README.md                    — dokumentacja skrócona
+  ├── workflows/
+  │   ├── icon_64x64.json          — workflow: ikony 64×64
+  │   ├── tile_32x32.json          — workflow: tilesy 32×32
+  │   ├── ship_sprite.json         — workflow: sprite'y statków
+  │   └── map_bg.json              — workflow: tła mapy
+  ├── prompts/
+  │   ├── icons.txt                — 40 promptów ikon
+  │   ├── tiles.txt                — 20 promptów tile'ów
+  │   ├── ships.txt                — 5 promptów statków
+  │   └── backgrounds.txt          — 6 promptów tła
+  ├── tools/
+  │   ├── generate.ps1             — skrypt ComfyUI (PowerShell)
+  │   ├── generate_tiled.ps1       — wrapper Tiled Diffusion (PowerShell)
+  │   ├── generate_tiled.py        — skrypt Tiled Diffusion (Python)
+  │   └── tiled-diffusion/         — sklonowane repo (w .gitignore)
+  ├── assets_raw/                  — surowe outputy (PNG w .gitignore, JSON tracked)
+  └── assets_game/                 — assety gotowe do gry
+
+14. GITIGNORE
+--------------------------------------------------------------------------------
+  sd-pipeline/assets_raw/**/*.png      — surowe PNG (duże pliki)
+  sd-pipeline/assets_game/**/*.png     — gotowe PNG
+  sd-pipeline/assets_raw/**/*.gif      — GIFy
+  !sd-pipeline/assets_raw/**/*.json    — metadane JSON — TRACKED
+  sd-pipeline/tools/tiled-diffusion/   — sklonowane repo
+  sd-pipeline/tools/_*.ps1             — tymczasowe skrypty testowe
+
+15. PORÓWNANIE NARZĘDZI
+--------------------------------------------------------------------------------
+  ┌────────────────────┬──────────────────┬───────────────────────┐
+  │                    │ ComfyUI          │ Tiled Diffusion       │
+  │                    │ (generate.ps1)   │ (generate_tiled.ps1)  │
+  ├────────────────────┼──────────────────┼───────────────────────┤
+  │ Czas / obraz       │ ~22 sekund       │ ~28 minut             │
+  │ Seamless tiling    │ Nie gwarantowane │ Gwarantowane          │
+  │ Model              │ DreamShaper 8    │ SD 1.5 (HuggingFace)  │
+  │ API                │ REST (port 8188) │ Lokalne (Python)      │
+  │ GIF animacje       │ Nie              │ Tak (8 kierunków)     │
+  │ Batch              │ Tak              │ Tak                   │
+  │ GPU VRAM           │ ~3-4 GB          │ ~5-6 GB               │
+  │ Użycie             │ Ikony, statki,   │ Tilesy, tekstury,     │
+  │                    │ szybkie assety   │ animacje wody         │
+  └────────────────────┴──────────────────┴───────────────────────┘
+
+  Rekomendacja:
+  - Ikony, statki, tła jednorazowe → ComfyUI (szybko)
+  - Seamless tilesy, animacje wody → Tiled Diffusion (jakość)
+
+================================================================================

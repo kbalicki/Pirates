@@ -17,7 +17,9 @@ export type WorldCommand =
   | { type: "StartSeaBattle"; enemyEntityId: EntityId }
   | { type: "SaveGame"; slotId: SaveSlotId }
   | { type: "LoadGame"; slotId: SaveSlotId }
-  | { type: "NewGame"; seed: number };
+  | { type: "NewGame"; seed: number }
+  | { type: "Disembark" }
+  | { type: "Embark" };
 
 export type CombatCommand =
   | { type: "SetSailLevel"; value: number }

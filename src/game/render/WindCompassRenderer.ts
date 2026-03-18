@@ -48,6 +48,14 @@ export class WindCompassRenderer {
     this.windLabel.setDepth(9100);
   }
 
+  reposition(camWidth: number): void {
+    this.cx = camWidth - COMPASS_MARGIN - 40;
+    this.cy = COMPASS_MARGIN + 40;
+    this.roseSprite.setPosition(this.cx, this.cy);
+    this.needleSprite.setPosition(this.cx, this.cy);
+    this.windLabel.setPosition(this.cx, this.cy + (40 * ROSE_SCALE) + 4);
+  }
+
   update(windDirRad: number, windStrength: number): void {
     // Rotate needle to point in wind direction
     // windDirRad: 0=N, PI/2=E, PI=S, 3PI/2=W (clockwise from north)

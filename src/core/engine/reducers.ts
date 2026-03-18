@@ -3,6 +3,7 @@ import type { EntityState } from "../model/EntityState.ts";
 import type { WorldCommand } from "../model/Commands.ts";
 import type { WorldEvent, Transition } from "../model/Events.ts";
 import { applyTurn, applySailLevel } from "../systems/NavigationSystem.ts";
+import { normalizeHeading } from "../services/Geometry.ts";
 import { executeBuy, executeSell } from "../systems/EconomySystem.ts";
 import { PORTS } from "../data/ports.ts";
 import { vec2Dist } from "../services/Geometry.ts";
@@ -74,12 +75,21 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
 
     case "ExitPort": {
       const exitPortDef = PORTS[world.player.location.portId as string];
+      // Place ship at the port's position so it spawns near the port on the map
+      const exitPos = exitPortDef ? exitPortDef.pos : world.player.location.pos;
+      const updatedEntity: EntityState = {
+        ...playerEntity,
+        pos: { ...exitPos },
+        vel: { x: 0, y: 0 },
+        sailLevel: 0,
+      };
       newWorld = {
         ...world,
         player: {
           ...world.player,
-          location: { type: "sea", pos: world.player.location.pos },
+          location: { type: "sea", pos: exitPos },
         },
+        entities: { ...world.entities, [world.player.shipId as string]: updatedEntity },
       };
       if (exitPortDef) {
         newWorld = addLogEntry(newWorld, "event.departed", { port: exitPortDef.name });
@@ -128,6 +138,65 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
     case "StartSeaBattle": {
       events.push({ type: "BattleStarted", enemyId: cmd.enemyEntityId });
       transitions.push({ type: "GoToScene", scene: "SeaBattle", payload: { enemyId: cmd.enemyEntityId } });
+      break;
+    }
+
+    case "Disembark": {
+      if (playerEntity.mode === "landed") break; // already on land
+      // Must be stopped (near coastline — velocity zeroed by land collision)
+      const speed = Math.sqrt(playerEntity.vel.x ** 2 + playerEntity.vel.y ** 2);
+      if (speed > 0.1) break; // must be nearly stopped
+      const updated: EntityState = {
+        ...playerEntity,
+        mode: "landed",
+        anchorPos: { ...playerEntity.pos },
+        sailLevel: 0,
+        vel: { x: 0, y: 0 },
+      };
+      newWorld = {
+        ...world,
+        entities: { ...world.entities, [world.player.shipId as string]: updated },
+      };
+      newWorld = addLogEntry(newWorld, "event.disembarked");
+      break;
+    }
+
+    case "Embark": {
+      if (playerEntity.mode !== "landed") break; // already sailing
+      // Return to ship anchor position
+      const anchorPos = playerEntity.anchorPos ?? playerEntity.pos;
+      // Heading will be corrected by WorldEngine using terrain query (findOpenSeaHeading)
+      // For now set a fallback heading pointing from crew → anchor (rough seaward direction)
+      const edx = anchorPos.x - playerEntity.pos.x;
+      const edy = anchorPos.y - playerEntity.pos.y;
+      const elen = Math.sqrt(edx * edx + edy * edy);
+      const fallbackHeading = elen > 0.1
+        ? normalizeHeading(Math.atan2(edx, -edy))
+        : playerEntity.heading;
+      // Push anchor further from land in seaward direction to prevent instant re-landing
+      const pushDist = 15;
+      const pushX = Math.sin(fallbackHeading) * pushDist;
+      const pushY = -Math.cos(fallbackHeading) * pushDist;
+      const safeAnchor = { x: anchorPos.x + pushX, y: anchorPos.y + pushY };
+      const updated: EntityState = {
+        ...playerEntity,
+        mode: "sailing",
+        pos: safeAnchor,
+        heading: fallbackHeading,
+        anchorPos: undefined,
+        sailLevel: 0.34, // start moving immediately away from land
+        vel: { x: 0, y: 0 },
+        embarkTick: world.time.tick, // grace period marker
+      };
+      newWorld = {
+        ...world,
+        entities: { ...world.entities, [world.player.shipId as string]: updated },
+        player: {
+          ...world.player,
+          location: { ...world.player.location, pos: anchorPos },
+        },
+      };
+      newWorld = addLogEntry(newWorld, "event.embarked");
       break;
     }
 

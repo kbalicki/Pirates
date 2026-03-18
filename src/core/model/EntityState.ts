@@ -27,14 +27,21 @@ export type AiData = {
   awarenessRadius: number; // in world units
 };
 
+export type EntityMode = "sailing" | "landed";
+
 export type EntityState = {
   id: EntityId;
   kind: "ship" | "fleet" | "fx";
+  mode: EntityMode;
   pos: Vec2;
   vel: Vec2;
   heading: HeadingRad;
   sailLevel: number; // 0..1
   depthOffset: number;
+  /** When landed, the ship stays anchored here. */
+  anchorPos?: Vec2;
   ship?: ShipData;
   ai?: AiData;
+  /** Tick when crew last embarked — used for grace period to prevent instant re-landing. */
+  embarkTick?: number;
 };

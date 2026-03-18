@@ -1,0 +1,15 @@
+{
+  "prompt": "deep ocean water dark blue waves",
+  "full_prompt": "deep ocean water dark blue waves, pixel art, 16-bit style, top-down view, game texture, clean edges",
+  "negative_prompt": "blurry, 3d render, photo, realistic, watermark, text, low quality, deformed, border, frame, ugly",
+  "seed": 298819771,
+  "steps": 25,
+  "cfg_scale": 7.5,
+  "tiling_mode": "self",
+  "size": "512x512",
+  "resize": 32,
+  "model": "stable-diffusion-v1-5",
+  "tool": "tiled-diffusion",
+  "timestamp": "2026-02-19T13:26:24.391439",
+  "output_png": "20260219_132624_deep_ocean_water_dark_blue_waves.png"
+}

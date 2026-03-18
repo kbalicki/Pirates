@@ -1,0 +1,119 @@
+================================================================================
+  01 — ARCHITEKTURA PROJEKTU
+================================================================================
+
+1. STACK TECHNOLOGICZNY
+--------------------------------------------------------------------------------
+  Runtime:      Phaser 3.87.0 (silnik gry 2D, Canvas/WebGL)
+  Język:        TypeScript 5.9.3 (strict mode)
+  Bundler:      Vite 7.3.1 (dev server na localhost:3000)
+  Baza danych:  IndexedDB via idb 8.0.2 (zapis gry)
+  Rozdzielczość: 800×600, pixelArt: true, roundPixels: true
+  Fizyka:       Arcade (gravity: 0, top-down perspective)
+  Skalowanie:   Phaser.Scale.FIT + CENTER_BOTH
+
+2. STRUKTURA KATALOGÓW
+--------------------------------------------------------------------------------
+  C:\GIT\PiratesChronicles\
+  ├── src/
+  │   ├── core/                 ← Czysta logika gry (bez zależności od Phaser)
+  │   │   ├── data/             ← Definicje statyczne (statki, porty, frakcje...)
+  │   │   ├── model/            ← Typy: WorldState, EntityState, Commands, Events
+  │   │   ├── engine/           ← WorldEngine, CombatEngine, reducery
+  │   │   ├── systems/          ← Systemy: nawigacja, pogoda, ekonomia, walka...
+  │   │   ├── services/         ← Usługi: RNG, geometria, pathfinding, walidacja
+  │   │   └── i18n/             ← Tłumaczenia (en, pl)
+  │   ├── game/                 ← Warstwa Phaser (rendering, input, UI)
+  │   │   ├── scenes/           ← 11 scen gry
+  │   │   ├── render/           ← Renderery: WorldRenderer, TileMapBuilder...
+  │   │   ├── input/            ← InputMapper, CommandQueue
+  │   │   └── ui/               ← Style tekstu
+  │   ├── persistence/          ← System zapisu/odczytu gry
+  │   ├── main.ts               ← Bootstrap (ładowanie fontu → launchGame)
+  │   └── version.ts            ← APP_VERSION = "0.8.2"
+  ├── public/
+  │   └── assets/               ← Zasoby gry (sprite'y, audio, fonty, ikony)
+  ├── sd-pipeline/              ← Pipeline AI do generowania assetów 2D
+  ├── documentation/            ← Ten katalog
+  ├── index.html                ← Punkt wejścia (#game-container)
+  ├── package.json              ← Zależności i skrypty npm
+  ├── tsconfig.json             ← Konfiguracja TypeScript
+  └── vite.config.ts            ← Konfiguracja Vite
+
+3. WZORZEC ARCHITEKTONICZNY
+--------------------------------------------------------------------------------
+  Projekt stosuje architekturę warstwową z czystym podziałem:
+
+  ┌─────────────────────────────────────────────────────┐
+  │                    GAME LAYER                        │
+  │  Phaser sceny, renderery, input, UI                 │
+  │  (src/game/)                                        │
+  ├─────────────────────────────────────────────────────┤
+  │                    CORE LAYER                        │
+  │  Czysta logika: engine, systemy, dane               │
+  │  (src/core/) — ZERO zależności od Phaser            │
+  ├─────────────────────────────────────────────────────┤
+  │                  PERSISTENCE LAYER                   │
+  │  IndexedDB, serializacja, migracje                  │
+  │  (src/persistence/)                                 │
+  └─────────────────────────────────────────────────────┘
+
+  Zasada: Core NIGDY nie importuje z Game ani Persistence.
+  Game importuje z Core. Persistence importuje z Core (model).
+
+4. PRZEPŁYW DANYCH (GAME LOOP)
+--------------------------------------------------------------------------------
+  Główna pętla działa w MainMapScene z tickrate = 20 ticks/sek:
+
+  1. InputMapper zbiera klawisze → WorldCommand[]
+  2. CommandQueue buforuje komendy
+  3. WorldEngine.apply(state, commands, dtTicks) →
+     a. Redukuje komendy (reducers.ts)
+     b. Aktualizuje czas (TimeSystem)
+     c. Przetwarza konsumpcję załogi (CrewConsumptionSystem)
+     d. Aktualizuje pogodę (WeatherSystem)
+     e. Nawigacja gracza (NavigationSystem)
+     f. AI encji (zachowania: trader, pirate, navy)
+     g. Sprawdza encounters (EncounterSystem)
+     → Zwraca: EngineResult { state, events, transitions }
+  4. WorldRenderer.sync() aktualizuje sprite'y
+  5. WorldRenderer.applyEvents() przetwarza efekty wizualne
+  6. CameraController.update() podąża za graczem (lerp 0.08)
+  7. HUD aktualizuje: złoto, datę, załogę, wiatr
+
+  Tranzycje scen (np. wejście do portu, bitwa morska):
+  - Engine zwraca Transition { type: "GoToScene", scene, payload }
+  - MainMapScene startuje odpowiednią scenę
+
+5. SYSTEM KOMEND
+--------------------------------------------------------------------------------
+  Gra używa wzorca Command Pattern:
+
+  Gracz → InputMapper → CommandQueue → WorldEngine → EngineResult
+                                                    ↓
+                                              WorldState (nowy)
+                                              WorldEvent[]
+                                              Transition[]
+
+  Komendy WorldCommand:
+    SetSailLevel, Turn, SetHeading, Interact, EnterPort, ExitPort,
+    TradeBuy, TradeSell, RepairShip, AcceptQuest, AbandonQuest,
+    StartEncounterResolution, StartSeaBattle, SaveGame, LoadGame, NewGame
+
+  Komendy CombatCommand:
+    SetSailLevel, Turn, FireCannons, CeaseFire, AttemptDisengage,
+    EndBattleAcknowledge
+
+6. TWORZENIE NOWEGO ŚWIATA
+--------------------------------------------------------------------------------
+  Funkcja: createNewWorldState(seed, playerName, eraId, startYear)
+  Lokalizacja: src/game/GameApp.ts
+
+  Inicjalizuje:
+  - 45 portów z cenami i inwentarzem (initPortPrices, initPortInventory)
+  - Gracza ze Sloop'em przy Nassau, 500 złota, zapasy jedzenia/wody
+  - Czas startowy: dzień 1, godzina 08:00
+  - Pogoda: wiatr NW, siła 0.5
+  - Prędkość gry: 1.2 (normal)
+
+================================================================================

@@ -1,5 +1,6 @@
 import type { EntityId, PortId, FactionId, QuestId } from "./ids.ts";
 import type { EntityState } from "./EntityState.ts";
+import type { CaptainProfile } from "./CaptainState.ts";
 
 export type Vec2 = { x: number; y: number };
 export type HeadingRad = number; // 0..2π
@@ -79,6 +80,7 @@ export type WorldState = {
   eraId: string;
   startYear: number;
   gameSpeed: number; // time minutes per tick: 0.6=slow, 1.2=normal, 2.4=fast
+  captain: CaptainProfile;
 };
 
 // Re-export EntityState from its own module
