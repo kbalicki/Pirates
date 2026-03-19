@@ -6,7 +6,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 ---
 
-## Status aktualny (v0.8.4.1)
+## Status aktualny (v0.8.5)
 
 ### Ukończone fazy
 
@@ -27,6 +27,11 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 6.2 | Czysty UI: minimap usunięta, HUD przeniesiony do SPACE | ✅ |
 | 6.3 | UIOverlayScene: kompas wiatru + wersja (zoom-niezależne) | ✅ |
 | 6.4 | Start ze zwiniętymi żaglami | ✅ |
+| 6.5 | 10 poziomów zoom (0.5x–8.0x), domyślny z8 | ✅ |
+| 6.6 | Chmury: mniejsze, więcej, fade-in, 3 profile wysokości | ✅ |
+| 6.7 | Mewy: 2 rozmiary, soft steering, tylko nad wodą | ✅ |
+| 6.8 | Mniejsze sprite'y statków (-30%), data w UIOverlay | ✅ |
+| 6.9 | Fix odpływania z portu (perpendicular push) | ✅ |
 
 ---
 

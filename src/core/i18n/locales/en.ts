@@ -369,9 +369,16 @@ export const EN: LocaleData = {
 
   // -- Zoom --
   "settings.zoom_label": "Spyglass",
-  "settings.zoom.far": "Far (overview)",
-  "settings.zoom.normal": "Normal",
-  "settings.zoom.close": "Close-up",
+  "settings.zoom.z1": "1 — Full map",
+  "settings.zoom.z2": "2 — Overview",
+  "settings.zoom.z3": "3 — Far",
+  "settings.zoom.z4": "4 — Medium",
+  "settings.zoom.z5": "5 — Normal",
+  "settings.zoom.z6": "6 — Close",
+  "settings.zoom.z7": "7 — Closer",
+  "settings.zoom.z8": "8 — Detail",
+  "settings.zoom.z9": "9 — Near",
+  "settings.zoom.z10": "10 — Maximum",
   "settings.zoom_hint": "* Applies immediately",
 
   // -- Skills --

@@ -369,9 +369,16 @@ export const PL: LocaleData = {
 
   // -- Zoom --
   "settings.zoom_label": "Luneta",
-  "settings.zoom.far": "Daleko (przegląd)",
-  "settings.zoom.normal": "Normalnie",
-  "settings.zoom.close": "Z bliska",
+  "settings.zoom.z1": "1 — Pełna mapa",
+  "settings.zoom.z2": "2 — Przegląd",
+  "settings.zoom.z3": "3 — Daleko",
+  "settings.zoom.z4": "4 — Średnio",
+  "settings.zoom.z5": "5 — Normalnie",
+  "settings.zoom.z6": "6 — Blisko",
+  "settings.zoom.z7": "7 — Bliżej",
+  "settings.zoom.z8": "8 — Detale",
+  "settings.zoom.z9": "9 — Bardzo blisko",
+  "settings.zoom.z10": "10 — Maksimum",
   "settings.zoom_hint": "* Działa natychmiast",
 
   // -- Skills --

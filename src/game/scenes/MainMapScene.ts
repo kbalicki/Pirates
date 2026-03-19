@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { Transition } from "../../core/model/Events.ts";
 import { WorldEngine } from "../../core/engine/WorldEngine.ts";
-import type { TerrainType } from "../../core/systems/NavigationSystem.ts";
+import { type TerrainType, findOpenSeaHeading } from "../../core/systems/NavigationSystem.ts";
 import { WorldRenderer } from "../render/WorldRenderer.ts";
 import { CameraController } from "../render/CameraController.ts";
 // MinimapRenderer removed — map available in SPACE menu
@@ -46,7 +46,7 @@ export class MainMapScene extends Phaser.Scene {
   private needSailReset = true;
   private sailResetFrames = 0;
 
-  private dateText!: Phaser.GameObjects.Text;
+  // dateText moved to UIOverlayScene
   private portPromptText: Phaser.GameObjects.Text | null = null;
   private portDialogOpen = false;
   private wasNearPort = false;
@@ -111,14 +111,7 @@ export class MainMapScene extends Phaser.Scene {
     // Ensure InputMapper starts with furled sails (synced with entity state)
     this.inputMapper.setSailLevel(0);
 
-    // Date display — small, top-left (minimal: just date, no stats)
-    this.dateText = this.add.text(10, 8, "", {
-      ...txt(10, { color: "#ccccaa" }),
-      stroke: "#000000",
-      strokeThickness: 2,
-    });
-    this.dateText.setScrollFactor(0);
-    this.dateText.setDepth(9500);
+    // Date display moved to UIOverlayScene
 
     this.portPromptText = this.add.text(
       this.cameras.main.width / 2,
@@ -192,9 +185,11 @@ export class MainMapScene extends Phaser.Scene {
       this.cameraCtrl.adjustZoom(deltaY);
     });
 
-    // Listen for PortApproachScene closing — resume ourselves
+    // Listen for PortApproachScene closing — resume ourselves and push ship to open sea
     this.events.on("resume", () => {
       this.portDialogOpen = false;
+      // Push ship away from coast to prevent instant re-landing
+      this.pushShipToOpenSea();
     });
 
     // Dynamic resize handling
@@ -1120,11 +1115,46 @@ export class MainMapScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    // Minimal HUD: just date/time in top-left corner. All stats in SPACE menu.
+    // Date in UIOverlayScene (no time, just date)
     const dateStr = formatCalendarDate(this.worldState.time, this.worldState.startYear);
-    const hh = String(this.worldState.time.hour).padStart(2, "0");
-    const mm = String(this.worldState.time.minute).padStart(2, "0");
-    this.dateText.setText(`${dateStr}  ${hh}:${mm}`);
+    const uiOverlay = this.scene.get("UIOverlayScene") as import("./UIOverlayScene.ts").UIOverlayScene;
+    if (uiOverlay?.updateDate) {
+      uiOverlay.updateDate(dateStr);
+    }
+  }
+
+  /** After leaving port dialog, push ship perpendicular to coast toward open sea. */
+  private pushShipToOpenSea(): void {
+    const shipId = this.worldState.player.shipId as string;
+    const entity = this.worldState.entities[shipId];
+    if (!entity || entity.mode !== "sailing") return;
+
+    const terrainQuery = (x: number, y: number): TerrainType => {
+      const col = Math.floor(x / 32);
+      const row = Math.floor(y / 32);
+      if (row < 0 || row >= this.landGrid.length || col < 0 || col >= (this.landGrid[0]?.length ?? 0)) {
+        return "water";
+      }
+      return this.landGrid[row][col] ? "land" : "water";
+    };
+
+    const seaHeading = findOpenSeaHeading(entity.pos.x, entity.pos.y, terrainQuery, entity.heading);
+    const pushDist = 15;
+    this.worldState = {
+      ...this.worldState,
+      entities: {
+        ...this.worldState.entities,
+        [shipId]: {
+          ...entity,
+          heading: seaHeading,
+          pos: {
+            x: entity.pos.x + Math.sin(seaHeading) * pushDist,
+            y: entity.pos.y - Math.cos(seaHeading) * pushDist,
+          },
+          embarkTick: this.worldState.time.tick,
+        },
+      },
+    };
   }
 
   private updatePortPrompt(): void {

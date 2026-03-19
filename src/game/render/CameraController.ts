@@ -5,8 +5,8 @@ import { getZoomValue, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
 
 const CAMERA_LERP = 0.08;
 const ZOOM_LERP = 0.10;
-const ZOOM_MIN = ZOOM_VALUES.far;
-const ZOOM_MAX = ZOOM_VALUES.close;
+const ZOOM_MIN = ZOOM_VALUES.z1;
+const ZOOM_MAX = ZOOM_VALUES.z10;
 /** Multiplicative step per scroll notch (e.g. 1.15 = 15% per notch). */
 const SCROLL_ZOOM_FACTOR = 1.15;
 

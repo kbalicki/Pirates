@@ -19,6 +19,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private needleSprite!: Phaser.GameObjects.Image;
   private windLabel!: Phaser.GameObjects.Text;
   private versionText!: Phaser.GameObjects.Text;
+  private dateText!: Phaser.GameObjects.Text;
 
   constructor() {
     super({ key: "UIOverlayScene" });
@@ -29,8 +30,9 @@ export class UIOverlayScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("rgba(0,0,0,0)");
 
     const cam = this.cameras.main;
+    const DATE_OFFSET = 18; // space for date label above compass
     const cx = cam.width - MARGIN - COMPASS_SIZE / 2;
-    const cy = MARGIN + COMPASS_SIZE / 2;
+    const cy = MARGIN + DATE_OFFSET + COMPASS_SIZE / 2;
 
     // Wind rose
     if (this.textures.exists("windrose")) {
@@ -45,6 +47,18 @@ export class UIOverlayScene extends Phaser.Scene {
       this.needleSprite.setScale(scale);
       this.needleSprite.setDepth(20);
     }
+
+    // Date label — right-aligned, above compass
+    this.dateText = this.add.text(cam.width - MARGIN, MARGIN - 2, "", {
+      fontFamily: UI_FONT,
+      fontSize: "11px",
+      color: "#ccccaa",
+      resolution: TEXT_RES,
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.dateText.setOrigin(1, 0);
+    this.dateText.setDepth(30);
 
     // Wind label
     this.windLabel = this.add.text(cx, cy + COMPASS_SIZE / 2 + 6, "Calm", {
@@ -78,12 +92,21 @@ export class UIOverlayScene extends Phaser.Scene {
   }
 
   private repositionAll(width: number, height: number): void {
+    const DATE_OFFSET = 18;
     const cx = width - MARGIN - COMPASS_SIZE / 2;
-    const cy = MARGIN + COMPASS_SIZE / 2;
+    const cy = MARGIN + DATE_OFFSET + COMPASS_SIZE / 2;
+    if (this.dateText) this.dateText.setPosition(width - MARGIN, MARGIN - 2);
     if (this.roseSprite) this.roseSprite.setPosition(cx, cy);
     if (this.needleSprite) this.needleSprite.setPosition(cx, cy);
     if (this.windLabel) this.windLabel.setPosition(cx, cy + COMPASS_SIZE / 2 + 6);
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
+  }
+
+  /** Called from MainMapScene each frame with current date string */
+  updateDate(dateStr: string): void {
+    if (this.dateText) {
+      this.dateText.setText(dateStr);
+    }
   }
 
   /** Called from MainMapScene each frame with current wind data */

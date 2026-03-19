@@ -192,7 +192,7 @@ export class WorldRenderer {
     }
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
-    if (entity.kind === "ship") sprite.setScale(0.33);
+    if (entity.kind === "ship") sprite.setScale(0.23);
     return sprite;
   }
 
@@ -200,7 +200,7 @@ export class WorldRenderer {
     const key = scene.textures.exists("crew_party") ? "crew_party" : "sailship";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, key, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(key === "crew_party" ? 1.0 : 0.2);
+    sprite.setScale(key === "crew_party" ? 1.0 : 0.15);
     return sprite;
   }
 
@@ -217,7 +217,7 @@ export class WorldRenderer {
     }
     const sprite = scene.add.sprite(0, 0, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(0.33);
+    sprite.setScale(0.23);
     if (entity.kind === "ship") {
       const dir8 = headingToDir8(entity.heading);
       sprite.setFrame(DIR8_TO_FRAME[dir8]);

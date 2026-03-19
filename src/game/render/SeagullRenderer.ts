@@ -1,15 +1,16 @@
 import Phaser from "phaser";
 
-const MIN_SEAGULLS = 5;
-const MAX_SEAGULLS = 10;
+const MIN_SEAGULLS = 35;
+const MAX_SEAGULLS = 70;
 const SEAGULL_DEPTH = 3500;
 const FLAP_INTERVAL = 300;
 const CULL_MARGIN = 80;
-const WINGSPAN = 5;
 const DRIFT_SPEED = 0.4;
 const WANDER_STRENGTH = 0.02;
 /** Max tiles from land a seagull can be (Manhattan distance). */
-const MAX_COAST_DIST = 4;
+const MAX_COAST_DIST = 6;
+/** Seagulls hidden only on the 2 farthest zoom levels. */
+const MIN_VISIBLE_ZOOM = 1.0;
 
 interface Seagull {
   gameObject: Phaser.GameObjects.Graphics;
@@ -19,6 +20,8 @@ interface Seagull {
   vy: number;
   flapPhase: boolean;
   flapTimer: number;
+  /** Wingspan in px — small or large bird */
+  wingspan: number;
 }
 
 export class SeagullRenderer {
@@ -45,7 +48,7 @@ export class SeagullRenderer {
     for (let i = 0; i < count; i++) {
       const x = cam.scrollX + this.rand() * cam.width;
       const y = cam.scrollY + this.rand() * cam.height;
-      if (this.isNearCoast(x, y)) {
+      if (this.isCoastalWater(x, y)) {
         this.spawnSeagull(x, y);
       }
     }
@@ -54,6 +57,13 @@ export class SeagullRenderer {
   update(windDirRad: number, windStrength: number): void {
     const cam = this.scene.cameras.main;
     const dt = this.scene.game.loop.delta;
+
+    // Hide seagulls on far zoom levels
+    const tooFar = cam.zoom < MIN_VISIBLE_ZOOM;
+    for (const gull of this.seagulls) {
+      gull.gameObject.setVisible(!tooFar);
+    }
+    if (tooFar) return;
 
     const windDx = Math.sin(windDirRad) * DRIFT_SPEED * windStrength;
     const windDy = -Math.cos(windDirRad) * DRIFT_SPEED * windStrength;
@@ -66,11 +76,27 @@ export class SeagullRenderer {
         this.drawSeagullGraphics(gull);
       }
 
+      // Random wander
       gull.vx += (this.rand() - 0.5) * WANDER_STRENGTH;
       gull.vy += (this.rand() - 0.5) * WANDER_STRENGTH;
 
-      gull.x += gull.vx + windDx;
-      gull.y += gull.vy + windDy;
+      // Soft steering: check ahead and steer back toward coast if leaving water zone
+      const lookX = gull.x + (gull.vx + windDx) * 10;
+      const lookY = gull.y + (gull.vy + windDy) * 10;
+      if (!this.isCoastalWater(lookX, lookY)) {
+        // Find nearest coast center and steer toward it
+        const coastPull = this.getCoastPull(gull.x, gull.y);
+        gull.vx += coastPull.x * 0.05;
+        gull.vy += coastPull.y * 0.05;
+      }
+
+      // Dampen speed so seagulls don't accelerate indefinitely
+      gull.vx *= 0.98;
+      gull.vy *= 0.98;
+
+      // Always move (never freeze)
+      gull.x += gull.vx + windDx * 0.3;
+      gull.y += gull.vy + windDy * 0.3;
 
       gull.gameObject.setPosition(gull.x, gull.y);
     }
@@ -94,7 +120,7 @@ export class SeagullRenderer {
       let spawned = false;
       for (let attempt = 0; attempt < 10; attempt++) {
         const pos = this.getEdgeSpawnPosition(cam);
-        if (pos && this.isNearCoast(pos.x, pos.y)) {
+        if (pos && this.isCoastalWater(pos.x, pos.y)) {
           this.spawnSeagull(pos.x, pos.y);
           spawned = true;
           break;
@@ -107,7 +133,7 @@ export class SeagullRenderer {
     if (this.seagulls.length < MAX_SEAGULLS && this.rand() < 0.04) {
       for (let attempt = 0; attempt < 5; attempt++) {
         const pos = this.getEdgeSpawnPosition(cam);
-        if (pos && this.isNearCoast(pos.x, pos.y)) {
+        if (pos && this.isCoastalWater(pos.x, pos.y)) {
           this.spawnSeagull(pos.x, pos.y);
           break;
         }
@@ -156,20 +182,47 @@ export class SeagullRenderer {
     return dist;
   }
 
-  /** Check if world position is water near coastline (within MAX_COAST_DIST tiles of land). */
-  private isNearCoast(worldX: number, worldY: number): boolean {
+  /** Get a pull vector back toward the coast center (d~2-3 zone). */
+  private getCoastPull(worldX: number, worldY: number): { x: number; y: number } {
+    const col = Math.floor(worldX / 32);
+    const row = Math.floor(worldY / 32);
+    // Sample 4 neighbors, steer toward lower coast distance
+    let bestDx = 0, bestDy = 0;
+    let bestScore = 999;
+    for (const [dr, dc] of [[-2, 0], [2, 0], [0, -2], [0, 2], [-1, -1], [1, 1], [-1, 1], [1, -1]]) {
+      const nr = row + dr;
+      const nc = col + dc;
+      if (nr >= 0 && nr < this.gridRows && nc >= 0 && nc < this.gridCols) {
+        const d = this.coastDist[nr][nc];
+        // Ideal zone is d=2-3 (near coast but not on land)
+        const score = Math.abs(d - 2.5);
+        if (d >= 1 && score < bestScore) {
+          bestScore = score;
+          bestDx = dc;
+          bestDy = dr;
+        }
+      }
+    }
+    const len = Math.sqrt(bestDx * bestDx + bestDy * bestDy) || 1;
+    return { x: bestDx / len, y: bestDy / len };
+  }
+
+  /** Water tiles near coast only (d=1..MAX_COAST_DIST). Rejects land (d=0) and deep ocean (d>MAX). */
+  private isCoastalWater(worldX: number, worldY: number): boolean {
     const col = Math.floor(worldX / 32);
     const row = Math.floor(worldY / 32);
     if (row < 0 || row >= this.gridRows || col < 0 || col >= this.gridCols) {
-      return false; // out of bounds = deep ocean, no seagulls
+      return false;
     }
     const d = this.coastDist[row][col];
-    // Coastal cells: land (0) and nearby water (1..MAX_COAST_DIST)
-    return d >= 0 && d <= MAX_COAST_DIST;
+    return d >= 1 && d <= MAX_COAST_DIST;
   }
 
   private spawnSeagull(x: number, y: number): void {
     const flapPhase = this.rand() > 0.5;
+    // Two sizes: small (3px) and large (6px)
+    const isLarge = this.rand() > 0.6;
+    const wingspan = isLarge ? 6 : 3;
 
     const g = this.scene.add.graphics();
     g.setDepth(SEAGULL_DEPTH);
@@ -182,6 +235,7 @@ export class SeagullRenderer {
       vy: (this.rand() - 0.5) * 0.3,
       flapPhase,
       flapTimer: this.rand() * FLAP_INTERVAL,
+      wingspan,
     };
 
     this.drawSeagullGraphics(gull);
@@ -192,17 +246,18 @@ export class SeagullRenderer {
     const g = gull.gameObject;
     g.clear();
 
-    const half = WINGSPAN / 2;
+    const half = gull.wingspan / 2;
+    const thick = gull.wingspan > 4 ? 1.2 : 0.8;
 
     if (gull.flapPhase) {
       // V-shape (wings up)
-      g.lineStyle(1.0, 0xffffff, 0.9);
+      g.lineStyle(thick, 0xffffff, 0.9);
       g.beginPath();
       g.moveTo(-half, -2);
       g.lineTo(0, 0);
       g.lineTo(half, -2);
       g.strokePath();
-      g.lineStyle(1, 0x888888, 0.3);
+      g.lineStyle(thick * 0.7, 0x888888, 0.3);
       g.beginPath();
       g.moveTo(-half + 1, -1);
       g.lineTo(0, 1);
@@ -210,7 +265,7 @@ export class SeagullRenderer {
       g.strokePath();
     } else {
       // M-shape (wings down)
-      g.lineStyle(1.0, 0xffffff, 0.9);
+      g.lineStyle(thick, 0xffffff, 0.9);
       g.beginPath();
       g.moveTo(-half, -1);
       g.lineTo(-half * 0.4, -2);
@@ -218,7 +273,7 @@ export class SeagullRenderer {
       g.lineTo(half * 0.4, -2);
       g.lineTo(half, -1);
       g.strokePath();
-      g.lineStyle(1, 0x888888, 0.3);
+      g.lineStyle(thick * 0.7, 0x888888, 0.3);
       g.beginPath();
       g.moveTo(-half + 1, 0);
       g.lineTo(-half * 0.4, -1);

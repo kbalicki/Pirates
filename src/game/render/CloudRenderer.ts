@@ -1,18 +1,21 @@
 import Phaser from "phaser";
 
-const MIN_CLOUDS = 23;
-const MAX_CLOUDS = 38;
-const CLOUD_BASE_SPEED = 0.3;
+const MIN_CLOUDS = 45;
+const MAX_CLOUDS = 75;
+const CLOUD_BASE_SPEED = 0.6;
 const CLOUD_DEPTH = 4000;
 const CULL_MARGIN = 100;
+const SPAWN_MARGIN = 300; // spawn well off-screen so clouds drift in
+const FADE_IN_RATE = 0.005; // alpha per frame
 
 interface CloudInstance {
-  gameObject: Phaser.GameObjects.GameObject & { setPosition(x: number, y: number): void; destroy(): void };
+  gameObject: Phaser.GameObjects.GameObject & { setPosition(x: number, y: number): void; destroy(): void; setAlpha?(a: number): void };
   x: number;
   y: number;
   width: number;
   height: number;
-  alpha: number;
+  targetAlpha: number;
+  currentAlpha: number;
   speedMultiplier: number;
 }
 
@@ -37,28 +40,37 @@ export class CloudRenderer {
       }
     }
 
-    // Spawn initial clouds scattered across the camera viewport
-    const cam = scene.cameras.main;
+    // Spawn initial clouds scattered across the entire map (fully visible immediately)
     const count = MIN_CLOUDS + Math.floor(this.rand() * (MAX_CLOUDS - MIN_CLOUDS + 1));
     for (let i = 0; i < count; i++) {
-      const x = cam.scrollX + this.rand() * cam.width;
-      const y = cam.scrollY + this.rand() * cam.height;
-      this.spawnCloud(x, y);
+      const x = this.rand() * this.mapWidth;
+      const y = this.rand() * this.mapHeight;
+      this.spawnCloud(x, y, true);
     }
   }
 
   update(windDirRad: number, windStrength: number): void {
     const cam = this.scene.cameras.main;
 
+    // Clouds move in the direction the wind blows (opposite of where it comes from)
     const moveAngle = windDirRad + Math.PI;
     const dxUnit = Math.sin(moveAngle);
     const dyUnit = -Math.cos(moveAngle);
 
     for (const cloud of this.clouds) {
+      // Speed directly proportional to wind strength
       const speed = CLOUD_BASE_SPEED * windStrength * cloud.speedMultiplier;
       cloud.x += dxUnit * speed;
       cloud.y += dyUnit * speed;
       cloud.gameObject.setPosition(cloud.x, cloud.y);
+
+      // Fade in gradually
+      if (cloud.currentAlpha < cloud.targetAlpha) {
+        cloud.currentAlpha = Math.min(cloud.targetAlpha, cloud.currentAlpha + FADE_IN_RATE);
+        if (cloud.gameObject.setAlpha) {
+          cloud.gameObject.setAlpha(cloud.currentAlpha);
+        }
+      }
     }
 
     const viewLeft = cam.scrollX - CULL_MARGIN;
@@ -118,31 +130,33 @@ export class CloudRenderer {
     windDirRad: number,
     cam: Phaser.Cameras.Scene2D.Camera,
   ): { x: number; y: number } | null {
-    const margin = 120;
+    // Wind comes FROM windDirRad — clouds spawn on the upwind side (where wind comes from)
+    // and drift downwind across the screen
     const sinW = Math.sin(windDirRad);
     const cosW = -Math.cos(windDirRad);
 
     let x: number;
     let y: number;
 
+    // Spawn well beyond the visible edge so clouds drift in naturally
     if (Math.abs(sinW) > Math.abs(cosW)) {
       if (sinW > 0) {
-        x = cam.scrollX + cam.width + margin;
+        x = cam.scrollX + cam.width + SPAWN_MARGIN;
       } else {
-        x = cam.scrollX - margin;
+        x = cam.scrollX - SPAWN_MARGIN;
       }
       y = cam.scrollY + this.rand() * cam.height;
     } else {
       if (cosW > 0) {
-        y = cam.scrollY + cam.height + margin;
+        y = cam.scrollY + cam.height + SPAWN_MARGIN;
       } else {
-        y = cam.scrollY - margin;
+        y = cam.scrollY - SPAWN_MARGIN;
       }
       x = cam.scrollX + this.rand() * cam.width;
     }
 
-    x = Math.max(-50, Math.min(this.mapWidth + 50, x));
-    y = Math.max(-50, Math.min(this.mapHeight + 50, y));
+    x = Math.max(-SPAWN_MARGIN, Math.min(this.mapWidth + SPAWN_MARGIN, x));
+    y = Math.max(-SPAWN_MARGIN, Math.min(this.mapHeight + SPAWN_MARGIN, y));
 
     return { x, y };
   }
@@ -157,20 +171,39 @@ export class CloudRenderer {
     return 0xa0a0b0;
   }
 
-  private spawnCloud(x: number, y: number): void {
-    const scale = 0.4 + this.rand() * 2.1;
-    const alpha = 0.12 + this.rand() * 0.73;
+  /**
+   * Pick cloud height profile: flat (stratus), medium, or tall (cumulus).
+   * Returns a scaleY multiplier relative to scaleX.
+   */
+  private pickHeightProfile(): { yRatio: number; alphaBoost: number } {
+    const roll = this.rand();
+    if (roll < 0.45) {
+      // Flat / stratus — like original
+      return { yRatio: 0.3 + this.rand() * 0.25, alphaBoost: 0 };
+    } else if (roll < 0.75) {
+      // Medium height
+      return { yRatio: 0.55 + this.rand() * 0.3, alphaBoost: 0.05 };
+    } else {
+      // Tall cumulus — up to 3× the flat height
+      return { yRatio: 0.8 + this.rand() * 0.5, alphaBoost: 0.1 };
+    }
+  }
+
+  private spawnCloud(x: number, y: number, initialFull = false): void {
+    const scale = 0.2 + this.rand() * 1.05; // max 50% of original size
+    const profile = this.pickHeightProfile();
+    const targetAlpha = Math.min(0.85, 0.12 + this.rand() * 0.73 + profile.alphaBoost);
+    const startAlpha = initialFull ? targetAlpha : 0;
     const speedMultiplier = Math.max(0.3, 1.4 - scale * 0.3);
 
     if (this.spriteKeys.length > 0) {
       const key = this.spriteKeys[Math.floor(this.rand() * this.spriteKeys.length)];
       const img = this.scene.add.image(x, y, key);
       img.setDepth(CLOUD_DEPTH);
-      // Stretch horizontally, compress vertically — always wide & flat
       const scaleX = scale * (1.0 + this.rand() * 0.6);
-      const scaleY = scale * (0.3 + this.rand() * 0.25);
+      const scaleY = scale * profile.yRatio;
       img.setScale(scaleX, scaleY);
-      img.setAlpha(alpha);
+      img.setAlpha(startAlpha);
       if (this.rand() > 0.5) img.setFlipX(true);
       img.setTint(this.pickCloudTint());
 
@@ -178,19 +211,22 @@ export class CloudRenderer {
       const width = (texFrame?.width ?? 100) * scaleX;
       const height = (texFrame?.height ?? 60) * scaleY;
 
-      this.clouds.push({ gameObject: img, x, y, width, height, alpha, speedMultiplier });
+      this.clouds.push({ gameObject: img, x, y, width, height, targetAlpha, currentAlpha: startAlpha, speedMultiplier });
     } else {
       const g = this.scene.add.graphics();
       g.setDepth(CLOUD_DEPTH);
 
-      const width = 60 + Math.floor(this.rand() * 160);
-      const height = 10 + Math.floor(this.rand() * 25);
+      const width = 30 + Math.floor(this.rand() * 80);
+      const baseH = 5 + Math.floor(this.rand() * 13);
+      const height = Math.floor(baseH * (profile.yRatio / 0.3));
 
       const tint = this.pickCloudTint();
-      this.drawCloudShape(g, width, height, alpha, tint);
+      // For procedural clouds, draw at target alpha (fade handled by container alpha if needed)
+      this.drawCloudShape(g, width, height, targetAlpha, tint);
       g.setPosition(x, y);
+      g.setAlpha(initialFull ? 1 : 0);
 
-      this.clouds.push({ gameObject: g, x, y, width, height, alpha, speedMultiplier });
+      this.clouds.push({ gameObject: g, x, y, width, height, targetAlpha: initialFull ? 1 : 1, currentAlpha: initialFull ? 1 : 0, speedMultiplier });
     }
   }
 

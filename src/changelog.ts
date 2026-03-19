@@ -6,6 +6,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.8.5",
+    date: "2026-03-19",
+    changes: [
+      "10 zoom levels (0.5x–8.0x), default z8 (5.0x)",
+      "Clouds: smaller (50%), more numerous, spread across entire map, fade-in",
+      "Seagulls: 2 sizes, soft coastal steering, only over water near coast",
+      "Ship sprite 30% smaller for better map proportion",
+      "Date moved to UIOverlay (top-right, no time), zoom-independent",
+      "Port departure fix: ship pushed perpendicular to coast toward open sea",
+      "Cloud height variety: flat/medium/tall cumulus profiles",
+      "Wind displayed in knots on compass",
+    ],
+  },
+  {
     version: "0.8.4.1",
     date: "2026-03-19",
     changes: [
