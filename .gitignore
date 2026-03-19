@@ -1,9 +1,15 @@
 node_modules/
 dist/
-temp/
 *.log
 .DS_Store
 *conflicted copy*
+
+# Local temp files and assets
+temp/
+*.tmp
+
+# Screenshots (dev only)
+screenshot_*.png
 
 # SD Pipeline - raw generated PNGs (large files)
 sd-pipeline/assets_raw/**/*.png
@@ -16,12 +22,22 @@ sd-pipeline/tools/tiled-diffusion/
 # Temp test scripts
 sd-pipeline/tools/_*.ps1
 
-# Screenshots (dev only)
-screenshot_*.png
-
 # AI assets - generated outputs (large files)
 ai-assets/output/*.png
 ai-assets/output/*.jpg
+ai-assets/output/*.gif
 
-# Claude settings
+# Claude settings (local only)
 .claude/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+
+# OS files
+Thumbs.db
+Desktop.ini

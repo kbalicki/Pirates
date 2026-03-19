@@ -8,6 +8,8 @@ import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../syst
 import { checkEncounters } from "../systems/EncounterSystem.ts";
 import { processCrewConsumption, hourBoundaryCrossed } from "../systems/CrewConsumptionSystem.ts";
 import { addLogEntry } from "../systems/EventLogSystem.ts";
+import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
+import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 
 export class WorldEngine {
   private terrainQuery: TerrainQuery;
@@ -155,18 +157,72 @@ export class WorldEngine {
       }
     }
 
-    // 6. Update AI entities (placeholder - just basic movement for now)
+    // 6. NPC spawn/despawn
+    world = { ...world, entities: updatedEntities, time: newTime, weather: weatherResult.weather };
+    world = updateNpcSpawns(world);
+    updatedEntities = { ...world.entities };
+
+    // 6.5 NPC AI decisions (heading, behavior state)
+    world = updateNpcAi(world, dtTicks);
+    updatedEntities = { ...world.entities };
+
+    // 6.6 Update all AI ship navigation (movement + collision)
+    const COAST_AVOID_TICKS = 60; // 3s cooldown after hitting land
     for (const [id, entity] of Object.entries(updatedEntities)) {
       if (id === playerShipId) continue;
       if (entity.kind !== "ship" || !entity.ai) continue;
 
-      // Simple: just continue on heading with current sailLevel
-      updatedEntities[id] = updateNavigation(
+      // During coast avoidance cooldown: sail forward but still check terrain
+      const coastTick = entity.coastAvoidTick ?? 0;
+      const ticksSinceCoast = newTime.tick - coastTick;
+      if (coastTick > 0 && ticksSinceCoast < COAST_AVOID_TICKS) {
+        const dir = { x: Math.sin(entity.heading), y: -Math.cos(entity.heading) };
+        const spd = 1.5;
+        const nextX = entity.pos.x + dir.x * spd * dtTicks;
+        const nextY = entity.pos.y + dir.y * spd * dtTicks;
+
+        // Check if next position is land — if so, pick a new safe heading
+        if (this.terrainQuery(nextX, nextY) === "land") {
+          const newSafeHeading = findOpenSeaHeading(
+            entity.pos.x, entity.pos.y, this.terrainQuery, entity.heading,
+          );
+          updatedEntities[id] = {
+            ...entity,
+            heading: newSafeHeading,
+            vel: { x: 0, y: 0 },
+            coastAvoidTick: newTime.tick, // restart cooldown
+          };
+        } else {
+          updatedEntities[id] = {
+            ...entity,
+            pos: { x: nextX, y: nextY },
+            vel: { x: dir.x * spd, y: dir.y * spd },
+            coastAvoidTick: ticksSinceCoast >= COAST_AVOID_TICKS - 1 ? undefined : entity.coastAvoidTick,
+          };
+        }
+        continue;
+      }
+
+      const updatedNpc = updateNavigation(
         entity,
         weatherResult.weather,
         this.terrainQuery,
         dtTicks,
       );
+      // If NPC hits land: find open sea direction and set coast avoidance cooldown
+      if (updatedNpc.mode === "landed" && entity.mode === "sailing") {
+        const safeHeading = findOpenSeaHeading(
+          entity.pos.x, entity.pos.y, this.terrainQuery, entity.heading,
+        );
+        updatedEntities[id] = {
+          ...entity,
+          heading: safeHeading,
+          vel: { x: 0, y: 0 },
+          coastAvoidTick: newTime.tick, // start cooldown
+        };
+      } else {
+        updatedEntities[id] = updatedNpc;
+      }
     }
 
     // 7. Check encounters

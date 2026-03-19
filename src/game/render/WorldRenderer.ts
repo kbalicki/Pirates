@@ -2,8 +2,14 @@ import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
 import type { WorldEvent } from "../../core/model/Events.ts";
-import { headingToDir8 } from "../../core/services/Geometry.ts";
+import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
+import { FACTIONS } from "../../core/data/factions.ts";
 import { txt } from "../ui/textStyle.ts";
+
+/** Visibility range — how far the player can see NPC ships (in world units) */
+const VISION_RANGE = 200;
+/** Distance over which ships fade in/out at the edge of vision range */
+const FADE_BAND = 50;
 
 /**
  * Map headingToDir8 index → sailship spritesheet frame index.
@@ -42,10 +48,15 @@ export class WorldRenderer {
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
   /** Track mode per entity to detect mode changes. */
   private entityModes: Map<string, string> = new Map();
+  /** Vision range circle overlay */
+  private visionCircle: Phaser.GameObjects.Graphics | null = null;
+  /** Whether fog-of-war is enabled. OFF by default for debug/testing. */
+  fogOfWarEnabled = false;
 
   sync(scene: Phaser.Scene, world: WorldState): void {
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
+    const playerEntity = world.entities[playerShipId];
 
     // Sync entity sprites
     for (const [id, entity] of Object.entries(world.entities)) {
@@ -105,6 +116,34 @@ export class WorldRenderer {
 
       // Depth sort: y + offset
       sprite.setDepth(entity.pos.y + entity.depthOffset);
+
+      // NPC visibility: fog-of-war alpha based on distance to player
+      const isPlayer = id === playerShipId;
+      if (!isPlayer && entity.ai && playerEntity) {
+        const dist = vec2Dist(entity.pos, playerEntity.pos);
+        if (this.fogOfWarEnabled) {
+          if (dist > VISION_RANGE) {
+            sprite.setAlpha(0);
+          } else if (dist > VISION_RANGE - FADE_BAND) {
+            // Smooth fade at edge of vision
+            const t = (VISION_RANGE - dist) / FADE_BAND;
+            sprite.setAlpha(t);
+          } else {
+            sprite.setAlpha(1);
+          }
+        } else {
+          // Fog-of-war disabled (test mode): show all, dim distant ones slightly
+          const dimAlpha = dist > VISION_RANGE ? 0.4 : 1.0;
+          sprite.setAlpha(dimAlpha);
+        }
+
+        // Faction color tint for NPC ships
+        const factionKey = entity.ship?.factionId as string;
+        const factionDef = FACTIONS[factionKey];
+        if (factionDef) {
+          sprite.setTint(factionDef.color);
+        }
+      }
     }
 
     // Remove sprites for entities that no longer exist
@@ -207,6 +246,26 @@ export class WorldRenderer {
     });
   }
 
+  /** Draw a subtle vision range circle around the player ship (always visible). */
+  drawVisionCircle(scene: Phaser.Scene, playerPos: { x: number; y: number }): void {
+    if (!this.visionCircle) {
+      this.visionCircle = scene.add.graphics();
+      this.visionCircle.setDepth(100);
+    }
+    this.visionCircle.clear();
+
+    const cx = playerPos.x;
+    const cy = playerPos.y;
+    const r = VISION_RANGE;
+
+    // Smooth circle — brighter when fog enabled, dimmer when debug mode
+    const alpha = this.fogOfWarEnabled ? 0.2 : 0.08;
+    const color = this.fogOfWarEnabled ? 0x88bbff : 0xffffff;
+
+    this.visionCircle.lineStyle(1.5, color, alpha);
+    this.visionCircle.strokeCircle(cx, cy, r);
+  }
+
   destroy(): void {
     for (const sprite of this.entitySprites.values()) sprite.destroy();
     this.entitySprites.clear();
@@ -215,5 +274,6 @@ export class WorldRenderer {
     this.entityModes.clear();
     for (const marker of this.portMarkers.values()) marker.destroy();
     this.portMarkers.clear();
+    if (this.visionCircle) { this.visionCircle.destroy(); this.visionCircle = null; }
   }
 }

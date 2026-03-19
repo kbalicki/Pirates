@@ -19,7 +19,7 @@ const CREW_DEATH_THRESHOLD_MORALE = 0.2;
 const CREW_DEATH_RATE = 0.02;
 
 // Warning threshold (days of supply remaining)
-const LOW_SUPPLY_DAYS = 3;
+// const LOW_SUPPLY_DAYS = 3; // reserved for future event log warnings
 
 export type ConsumptionResult = {
   world: WorldState;
@@ -85,19 +85,7 @@ export function processCrewConsumption(world: WorldState): ConsumptionResult {
     events.push({ type: "Toast", message: "event.crew_died" });
   }
 
-  // --- Low supply warnings ---
-  const foodRemaining = cargo["food"] ?? 0;
-  const waterRemaining = cargo["water"] ?? 0;
-  if (currentCrew > 0) {
-    const foodDaysLeft = foodRemaining / (currentCrew * FOOD_PER_CREW_PER_DAY);
-    const waterDaysLeft = waterRemaining / (currentCrew * WATER_PER_CREW_PER_DAY);
-    if (foodDaysLeft > 0 && foodDaysLeft < LOW_SUPPLY_DAYS && hasFood) {
-      events.push({ type: "Toast", message: "event.food_low" });
-    }
-    if (waterDaysLeft > 0 && waterDaysLeft < LOW_SUPPLY_DAYS && hasWater) {
-      events.push({ type: "Toast", message: "event.water_low" });
-    }
-  }
+  // Low supply warnings — logged in event log only, no screen toast spam
 
   // --- Clean up zero-quantity cargo ---
   for (const key of Object.keys(cargo)) {

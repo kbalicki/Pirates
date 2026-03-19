@@ -21,6 +21,7 @@ import { PauseMenuScene } from "./scenes/PauseMenuScene.ts";
 import { SaveLoadScene } from "./scenes/SaveLoadScene.ts";
 import { PortApproachScene } from "./scenes/PortApproachScene.ts";
 import { OptionsMenuScene } from "./scenes/OptionsMenuScene.ts";
+import { UIOverlayScene } from "./scenes/UIOverlayScene.ts";
 
 export function createNewWorldState(
   seed: number,
@@ -161,6 +162,7 @@ export function launchGame(containerId: string): Phaser.Game {
       PauseMenuScene,
       SaveLoadScene,
       OptionsMenuScene,
+      UIOverlayScene,
     ],
     physics: {
       default: "arcade",

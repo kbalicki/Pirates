@@ -5,10 +5,10 @@ import { WorldEngine } from "../../core/engine/WorldEngine.ts";
 import type { TerrainType } from "../../core/systems/NavigationSystem.ts";
 import { WorldRenderer } from "../render/WorldRenderer.ts";
 import { CameraController } from "../render/CameraController.ts";
-import { MinimapRenderer } from "../render/MinimapRenderer.ts";
+// MinimapRenderer removed — map available in SPACE menu
 import { CloudRenderer } from "../render/CloudRenderer.ts";
 import { SeagullRenderer } from "../render/SeagullRenderer.ts";
-import { WindCompassRenderer } from "../render/WindCompassRenderer.ts";
+import type { UIOverlayScene } from "./UIOverlayScene.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
@@ -18,10 +18,11 @@ import { FACTIONS } from "../../core/data/factions.ts";
 import { LANDMASSES, setLandmasses } from "../../core/data/geography.ts";
 import type { LandmassDef, LandmassBbox } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass } from "../../core/services/Geometry.ts";
+import { buildPortWaterCache } from "../../core/systems/PortWaterPositions.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
-import { APP_VERSION } from "../../version.ts";
+// APP_VERSION moved to UIOverlayScene
 
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
@@ -31,23 +32,25 @@ export class MainMapScene extends Phaser.Scene {
   private engine!: WorldEngine;
   private worldRenderer!: WorldRenderer;
   private cameraCtrl!: CameraController;
-  private minimap!: MinimapRenderer;
+  // minimap removed — info available in SPACE menu
   private cloudRenderer!: CloudRenderer;
   private seagullRenderer!: SeagullRenderer;
-  private windCompass!: WindCompassRenderer;
+  private uiOverlay!: UIOverlayScene;
   private waterTileSprite: Phaser.GameObjects.TileSprite | null = null;
   private landGrid!: boolean[][];
   private inputMapper!: InputMapper;
   private commandQueue!: CommandQueue;
 
   private tickAccumulator = 0;
+  /** Force furled sails on first update tick */
+  private needSailReset = true;
+  private sailResetFrames = 0;
 
   private dateText!: Phaser.GameObjects.Text;
-  private hudText!: Phaser.GameObjects.Text;
   private portPromptText: Phaser.GameObjects.Text | null = null;
   private portDialogOpen = false;
   private wasNearPort = false;
-  private versionText!: Phaser.GameObjects.Text;
+  // versionText moved to UIOverlayScene
   private onResize: ((gameSize: Phaser.Structs.Size) => void) | null = null;
   private windSound: Phaser.Sound.BaseSound | null = null;
   private gridContainer: Phaser.GameObjects.Container | null = null;
@@ -93,29 +96,29 @@ export class MainMapScene extends Phaser.Scene {
       this.cameraCtrl.snapTo(playerEntity.pos);
     }
 
-    this.minimap = new MinimapRenderer(this, mapW, mapH);
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
-    this.windCompass = new WindCompassRenderer(this);
+    // Launch UI overlay scene (separate layer, no zoom)
+    if (!this.scene.isActive("UIOverlayScene")) {
+      this.scene.launch("UIOverlayScene");
+    }
+    this.uiOverlay = this.scene.get("UIOverlayScene") as UIOverlayScene;
 
     new FxManager(this);
 
     this.commandQueue = new CommandQueue();
     this.inputMapper = new InputMapper(this, this.commandQueue);
+    // Ensure InputMapper starts with furled sails (synced with entity state)
+    this.inputMapper.setSailLevel(0);
 
-    // Date display — small black text, top-left
-    this.dateText = this.add.text(10, 8, "", txt(11, { color: "#111111" }));
+    // Date display — small, top-left (minimal: just date, no stats)
+    this.dateText = this.add.text(10, 8, "", {
+      ...txt(10, { color: "#ccccaa" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
     this.dateText.setScrollFactor(0);
     this.dateText.setDepth(9500);
-
-    // Compact HUD — below date
-    this.hudText = this.add.text(10, 40, "", {
-      ...txt(11, { color: "#ffffff" }),
-      backgroundColor: "#00000088",
-      padding: { x: 6, y: 3 },
-    });
-    this.hudText.setScrollFactor(0);
-    this.hudText.setDepth(9500);
 
     this.portPromptText = this.add.text(
       this.cameras.main.width / 2,
@@ -131,18 +134,7 @@ export class MainMapScene extends Phaser.Scene {
     this.portDialogOpen = false;
     this.wasNearPort = false;
 
-    // Version label — bottom-right
-    this.versionText = this.add.text(
-      this.cameras.main.width - 6, this.cameras.main.height - 4,
-      `v${APP_VERSION}`, {
-        ...txt(12, { color: "#aaaaaa" }),
-        stroke: "#000000",
-        strokeThickness: 2,
-      },
-    );
-    this.versionText.setOrigin(1, 1);
-    this.versionText.setScrollFactor(0);
-    this.versionText.setDepth(9500);
+    // Version label moved to UIOverlayScene
 
     // Wind ambient sound
     if (this.cache.audio.exists("wind_loop")) {
@@ -174,6 +166,13 @@ export class MainMapScene extends Phaser.Scene {
         this.toggleGrid();
       });
 
+      this.input.keyboard.on("keydown-V", () => {
+        this.worldRenderer.fogOfWarEnabled = !this.worldRenderer.fogOfWarEnabled;
+        // minimap removed
+        const mode = this.worldRenderer.fogOfWarEnabled ? "ON" : "OFF (test)";
+        this.worldRenderer.applyEvents(this, [{ type: "Toast", message: `Fog of war: ${mode}` }]);
+      });
+
       this.input.keyboard.on("keydown-L", () => {
         this.toggleLandMode();
       });
@@ -203,8 +202,8 @@ export class MainMapScene extends Phaser.Scene {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
       // Reposition fixed HUD elements
       this.portPromptText!.setPosition(gameSize.width / 2, gameSize.height - 60);
-      this.versionText.setPosition(gameSize.width - 6, gameSize.height - 4);
-      this.windCompass.reposition(gameSize.width);
+      // versionText in UIOverlayScene
+      // UI overlay repositions itself via its own resize handler
       // Minimap repositions itself each frame via cam.width
     };
     this.scale.on("resize", this.onResize);
@@ -241,6 +240,7 @@ export class MainMapScene extends Phaser.Scene {
     }));
 
     setLandmasses(parsed);
+    buildPortWaterCache(); // Pre-compute water positions near ports for NPC navigation
     this.osmCities = raw.osmCities ?? [];
     console.log(`Loaded ${parsed.length} landmasses, ${this.osmCities.length} OSM cities`);
   }
@@ -989,6 +989,31 @@ export class MainMapScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    // Force furled sails: skip first 3 frames entirely to flush stale keyboard state
+    if (this.needSailReset) {
+      this.needSailReset = false;
+      this.sailResetFrames = 3;
+      const sid = this.worldState.player.shipId as string;
+      const ship = this.worldState.entities[sid];
+      if (ship) {
+        this.worldState = {
+          ...this.worldState,
+          entities: {
+            ...this.worldState.entities,
+            [sid]: { ...ship, sailLevel: 0, vel: { x: 0, y: 0 } },
+          },
+        };
+        this.registry.set("worldState", this.worldState);
+      }
+    }
+    if (this.sailResetFrames > 0) {
+      this.sailResetFrames--;
+      // Drain any stale keyboard commands and discard them
+      this.inputMapper.setSailLevel(0);
+      this.commandQueue.drain();
+      return; // Skip entire update — no input, no simulation, no movement
+    }
+
     // Sync input mode with entity mode
     const pe = this.worldState.entities[this.worldState.player.shipId as string];
     this.inputMapper.setLandedMode(pe?.mode === "landed", pe?.sailLevel);
@@ -1027,12 +1052,12 @@ export class MainMapScene extends Phaser.Scene {
     if (playerEntity) {
       this.cameraCtrl.setTarget(playerEntity.pos);
       this.cameraCtrl.update();
+      this.worldRenderer.drawVisionCircle(this, playerEntity.pos);
     }
 
-    this.minimap.update(this, this.worldState);
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
-    this.windCompass.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
     // Scroll water tile with wind
     if (this.waterTileSprite) {
@@ -1095,32 +1120,11 @@ export class MainMapScene extends Phaser.Scene {
   }
 
   private updateHud(): void {
-    const player = this.worldState.player;
-    const playerEntity = this.worldState.entities[player.shipId as string];
-
-    // Date text (top-left, no background)
+    // Minimal HUD: just date/time in top-left corner. All stats in SPACE menu.
     const dateStr = formatCalendarDate(this.worldState.time, this.worldState.startYear);
     const hh = String(this.worldState.time.hour).padStart(2, "0");
     const mm = String(this.worldState.time.minute).padStart(2, "0");
-    this.dateText.setText(`${dateStr}\n${hh}:${mm}`);
-
-    // Compact HUD
-    let line1 = `${t("hud.gold")}: ${player.gold}`;
-    if (playerEntity?.ship) {
-      line1 += `  |  ${t("hud.hull", { current: Math.round(playerEntity.ship.hullHp), max: playerEntity.ship.hullMax })}`;
-      line1 += `  |  ${t("hud.crew", { current: playerEntity.ship.crew.current, max: playerEntity.ship.crew.max })}`;
-    }
-
-    const isLanded = playerEntity?.mode === "landed";
-    const sailPct = ((playerEntity?.sailLevel ?? 0) * 100).toFixed(0);
-    const speedStr = playerEntity
-      ? t("hud.speed", { value: Math.round(Math.sqrt(playerEntity.vel.x ** 2 + playerEntity.vel.y ** 2) * 100) / 100 })
-      : "";
-    const controlsKey = isLanded ? "hud.controls_land" : "hud.controls";
-    const modePrefix = isLanded ? `[${t("hud.mode_land")}]  ` : "";
-    const line2 = `${modePrefix}${t("hud.sail_pct", { pct: sailPct })}  |  ${speedStr}  |  ${t(controlsKey)}`;
-
-    this.hudText.setText(`${line1}\n${line2}`);
+    this.dateText.setText(`${dateStr}  ${hh}:${mm}`);
   }
 
   private updatePortPrompt(): void {
@@ -1178,10 +1182,9 @@ export class MainMapScene extends Phaser.Scene {
       this.onResize = null;
     }
     this.worldRenderer.destroy();
-    this.minimap.destroy();
     this.cloudRenderer.destroy();
     this.seagullRenderer.destroy();
-    this.windCompass.destroy();
+    this.scene.stop("UIOverlayScene");
     this.inputMapper.destroy();
     if (this.windSound) {
       this.windSound.stop();

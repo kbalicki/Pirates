@@ -1,69 +1,83 @@
 import Phaser from "phaser";
 import { UI_FONT, TEXT_RES } from "../ui/textStyle.ts";
 
-const COMPASS_MARGIN = 10;
-const ROSE_SCALE = 1.15; // 68px * 1.15 ≈ 78px display size
+const MARGIN_PX = 8;       // screen pixels from edge
+const SIZE_PX = 100;        // desired screen pixel size of compass
+const LABEL_GAP_PX = 8;    // gap between compass and label
 
+function strengthToKnots(s: number): number {
+  return Math.round(s * 40);
+}
+
+/**
+ * Wind compass rose — positioned in WORLD coordinates every frame
+ * to match the top-right corner of the viewport. No scrollFactor tricks.
+ * Scale adjusted each frame to maintain constant screen pixel size.
+ */
 export class WindCompassRenderer {
   private roseSprite: Phaser.GameObjects.Image;
   private needleSprite: Phaser.GameObjects.Image;
   private windLabel: Phaser.GameObjects.Text;
-
-  /** Screen-space center of the compass. */
-  private cx: number;
-  private cy: number;
+  private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene) {
-    const cam = scene.cameras.main;
-    this.cx = cam.width - COMPASS_MARGIN - 40;
-    this.cy = COMPASS_MARGIN + 40;
+    this.scene = scene;
 
-    // Wind rose background sprite
-    this.roseSprite = scene.add.image(this.cx, this.cy, "windrose");
-    this.roseSprite.setScrollFactor(0);
-    this.roseSprite.setDepth(9000);
-    this.roseSprite.setScale(ROSE_SCALE);
+    this.roseSprite = scene.add.image(0, 0, "windrose");
+    this.roseSprite.setDepth(9800);
 
-    // Rotating needle sprite (points upward = north by default)
-    this.needleSprite = scene.add.image(this.cx, this.cy, "compass_needle");
-    this.needleSprite.setScrollFactor(0);
-    this.needleSprite.setDepth(9050);
-    this.needleSprite.setScale(ROSE_SCALE);
+    this.needleSprite = scene.add.image(0, 0, "compass_needle");
+    this.needleSprite.setDepth(9850);
 
-    // "Wind: XX%" text below compass
-    const labelY = this.cy + (40 * ROSE_SCALE) + 4;
-    this.windLabel = scene.add.text(
-      this.cx,
-      labelY,
-      "Wind: 0%",
-      {
-        fontFamily: UI_FONT,
-        fontSize: "10px",
-        color: "#cccccc",
-        resolution: TEXT_RES,
-      },
-    );
+    this.windLabel = scene.add.text(0, 0, "Calm", {
+      fontFamily: UI_FONT,
+      fontSize: "11px",
+      color: "#cccccc",
+      resolution: TEXT_RES,
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
     this.windLabel.setOrigin(0.5, 0);
-    this.windLabel.setScrollFactor(0);
-    this.windLabel.setDepth(9100);
+    this.windLabel.setDepth(9900);
   }
 
-  reposition(camWidth: number): void {
-    this.cx = camWidth - COMPASS_MARGIN - 40;
-    this.cy = COMPASS_MARGIN + 40;
-    this.roseSprite.setPosition(this.cx, this.cy);
-    this.needleSprite.setPosition(this.cx, this.cy);
-    this.windLabel.setPosition(this.cx, this.cy + (40 * ROSE_SCALE) + 4);
+  reposition(_camWidth: number): void {
+    // Handled in update()
   }
 
   update(windDirRad: number, windStrength: number): void {
-    // Rotate needle to point in wind direction
-    // windDirRad: 0=N, PI/2=E, PI=S, 3PI/2=W (clockwise from north)
+    const cam = this.scene.cameras.main;
+    const zoom = cam.zoom;
+
+    // Convert desired screen-pixel position to world coordinates
+    const halfCompass = SIZE_PX / 2;
+    const screenRight = cam.width;
+    const screenCX = screenRight - MARGIN_PX - halfCompass; // screen px from left
+    const screenCY = MARGIN_PX + halfCompass;               // screen px from top
+
+    // Screen pixel → world coordinate
+    const worldX = cam.scrollX + screenCX / zoom;
+    const worldY = cam.scrollY + screenCY / zoom;
+
+    // Scale: compass texture is ~68px native; we want SIZE_PX on screen
+    const nativeSize = 68;
+    const desiredScale = SIZE_PX / nativeSize;
+    const worldScale = desiredScale / zoom;
+
+    this.roseSprite.setPosition(worldX, worldY);
+    this.roseSprite.setScale(worldScale);
+
+    this.needleSprite.setPosition(worldX, worldY);
+    this.needleSprite.setScale(worldScale);
     this.needleSprite.setRotation(windDirRad);
 
-    // Update wind percentage text
-    const pct = Math.round(Math.max(0, Math.min(1, windStrength)) * 100);
-    this.windLabel.setText(`Wind: ${pct}%`);
+    // Label below compass
+    const labelWorldY = worldY + (halfCompass + LABEL_GAP_PX) / zoom;
+    this.windLabel.setPosition(worldX, labelWorldY);
+    this.windLabel.setScale(1 / zoom);
+
+    const knots = strengthToKnots(windStrength);
+    this.windLabel.setText(knots === 0 ? "Calm" : `${knots} kn`);
   }
 
   destroy(): void {

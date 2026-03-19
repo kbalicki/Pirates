@@ -19,7 +19,7 @@ export type ShipData = {
 };
 
 export type AiData = {
-  behavior: "trader" | "pirate" | "navy" | "escort";
+  behavior: "trader" | "pirate" | "navy" | "escort" | "pirate_hunter";
   state: "patrol" | "travel" | "chase" | "flee" | "dock";
   targetEntityId?: EntityId;
   targetPortId?: PortId;
@@ -44,4 +44,6 @@ export type EntityState = {
   ai?: AiData;
   /** Tick when crew last embarked — used for grace period to prevent instant re-landing. */
   embarkTick?: number;
+  /** Tick when NPC last hit coastline — AI won't override heading during cooldown. */
+  coastAvoidTick?: number;
 };

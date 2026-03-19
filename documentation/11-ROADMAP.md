@@ -6,7 +6,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 ---
 
-## Status aktualny (v0.8.4)
+## Status aktualny (v0.8.4.1)
 
 ### Ukończone fazy
 
@@ -21,6 +21,12 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 5.6 | Tworzenie postaci, umiejętności, ery | ✅ |
 | 5.7 | 45 miast, geografia, i18n (en/pl) | ✅ |
 | 5.8 | Asset packi, zoom, font Dancing Script | ✅ |
+| 5.9 | Dokumentacja, AI assets subprojekt, roadmapa | ✅ |
+| 6.0 | Statki NPC na mapie (spawn, AI, widoczność, fog-of-war) | ✅ |
+| 6.1 | Fix embarku w zatokach (prostopadłe odpłynięcie) | ✅ |
+| 6.2 | Czysty UI: minimap usunięta, HUD przeniesiony do SPACE | ✅ |
+| 6.3 | UIOverlayScene: kompas wiatru + wersja (zoom-niezależne) | ✅ |
+| 6.4 | Start ze zwiniętymi żaglami | ✅ |
 
 ---
 
