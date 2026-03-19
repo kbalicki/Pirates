@@ -6,6 +6,18 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.8.4.1",
+    date: "2026-03-19",
+    changes: [
+      "NPC ships: spawn from ports, port-to-port AI, fog-of-war (V toggle)",
+      "UIOverlayScene: wind compass + version label (zoom-independent)",
+      "Clean UI: minimap removed, HUD moved to SPACE menu",
+      "Start with furled sails on new/loaded game",
+      "Embark fix: perpendicular-to-coast departure with grace period",
+      "Comprehensive documentation (11 docs) + AI assets subproject",
+    ],
+  },
+  {
     version: "0.8.4",
     date: "2026-02-20",
     changes: [
