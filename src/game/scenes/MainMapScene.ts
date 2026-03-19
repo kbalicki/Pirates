@@ -1133,9 +1133,9 @@ export class MainMapScene extends Phaser.Scene {
       const col = Math.floor(x / 32);
       const row = Math.floor(y / 32);
       if (row < 0 || row >= this.landGrid.length || col < 0 || col >= (this.landGrid[0]?.length ?? 0)) {
-        return "water";
+        return "sea";
       }
-      return this.landGrid[row][col] ? "land" : "water";
+      return this.landGrid[row][col] ? "land" : "sea";
     };
 
     const seaHeading = findOpenSeaHeading(entity.pos.x, entity.pos.y, terrainQuery, entity.heading);
