@@ -6,7 +6,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 ---
 
-## Status aktualny (v0.8.5)
+## Status aktualny (v0.8.6)
 
 ### Ukończone fazy
 
@@ -32,6 +32,10 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 6.7 | Mewy: 2 rozmiary, soft steering, tylko nad wodą | ✅ |
 | 6.8 | Mniejsze sprite'y statków (-30%), data w UIOverlay | ✅ |
 | 6.9 | Fix odpływania z portu (perpendicular push) | ✅ |
+| 7.0 | 14 zoom levels (0.5x–20.0x), poprawki pozycji portów | ✅ |
+| 7.1 | Ikony miast: pixel art (kolonialne, wioski), 3 rozmiary | ✅ |
+| 7.2 | Etykiety miast: czytelne, skalowane sqrt(zoom), shadow | ✅ |
+| 7.3 | Tortuga fix: sub-sampling gridu 4×4, korekta 11 portów | ✅ |
 
 ---
 

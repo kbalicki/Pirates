@@ -57,6 +57,8 @@ export class MainMapScene extends Phaser.Scene {
   private osmCities: Array<{ name: string; x: number; y: number }> = [];
   /** Cached nudged port positions (on land). Key = port id string. */
   private portSafePositions: Map<string, { x: number; y: number }> = new Map();
+  /** All city/port labels with anchor points for zoom-independent positioning. */
+  private cityLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number; offsetPx: number }> = [];
 
   constructor() {
     super({ key: "MainMapScene" });
@@ -277,19 +279,28 @@ export class MainMapScene extends Phaser.Scene {
     }
 
     // Build land grid from polygons for navigation/seagulls
+    // Sample a 4x4 sub-grid per cell so small islands (< 32px) aren't missed
     const CELL = 32;
     const cols = Math.ceil(mapW / CELL);
     const rows = Math.ceil(mapH / CELL);
+    const SUB = 4; // sub-samples per axis
+    const step = CELL / SUB;
     this.landGrid = Array.from({ length: rows }, () => Array(cols).fill(false));
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
-        const px = c * CELL + CELL / 2;
-        const py = r * CELL + CELL / 2;
-        const pt = { x: px, y: py };
-        for (const lm of LANDMASSES) {
-          if (pointInLandmass(pt, lm)) {
-            this.landGrid[r][c] = true;
-            break;
+        let found = false;
+        for (let sy = 0; sy < SUB && !found; sy++) {
+          for (let sx = 0; sx < SUB && !found; sx++) {
+            const px = c * CELL + step * (sx + 0.5);
+            const py = r * CELL + step * (sy + 0.5);
+            const pt = { x: px, y: py };
+            for (const lm of LANDMASSES) {
+              if (pointInLandmass(pt, lm)) {
+                this.landGrid[r][c] = true;
+                found = true;
+                break;
+              }
+            }
           }
         }
       }
@@ -639,12 +650,14 @@ export class MainMapScene extends Phaser.Scene {
 
       this.drawCityIcon(g, drawPort);
 
-      // Add historical flag sprite next to city
+      // Add historical flag sprite next to city — close to buildings
       const factionId = port.factionId as string;
       const flagKey = `flag_${factionId}`;
       if (this.textures.exists(flagKey)) {
-        const flagX = safePos.x + (port.type === "fort" ? -12 : 14);
-        const flagY = safePos.y - (port.population === "large" || port.population === "capital" ? 18 : 12);
+        const isLg = port.population === "large" || port.population === "capital";
+        const isFort = port.type === "fort";
+        const flagX = safePos.x + (isFort ? -9 : isLg ? 14 : port.population === "medium" ? 9 : 8);
+        const flagY = safePos.y - (isFort ? 16 : isLg ? 16 : port.population === "medium" ? 10 : 8);
         const flagImg = this.add.image(flagX, flagY, flagKey);
         flagImg.setDepth(501);
         flagImg.setScale(0.5);
@@ -660,18 +673,20 @@ export class MainMapScene extends Phaser.Scene {
       }
 
       const isLarge = port.population === "large" || port.population === "capital";
-      const labelSize = isLarge ? 14 : port.population === "medium" ? 12 : 10;
-      const labelY = port.type === "fort"
-        ? safePos.y - (isLarge ? 30 : 22)
-        : safePos.y - (isLarge ? 36 : port.population === "medium" ? 28 : 18);
+      const labelSize = isLarge ? 16 : port.population === "medium" ? 14 : 11;
+      // Label anchored below the city, offset in screen pixels each frame
+      const anchorX = safePos.x;
+      const anchorY = safePos.y + (isLarge ? 8 : port.population === "medium" ? 6 : 5);
 
-      const label = this.add.text(safePos.x, labelY, t("port." + portKey + ".name"), {
-        ...txt(labelSize, { bold: true }),
-        stroke: "#ffffff",
-        strokeThickness: 2,
+      const label = this.add.text(anchorX, anchorY, t("port." + portKey + ".name"), {
+        ...txt(labelSize, { bold: true, color: "#ffffff" }),
+        stroke: "#222222",
+        strokeThickness: 3,
+        shadow: { offsetX: 1, offsetY: 1, color: "#000000", blur: 2, fill: true, stroke: true },
       });
-      label.setOrigin(0.5, 1);
-      label.setDepth(500);
+      label.setOrigin(0.5, 0);
+      label.setDepth(600); // above everything
+      this.cityLabels.push({ text: label, anchorX, anchorY, offsetPx: 0 });
     }
   }
 
@@ -721,6 +736,7 @@ export class MainMapScene extends Phaser.Scene {
       });
       label.setOrigin(0.5, 0.5);
       label.setDepth(400);
+      this.cityLabels.push({ text: label, anchorX: city.x, anchorY: city.y, offsetPx: 0 });
       placed.push({ x: city.x, y: city.y });
       drawn++;
     }
@@ -765,128 +781,169 @@ export class MainMapScene extends Phaser.Scene {
     }
   }
 
-  /** Large city: walled town with church, multiple buildings, prominent flag */
+  /** Large city: walled Caribbean town with church spire, multiple buildings, palm trees */
   private drawCityLarge(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-    // City wall base
-    g.fillStyle(0x8a7a5a, 1);
-    g.fillRect(x - 18, y + 2, 36, 4);
-    // Wall crenellations
-    g.fillStyle(0x7a6a4a, 1);
-    for (let i = -17; i <= 15; i += 4) {
-      g.fillRect(x + i, y - 1, 3, 3);
-    }
+    // Ground/plaza
+    g.fillStyle(0xc4a46a, 0.5);
+    g.fillCircle(x, y + 2, 16);
 
-    // Left building
-    g.fillStyle(0xc9a855, 1);
-    g.fillRect(x - 14, y - 8, 8, 10);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x - 15, y - 8, x - 5, y - 8, x - 10, y - 13);
+    // City wall (low stone)
+    g.fillStyle(0x8a7a5a, 0.8);
+    g.fillRoundedRect(x - 20, y + 1, 40, 3, 1);
 
-    // Central tall building (town hall)
-    g.fillStyle(0xb89845, 1);
-    g.fillRect(x - 4, y - 12, 9, 14);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x - 5, y - 12, x + 6, y - 12, x + 0.5, y - 17);
+    // Left house (colonial style)
+    g.fillStyle(0xe8d5a8, 1); // cream walls
+    g.fillRect(x - 16, y - 9, 9, 11);
+    g.fillStyle(0xcc5533, 1); // terracotta roof
+    g.fillRect(x - 17, y - 11, 11, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x - 17, y - 11, 11, 1);
 
-    // Right building
-    g.fillStyle(0xc9a855, 1);
-    g.fillRect(x + 7, y - 6, 7, 8);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x + 6, y - 6, x + 15, y - 6, x + 10.5, y - 10);
+    // Central building (town hall / governor's mansion — tallest)
+    g.fillStyle(0xf0e0c0, 1);
+    g.fillRect(x - 5, y - 14, 11, 16);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x - 6, y - 16, 13, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x - 6, y - 16, 13, 1);
+    // Balcony
+    g.fillStyle(0x8b7355, 1);
+    g.fillRect(x - 4, y - 8, 9, 1);
 
-    // Church tower (tallest element)
-    g.fillStyle(0xd4b96a, 1);
-    g.fillRect(x - 1, y - 22, 3, 10);
-    g.fillStyle(0xccaa55, 1);
-    g.fillTriangle(x - 2, y - 22, x + 3, y - 22, x + 0.5, y - 26);
-    // Cross on top
+    // Right house
+    g.fillStyle(0xe0cca0, 1);
+    g.fillRect(x + 8, y - 7, 8, 9);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x + 7, y - 9, 10, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x + 7, y - 9, 10, 1);
+
+    // Church spire
+    g.fillStyle(0xd4c090, 1);
+    g.fillRect(x - 1, y - 24, 3, 8);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x - 2, y - 26, 5, 3);
+    // Cross
     g.lineStyle(1, 0xffdd44, 0.9);
     g.lineBetween(x + 0.5, y - 26, x + 0.5, y - 29);
     g.lineBetween(x - 1, y - 28, x + 2, y - 28);
 
-    // Windows (lit)
+    // Palm tree (left)
+    g.lineStyle(2, 0x6b5030, 1);
+    g.lineBetween(x - 19, y + 2, x - 18, y - 8);
+    g.fillStyle(0x2d7a2d, 0.8);
+    g.fillCircle(x - 18, y - 10, 4);
+    g.fillCircle(x - 21, y - 8, 3);
+    g.fillCircle(x - 15, y - 9, 3);
+
+    // Windows (warm light)
     g.fillStyle(0xffdd44, 0.7);
-    g.fillRect(x - 12, y - 6, 2, 2);
-    g.fillRect(x - 9, y - 6, 2, 2);
-    g.fillRect(x - 2, y - 10, 2, 2);
-    g.fillRect(x + 2, y - 10, 2, 2);
-    g.fillRect(x - 2, y - 6, 2, 2);
+    g.fillRect(x - 14, y - 7, 2, 2);
+    g.fillRect(x - 14, y - 3, 2, 2);
+    g.fillRect(x - 3, y - 12, 2, 2);
+    g.fillRect(x + 2, y - 12, 2, 2);
+    g.fillRect(x - 3, y - 6, 2, 2);
     g.fillRect(x + 2, y - 6, 2, 2);
-    g.fillRect(x + 9, y - 4, 2, 2);
+    g.fillRect(x + 10, y - 5, 2, 2);
+    g.fillRect(x + 10, y - 1, 2, 2);
 
     // Doors
     g.fillStyle(0x443322, 1);
-    g.fillRect(x - 1, y - 2, 3, 4);
-    g.fillRect(x - 11, y - 2, 3, 4);
+    g.fillRect(x, y - 2, 2, 4);
 
-    // Flag pole (right side) — flag sprite added separately in drawPortMarkers
+    // Flag pole
     g.lineStyle(1, 0xdddddd, 0.9);
-    g.lineBetween(x + 14, y - 6, x + 14, y - 16);
+    g.lineBetween(x + 16, y - 7, x + 16, y - 18);
   }
 
-  /** Medium city: 2-3 buildings with roofs, flag */
+  /** Medium city: 2 colonial buildings with red roofs, small church */
   private drawCityMedium(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
+    // Ground
+    g.fillStyle(0xc4a46a, 0.4);
+    g.fillCircle(x, y + 1, 10);
+
     // Left building
-    g.fillStyle(0xc9a855, 1);
-    g.fillRect(x - 9, y - 4, 7, 7);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x - 10, y - 4, x - 1, y - 4, x - 5.5, y - 8);
+    g.fillStyle(0xe8d5a8, 1);
+    g.fillRect(x - 10, y - 5, 7, 8);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x - 11, y - 7, 9, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x - 11, y - 7, 9, 1);
 
     // Central building (taller)
-    g.fillStyle(0xb89845, 1);
-    g.fillRect(x - 1, y - 7, 6, 10);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x - 2, y - 7, x + 6, y - 7, x + 2, y - 12);
+    g.fillStyle(0xf0e0c0, 1);
+    g.fillRect(x - 2, y - 9, 7, 12);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x - 3, y - 11, 9, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x - 3, y - 11, 9, 1);
 
-    // Tower/steeple
-    g.fillStyle(0xd4b96a, 1);
-    g.fillRect(x + 1, y - 16, 2, 4);
-    g.fillStyle(0xccaa55, 1);
-    g.fillTriangle(x, y - 16, x + 4, y - 16, x + 2, y - 19);
+    // Small bell tower
+    g.fillStyle(0xd4c090, 1);
+    g.fillRect(x + 1, y - 15, 2, 4);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x, y - 16, 4, 2);
 
     // Right small structure
-    g.fillStyle(0xc9a855, 1);
-    g.fillRect(x + 6, y - 2, 5, 5);
-    g.fillStyle(0x8b4513, 1);
-    g.fillTriangle(x + 5, y - 2, x + 12, y - 2, x + 8.5, y - 5);
+    g.fillStyle(0xe0cca0, 1);
+    g.fillRect(x + 6, y - 3, 5, 6);
+    g.fillStyle(0xcc5533, 1);
+    g.fillRect(x + 5, y - 5, 7, 3);
+    g.fillStyle(0xaa4422, 1);
+    g.fillRect(x + 5, y - 5, 7, 1);
 
     // Windows
     g.fillStyle(0xffdd44, 0.7);
-    g.fillRect(x - 7, y - 2, 2, 2);
-    g.fillRect(x + 1, y - 5, 2, 2);
-    g.fillRect(x + 1, y - 1, 2, 2);
+    g.fillRect(x - 8, y - 3, 2, 2);
+    g.fillRect(x, y - 7, 2, 2);
+    g.fillRect(x, y - 3, 2, 2);
+    g.fillRect(x + 8, y - 1, 1, 1);
 
     // Door
     g.fillStyle(0x443322, 1);
-    g.fillRect(x + 1, y + 1, 2, 2);
+    g.fillRect(x + 1, y + 0, 2, 3);
 
-    // Flag pole — flag sprite added separately in drawPortMarkers
+    // Flag pole
     g.lineStyle(1, 0xdddddd, 0.8);
-    g.lineBetween(x + 9, y - 2, x + 9, y - 10);
+    g.lineBetween(x + 11, y - 3, x + 11, y - 12);
   }
 
-  /** Small settlement: 1-2 huts, tiny flag */
+  /** Small settlement: thatched huts, palm tree, fishing village feel */
   private drawCitySmall(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-    // Main hut
+    // Sandy ground
+    g.fillStyle(0xc4a46a, 0.3);
+    g.fillCircle(x, y + 1, 6);
+
+    // Main hut (wooden walls, thatched roof)
     g.fillStyle(0x8b7355, 1);
-    g.fillRect(x - 5, y - 2, 6, 5);
+    g.fillRect(x - 4, y - 2, 5, 5);
+    g.fillStyle(0x667744, 1); // palm leaf roof
+    g.fillRect(x - 5, y - 4, 7, 3);
     g.fillStyle(0x556633, 1);
-    g.fillTriangle(x - 6, y - 2, x + 2, y - 2, x - 2, y - 6);
+    g.fillRect(x - 5, y - 4, 7, 1);
 
-    // Second small hut
+    // Second hut
     g.fillStyle(0x8b7355, 1);
-    g.fillRect(x + 2, y - 1, 5, 4);
+    g.fillRect(x + 3, y - 1, 4, 4);
+    g.fillStyle(0x667744, 1);
+    g.fillRect(x + 2, y - 3, 6, 3);
     g.fillStyle(0x556633, 1);
-    g.fillTriangle(x + 1, y - 1, x + 8, y - 1, x + 4.5, y - 4);
+    g.fillRect(x + 2, y - 3, 6, 1);
 
-    // Dock/pier
-    g.fillStyle(0x8b6b40, 0.8);
-    g.fillRect(x - 1, y + 3, 2, 5);
-    g.fillRect(x - 3, y + 7, 6, 2);
+    // Small palm tree
+    g.lineStyle(1, 0x6b5030, 1);
+    g.lineBetween(x - 7, y + 2, x - 6, y - 4);
+    g.fillStyle(0x2d7a2d, 0.7);
+    g.fillCircle(x - 6, y - 5, 2.5);
+    g.fillCircle(x - 8, y - 4, 2);
 
-    // Small flag pole — flag sprite added separately in drawPortMarkers
+    // Tiny window
+    g.fillStyle(0xffdd44, 0.5);
+    g.fillRect(x - 2, y, 1, 1);
+
+    // Small flag pole
     g.lineStyle(1, 0xaaaaaa, 0.8);
-    g.lineBetween(x - 3, y - 2, x - 3, y - 10);
+    g.lineBetween(x + 7, y - 1, x + 7, y - 8);
   }
 
   /** Fort: stone walls with towers, scales by population */
@@ -938,7 +995,7 @@ export class MainMapScene extends Phaser.Scene {
     if (!playerEntity) return null;
 
     const isLanded = playerEntity.mode === "landed";
-    const radius = isLanded ? 45 : 15;
+    const radius = isLanded ? 27 : 9;
 
     for (const [portKey, port] of Object.entries(PORTS)) {
       // Use coast-snapped position (on land, adjacent to water) for all checks
@@ -1048,6 +1105,18 @@ export class MainMapScene extends Phaser.Scene {
       this.cameraCtrl.setTarget(playerEntity.pos);
       this.cameraCtrl.update();
       this.worldRenderer.drawVisionCircle(this, playerEntity.pos);
+    }
+
+    // City labels: scale grows with zoom but slower (sqrt) — readable at all levels
+    const camZoom = this.cameras.main.zoom;
+    // At zoom 1 → scale 1, at zoom 5 → scale ~0.45, at zoom 13 → scale ~0.28
+    const labelScale = 1 / Math.sqrt(camZoom);
+    for (const entry of this.cityLabels) {
+      entry.text.setScale(labelScale);
+      entry.text.setPosition(
+        entry.anchorX + entry.offsetPx / camZoom,
+        entry.anchorY,
+      );
     }
 
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);

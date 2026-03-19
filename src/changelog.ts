@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.8.6",
+    date: "2026-03-19",
+    changes: [
+      "14 zoom levels (0.5x–20.0x) — z13 Spyglass, z14 Crow's Nest",
+      "City icons: atmospheric pixel art (colonial buildings, palm trees, thatched huts)",
+      "3 city sizes visually distinct: large (walled town), medium (colonial), small (village)",
+      "City labels: white text with shadow, sqrt-zoom scaling, always readable",
+      "City labels positioned below cities, depth 600 (never obscured)",
+      "11 port positions corrected to match real Caribbean geography",
+      "Tortuga fixed: separate island from Hispaniola (land grid 4x4 sub-sampling)",
+      "Port approach radius reduced 40% — must sail closer to trigger dialog",
+      "Fort icons: stone walls with corner towers, battlements, cannon positions",
+      "Small cities: no more dock/pier artifact, palm trees instead",
+    ],
+  },
+  {
     version: "0.8.5",
     date: "2026-03-19",
     changes: [

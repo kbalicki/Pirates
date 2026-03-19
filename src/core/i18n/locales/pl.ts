@@ -379,6 +379,10 @@ export const PL: LocaleData = {
   "settings.zoom.z8": "8 — Detale",
   "settings.zoom.z9": "9 — Bardzo blisko",
   "settings.zoom.z10": "10 — Maksimum",
+  "settings.zoom.z11": "11 — Ultra",
+  "settings.zoom.z12": "12 — Ekstremalny",
+  "settings.zoom.z13": "13 — Luneta",
+  "settings.zoom.z14": "14 — Bocianie gniazdo",
   "settings.zoom_hint": "* Działa natychmiast",
 
   // -- Skills --

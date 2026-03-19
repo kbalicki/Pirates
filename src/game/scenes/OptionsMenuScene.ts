@@ -755,7 +755,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.add.text(x, y, t("settings.zoom_label"), txt(13, { bold: true })));
     y += 22;
 
-    const zoomLevels: ZoomLevel[] = ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10"];
+    const zoomLevels: ZoomLevel[] = ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10", "z11", "z12", "z13", "z14"];
     const currentZoom = getZoomLevel();
 
     for (const level of zoomLevels) {
