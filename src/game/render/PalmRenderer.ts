@@ -1,5 +1,7 @@
 import Phaser from "phaser";
 import { PORTS } from "../../core/data/ports.ts";
+import { LANDMASSES } from "../../core/data/geography.ts";
+import { pointInLandmass } from "../../core/services/Geometry.ts";
 
 /* ── Seeded PRNG (same algorithm as palm engine) ── */
 function rng(seed: number): () => number {
@@ -243,7 +245,7 @@ interface PlacedPalm {
 
 const CELL = 32;
 const MAX_PALMS = 3000;
-const PALM_DEPTH_BASE = -800; // Between land (-900) and other overlays
+const PALM_DEPTH_BASE = -700; // Between shore waves (-800) and grid (50)
 const PORT_EXCLUSION_PX = 15;
 
 export class PalmRenderer {
@@ -282,86 +284,91 @@ export class PalmRenderer {
       portPositions.push(port.pos);
     }
 
-    // 4. Place palms on land cells
+    // 4. Collect all land cells with coast distance info
+    interface LandCell { r: number; c: number; dist: number; }
+    const landCells: LandCell[] = [];
+    for (let r = 0; r < this.gridRows; r++) {
+      for (let c = 0; c < this.gridCols; c++) {
+        if (!landGrid[r][c]) continue;
+        landCells.push({ r, c, dist: this.coastDist[r][c] });
+      }
+    }
+
+    // 5. Place palms on all land cells — density based on coast distance
     const placementRng = rng(42424242);
     let totalPlaced = 0;
 
-    for (let r = 0; r < this.gridRows && totalPlaced < MAX_PALMS; r++) {
-      for (let c = 0; c < this.gridCols && totalPlaced < MAX_PALMS; c++) {
-        if (!landGrid[r][c]) continue;
+    for (const cell of landCells) {
+      const { r, c, dist } = cell;
 
-        const dist = this.coastDist[r][c];
+      // Density per cell: more near coast, fewer inland
+      let density: number;
+      if (dist <= 1) {
+        density = 2 + Math.floor(placementRng() * 2); // 2-3 coastal
+      } else if (dist <= 3) {
+        density = 1 + Math.floor(placementRng() * 2); // 1-2
+      } else if (dist <= 5) {
+        density = placementRng() < 0.6 ? 1 : 0;
+      } else {
+        density = placementRng() < 0.15 ? 1 : 0; // sparse inland
+      }
 
-        // Density: more palms near coast, fewer inland
-        let density: number;
-        if (dist <= 1) {
-          density = 3 + Math.floor(placementRng() * 3); // 3-5
-        } else if (dist <= 3) {
-          density = 2 + Math.floor(placementRng() * 3); // 2-4
+      for (let p = 0; p < density; p++) {
+        if (totalPlaced >= MAX_PALMS) break;
+
+        const px = c * CELL + placementRng() * CELL;
+        const py = r * CELL + placementRng() * CELL;
+
+        // Double-check this pixel is actually inside a landmass polygon
+        // (grid cell may be land but the random point within it may be water)
+        let onLand = false;
+        for (const lm of LANDMASSES) {
+          if (pointInLandmass({ x: px, y: py }, lm)) { onLand = true; break; }
+        }
+        if (!onLand) continue;
+
+        // Check port exclusion
+        let tooCloseToPort = false;
+        for (const pp of portPositions) {
+          const dx = px - pp.x;
+          const dy = py - pp.y;
+          if (dx * dx + dy * dy < PORT_EXCLUSION_PX * PORT_EXCLUSION_PX) {
+            tooCloseToPort = true;
+            break;
+          }
+        }
+        if (tooCloseToPort) continue;
+
+        // Palm type: weighted by coast distance
+        let typeIdx: number;
+        if (dist <= 2) {
+          const roll = placementRng();
+          typeIdx = roll < 0.55 ? 0 : roll < 0.85 ? 2 : 1;
         } else if (dist <= 5) {
-          density = 1 + Math.floor(placementRng() * 2); // 1-2
+          const roll = placementRng();
+          typeIdx = roll < 0.35 ? 0 : roll < 0.65 ? 2 : 1;
         } else {
-          // Inland: sparse, sometimes skip entirely
-          density = placementRng() < 0.4 ? 1 : 0;
+          const roll = placementRng();
+          typeIdx = roll < 0.15 ? 0 : roll < 0.40 ? 2 : 1;
         }
 
-        for (let p = 0; p < density && totalPlaced < MAX_PALMS; p++) {
-          const px = c * CELL + placementRng() * CELL;
-          const py = r * CELL + placementRng() * CELL;
+        const baseIdx = typeIdx * 9;
+        const spriteIdx = baseIdx + Math.floor(placementRng() * 9);
+        const baseScale = 0.4 + placementRng() * 0.4;
 
-          // Check port exclusion
-          let tooCloseToPort = false;
-          for (const pp of portPositions) {
-            const dx = px - pp.x;
-            const dy = py - pp.y;
-            if (dx * dx + dy * dy < PORT_EXCLUSION_PX * PORT_EXCLUSION_PX) {
-              tooCloseToPort = true;
-              break;
-            }
-          }
-          if (tooCloseToPort) continue;
+        const sprite = this.sprites[spriteIdx];
+        const key = `palm_gen_${spriteIdx}`;
+        const img = scene.add.image(px, py, key);
 
-          // Palm type: weighted by coast distance
-          let typeIdx: number;
-          if (dist <= 2) {
-            // Near coast: mostly coconut (0), some fan (2)
-            const roll = placementRng();
-            typeIdx = roll < 0.55 ? 0 : roll < 0.85 ? 2 : 1;
-          } else if (dist <= 5) {
-            // Mid: mixed
-            const roll = placementRng();
-            typeIdx = roll < 0.35 ? 0 : roll < 0.65 ? 2 : 1;
-          } else {
-            // Inland: mostly bush (1)
-            const roll = placementRng();
-            typeIdx = roll < 0.15 ? 0 : roll < 0.40 ? 2 : 1;
-          }
+        img.setOrigin(sprite.ax / sprite.canvas.width, sprite.ay / sprite.canvas.height);
+        img.setDepth(PALM_DEPTH_BASE + (py / 2400) * 200);
+        img.setScale(baseScale);
 
-          // Sprite index: pick from matching type range (9 per type)
-          const baseIdx = typeIdx * 9;
-          const spriteIdx = baseIdx + Math.floor(placementRng() * 9);
-
-          // Scale: 0.4-0.8 random
-          const baseScale = 0.4 + placementRng() * 0.4;
-
-          const sprite = this.sprites[spriteIdx];
-          const key = `palm_gen_${spriteIdx}`;
-          const img = scene.add.image(px, py, key);
-
-          // Set origin from anchor point (ax, ay are pixel offsets in the sprite)
-          img.setOrigin(sprite.ax / sprite.canvas.width, sprite.ay / sprite.canvas.height);
-
-          // Depth sort: use Y coordinate so palms further down render on top
-          // Base depth between land and other overlays
-          img.setDepth(PALM_DEPTH_BASE + py / 2400);
-
-          img.setScale(baseScale);
-
-          this.palms.push({ image: img, worldX: px, worldY: py, baseScale });
-          totalPlaced++;
-        }
+        this.palms.push({ image: img, worldX: px, worldY: py, baseScale });
+        totalPlaced++;
       }
     }
+    console.log(`PalmRenderer: ${landCells.length} land cells, placed ${totalPlaced} palms`);
   }
 
   update(): void {
@@ -381,11 +388,13 @@ export class PalmRenderer {
     const scaleMul = 0.3 + zoomT * 0.7; // 0.3 at zoom 2, 1.0 at zoom 6+
 
     // Camera viewport in world coordinates (with margin for culling)
+    // Use worldView — scrollX/scrollY doesn't account for camera origin offset
+    const wv = cam.worldView;
     const margin = 80;
-    const viewLeft = cam.scrollX - margin / zoom;
-    const viewRight = cam.scrollX + cam.width / zoom + margin / zoom;
-    const viewTop = cam.scrollY - margin / zoom;
-    const viewBottom = cam.scrollY + cam.height / zoom + margin / zoom;
+    const viewLeft = wv.x - margin;
+    const viewRight = wv.right + margin;
+    const viewTop = wv.y - margin;
+    const viewBottom = wv.bottom + margin;
 
     for (const palm of this.palms) {
       // Cull distant palms

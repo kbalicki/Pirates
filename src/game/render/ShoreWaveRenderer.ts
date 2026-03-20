@@ -79,11 +79,13 @@ export class ShoreWaveRenderer {
     }
 
     // Only update near camera — use world coords
+    // Use worldView for correct viewport bounds (scrollX/scrollY has origin offset)
+    const wv = cam.worldView;
     const margin = 200;
-    const viewL = cam.scrollX - margin;
-    const viewR = cam.scrollX + cam.width / cam.zoom + margin;
-    const viewT = cam.scrollY - margin;
-    const viewB = cam.scrollY + cam.height / cam.zoom + margin;
+    const viewL = wv.x - margin;
+    const viewR = wv.right + margin;
+    const viewT = wv.y - margin;
+    const viewB = wv.bottom + margin;
 
     for (const w of this.waves) {
       if (w.baseX < viewL || w.baseX > viewR || w.baseY < viewT || w.baseY > viewB) {

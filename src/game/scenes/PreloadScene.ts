@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { MusicManager } from "../audio/MusicManager.ts";
+import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 
@@ -135,7 +136,24 @@ export class PreloadScene extends Phaser.Scene {
     // Initialize music manager (accessible from all scenes via registry)
     this.registry.set("musicManager", new MusicManager(this.game));
 
-    this.scene.start("CharacterCreationScene");
+    // URL params for dev/debug:
+    //   ?skip       — bypass character creation, go straight to map
+    //   ?zoom=N     — set initial zoom level (e.g. ?zoom=z10 or ?zoom=8)
+    //   ?debug=1    — enable debug mode
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("zoom")) {
+      localStorage.setItem("pc_zoom_level", params.get("zoom")!);
+    }
+    if (params.has("debug")) {
+      localStorage.setItem("pc_debug", params.get("debug")!);
+    }
+    if (params.has("skip")) {
+      const world = createNewWorldState(Date.now());
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+    } else {
+      this.scene.start("CharacterCreationScene");
+    }
   }
 
 }
