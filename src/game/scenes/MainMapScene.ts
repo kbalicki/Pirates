@@ -16,6 +16,7 @@ import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
 import { ShoreWaveRenderer } from "../render/ShoreWaveRenderer.ts";
+import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
@@ -41,6 +42,7 @@ export class MainMapScene extends Phaser.Scene {
   private cloudRenderer!: CloudRenderer;
   private cirrusRenderer!: CirrusRenderer;
   private shoreWaveRenderer!: ShoreWaveRenderer;
+  private palmRenderer!: PalmRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
   private waterRenderer!: WaterRenderer;
@@ -112,6 +114,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
     this.shoreWaveRenderer = new ShoreWaveRenderer(this, this.landGrid);
+    this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
     if (!this.scene.isActive("UIOverlayScene")) {
@@ -620,6 +623,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.shoreWaveRenderer.update();
+    this.palmRenderer.update();
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
@@ -781,6 +785,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.destroy();
     this.cirrusRenderer.destroy();
     this.shoreWaveRenderer.destroy();
+    this.palmRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
     this.scene.stop("UIOverlayScene");

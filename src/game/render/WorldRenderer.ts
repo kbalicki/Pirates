@@ -294,14 +294,13 @@ export class WorldRenderer {
   drawVisionCircle(scene: Phaser.Scene, playerPos: { x: number; y: number }): void {
     if (!this.visionCircle) {
       this.visionCircle = scene.add.circle(0, 0, VISION_RANGE, 0x000000, 0);
-      this.visionCircle.setStrokeStyle(1.5, 0xffffff, this.fogOfWarEnabled ? 0.2 : 0.08);
+      this.visionCircle.setStrokeStyle(1.5, 0xccaa55, this.fogOfWarEnabled ? 0.25 : 0.12);
       this.visionCircle.setDepth(100);
     }
     this.visionCircle.setPosition(playerPos.x, playerPos.y);
     this.visionCircle.setRadius(VISION_RANGE);
-    const alpha = this.fogOfWarEnabled ? 0.2 : 0.08;
-    const color = this.fogOfWarEnabled ? 0x88bbff : 0xffffff;
-    this.visionCircle.setStrokeStyle(1.5, color, alpha);
+    const alpha = this.fogOfWarEnabled ? 0.25 : 0.12;
+    this.visionCircle.setStrokeStyle(1.5, 0xccaa55, alpha);
   }
 
   destroy(): void {
