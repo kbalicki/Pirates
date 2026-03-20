@@ -101,7 +101,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "San Juan",
     factionId: factionId("spain"),
     type: "fort",
-    pos: geoToMap(66.12, 18.47),
+    pos: { x: 2411, y: 1470 }, // Direct pixel: Puerto Rico coast
     dockRadius: 15,
     marketLevel: 4,
     shipyardLevel: 3,
@@ -213,7 +213,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Trinidad",
     factionId: factionId("spain"),
     type: "city",
-    pos: geoToMap(61.5, 10.5),
+    pos: { x: 2740, y: 2117 }, // Direct pixel: Trinidad coast
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
@@ -241,7 +241,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Caracas",
     factionId: factionId("spain"),
     type: "city",
-    pos: geoToMap(66.9, 10.5),
+    pos: { x: 2347, y: 2113 }, // Direct pixel: north coast of Venezuela
     dockRadius: 15,
     marketLevel: 4,
     shipyardLevel: 2,
@@ -255,7 +255,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Gibraltar",
     factionId: factionId("spain"),
     type: "outpost",
-    pos: geoToMap(80.0, 22.0),
+    pos: { x: 1429, y: 1190 }, // Direct pixel: south coast of Cuba
     dockRadius: 15,
     marketLevel: 1,
     shipyardLevel: 1,
@@ -311,7 +311,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Puerto Príncipe",
     factionId: factionId("spain"),
     type: "city",
-    pos: geoToMap(77.9, 21.4),
+    pos: { x: 1585, y: 1348 }, // Direct pixel: south coast of Cuba near Nuevitas
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
@@ -399,7 +399,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Port Royale",
     factionId: factionId("england"),
     type: "city",
-    pos: geoToMap(76.8, 17.9),
+    pos: { x: 1646, y: 1511 }, // Direct pixel: Jamaica coast
     dockRadius: 15,
     marketLevel: 4,
     shipyardLevel: 4,
@@ -427,7 +427,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Barbados",
     factionId: factionId("england"),
     type: "city",
-    pos: geoToMap(59.6, 13.1),
+    pos: { x: 2872, y: 1910 }, // Direct pixel: Barbados coast
     dockRadius: 15,
     marketLevel: 4,
     shipyardLevel: 3,
@@ -469,7 +469,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Belize",
     factionId: factionId("england"),
     type: "outpost",
-    pos: geoToMap(88.2, 17.5),
+    pos: { x: 839, y: 1549 }, // Direct pixel: Belize coast
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
@@ -483,7 +483,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Bermuda",
     factionId: factionId("england"),
     type: "outpost",
-    pos: geoToMap(64.75, 32.3),
+    pos: { x: 2505, y: 255 }, // Direct pixel: Bermuda
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
@@ -497,7 +497,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Eleuthera",
     factionId: factionId("england"),
     type: "outpost",
-    pos: geoToMap(76.2, 25.0),
+    pos: { x: 1695, y: 904 }, // Direct pixel: Eleuthera coast
     dockRadius: 15,
     marketLevel: 1,
     shipyardLevel: 1,
@@ -511,7 +511,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Gran Bahama",
     factionId: factionId("england"),
     type: "outpost",
-    pos: geoToMap(78.5, 26.6),
+    pos: { x: 1517, y: 782 }, // Direct pixel: Gran Bahama coast
     dockRadius: 15,
     marketLevel: 1,
     shipyardLevel: 1,
@@ -525,7 +525,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Nevis",
     factionId: factionId("england"),
     type: "outpost",
-    pos: geoToMap(62.6, 17.1),
+    pos: { x: 2661, y: 1583 }, // Direct pixel: Nevis coast
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
@@ -557,7 +557,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Martinique",
     factionId: factionId("france"),
     type: "city",
-    pos: geoToMap(61.07, 14.61),
+    pos: { x: 2766, y: 1787 }, // Direct pixel: Martinique coast
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
@@ -571,7 +571,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Guadeloupe",
     factionId: factionId("france"),
     type: "city",
-    pos: geoToMap(61.5, 16.2),
+    pos: { x: 2736, y: 1655 }, // Direct pixel: Guadeloupe coast
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
@@ -613,7 +613,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Florida Keys",
     factionId: factionId("france"),
     type: "outpost",
-    pos: geoToMap(81.8, 24.7),
+    pos: { x: 1293, y: 952 }, // Direct pixel: Florida Keys
     dockRadius: 15,
     marketLevel: 1,
     shipyardLevel: 1,
@@ -659,7 +659,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Curaçao",
     factionId: factionId("netherlands"),
     type: "city",
-    pos: geoToMap(68.93, 12.11),
+    pos: { x: 2205, y: 1988 }, // Direct pixel: Curacao coast
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
@@ -673,7 +673,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "St. Eustatius",
     factionId: factionId("netherlands"),
     type: "city",
-    pos: geoToMap(62.97, 17.49),
+    pos: { x: 2643, y: 1559 }, // Direct pixel: St. Eustatius coast
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
@@ -687,7 +687,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "St. Martin",
     factionId: factionId("netherlands"),
     type: "city",
-    pos: geoToMap(63.1, 18.1),
+    pos: { x: 2630, y: 1500 }, // Direct pixel: St. Martin coast
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,

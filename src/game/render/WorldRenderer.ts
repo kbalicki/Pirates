@@ -7,7 +7,7 @@ import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { txt } from "../ui/textStyle.ts";
 
 /** Visibility range — how far the player can see NPC ships (in world units) */
-const VISION_RANGE = 100;
+const VISION_RANGE = 50;
 /** Distance over which ships fade in/out at the edge of vision range */
 const FADE_BAND = 25;
 
@@ -122,13 +122,13 @@ export class WorldRenderer {
       // Depth sort: y + offset
       sprite.setDepth(entity.pos.y + entity.depthOffset);
 
-      // Scale ship sprite inversely with zoom: smaller at high zoom, larger at low
+      // Scale ship: 50% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
         const cam = scene.cameras.main;
         const baseScale = 0.23;
-        // At zoom 12 (max): 70% size, at zoom 1.5 (min): 100% size
-        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5)); // 0 at min zoom, 1 at max
-        const zoomFactor = 1 - t * 0.3; // 1.0 → 0.7
+        // At zoom 12 (max in): 50% base, at zoom 1.5 (max out): 15% base
+        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5)); // 0→1
+        const zoomFactor = 0.15 + t * 0.35; // 0.15 → 0.5
         sprite.setScale(baseScale * zoomFactor);
       }
 

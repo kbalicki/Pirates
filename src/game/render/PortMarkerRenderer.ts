@@ -1,12 +1,18 @@
 import Phaser from "phaser";
 import { PORTS } from "../../core/data/ports.ts";
+import { LANDMASSES } from "../../core/data/geography.ts";
+import { pointInLandmass } from "../../core/services/Geometry.ts";
 import { drawCityIcon } from "./CityIconRenderer.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { pixelToGeo, LAT_LINES, LON_LINES, getLatWorldY, getLonWorldX } from "./CartographicGrid.ts";
 
 export interface PortMarkerResult {
   portSafePositions: Map<string, { x: number; y: number }>;
   cityLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number; offsetPx: number }>;
+  coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }>;
+  cityGraphics: Phaser.GameObjects.Graphics;
+  flagImages: Phaser.GameObjects.Image[];
 }
 
 /**
@@ -25,6 +31,8 @@ export class PortMarkerRenderer {
   render(): PortMarkerResult {
     const portSafePositions = new Map<string, { x: number; y: number }>();
     const cityLabels: PortMarkerResult["cityLabels"] = [];
+    const coordLabels: PortMarkerResult["coordLabels"] = [];
+    const flagImages: Phaser.GameObjects.Image[] = [];
 
     const g = this.scene.add.graphics();
     g.setDepth(500);
@@ -48,6 +56,9 @@ export class PortMarkerRenderer {
         const flagImg = this.scene.add.image(flagX, flagY, flagKey);
         flagImg.setDepth(501);
         flagImg.setScale(0.5);
+        flagImg.setData("origX", flagX);
+        flagImg.setData("origY", flagY);
+        flagImages.push(flagImg);
         // Waving animation
         this.scene.tweens.add({
           targets: flagImg,
@@ -75,6 +86,20 @@ export class PortMarkerRenderer {
       label.setDepth(600); // above everything
       cityLabels.push({ text: label, anchorX, anchorY, offsetPx: 0 });
 
+      // Lat/lon coordinate label below city name
+      const MAP_W = 3200;
+      const MAP_H = 2400;
+      const geo = pixelToGeo(safePos.x, safePos.y, MAP_W, MAP_H);
+      const coordAnchorY = anchorY + (isLarge ? 18 : port.population === "medium" ? 16 : 13);
+      const coordText = `${geo.lonW.toFixed(1)}\u00B0W ${geo.lat.toFixed(1)}\u00B0N`;
+      const coordLabel = this.scene.add.text(anchorX, coordAnchorY, coordText, {
+        ...txt(7, { color: "#aaaaaa" }),
+      });
+      coordLabel.setOrigin(0.5, 0);
+      coordLabel.setDepth(599);
+      coordLabel.setAlpha(0.7);
+      coordLabels.push({ text: coordLabel, anchorX, anchorY: coordAnchorY });
+
       // Debug: port interaction radius circle (only when debug mode ON)
       if (localStorage.getItem("pc_debug") === "1") {
         const dg = this.scene.add.circle(safePos.x, safePos.y, 6, 0x00ff00, 0);
@@ -87,7 +112,41 @@ export class PortMarkerRenderer {
       }
     }
 
-    return { portSafePositions, cityLabels };
+    // Grid labels — same rendering path as city labels (proven to work)
+    // Position at center of map on each grid line
+    const gridLabels: PortMarkerResult["cityLabels"] = [];
+    const MAP_W = 3200, MAP_H = 2400;
+
+    for (const lat of LAT_LINES) {
+      const py = getLatWorldY(lat, MAP_H);
+      const label = this.scene.add.text(MAP_W / 2 - 100, py - 3, `${lat}°N`, {
+        ...txt(12, { bold: true, color: "#ffdd88" }),
+        stroke: "#000000",
+        strokeThickness: 3,
+      });
+      label.setOrigin(0.5, 1);
+      label.setDepth(600);
+      label.setData("isGrid", true);
+      gridLabels.push({ text: label, anchorX: MAP_W / 2 - 100, anchorY: py - 3, offsetPx: 0 });
+    }
+
+    for (const lon of LON_LINES) {
+      const px = getLonWorldX(lon, MAP_W);
+      const label = this.scene.add.text(px + 3, MAP_H / 2 - 50, `${-lon}°W`, {
+        ...txt(12, { bold: true, color: "#ffdd88" }),
+        stroke: "#000000",
+        strokeThickness: 3,
+      });
+      label.setOrigin(0, 0);
+      label.setDepth(600);
+      label.setData("isGrid", true);
+      gridLabels.push({ text: label, anchorX: px + 3, anchorY: MAP_H / 2 - 50, offsetPx: 0 });
+    }
+
+    // Merge grid labels into cityLabels so MainMapScene scales them identically
+    cityLabels.push(...gridLabels);
+
+    return { portSafePositions, cityLabels, coordLabels, cityGraphics: g, flagImages };
   }
 
   /**
@@ -96,6 +155,13 @@ export class PortMarkerRenderer {
    * This guarantees: (1) the port is on land, (2) ships can reach it from water.
    */
   private snapToCoast(pos: { x: number; y: number }): { x: number; y: number } {
+    // If port is already inside a landmass polygon, keep it there
+    // (small islands may not survive grid pipeline but are valid land)
+    const pt = { x: pos.x, y: pos.y };
+    for (const lm of LANDMASSES) {
+      if (pointInLandmass(pt, lm)) return pos;
+    }
+
     const CELL = 32;
     const rows = this.landGrid.length;
     const cols = this.landGrid[0]?.length ?? 0;

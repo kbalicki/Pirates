@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
-const MIN_SEAGULLS = 70;
-const MAX_SEAGULLS = 140;
+const MIN_SEAGULLS = 200;
+const MAX_SEAGULLS = 400;
 const SEAGULL_DEPTH = 3500;
 const FLAP_INTERVAL = 300;
 const CULL_MARGIN = 80;
@@ -9,8 +9,7 @@ const DRIFT_SPEED = 0.4;
 const WANDER_STRENGTH = 0.02;
 /** Max tiles from land a seagull can be (Manhattan distance). */
 const MAX_COAST_DIST = 6;
-/** Seagulls hidden only on the 2 farthest zoom levels. */
-const MIN_VISIBLE_ZOOM = 1.0;
+// Seagulls disappear below zoom 3 (handled in update)
 
 interface Seagull {
   gameObject: Phaser.GameObjects.Graphics;
@@ -59,10 +58,12 @@ export class SeagullRenderer {
     const dt = this.scene.game.loop.delta;
 
     // Scale seagulls with zoom: full size at z14 (20x), shrink at lower zoom, invisible below 1.5x
-    const maxZoom = 20;
-    const zoomRatio = Math.min(1, cam.zoom / maxZoom); // 0→1
-    const seagullScale = zoomRatio; // 0 at zoom=0, 1 at zoom=20
-    const tooFar = cam.zoom < MIN_VISIBLE_ZOOM || seagullScale < 0.05;
+    // Scale: 50% at max zoom (12), shrink proportionally, disappear below zoom 3
+    const maxZoom = 12;
+    const disappearZoom = 3;
+    const zoomT = Math.max(0, (cam.zoom - disappearZoom) / (maxZoom - disappearZoom)); // 0 at z3, 1 at z12
+    const seagullScale = zoomT * 0.5; // max 0.5 at max zoom
+    const tooFar = cam.zoom < disappearZoom || seagullScale < 0.02;
     for (const gull of this.seagulls) {
       gull.gameObject.setVisible(!tooFar);
       if (!tooFar) gull.gameObject.setScale(seagullScale);

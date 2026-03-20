@@ -15,6 +15,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private compass!: WindCompassWidget;
   private versionText!: Phaser.GameObjects.Text;
   private dateText!: Phaser.GameObjects.Text;
+  private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
     super({ key: "UIOverlayScene" });
@@ -35,7 +36,7 @@ export class UIOverlayScene extends Phaser.Scene {
     // Date label — top-left corner
     this.dateText = this.add.text(MARGIN, MARGIN, "", {
       fontFamily: UI_FONT,
-      fontSize: "11px",
+      fontSize: "16px",
       color: "#ccccaa",
       resolution: TEXT_RES,
       stroke: "#000000",
@@ -48,7 +49,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.versionText = this.add.text(
       cam.width - 6, cam.height - 4,
       `v${APP_VERSION}`, {
-        ...txt(9, { color: "#888888" }),
+        ...txt(14, { color: "#888888" }),
         stroke: "#000000",
         strokeThickness: 2,
       },
@@ -83,6 +84,73 @@ export class UIOverlayScene extends Phaser.Scene {
   updateWind(windDirRad: number, windStrength: number): void {
     if (this.compass) {
       this.compass.updateWind(windDirRad, windStrength);
+    }
+  }
+
+  /** Update cartographic grid labels — screen-space positions from MainMapScene camera */
+  updateGridLabels(
+    camScrollX: number, camScrollY: number, camZoom: number,
+    camW: number, camH: number, visible: boolean,
+  ): void {
+    // Mercator helpers (same as CartographicGrid.ts)
+    const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));
+    const Y_TOP = mercY(35), Y_BOT = mercY(7);
+    const MAP_W = 3200, MAP_H = 2400;
+
+    const LAT_LINES = [10, 15, 20, 25, 30];
+    const LON_LINES = [-60, -65, -70, -75, -80, -85, -90, -95];
+
+    // Create labels on first call
+    if (this.gridLabels.length === 0) {
+      for (const lat of LAT_LINES) {
+        const label = this.add.text(0, 0, `${lat}°N`, {
+          fontFamily: UI_FONT, fontSize: "13px", color: "#ffdd88",
+          resolution: TEXT_RES, stroke: "#000000", strokeThickness: 3,
+        });
+        label.setDepth(100);
+        this.gridLabels.push(label);
+      }
+      for (const lon of LON_LINES) {
+        const label = this.add.text(0, 0, `${-lon}°W`, {
+          fontFamily: UI_FONT, fontSize: "13px", color: "#ffdd88",
+          resolution: TEXT_RES, stroke: "#000000", strokeThickness: 3,
+        });
+        label.setDepth(100);
+        this.gridLabels.push(label);
+      }
+    }
+
+    // Fade: full at zoom <2, fade 2-3, hidden >=3
+    const alpha = !visible ? 0 : camZoom < 2 ? 1 : Math.max(0, 1 - (camZoom - 2));
+
+    let idx = 0;
+    for (const lat of LAT_LINES) {
+      const worldY = ((Y_TOP - mercY(lat)) / (Y_TOP - Y_BOT)) * MAP_H;
+      const screenY = (worldY - camScrollY) * camZoom;
+      const label = this.gridLabels[idx];
+      if (alpha > 0.01 && screenY > 5 && screenY < camH - 5) {
+        label.setVisible(true);
+        label.setPosition(6, screenY);
+        label.setOrigin(0, 0.5);
+        label.setAlpha(alpha);
+      } else {
+        label.setVisible(false);
+      }
+      idx++;
+    }
+    for (const lon of LON_LINES) {
+      const worldX = ((-lon - (-100)) / 45) * MAP_W;
+      const screenX = (worldX - camScrollX) * camZoom;
+      const label = this.gridLabels[idx];
+      if (alpha > 0.01 && screenX > 20 && screenX < camW - 20) {
+        label.setVisible(true);
+        label.setPosition(screenX, camH - 20);
+        label.setOrigin(0.5, 1);
+        label.setAlpha(alpha);
+      } else {
+        label.setVisible(false);
+      }
+      idx++;
     }
   }
 }

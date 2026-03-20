@@ -13,6 +13,9 @@ import { FxManager } from "../render/FxManager.ts";
 import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
 import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
+import { CartographicGrid } from "../render/CartographicGrid.ts";
+import { CirrusRenderer } from "../render/CirrusRenderer.ts";
+import { ShoreWaveRenderer } from "../render/ShoreWaveRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
@@ -36,9 +39,12 @@ export class MainMapScene extends Phaser.Scene {
   private cameraCtrl!: CameraController;
   // minimap removed — info available in SPACE menu
   private cloudRenderer!: CloudRenderer;
+  private cirrusRenderer!: CirrusRenderer;
+  private shoreWaveRenderer!: ShoreWaveRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
   private waterRenderer!: WaterRenderer;
+  private cartographicGrid!: CartographicGrid;
   private landGrid!: boolean[][];
   private inputMapper!: InputMapper;
   private commandQueue!: CommandQueue;
@@ -61,6 +67,9 @@ export class MainMapScene extends Phaser.Scene {
   private portSafePositions: Map<string, { x: number; y: number }> = new Map();
   /** All city/port labels with anchor points for zoom-independent positioning. */
   private cityLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number; offsetPx: number }> = [];
+  private cityGraphics: Phaser.GameObjects.Graphics | null = null;
+  private flagImages: Phaser.GameObjects.Image[] = [];
+  private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
 
   constructor() {
     super({ key: "MainMapScene" });
@@ -101,6 +110,8 @@ export class MainMapScene extends Phaser.Scene {
     }
 
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
+    this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
+    this.shoreWaveRenderer = new ShoreWaveRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
     if (!this.scene.isActive("UIOverlayScene")) {
@@ -211,6 +222,9 @@ export class MainMapScene extends Phaser.Scene {
     const portMarkers = new PortMarkerRenderer(this, this.landGrid).render();
     this.portSafePositions = portMarkers.portSafePositions;
     this.cityLabels = portMarkers.cityLabels;
+    this.coordLabels = portMarkers.coordLabels;
+    this.cityGraphics = portMarkers.cityGraphics;
+    this.flagImages = portMarkers.flagImages;
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
@@ -254,6 +268,8 @@ export class MainMapScene extends Phaser.Scene {
 
     // Animated water surface with subtle wave patterns
     this.waterRenderer = new WaterRenderer(this, mapW, mapH);
+    // Cartographic lat/lon grid (visible at far zoom only)
+    this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
     // Chaikin subdivision: smooths a closed polygon by cutting corners
@@ -562,11 +578,33 @@ export class MainMapScene extends Phaser.Scene {
       this.worldRenderer.drawVisionCircle(this, playerEntity.pos);
     }
 
-    // City labels: scale grows with zoom but slower (sqrt) — readable at all levels
+    // City zoom scaling
     const camZoom = this.cameras.main.zoom;
-    // At zoom 1 → scale 1, at zoom 5 → scale ~0.45, at zoom 13 → scale ~0.28
+
+    // City ICONS (Graphics): fade out at far zoom, hidden below zoom 2
+    if (this.cityGraphics) {
+      const iconAlpha = camZoom < 2 ? 0 : camZoom < 3 ? (camZoom - 2) : 1;
+      this.cityGraphics.setAlpha(iconAlpha);
+      this.cityGraphics.setVisible(camZoom > 2);
+    }
+
+    // FLAGS: scale down, disappear later than icons
+    for (const flag of this.flagImages) {
+      const flagT = Math.min(1, (camZoom - 1.5) / (5 - 1.5));
+      const flagScale = 0.15 + flagT * 0.35; // 0.15 → 0.5
+      flag.setScale(flagScale);
+      flag.setVisible(camZoom > 1.6);
+    }
+
+    // LABELS: sqrt scaling, grid labels hide with grid
     const labelScale = 1 / Math.sqrt(camZoom);
+    const gridAlpha = camZoom < 2.2 ? 1 : camZoom < 3 ? 1 - (camZoom - 2.2) / 0.8 : 0;
     for (const entry of this.cityLabels) {
+      const isGrid = entry.text.getData("isGrid");
+      if (isGrid) {
+        entry.text.setVisible(gridAlpha > 0.01);
+        entry.text.setAlpha(gridAlpha);
+      }
       entry.text.setScale(labelScale);
       entry.text.setPosition(
         entry.anchorX + entry.offsetPx / camZoom,
@@ -574,12 +612,21 @@ export class MainMapScene extends Phaser.Scene {
       );
     }
 
+    // Coord labels hidden — backend only, not shown to player
+    for (const entry of this.coordLabels) {
+      entry.text.setVisible(false);
+    }
+
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.shoreWaveRenderer.update();
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
     // Animate water surface with wind
     this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    // Cartographic grid: show/hide based on zoom
+    this.cartographicGrid.update();
 
     // Wind sound volume follows wind strength
     if (this.windSound && "setVolume" in this.windSound) {
@@ -730,7 +777,10 @@ export class MainMapScene extends Phaser.Scene {
       this.onResize = null;
     }
     this.worldRenderer.destroy();
+    this.cartographicGrid.destroy();
     this.cloudRenderer.destroy();
+    this.cirrusRenderer.destroy();
+    this.shoreWaveRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
     this.scene.stop("UIOverlayScene");
