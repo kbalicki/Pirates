@@ -68,8 +68,8 @@ export class ShoreWaveRenderer {
     this.time += 0.016;
     const cam = this.scene.cameras.main;
 
-    // Visible at zoom 5+, fade 3-5, invisible below 3
-    const fadeStart = 3, fadeFull = 5;
+    // Visible at zoom 7+, fade 5-7, invisible below 5
+    const fadeStart = 5, fadeFull = 7;
     const visibility = cam.zoom < fadeStart ? 0 :
       cam.zoom < fadeFull ? (cam.zoom - fadeStart) / (fadeFull - fadeStart) : 1;
 
@@ -100,8 +100,8 @@ export class ShoreWaveRenderer {
       const pulse = Math.max(0, Math.sin(cycle));
       const alpha = pulse * 0.3 * visibility;
 
-      w.arc.setStrokeStyle(0.8, 0xffffff, alpha * 2);
-      w.arc.setFillStyle(0xffffff, alpha);
+      w.arc.setStrokeStyle(0.4, 0xffffff, alpha);
+      w.arc.setFillStyle(0xffffff, alpha * 0.5);
 
       // Slight wobble toward/away from shore
       const wobbleX = Math.sin(this.time * 1.2 + w.phase) * 0.6;
