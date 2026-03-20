@@ -15,7 +15,7 @@ import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
-// ShoreWaveRenderer disabled — caused circular artifacts on water
+import { ShallowWaterRenderer } from "../render/ShallowWaterRenderer.ts";
 import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
@@ -23,7 +23,7 @@ import { PORTS } from "../../core/data/ports.ts";
 import type { PortDef } from "../../core/data/ports.ts";
 import { LANDMASSES, setLandmasses } from "../../core/data/geography.ts";
 import type { LandmassDef, LandmassBbox } from "../../core/data/geography.ts";
-import { vec2Dist, pointInLandmass } from "../../core/services/Geometry.ts";
+import { vec2Dist, pointInLandmass, chaikinSmooth } from "../../core/services/Geometry.ts";
 import { buildPortWaterCache } from "../../core/systems/PortWaterPositions.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
@@ -42,6 +42,7 @@ export class MainMapScene extends Phaser.Scene {
   private cloudRenderer!: CloudRenderer;
   private cirrusRenderer!: CirrusRenderer;
 
+  private shallowWaterRenderer!: ShallowWaterRenderer;
   private palmRenderer!: PalmRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
@@ -114,6 +115,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
 
+    this.shallowWaterRenderer = new ShallowWaterRenderer(this);
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
@@ -274,23 +276,6 @@ export class MainMapScene extends Phaser.Scene {
     // Cartographic lat/lon grid (visible at far zoom only)
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
-
-    // Chaikin subdivision: smooths a closed polygon by cutting corners
-    const chaikinSmooth = (pts: { x: number; y: number }[], iterations = 2): { x: number; y: number }[] => {
-      let cur = pts;
-      for (let iter = 0; iter < iterations; iter++) {
-        const next: { x: number; y: number }[] = [];
-        const n = cur.length;
-        for (let i = 0; i < n; i++) {
-          const p0 = cur[i];
-          const p1 = cur[(i + 1) % n];
-          next.push({ x: 0.75 * p0.x + 0.25 * p1.x, y: 0.75 * p0.y + 0.25 * p1.y });
-          next.push({ x: 0.25 * p0.x + 0.75 * p1.x, y: 0.25 * p0.y + 0.75 * p1.y });
-        }
-        cur = next;
-      }
-      return cur;
-    };
 
     // Draw landmasses with smoothed coastlines
     const landGfx = this.add.graphics();
@@ -623,6 +608,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
+    this.shallowWaterRenderer.update();
     this.palmRenderer.update();
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
@@ -785,6 +771,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.destroy();
     this.cirrusRenderer.destroy();
 
+    this.shallowWaterRenderer.destroy();
     this.palmRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();

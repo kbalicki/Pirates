@@ -2,7 +2,7 @@ import Phaser from "phaser";
 import { CommandQueue } from "./CommandQueue.ts";
 
 const SAIL_STEP = 0.34; // sail level change per key press (~3 presses to max)
-const TURN_AMOUNT = 0.04; // radians per tick while held
+const TURN_AMOUNT = 0.12; // radians per tick while held (3x for responsive steering)
 
 export class InputMapper {
   private scene: Phaser.Scene;

@@ -105,3 +105,20 @@ export function pointInPolygon(point: Vec2, polygon: Vec2[]): boolean {
   }
   return inside;
 }
+
+/** Chaikin subdivision: smooths a closed polygon by cutting corners. */
+export function chaikinSmooth(pts: Vec2[], iterations = 2): Vec2[] {
+  let cur = pts;
+  for (let iter = 0; iter < iterations; iter++) {
+    const next: Vec2[] = [];
+    const n = cur.length;
+    for (let i = 0; i < n; i++) {
+      const p0 = cur[i];
+      const p1 = cur[(i + 1) % n];
+      next.push({ x: 0.75 * p0.x + 0.25 * p1.x, y: 0.75 * p0.y + 0.25 * p1.y });
+      next.push({ x: 0.25 * p0.x + 0.75 * p1.x, y: 0.25 * p0.y + 0.75 * p1.y });
+    }
+    cur = next;
+  }
+  return cur;
+}
