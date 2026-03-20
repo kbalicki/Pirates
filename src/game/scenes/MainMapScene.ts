@@ -15,7 +15,7 @@ import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
-import { ShoreWaveRenderer } from "../render/ShoreWaveRenderer.ts";
+// ShoreWaveRenderer disabled — caused circular artifacts on water
 import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
@@ -41,7 +41,7 @@ export class MainMapScene extends Phaser.Scene {
   // minimap removed — info available in SPACE menu
   private cloudRenderer!: CloudRenderer;
   private cirrusRenderer!: CirrusRenderer;
-  private shoreWaveRenderer!: ShoreWaveRenderer;
+
   private palmRenderer!: PalmRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
@@ -113,7 +113,7 @@ export class MainMapScene extends Phaser.Scene {
 
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
-    this.shoreWaveRenderer = new ShoreWaveRenderer(this, this.landGrid);
+
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
@@ -622,7 +622,7 @@ export class MainMapScene extends Phaser.Scene {
 
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
-    this.shoreWaveRenderer.update();
+
     this.palmRenderer.update();
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
@@ -784,7 +784,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid.destroy();
     this.cloudRenderer.destroy();
     this.cirrusRenderer.destroy();
-    this.shoreWaveRenderer.destroy();
+
     this.palmRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
