@@ -1,13 +1,10 @@
 import Phaser from "phaser";
 import { UI_FONT, TEXT_RES, txt } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
+import { WindCompassWidget } from "../render/WindCompassWidget.ts";
 
 const MARGIN = 8;
 const COMPASS_SIZE = 100; // px on screen
-
-function strengthToKnots(s: number): number {
-  return Math.round(s * 40);
-}
 
 /**
  * UI Overlay Scene — runs on top of MainMapScene.
@@ -15,9 +12,7 @@ function strengthToKnots(s: number): number {
  * Used for: wind compass, and future fixed UI elements.
  */
 export class UIOverlayScene extends Phaser.Scene {
-  private roseSprite!: Phaser.GameObjects.Image;
-  private needleSprite!: Phaser.GameObjects.Image;
-  private windLabel!: Phaser.GameObjects.Text;
+  private compass!: WindCompassWidget;
   private versionText!: Phaser.GameObjects.Text;
   private dateText!: Phaser.GameObjects.Text;
 
@@ -34,22 +29,11 @@ export class UIOverlayScene extends Phaser.Scene {
     const cx = cam.width - MARGIN - COMPASS_SIZE / 2;
     const cy = MARGIN + DATE_OFFSET + COMPASS_SIZE / 2;
 
-    // Wind rose
-    if (this.textures.exists("windrose")) {
-      const nativeSize = this.textures.get("windrose").getSourceImage().width || 68;
-      const scale = COMPASS_SIZE / nativeSize;
+    // Wind compass (procedurally drawn — no external images)
+    this.compass = new WindCompassWidget(this, cx, cy, COMPASS_SIZE);
 
-      this.roseSprite = this.add.image(cx, cy, "windrose");
-      this.roseSprite.setScale(scale);
-      this.roseSprite.setDepth(10);
-
-      this.needleSprite = this.add.image(cx, cy, "compass_needle");
-      this.needleSprite.setScale(scale);
-      this.needleSprite.setDepth(20);
-    }
-
-    // Date label — right-aligned, above compass
-    this.dateText = this.add.text(cam.width - MARGIN, MARGIN - 2, "", {
+    // Date label — top-left corner
+    this.dateText = this.add.text(MARGIN, MARGIN, "", {
       fontFamily: UI_FONT,
       fontSize: "11px",
       color: "#ccccaa",
@@ -57,20 +41,8 @@ export class UIOverlayScene extends Phaser.Scene {
       stroke: "#000000",
       strokeThickness: 2,
     });
-    this.dateText.setOrigin(1, 0);
+    this.dateText.setOrigin(0, 0);
     this.dateText.setDepth(30);
-
-    // Wind label
-    this.windLabel = this.add.text(cx, cy + COMPASS_SIZE / 2 + 6, "Calm", {
-      fontFamily: UI_FONT,
-      fontSize: "12px",
-      color: "#cccccc",
-      resolution: TEXT_RES,
-      stroke: "#000000",
-      strokeThickness: 2,
-    });
-    this.windLabel.setOrigin(0.5, 0);
-    this.windLabel.setDepth(30);
 
     // Version label — bottom-right
     this.versionText = this.add.text(
@@ -95,10 +67,8 @@ export class UIOverlayScene extends Phaser.Scene {
     const DATE_OFFSET = 18;
     const cx = width - MARGIN - COMPASS_SIZE / 2;
     const cy = MARGIN + DATE_OFFSET + COMPASS_SIZE / 2;
-    if (this.dateText) this.dateText.setPosition(width - MARGIN, MARGIN - 2);
-    if (this.roseSprite) this.roseSprite.setPosition(cx, cy);
-    if (this.needleSprite) this.needleSprite.setPosition(cx, cy);
-    if (this.windLabel) this.windLabel.setPosition(cx, cy + COMPASS_SIZE / 2 + 6);
+    if (this.dateText) this.dateText.setPosition(MARGIN, MARGIN);
+    if (this.compass) this.compass.reposition(cx, cy);
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
   }
 
@@ -111,12 +81,8 @@ export class UIOverlayScene extends Phaser.Scene {
 
   /** Called from MainMapScene each frame with current wind data */
   updateWind(windDirRad: number, windStrength: number): void {
-    if (this.needleSprite) {
-      this.needleSprite.setRotation(windDirRad);
-    }
-    if (this.windLabel) {
-      const knots = strengthToKnots(windStrength);
-      this.windLabel.setText(knots === 0 ? "Calm" : `${knots} kn`);
+    if (this.compass) {
+      this.compass.updateWind(windDirRad, windStrength);
     }
   }
 }

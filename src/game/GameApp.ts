@@ -144,9 +144,9 @@ export function launchGame(containerId: string): Phaser.Game {
     width: window.innerWidth,
     height: window.innerHeight,
     pixelArt: true,
-    roundPixels: true,
-    antialias: true,
-    backgroundColor: "#0a0a1a",
+    roundPixels: false,
+    antialias: false,
+    backgroundColor: "#0c2340",
     scale: {
       mode: Phaser.Scale.RESIZE,
     },

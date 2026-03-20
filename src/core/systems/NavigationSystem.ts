@@ -240,9 +240,9 @@ export function findOpenSeaHeading(
 export function applyTurn(entity: EntityState, dir: "left" | "right", amount: number): EntityState {
   if (entity.kind !== "ship" || !entity.ship) return entity;
 
-  const turnRate = entity.mode === "landed" ? 0.08 : (() => {
+  const turnRate = entity.mode === "landed" ? 0.32 : (() => {
     const shipClass = SHIP_CLASSES[entity.ship!.classId as string];
-    return shipClass?.turnRate ?? 0.04;
+    return shipClass?.turnRate ?? 0.16;
   })();
 
   const clampedAmount = clamp(amount, 0, turnRate);

@@ -359,7 +359,7 @@ export const EN: LocaleData = {
   "lang.switch": "[ Polski ]",
 
   // -- Settings Tab --
-  "menu.tab_settings": "Options",
+  "menu.tab_settings": "Settings",
   "settings.title": "QUARTERMASTER'S STASH",
   "settings.style_label": "Visual Style",
   "settings.style_hint": "* Restart game for full effect",

@@ -6,6 +6,25 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.0",
+    date: "2026-03-20",
+    changes: [
+      "Volumetric clouds: spite codepen texture, layered clusters (10-20 layers), 3 size classes",
+      "Cloud zoom scaling: shrink on zoom out, grow on zoom in",
+      "Wind compass: procedural canvas-drawn (WindCompassWidget), no external images",
+      "Ocean waves: mirror-tiled 2-layer parallax, animated with wind",
+      "Ship speed halved, turn rate 4x, port departure with minimal sails",
+      "Smooth coastlines: Chaikin subdivision on landmass polygons",
+      "Vision circle restored (Arc), fog-of-war toggle in Options",
+      "Debug toggle in Options (default ON), LPM disabled while sailing",
+      "Date moved to top-left corner",
+      "Ship wake: animated arc ripples around moving ships",
+      "Refactor: MainMapScene 1327→739 lines (TextureFactory, CityIconRenderer, PortMarkerRenderer)",
+      "Ship classes documentation: 9 types with tonnage, draft, reef mechanics",
+      "14 zoom levels (1.5x-12x), ship sprite scales with zoom",
+    ],
+  },
+  {
     version: "0.8.6",
     date: "2026-03-19",
     changes: [

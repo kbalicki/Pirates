@@ -3,13 +3,13 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
 import type { WorldEvent } from "../../core/model/Events.ts";
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
-import { FACTIONS } from "../../core/data/factions.ts";
+// FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
 
 /** Visibility range — how far the player can see NPC ships (in world units) */
-const VISION_RANGE = 200;
+const VISION_RANGE = 100;
 /** Distance over which ships fade in/out at the edge of vision range */
-const FADE_BAND = 50;
+const FADE_BAND = 25;
 
 /**
  * Map headingToDir8 index → sailship spritesheet frame index.
@@ -48,12 +48,17 @@ export class WorldRenderer {
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
   /** Track mode per entity to detect mode changes. */
   private entityModes: Map<string, string> = new Map();
-  /** Vision range circle overlay */
-  private visionCircle: Phaser.GameObjects.Graphics | null = null;
+  /** Vision range circle overlay (Arc, not Graphics — no blue rect) */
+  private visionCircle: Phaser.GameObjects.Arc | null = null;
   /** Whether fog-of-war is enabled. OFF by default for debug/testing. */
   fogOfWarEnabled = false;
+  /** Animation tick */
+  private wakeTick = 0;
+  /** Previous ship positions for speed detection */
+  private prevPos: Map<string, { x: number; y: number }> = new Map();
 
   sync(scene: Phaser.Scene, world: WorldState): void {
+    this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
     const playerEntity = world.entities[playerShipId];
@@ -117,6 +122,70 @@ export class WorldRenderer {
       // Depth sort: y + offset
       sprite.setDepth(entity.pos.y + entity.depthOffset);
 
+      // Scale ship sprite inversely with zoom: smaller at high zoom, larger at low
+      if (entity.kind === "ship" && curMode !== "landed") {
+        const cam = scene.cameras.main;
+        const baseScale = 0.23;
+        // At zoom 12 (max): 70% size, at zoom 1.5 (min): 100% size
+        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5)); // 0 at min zoom, 1 at max
+        const zoomFactor = 1 - t * 0.3; // 1.0 → 0.7
+        sprite.setScale(baseScale * zoomFactor);
+      }
+
+      // Wake: irregular arcs from bow to stern, spreading outward
+      if (entity.kind === "ship" && curMode === "sailing" && entity.sailLevel > 0) {
+        // Use heading + sailLevel for wake (not frame-delta which is 0 between ticks)
+        if (this.wakeTick % 4 === 0) {
+          const heading = entity.heading;
+          const fwX = Math.sin(heading);
+          const fwY = -Math.cos(heading);
+          const sX = Math.cos(heading);
+          const sY = Math.sin(heading);
+          const int = Math.min(1, entity.sailLevel);
+          const count = 4 + Math.floor(int * 4); // 4-8
+
+          for (let i = 0; i < count; i++) {
+            // From bow (-2) to past stern (+3) — not just behind
+            const along = -2 + Math.random() * 5;
+            // Irregularity: random side offset, wider further back
+            const spreadBase = 0.8 + Math.max(0, along) * 0.3;
+            const sign = Math.random() > 0.5 ? 1 : -1;
+            const hullDist = (spreadBase + Math.random() * 0.4) * sign;
+
+            const wx = entity.pos.x - fwX * along + sX * hullDist;
+            const wy = entity.pos.y - fwY * along + sY * hullDist;
+
+            // Random arc params for irregularity
+            const radius = 0.2 + Math.random() * 0.25;
+            const arcSpan = 20 + Math.random() * 25; // 20-45 degree arc (half length)
+            const baseAngle = Phaser.Math.RadToDeg(heading) + (sign > 0 ? -90 : 90);
+            const startDeg = baseAngle - arcSpan / 2 + (Math.random() - 0.5) * 30;
+            const endDeg = startDeg + arcSpan;
+            const col = Math.random() > 0.4 ? 0xffffff : 0xccddff;
+
+            const arc = scene.add.arc(wx, wy, radius, startDeg, endDeg, false, col, 0);
+            arc.setStrokeStyle(0.4, col, 0.12);
+            arc.setFillStyle(col, 0);
+            arc.setDepth(entity.pos.y - 1);
+            arc.setClosePath(false);
+
+            // Drift outward + fade + grow slightly
+            const driftX = sX * sign * 0.4;
+            const driftY = sY * sign * 0.4;
+            scene.tweens.add({
+              targets: arc,
+              alpha: 0,
+              x: wx + driftX,
+              y: wy + driftY,
+              scaleX: 1.2 + Math.random() * 0.3,
+              scaleY: 1.2 + Math.random() * 0.3,
+              duration: 350 + Math.random() * 350,
+              onComplete: () => arc.destroy(),
+            });
+          }
+        }
+      }
+
       // NPC visibility: fog-of-war alpha based on distance to player
       const isPlayer = id === playerShipId;
       if (!isPlayer && entity.ai && playerEntity) {
@@ -137,12 +206,8 @@ export class WorldRenderer {
           sprite.setAlpha(dimAlpha);
         }
 
-        // Faction color tint for NPC ships
-        const factionKey = entity.ship?.factionId as string;
-        const factionDef = FACTIONS[factionKey];
-        if (factionDef) {
-          sprite.setTint(factionDef.color);
-        }
+        // Faction tint removed — caused blue rectangles around sprites
+        // TODO: replace with small flag sprite next to NPC ship
       }
     }
 
@@ -152,6 +217,7 @@ export class WorldRenderer {
         sprite.destroy();
         this.entitySprites.delete(id);
         this.entityModes.delete(id);
+        this.prevPos.delete(id);
         const anchor = this.anchorSprites.get(id);
         if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
       }
@@ -172,24 +238,9 @@ export class WorldRenderer {
   }
 
   private createEntitySprite(scene: Phaser.Scene, entity: EntityState, _isPlayer: boolean): Phaser.GameObjects.Sprite {
-    let textureKey = "sailship";
-    if (entity.kind === "ship" && entity.ship) {
-      // Map ship classId to AI-generated spritesheet texture
-      const classId = entity.ship.classId as string;
-      const classToTexture: Record<string, string> = {
-        sloop: "ship_sloop",
-        brigantine: "ship_brigantine",
-        frigate: "ship_frigate",
-        galleon: "ship_galleon",
-        merchantman: "ship_merchant",
-      };
-      const aiKey = classToTexture[classId];
-      if (aiKey && scene.textures.exists(aiKey)) {
-        textureKey = aiKey;
-      }
-    } else if (entity.kind !== "ship") {
-      textureKey = "fx_default";
-    }
+    // All ships use "sailship" spritesheet (transparent background).
+    // AI-generated ship_* PNGs have opaque blue (#0C2340) backgrounds — skip them.
+    let textureKey = entity.kind === "ship" ? "sailship" : "fx_default";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
     if (entity.kind === "ship") sprite.setScale(0.23);
@@ -205,16 +256,9 @@ export class WorldRenderer {
   }
 
   private createShipSprite(scene: Phaser.Scene, entity: EntityState): Phaser.GameObjects.Sprite {
-    let textureKey = "sailship";
-    if (entity.ship) {
-      const classId = entity.ship.classId as string;
-      const classToTexture: Record<string, string> = {
-        sloop: "ship_sloop", brigantine: "ship_brigantine",
-        frigate: "ship_frigate", galleon: "ship_galleon", merchantman: "ship_merchant",
-      };
-      const aiKey = classToTexture[classId];
-      if (aiKey && scene.textures.exists(aiKey)) textureKey = aiKey;
-    }
+    // Use sailship for all — AI ship_* PNGs have opaque blue backgrounds
+    const textureKey = "sailship";
+    void entity; // suppress unused
     const sprite = scene.add.sprite(0, 0, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
     sprite.setScale(0.23);
@@ -246,24 +290,18 @@ export class WorldRenderer {
     });
   }
 
-  /** Draw a subtle vision range circle around the player ship (always visible). */
+  /** Draw vision range circle — uses Arc (not Graphics) to avoid blue rect artifacts. */
   drawVisionCircle(scene: Phaser.Scene, playerPos: { x: number; y: number }): void {
     if (!this.visionCircle) {
-      this.visionCircle = scene.add.graphics();
+      this.visionCircle = scene.add.circle(0, 0, VISION_RANGE, 0x000000, 0);
+      this.visionCircle.setStrokeStyle(1.5, 0xffffff, this.fogOfWarEnabled ? 0.2 : 0.08);
       this.visionCircle.setDepth(100);
     }
-    this.visionCircle.clear();
-
-    const cx = playerPos.x;
-    const cy = playerPos.y;
-    const r = VISION_RANGE;
-
-    // Smooth circle — brighter when fog enabled, dimmer when debug mode
+    this.visionCircle.setPosition(playerPos.x, playerPos.y);
+    this.visionCircle.setRadius(VISION_RANGE);
     const alpha = this.fogOfWarEnabled ? 0.2 : 0.08;
     const color = this.fogOfWarEnabled ? 0x88bbff : 0xffffff;
-
-    this.visionCircle.lineStyle(1.5, color, alpha);
-    this.visionCircle.strokeCircle(cx, cy, r);
+    this.visionCircle.setStrokeStyle(1.5, color, alpha);
   }
 
   destroy(): void {

@@ -8,20 +8,20 @@ const VALID_LEVELS = ["z1", "z2", "z3", "z4", "z5", "z6", "z7", "z8", "z9", "z10
 export type ZoomLevel = (typeof VALID_LEVELS)[number];
 
 export const ZOOM_VALUES: Record<ZoomLevel, number> = {
-  z1: 0.5,
-  z2: 0.75,
-  z3: 1.0,
-  z4: 1.5,
-  z5: 2.25,
-  z6: 3.0,
-  z7: 4.0,
-  z8: 5.0,
-  z9: 6.5,
+  z1: 1.5,
+  z2: 2.0,
+  z3: 2.5,
+  z4: 3.0,
+  z5: 3.5,
+  z6: 4.0,
+  z7: 5.0,
+  z8: 6.0,
+  z9: 7.0,
   z10: 8.0,
-  z11: 10.0,
-  z12: 13.0,
-  z13: 16.0,
-  z14: 20.0,
+  z11: 9.0,
+  z12: 10.0,
+  z13: 11.0,
+  z14: 12.0,
 };
 
 let currentLevel: ZoomLevel = "z8";

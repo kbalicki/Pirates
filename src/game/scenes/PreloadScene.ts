@@ -82,6 +82,9 @@ export class PreloadScene extends Phaser.Scene {
     // Parchment panel (used on start screen for all packs)
     this.load.image("parchment_panel", "assets/ui/parchment_panel.png");
 
+    // Cloud texture from codepen spite/DgQzLv — the real puffy cloud texture
+    this.load.image("cloud_spite", "assets/sprites/clouds/cloud_spite.png");
+
     // ──── Pack-specific assets (only for enhanced pack) ────
 
     const prefix = getPackPrefix();
@@ -95,11 +98,6 @@ export class PreloadScene extends Phaser.Scene {
 
     // Green grass/jungle tile (seamless, 32x32)
     this.load.image("grass_tile", `${prefix}tiles/grass_tile.png`);
-
-    // Cloud sprites (6 variants)
-    for (let i = 1; i <= 6; i++) {
-      this.load.image(`cloud_${i}`, `${prefix}sprites/clouds/cloud_${i}.png`);
-    }
 
     // Palm tree sprites (4 variants)
     for (let i = 1; i <= 4; i++) {
@@ -129,9 +127,15 @@ export class PreloadScene extends Phaser.Scene {
       }
     }
 
+    // Cloud texture loaded from file — no generation needed
+    if (this.textures.exists("cloud_spite")) {
+      this.textures.get("cloud_spite").setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
+
     // Initialize music manager (accessible from all scenes via registry)
     this.registry.set("musicManager", new MusicManager(this.game));
 
     this.scene.start("CharacterCreationScene");
   }
+
 }

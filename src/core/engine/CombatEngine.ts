@@ -124,7 +124,7 @@ export class CombatEngine {
 
       case "Turn": {
         const shipClass = SHIP_CLASSES[entity.ship.classId as string];
-        const maxTurn = shipClass?.turnRate ?? 0.04;
+        const maxTurn = shipClass?.turnRate ?? 0.08;
         const amount = clamp(cmd.amount, 0, maxTurn);
         const delta = cmd.dir === "left" ? -amount : amount;
         return {
@@ -229,7 +229,7 @@ export class CombatEngine {
     const broadSideOffset = Math.PI / 2;
     const desiredHeading = normalizeHeading(angleToPlayer + broadSideOffset);
     const shipClass = SHIP_CLASSES[enemy.ship.classId as string];
-    const turnRate = shipClass?.turnRate ?? 0.04;
+    const turnRate = shipClass?.turnRate ?? 0.08;
 
     let headingDiff = desiredHeading - enemy.heading;
     while (headingDiff > Math.PI) headingDiff -= Math.PI * 2;

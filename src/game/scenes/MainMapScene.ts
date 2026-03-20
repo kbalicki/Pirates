@@ -10,11 +10,13 @@ import { CloudRenderer } from "../render/CloudRenderer.ts";
 import { SeagullRenderer } from "../render/SeagullRenderer.ts";
 import type { UIOverlayScene } from "./UIOverlayScene.ts";
 import { FxManager } from "../render/FxManager.ts";
+import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
+import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
+import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import type { PortDef } from "../../core/data/ports.ts";
-import { FACTIONS } from "../../core/data/factions.ts";
 import { LANDMASSES, setLandmasses } from "../../core/data/geography.ts";
 import type { LandmassDef, LandmassBbox } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass } from "../../core/services/Geometry.ts";
@@ -36,7 +38,7 @@ export class MainMapScene extends Phaser.Scene {
   private cloudRenderer!: CloudRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
-  private waterTileSprite: Phaser.GameObjects.TileSprite | null = null;
+  private waterRenderer!: WaterRenderer;
   private landGrid!: boolean[][];
   private inputMapper!: InputMapper;
   private commandQueue!: CommandQueue;
@@ -79,8 +81,8 @@ export class MainMapScene extends Phaser.Scene {
     this.initGeoData();
 
     this.createTilemap();
-    this.generateFlagTextures();
-    this.generateCrewTexture();
+    generateFlagTextures(this);
+    generateCrewTexture(this);
 
     const terrainQuery = this.createTerrainQuery();
     this.engine = new WorldEngine(terrainQuery);
@@ -190,8 +192,9 @@ export class MainMapScene extends Phaser.Scene {
     // Listen for PortApproachScene closing — resume ourselves and push ship to open sea
     this.events.on("resume", () => {
       this.portDialogOpen = false;
-      // Push ship away from coast to prevent instant re-landing
       this.pushShipToOpenSea();
+      // Reset sails to minimum on departure
+      this.inputMapper.setSailLevel(0.15);
     });
 
     // Dynamic resize handling
@@ -205,8 +208,10 @@ export class MainMapScene extends Phaser.Scene {
     };
     this.scale.on("resize", this.onResize);
 
-    this.drawPortMarkers();
-    this.drawOSMCityLabels();
+    const portMarkers = new PortMarkerRenderer(this, this.landGrid).render();
+    this.portSafePositions = portMarkers.portSafePositions;
+    this.cityLabels = portMarkers.cityLabels;
+    // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
 
@@ -247,32 +252,48 @@ export class MainMapScene extends Phaser.Scene {
     const mapW = 3200;
     const mapH = 2400;
 
-    // Deep blue water background
-    const bg = this.add.graphics();
-    bg.setDepth(-1000);
-    bg.fillStyle(0x0c2340, 1);
-    bg.fillRect(0, 0, mapW, mapH);
+    // Animated water surface with subtle wave patterns
+    this.waterRenderer = new WaterRenderer(this, mapW, mapH);
+    // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
-    // Draw landmasses from polygon data (matches collision exactly)
+    // Chaikin subdivision: smooths a closed polygon by cutting corners
+    const chaikinSmooth = (pts: { x: number; y: number }[], iterations = 2): { x: number; y: number }[] => {
+      let cur = pts;
+      for (let iter = 0; iter < iterations; iter++) {
+        const next: { x: number; y: number }[] = [];
+        const n = cur.length;
+        for (let i = 0; i < n; i++) {
+          const p0 = cur[i];
+          const p1 = cur[(i + 1) % n];
+          next.push({ x: 0.75 * p0.x + 0.25 * p1.x, y: 0.75 * p0.y + 0.25 * p1.y });
+          next.push({ x: 0.25 * p0.x + 0.75 * p1.x, y: 0.25 * p0.y + 0.75 * p1.y });
+        }
+        cur = next;
+      }
+      return cur;
+    };
+
+    // Draw landmasses with smoothed coastlines
     const landGfx = this.add.graphics();
     landGfx.setDepth(-900);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
+      const smooth = chaikinSmooth(lm.polygon, 2);
       // Filled green land
       landGfx.fillStyle(0x2d6a1e, 1);
       landGfx.beginPath();
-      landGfx.moveTo(lm.polygon[0].x, lm.polygon[0].y);
-      for (let i = 1; i < lm.polygon.length; i++) {
-        landGfx.lineTo(lm.polygon[i].x, lm.polygon[i].y);
+      landGfx.moveTo(smooth[0].x, smooth[0].y);
+      for (let i = 1; i < smooth.length; i++) {
+        landGfx.lineTo(smooth[i].x, smooth[i].y);
       }
       landGfx.closePath();
       landGfx.fillPath();
       // Yellow/sand coastline outline
       landGfx.lineStyle(1.5, 0xc8a84e, 0.8);
       landGfx.beginPath();
-      landGfx.moveTo(lm.polygon[0].x, lm.polygon[0].y);
-      for (let i = 1; i < lm.polygon.length; i++) {
-        landGfx.lineTo(lm.polygon[i].x, lm.polygon[i].y);
+      landGfx.moveTo(smooth[0].x, smooth[0].y);
+      for (let i = 1; i < smooth.length; i++) {
+        landGfx.lineTo(smooth[i].x, smooth[i].y);
       }
       landGfx.closePath();
       landGfx.strokePath();
@@ -307,155 +328,6 @@ export class MainMapScene extends Phaser.Scene {
     }
   }
 
-  /** Generate 16x12 pixel flag textures for each faction (XVII century historical designs). */
-  private generateFlagTextures(): void {
-    const W = 16, H = 12;
-
-    // England: St George's Cross (red cross on white)
-    {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0xffffff, 1); g.fillRect(0, 0, W, H);
-      g.fillStyle(0xcc0000, 1);
-      g.fillRect(0, 5, W, 2);  // horizontal
-      g.fillRect(7, 0, 2, H);  // vertical
-      g.generateTexture("flag_england", W, H);
-      g.destroy();
-    }
-
-    // Spain: Cross of Burgundy (red diagonal X on white, XVII century)
-    {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0xffffff, 1); g.fillRect(0, 0, W, H);
-      g.lineStyle(2, 0xcc0000, 1);
-      g.beginPath();
-      g.moveTo(1, 1); g.lineTo(W - 1, H - 1);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(W - 1, 1); g.lineTo(1, H - 1);
-      g.strokePath();
-      // Thicken with second pass slightly offset
-      g.lineStyle(1, 0xaa0000, 0.6);
-      g.beginPath();
-      g.moveTo(2, 0); g.lineTo(W, H - 2);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(W - 2, 0); g.lineTo(0, H - 2);
-      g.strokePath();
-      g.generateTexture("flag_spain", W, H);
-      g.destroy();
-    }
-
-    // France: Fleur-de-lis (gold lily on blue, pre-revolution)
-    {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0x224488, 1); g.fillRect(0, 0, W, H);
-      // Simplified fleur-de-lis: central stem + side petals
-      g.fillStyle(0xffd700, 1);
-      g.fillRect(7, 2, 2, 8);  // central stem
-      g.fillRect(5, 3, 6, 2);  // cross bar
-      // Top petals
-      g.fillRect(4, 2, 2, 3);
-      g.fillRect(10, 2, 2, 3);
-      // Bottom flare
-      g.fillRect(5, 8, 2, 2);
-      g.fillRect(9, 8, 2, 2);
-      g.generateTexture("flag_france", W, H);
-      g.destroy();
-    }
-
-    // Netherlands: Prinsenvlag (orange-white-blue, XVII century)
-    {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0xff7700, 1); g.fillRect(0, 0, W, 4);   // orange
-      g.fillStyle(0xffffff, 1); g.fillRect(0, 4, W, 4);   // white
-      g.fillStyle(0x2255aa, 1); g.fillRect(0, 8, W, 4);   // blue
-      g.generateTexture("flag_netherlands", W, H);
-      g.destroy();
-    }
-
-    // Pirates: Jolly Roger (white skull on black)
-    {
-      const g = this.make.graphics({ x: 0, y: 0 });
-      g.fillStyle(0x111111, 1); g.fillRect(0, 0, W, H);
-      // Skull (simplified)
-      g.fillStyle(0xffffff, 1);
-      g.fillRect(5, 2, 6, 5);   // skull body
-      g.fillRect(6, 1, 4, 1);   // top of skull
-      // Eyes
-      g.fillStyle(0x111111, 1);
-      g.fillRect(6, 3, 2, 2);
-      g.fillRect(9, 3, 2, 2);
-      // Crossbones
-      g.lineStyle(1, 0xffffff, 0.9);
-      g.beginPath();
-      g.moveTo(3, 8); g.lineTo(13, 11);
-      g.strokePath();
-      g.beginPath();
-      g.moveTo(13, 8); g.lineTo(3, 11);
-      g.strokePath();
-      g.generateTexture("flag_pirates", W, H);
-      g.destroy();
-    }
-  }
-
-  /** Generate a simple 4-direction crew party spritesheet (16x16 per frame, 4 frames). */
-  private generateCrewTexture(): void {
-    if (this.textures.exists("crew_party")) return;
-    const FW = 16, FH = 16;
-    const g = this.make.graphics({ x: 0, y: 0 });
-
-    // 4 frames side by side: S, W, E, N (each 16x16)
-    for (let f = 0; f < 4; f++) {
-      const ox = f * FW;
-      // 3 small pirate figures in a group
-      for (let p = 0; p < 3; p++) {
-        const px = ox + 3 + p * 5;
-        const py = 4 + (p === 1 ? -2 : 0);
-
-        // Body
-        g.fillStyle(p === 0 ? 0x8b4513 : p === 1 ? 0xcc3333 : 0x2244aa, 1);
-        g.fillRect(px, py + 4, 3, 5);
-
-        // Head
-        g.fillStyle(0xddbb88, 1);
-        g.fillRect(px, py + 1, 3, 3);
-
-        // Hat
-        g.fillStyle(0x222222, 1);
-        g.fillRect(px - 1, py, 5, 2);
-
-        // Legs (direction-dependent offset)
-        g.fillStyle(0x444444, 1);
-        if (f === 0) { // S — walking down
-          g.fillRect(px, py + 9, 1, 3);
-          g.fillRect(px + 2, py + 9, 1, 3);
-        } else if (f === 3) { // N — walking up
-          g.fillRect(px, py + 9, 1, 2);
-          g.fillRect(px + 2, py + 9, 1, 2);
-        } else { // W/E — side view
-          g.fillRect(px, py + 9, 1, 3);
-          g.fillRect(px + 1, py + 9, 1, 2);
-        }
-
-        // Weapon (cutlass or musket)
-        if (p === 0) {
-          g.fillStyle(0xcccccc, 1);
-          g.fillRect(px + 3, py + 5, 1, 4);
-        }
-      }
-    }
-
-    g.generateTexture("crew_party", FW * 4, FH);
-    g.destroy();
-
-    // Register as spritesheet
-    const tex = this.textures.get("crew_party");
-    tex.add(0, 0, 0, 0, FW, FH);   // S
-    tex.add(1, 0, FW, 0, FW, FH);   // W
-    tex.add(2, 0, FW * 2, 0, FW, FH); // E
-    tex.add(3, 0, FW * 3, 0, FW, FH); // N
-  }
-
   private toggleLandMode(): void {
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (!playerEntity) return;
@@ -480,85 +352,6 @@ export class MainMapScene extends Phaser.Scene {
       }
       return "sea";
     };
-  }
-
-  /**
-   * Snap a port position to the nearest coastal land cell.
-   * A coastal cell is a land cell in landGrid that has at least one water neighbor.
-   * This guarantees: (1) the port is on land, (2) ships can reach it from water.
-   */
-  private snapToCoast(pos: { x: number; y: number }): { x: number; y: number } {
-    const CELL = 32;
-    const rows = this.landGrid.length;
-    const cols = this.landGrid[0]?.length ?? 0;
-
-    const isCoastal = (r: number, c: number): boolean => {
-      if (!this.landGrid[r][c]) return false; // must be land
-      // Check 4-neighbors for water
-      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-        const nr = r + dr, nc = c + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return true; // map edge = water
-        if (!this.landGrid[nr][nc]) return true;
-      }
-      return false;
-    };
-
-    // BFS outward from the port's grid cell to find the nearest coastal land cell
-    const startCol = Math.floor(pos.x / CELL);
-    const startRow = Math.floor(pos.y / CELL);
-    const clampR = (r: number) => Math.max(0, Math.min(rows - 1, r));
-    const clampC = (c: number) => Math.max(0, Math.min(cols - 1, c));
-    const sr = clampR(startRow), sc = clampC(startCol);
-
-    // Quick check: already on a coastal cell
-    if (isCoastal(sr, sc)) return pos;
-
-    const visited = new Set<number>();
-    const key = (r: number, c: number) => r * cols + c;
-    const queue: [number, number][] = [[sr, sc]];
-    visited.add(key(sr, sc));
-
-    let bestR = sr, bestC = sc;
-    let bestDist = Infinity;
-    const MAX_SEARCH = 30; // max BFS radius in cells
-
-    let head = 0;
-    while (head < queue.length) {
-      const [cr, cc] = queue[head++];
-      const dist = Math.abs(cr - sr) + Math.abs(cc - sc);
-      if (dist > MAX_SEARCH) continue;
-
-      if (isCoastal(cr, cc)) {
-        // Pick the coastal cell closest to original position (Euclidean)
-        const cx = cc * CELL + CELL / 2;
-        const cy = cr * CELL + CELL / 2;
-        const d = (pos.x - cx) ** 2 + (pos.y - cy) ** 2;
-        if (d < bestDist) {
-          bestDist = d;
-          bestR = cr;
-          bestC = cc;
-        }
-        // Don't expand beyond found coastal cells at this distance
-        if (dist < MAX_SEARCH) {
-          // Keep searching at same distance for closer Euclidean match
-        }
-        continue; // don't expand past coastal cells
-      }
-
-      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
-        const nr = cr + dr, nc = cc + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        const k = key(nr, nc);
-        if (visited.has(k)) continue;
-        visited.add(k);
-        queue.push([nr, nc]);
-      }
-    }
-
-    if (bestDist < Infinity) {
-      return { x: bestC * CELL + CELL / 2, y: bestR * CELL + CELL / 2 };
-    }
-    return pos; // fallback
   }
 
   /** Convert lon/lat to pixel coordinates (same Mercator formula as cities.ts geoToMap). */
@@ -638,364 +431,12 @@ export class MainMapScene extends Phaser.Scene {
     }
   }
 
-  private drawPortMarkers(): void {
-    const g = this.add.graphics();
-    g.setDepth(500);
-
-    for (const [portKey, port] of Object.entries(PORTS)) {
-      // Snap port to nearest coastal land cell — used for rendering AND dock interaction
-      const safePos = this.snapToCoast(port.pos);
-      this.portSafePositions.set(portKey, safePos);
-      const drawPort = { ...port, pos: safePos };
-
-      this.drawCityIcon(g, drawPort);
-
-      // Add historical flag sprite next to city — close to buildings
-      const factionId = port.factionId as string;
-      const flagKey = `flag_${factionId}`;
-      if (this.textures.exists(flagKey)) {
-        const isLg = port.population === "large" || port.population === "capital";
-        const isFort = port.type === "fort";
-        const flagX = safePos.x + (isFort ? -9 : isLg ? 14 : port.population === "medium" ? 9 : 8);
-        const flagY = safePos.y - (isFort ? 16 : isLg ? 16 : port.population === "medium" ? 10 : 8);
-        const flagImg = this.add.image(flagX, flagY, flagKey);
-        flagImg.setDepth(501);
-        flagImg.setScale(0.5);
-        // Waving animation
-        this.tweens.add({
-          targets: flagImg,
-          angle: { from: -3, to: 3 },
-          ease: "Sine.easeInOut",
-          duration: 1500,
-          yoyo: true,
-          repeat: -1,
-        });
-      }
-
-      const isLarge = port.population === "large" || port.population === "capital";
-      const labelSize = isLarge ? 16 : port.population === "medium" ? 14 : 11;
-      // Label anchored below the city, offset in screen pixels each frame
-      const anchorX = safePos.x;
-      const anchorY = safePos.y + (isLarge ? 8 : port.population === "medium" ? 6 : 5);
-
-      const label = this.add.text(anchorX, anchorY, t("port." + portKey + ".name"), {
-        ...txt(labelSize, { bold: true, color: "#ffffff" }),
-        stroke: "#222222",
-        strokeThickness: 3,
-        shadow: { offsetX: 1, offsetY: 1, color: "#000000", blur: 2, fill: true, stroke: true },
-      });
-      label.setOrigin(0.5, 0);
-      label.setDepth(600); // above everything
-      this.cityLabels.push({ text: label, anchorX, anchorY, offsetPx: 0 });
-    }
-  }
-
-  private drawOSMCityLabels(): void {
-    if (this.osmCities.length === 0) return;
-
-    // Collect gameplay port positions for dedup
-    const portPositions = Object.values(PORTS).map((p) => p.pos);
-    const DEDUP_DIST = 60;
-    const MAX_LABELS = 200; // cap to avoid performance issues
-    const LABEL_SPACING = 40; // minimum distance between OSM labels
-
-    // Only draw cities that are on land (skip offshore points)
-    const onLandCities = this.osmCities.filter((city) => {
-      const pt = { x: city.x, y: city.y };
-      for (const lm of LANDMASSES) {
-        if (pointInLandmass(pt, lm)) return true;
-      }
-      return false;
-    });
-
-    // Sort by a rough importance heuristic (name length as proxy — shorter = more important)
-    onLandCities.sort((a, b) => a.name.length - b.name.length);
-
-    const placed: Array<{ x: number; y: number }> = [];
-    let drawn = 0;
-
-    for (const city of onLandCities) {
-      if (drawn >= MAX_LABELS) break;
-
-      // Skip cities too close to gameplay ports
-      const tooCloseToPort = portPositions.some(
-        (pp) => Math.abs(pp.x - city.x) < DEDUP_DIST && Math.abs(pp.y - city.y) < DEDUP_DIST,
-      );
-      if (tooCloseToPort) continue;
-
-      // Skip cities too close to already-placed labels
-      const tooCloseToLabel = placed.some(
-        (pp) => Math.abs(pp.x - city.x) < LABEL_SPACING && Math.abs(pp.y - city.y) < LABEL_SPACING,
-      );
-      if (tooCloseToLabel) continue;
-
-      const label = this.add.text(city.x, city.y, city.name, {
-        ...txt(7, { color: "#bbaa88" }),
-        stroke: "#000000",
-        strokeThickness: 1,
-      });
-      label.setOrigin(0.5, 0.5);
-      label.setDepth(400);
-      this.cityLabels.push({ text: label, anchorX: city.x, anchorY: city.y, offsetPx: 0 });
-      placed.push({ x: city.x, y: city.y });
-      drawn++;
-    }
-  }
-
-  private drawCityIcon(g: Phaser.GameObjects.Graphics, port: PortDef): void {
-    const x = port.pos.x;
-    const y = port.pos.y;
-    const factionDef = FACTIONS[port.factionId as string];
-    const flagColor = factionDef?.color ?? 0xaaaaaa;
-    const pop = port.population;
-
-    // Try AI-generated city sprite first (not for forts)
-    if (port.type !== "fort") {
-      let spriteKey: string | null = null;
-      if ((pop === "large" || pop === "capital") && this.textures.exists("city_large")) {
-        spriteKey = "city_large";
-      } else if (pop === "medium" && this.textures.exists("city_medium")) {
-        spriteKey = "city_medium";
-      } else if (this.textures.exists("city_small")) {
-        spriteKey = "city_small";
-      }
-
-      if (spriteKey) {
-        const cityImg = this.add.image(x, y, spriteKey);
-        cityImg.setDepth(500);
-        const scale = pop === "large" || pop === "capital" ? 0.8 : pop === "medium" ? 0.65 : 0.5;
-        cityImg.setScale(scale);
-        return;
-      }
-    }
-
-    // Fallback: procedural drawing
-    if (port.type === "fort") {
-      this.drawFort(g, x, y, flagColor, pop);
-    } else if (pop === "large" || pop === "capital") {
-      this.drawCityLarge(g, x, y, flagColor);
-    } else if (pop === "medium") {
-      this.drawCityMedium(g, x, y, flagColor);
-    } else {
-      this.drawCitySmall(g, x, y, flagColor);
-    }
-  }
-
-  /** Large city: walled Caribbean town with church spire, multiple buildings, palm trees */
-  private drawCityLarge(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-    // Ground/plaza
-    g.fillStyle(0xc4a46a, 0.5);
-    g.fillCircle(x, y + 2, 16);
-
-    // City wall (low stone)
-    g.fillStyle(0x8a7a5a, 0.8);
-    g.fillRoundedRect(x - 20, y + 1, 40, 3, 1);
-
-    // Left house (colonial style)
-    g.fillStyle(0xe8d5a8, 1); // cream walls
-    g.fillRect(x - 16, y - 9, 9, 11);
-    g.fillStyle(0xcc5533, 1); // terracotta roof
-    g.fillRect(x - 17, y - 11, 11, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x - 17, y - 11, 11, 1);
-
-    // Central building (town hall / governor's mansion — tallest)
-    g.fillStyle(0xf0e0c0, 1);
-    g.fillRect(x - 5, y - 14, 11, 16);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x - 6, y - 16, 13, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x - 6, y - 16, 13, 1);
-    // Balcony
-    g.fillStyle(0x8b7355, 1);
-    g.fillRect(x - 4, y - 8, 9, 1);
-
-    // Right house
-    g.fillStyle(0xe0cca0, 1);
-    g.fillRect(x + 8, y - 7, 8, 9);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x + 7, y - 9, 10, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x + 7, y - 9, 10, 1);
-
-    // Church spire
-    g.fillStyle(0xd4c090, 1);
-    g.fillRect(x - 1, y - 24, 3, 8);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x - 2, y - 26, 5, 3);
-    // Cross
-    g.lineStyle(1, 0xffdd44, 0.9);
-    g.lineBetween(x + 0.5, y - 26, x + 0.5, y - 29);
-    g.lineBetween(x - 1, y - 28, x + 2, y - 28);
-
-    // Palm tree (left)
-    g.lineStyle(2, 0x6b5030, 1);
-    g.lineBetween(x - 19, y + 2, x - 18, y - 8);
-    g.fillStyle(0x2d7a2d, 0.8);
-    g.fillCircle(x - 18, y - 10, 4);
-    g.fillCircle(x - 21, y - 8, 3);
-    g.fillCircle(x - 15, y - 9, 3);
-
-    // Windows (warm light)
-    g.fillStyle(0xffdd44, 0.7);
-    g.fillRect(x - 14, y - 7, 2, 2);
-    g.fillRect(x - 14, y - 3, 2, 2);
-    g.fillRect(x - 3, y - 12, 2, 2);
-    g.fillRect(x + 2, y - 12, 2, 2);
-    g.fillRect(x - 3, y - 6, 2, 2);
-    g.fillRect(x + 2, y - 6, 2, 2);
-    g.fillRect(x + 10, y - 5, 2, 2);
-    g.fillRect(x + 10, y - 1, 2, 2);
-
-    // Doors
-    g.fillStyle(0x443322, 1);
-    g.fillRect(x, y - 2, 2, 4);
-
-    // Flag pole
-    g.lineStyle(1, 0xdddddd, 0.9);
-    g.lineBetween(x + 16, y - 7, x + 16, y - 18);
-  }
-
-  /** Medium city: 2 colonial buildings with red roofs, small church */
-  private drawCityMedium(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-    // Ground
-    g.fillStyle(0xc4a46a, 0.4);
-    g.fillCircle(x, y + 1, 10);
-
-    // Left building
-    g.fillStyle(0xe8d5a8, 1);
-    g.fillRect(x - 10, y - 5, 7, 8);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x - 11, y - 7, 9, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x - 11, y - 7, 9, 1);
-
-    // Central building (taller)
-    g.fillStyle(0xf0e0c0, 1);
-    g.fillRect(x - 2, y - 9, 7, 12);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x - 3, y - 11, 9, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x - 3, y - 11, 9, 1);
-
-    // Small bell tower
-    g.fillStyle(0xd4c090, 1);
-    g.fillRect(x + 1, y - 15, 2, 4);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x, y - 16, 4, 2);
-
-    // Right small structure
-    g.fillStyle(0xe0cca0, 1);
-    g.fillRect(x + 6, y - 3, 5, 6);
-    g.fillStyle(0xcc5533, 1);
-    g.fillRect(x + 5, y - 5, 7, 3);
-    g.fillStyle(0xaa4422, 1);
-    g.fillRect(x + 5, y - 5, 7, 1);
-
-    // Windows
-    g.fillStyle(0xffdd44, 0.7);
-    g.fillRect(x - 8, y - 3, 2, 2);
-    g.fillRect(x, y - 7, 2, 2);
-    g.fillRect(x, y - 3, 2, 2);
-    g.fillRect(x + 8, y - 1, 1, 1);
-
-    // Door
-    g.fillStyle(0x443322, 1);
-    g.fillRect(x + 1, y + 0, 2, 3);
-
-    // Flag pole
-    g.lineStyle(1, 0xdddddd, 0.8);
-    g.lineBetween(x + 11, y - 3, x + 11, y - 12);
-  }
-
-  /** Small settlement: thatched huts, palm tree, fishing village feel */
-  private drawCitySmall(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-    // Sandy ground
-    g.fillStyle(0xc4a46a, 0.3);
-    g.fillCircle(x, y + 1, 6);
-
-    // Main hut (wooden walls, thatched roof)
-    g.fillStyle(0x8b7355, 1);
-    g.fillRect(x - 4, y - 2, 5, 5);
-    g.fillStyle(0x667744, 1); // palm leaf roof
-    g.fillRect(x - 5, y - 4, 7, 3);
-    g.fillStyle(0x556633, 1);
-    g.fillRect(x - 5, y - 4, 7, 1);
-
-    // Second hut
-    g.fillStyle(0x8b7355, 1);
-    g.fillRect(x + 3, y - 1, 4, 4);
-    g.fillStyle(0x667744, 1);
-    g.fillRect(x + 2, y - 3, 6, 3);
-    g.fillStyle(0x556633, 1);
-    g.fillRect(x + 2, y - 3, 6, 1);
-
-    // Small palm tree
-    g.lineStyle(1, 0x6b5030, 1);
-    g.lineBetween(x - 7, y + 2, x - 6, y - 4);
-    g.fillStyle(0x2d7a2d, 0.7);
-    g.fillCircle(x - 6, y - 5, 2.5);
-    g.fillCircle(x - 8, y - 4, 2);
-
-    // Tiny window
-    g.fillStyle(0xffdd44, 0.5);
-    g.fillRect(x - 2, y, 1, 1);
-
-    // Small flag pole
-    g.lineStyle(1, 0xaaaaaa, 0.8);
-    g.lineBetween(x + 7, y - 1, x + 7, y - 8);
-  }
-
-  /** Fort: stone walls with towers, scales by population */
-  private drawFort(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number, pop: string): void {
-    const big = pop === "large" || pop === "capital" || pop === "medium";
-    const s = big ? 1.2 : 1.0;
-
-    // Main wall
-    g.fillStyle(0x777777, 1);
-    g.fillRect(x - 9 * s, y - 7 * s, 18 * s, 14 * s);
-
-    // Corner towers
-    g.fillStyle(0x666666, 1);
-    g.fillRect(x - 11 * s, y - 9 * s, 5 * s, 5 * s);
-    g.fillRect(x + 6 * s, y - 9 * s, 5 * s, 5 * s);
-    g.fillRect(x - 11 * s, y + 4 * s, 5 * s, 5 * s);
-    g.fillRect(x + 6 * s, y + 4 * s, 5 * s, 5 * s);
-
-    // Battlements
-    g.fillStyle(0x888888, 1);
-    for (let i = -10 * s; i <= 8 * s; i += 3 * s) {
-      g.fillRect(x + i, y - 11 * s, 2 * s, 2 * s);
-    }
-
-    // Gate
-    g.fillStyle(0x443322, 1);
-    g.fillRect(x - 2 * s, y + 2 * s, 4 * s, 5 * s);
-
-    // Gate arch
-    g.lineStyle(1, 0x555555, 0.8);
-    g.strokeRect(x - 2 * s, y + 2 * s, 4 * s, 5 * s);
-
-    // Flag pole — flag sprite added separately in drawPortMarkers
-    g.lineStyle(1, 0xdddddd, 0.9);
-    g.lineBetween(x - 9 * s, y - 9 * s, x - 9 * s, y - 16 * s);
-
-    if (big) {
-      // Extra detail for larger forts: cannon positions
-      g.fillStyle(0x333333, 1);
-      g.fillCircle(x - 8 * s, y - 6 * s, 1.5);
-      g.fillCircle(x + 8 * s, y - 6 * s, 1.5);
-      g.fillCircle(x - 8 * s, y + 6 * s, 1.5);
-      g.fillCircle(x + 8 * s, y + 6 * s, 1.5);
-    }
-  }
-
   private findNearPort(): (typeof PORTS)[keyof typeof PORTS] | null {
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (!playerEntity) return null;
 
     const isLanded = playerEntity.mode === "landed";
-    const radius = isLanded ? 27 : 9;
+    const radius = isLanded ? 20 : 6;
 
     for (const [portKey, port] of Object.entries(PORTS)) {
       // Use coast-snapped position (on land, adjacent to water) for all checks
@@ -1098,11 +539,25 @@ export class MainMapScene extends Phaser.Scene {
       }
     }
 
+    // Interpolation factor: how far between ticks we are (0→1)
+    const interpAlpha = this.tickAccumulator / TICK_MS;
+
+    // Sync fog-of-war from settings (debug mode disables it)
+    const debugMode = localStorage.getItem("pc_debug") !== "0";
+    const fogSetting = localStorage.getItem("pc_fog") === "1";
+    this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
+
     this.worldRenderer.sync(this, this.worldState);
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (playerEntity) {
-      this.cameraCtrl.setTarget(playerEntity.pos);
+      // Interpolate player position between ticks for smooth movement
+      const vel = playerEntity.vel ?? { x: 0, y: 0 };
+      const interpPos = {
+        x: playerEntity.pos.x + vel.x * interpAlpha,
+        y: playerEntity.pos.y + vel.y * interpAlpha,
+      };
+      this.cameraCtrl.setTarget(interpPos);
       this.cameraCtrl.update();
       this.worldRenderer.drawVisionCircle(this, playerEntity.pos);
     }
@@ -1123,13 +578,8 @@ export class MainMapScene extends Phaser.Scene {
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
-    // Scroll water tile with wind
-    if (this.waterTileSprite) {
-      const windDir = this.worldState.weather.windDirRad;
-      const str = this.worldState.weather.windStrength;
-      this.waterTileSprite.tilePositionX += Math.sin(windDir) * 0.15 * str;
-      this.waterTileSprite.tilePositionY += -Math.cos(windDir) * 0.15 * str;
-    }
+    // Animate water surface with wind
+    this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
     // Wind sound volume follows wind strength
     if (this.windSound && "setVolume" in this.windSound) {
@@ -1153,6 +603,8 @@ export class MainMapScene extends Phaser.Scene {
   /** Steer ship/crew toward mouse cursor while left button is held. */
   private updateMouseSteering(playerEntity: { pos: { x: number; y: number }; heading: number; mode: string; sailLevel: number } | undefined): void {
     if (!playerEntity) return;
+    // LPM does nothing while sailing — only works on land
+    if (playerEntity.mode !== "landed") return;
     const pointer = this.input.activePointer;
     if (!pointer.isDown || pointer.button !== 0) return;
 
@@ -1174,12 +626,8 @@ export class MainMapScene extends Phaser.Scene {
       this.commandQueue.push({ type: "SetHeading", heading: targetHeading });
       this.commandQueue.push({ type: "SetSailLevel", value: 1 });
     } else {
-      // Sailing mode: set heading, raise sails if stopped
+      // Sailing mode: steer only, do NOT change sails
       this.commandQueue.push({ type: "SetHeading", heading: targetHeading });
-      if (playerEntity.sailLevel === 0) {
-        this.inputMapper.setSailLevel(0.34);
-        this.commandQueue.push({ type: "SetSailLevel", value: 0.34 });
-      }
     }
   }
 
@@ -1216,6 +664,7 @@ export class MainMapScene extends Phaser.Scene {
         [shipId]: {
           ...entity,
           heading: seaHeading,
+          sailLevel: 0.15, // minimal sails on departure
           pos: {
             x: entity.pos.x + Math.sin(seaHeading) * pushDist,
             y: entity.pos.y - Math.cos(seaHeading) * pushDist,
@@ -1282,6 +731,7 @@ export class MainMapScene extends Phaser.Scene {
     }
     this.worldRenderer.destroy();
     this.cloudRenderer.destroy();
+    this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
     this.scene.stop("UIOverlayScene");
     this.inputMapper.destroy();

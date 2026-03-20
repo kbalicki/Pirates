@@ -6,7 +6,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 ---
 
-## Status aktualny (v0.8.6)
+## Status aktualny (v0.9.0)
 
 ### Ukończone fazy
 

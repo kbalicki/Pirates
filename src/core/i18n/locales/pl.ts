@@ -359,7 +359,7 @@ export const PL: LocaleData = {
   "lang.switch": "[ English ]",
 
   // -- Settings Tab --
-  "menu.tab_settings": "Opcje",
+  "menu.tab_settings": "Ustawienia",
   "settings.title": "SKRYTKA KWATERMISTRZA",
   "settings.style_label": "Styl grafiki",
   "settings.style_hint": "* Zrestartuj grę, aby zobaczyć pełen efekt",
@@ -369,7 +369,7 @@ export const PL: LocaleData = {
 
   // -- Zoom --
   "settings.zoom_label": "Luneta",
-  "settings.zoom.z1": "1 — Pełna mapa",
+  "settings.zoom.z1": "1 — Duża mapa",
   "settings.zoom.z2": "2 — Przegląd",
   "settings.zoom.z3": "3 — Daleko",
   "settings.zoom.z4": "4 — Średnio",

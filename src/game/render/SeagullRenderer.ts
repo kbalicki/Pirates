@@ -1,7 +1,7 @@
 import Phaser from "phaser";
 
-const MIN_SEAGULLS = 35;
-const MAX_SEAGULLS = 70;
+const MIN_SEAGULLS = 70;
+const MAX_SEAGULLS = 140;
 const SEAGULL_DEPTH = 3500;
 const FLAP_INTERVAL = 300;
 const CULL_MARGIN = 80;
@@ -58,10 +58,14 @@ export class SeagullRenderer {
     const cam = this.scene.cameras.main;
     const dt = this.scene.game.loop.delta;
 
-    // Hide seagulls on far zoom levels
-    const tooFar = cam.zoom < MIN_VISIBLE_ZOOM;
+    // Scale seagulls with zoom: full size at z14 (20x), shrink at lower zoom, invisible below 1.5x
+    const maxZoom = 20;
+    const zoomRatio = Math.min(1, cam.zoom / maxZoom); // 0→1
+    const seagullScale = zoomRatio; // 0 at zoom=0, 1 at zoom=20
+    const tooFar = cam.zoom < MIN_VISIBLE_ZOOM || seagullScale < 0.05;
     for (const gull of this.seagulls) {
       gull.gameObject.setVisible(!tooFar);
+      if (!tooFar) gull.gameObject.setScale(seagullScale);
     }
     if (tooFar) return;
 
@@ -220,7 +224,6 @@ export class SeagullRenderer {
 
   private spawnSeagull(x: number, y: number): void {
     const flapPhase = this.rand() > 0.5;
-    // Two sizes: small (3px) and large (6px)
     const isLarge = this.rand() > 0.6;
     const wingspan = isLarge ? 6 : 3;
 
@@ -245,42 +248,17 @@ export class SeagullRenderer {
   private drawSeagullGraphics(gull: Seagull): void {
     const g = gull.gameObject;
     g.clear();
-
     const half = gull.wingspan / 2;
-    const thick = gull.wingspan > 4 ? 1.2 : 0.8;
-
     if (gull.flapPhase) {
-      // V-shape (wings up)
-      g.lineStyle(thick, 0xffffff, 0.9);
-      g.beginPath();
-      g.moveTo(-half, -2);
-      g.lineTo(0, 0);
-      g.lineTo(half, -2);
-      g.strokePath();
-      g.lineStyle(thick * 0.7, 0x888888, 0.3);
-      g.beginPath();
-      g.moveTo(-half + 1, -1);
-      g.lineTo(0, 1);
-      g.lineTo(half - 1, -1);
-      g.strokePath();
+      g.lineStyle(1, 0xffffff, 0.9);
+      g.lineBetween(-half, -2, 0, 0);
+      g.lineBetween(0, 0, half, -2);
     } else {
-      // M-shape (wings down)
-      g.lineStyle(thick, 0xffffff, 0.9);
-      g.beginPath();
-      g.moveTo(-half, -1);
-      g.lineTo(-half * 0.4, -2);
-      g.lineTo(0, -1);
-      g.lineTo(half * 0.4, -2);
-      g.lineTo(half, -1);
-      g.strokePath();
-      g.lineStyle(thick * 0.7, 0x888888, 0.3);
-      g.beginPath();
-      g.moveTo(-half + 1, 0);
-      g.lineTo(-half * 0.4, -1);
-      g.lineTo(0, 0);
-      g.lineTo(half * 0.4, -1);
-      g.lineTo(half - 1, 0);
-      g.strokePath();
+      g.lineStyle(1, 0xffffff, 0.9);
+      g.lineBetween(-half, -1, -half * 0.4, -2);
+      g.lineBetween(-half * 0.4, -2, 0, -1);
+      g.lineBetween(0, -1, half * 0.4, -2);
+      g.lineBetween(half * 0.4, -2, half, -1);
     }
   }
 

@@ -26,9 +26,9 @@ import { FACTIONS } from "../../core/data/factions.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
 import { CHANGELOG } from "../../changelog.ts";
 
-type TabId = "cabin" | "captain" | "calendar" | "options" | "save" | "map" | "settings";
+type TabId = "cabin" | "captain" | "calendar" | "settings" | "save" | "map";
 
-const ALL_TABS: TabId[] = ["cabin", "captain", "calendar", "options", "save", "map", "settings"];
+const ALL_TABS: TabId[] = ["cabin", "captain", "calendar", "settings", "save", "map"];
 const DLG_W = 672;
 const DLG_H = 528;
 const BORDER = 3;
@@ -94,10 +94,9 @@ export class OptionsMenuScene extends Phaser.Scene {
       { id: "cabin", labelKey: "menu.tab_cabin" },
       { id: "captain", labelKey: "menu.tab_captain" },
       { id: "calendar", labelKey: "menu.tab_calendar" },
-      { id: "options", labelKey: "menu.tab_options" },
+      { id: "settings", labelKey: "menu.tab_settings" },
       { id: "save", labelKey: "menu.tab_save" },
       { id: "map", labelKey: "menu.tab_map" },
-      { id: "settings", labelKey: "menu.tab_settings" },
     ];
 
     const tabSpacing = (DLG_W - PAD * 2) / tabs.length;
@@ -155,10 +154,9 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-ONE", () => this.switchTab("cabin"));
       this.input.keyboard.on("keydown-TWO", () => this.switchTab("captain"));
       this.input.keyboard.on("keydown-THREE", () => this.switchTab("calendar"));
-      this.input.keyboard.on("keydown-FOUR", () => this.switchTab("options"));
+      this.input.keyboard.on("keydown-FOUR", () => this.switchTab("settings"));
       this.input.keyboard.on("keydown-FIVE", () => this.switchTab("save"));
       this.input.keyboard.on("keydown-SIX", () => this.switchTab("map"));
-      this.input.keyboard.on("keydown-SEVEN", () => this.switchTab("settings"));
 
       // Left/Right arrow for tab switching
       this.input.keyboard.on("keydown-LEFT", () => {
@@ -224,7 +222,6 @@ export class OptionsMenuScene extends Phaser.Scene {
       case "cabin": this.renderCabin(); break;
       case "captain": this.renderCaptain(); break;
       case "calendar": this.renderCalendar(); break;
-      case "options": this.renderOptions(); break;
       case "save": this.renderSave(); break;
       case "map": this.renderMap(); break;
       case "settings": this.renderSettings(); break;
@@ -513,45 +510,6 @@ export class OptionsMenuScene extends Phaser.Scene {
     });
   }
 
-  // ---- Options Tab: Sound, Save/Load, Language ----
-
-  private renderOptions(): void {
-    const x = this.dlgX + PAD + 8;
-    let y = 0;
-
-    // --- Sound toggle ---
-    const isMuted = this.sound.mute;
-    const soundLabel = isMuted ? t("options.sound_off") : t("options.sound_on");
-    const soundColor = isMuted ? "#aa2222" : "#2a7a2a";
-    const soundBtn = this.add.text(x, y, soundLabel, txt(13, { bold: true, color: soundColor }));
-    soundBtn.setInteractive({ useHandCursor: true });
-    soundBtn.on("pointerdown", () => {
-      this.sound.mute = !this.sound.mute;
-      this.switchTab("options");
-    });
-    this.contentContainer.add(soundBtn);
-    y += 28;
-
-    // --- Divider ---
-    const div1 = this.add.graphics();
-    div1.lineStyle(1, 0xcccccc, 1);
-    div1.lineBetween(this.dlgX + PAD, y, this.dlgX + DLG_W - PAD, y);
-    this.contentContainer.add(div1);
-    y += 10;
-
-    // --- Save / Load title ---
-    const cx = this.cameras.main.width / 2;
-    const saveTitle = this.add.text(cx, y, t("save.title"), txt(13, { bold: true }));
-    saveTitle.setOrigin(0.5, 0);
-    this.contentContainer.add(saveTitle);
-    y += 22;
-
-    // Async: load save slots then render them + language below
-    listSaves().then((existingSaves) => {
-      this.renderSaveSlots(existingSaves, y);
-    });
-  }
-
   private renderSaveSlots(
     existingSaves: { slotId: string; title: string; updatedAt: number }[],
     startY: number,
@@ -789,6 +747,39 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(zoomHint);
     y += 32;
 
+    // Debug mode toggle
+    this.contentContainer.add(
+      this.add.text(x, y, "Debug", txt(13, { bold: true })));
+    y += 22;
+
+    settingsItems.push({ type: "debug", y });
+    const debugRaw = localStorage.getItem("pc_debug");
+    const debugOn = debugRaw === null ? true : debugRaw === "1";
+    const debugLabel = debugOn ? "\u25B8 Debug: ON" : "  Debug: OFF";
+    const debugColor = debugOn ? "#cc4444" : "#888888";
+    const debugBtn = this.add.text(x + 10, y, debugLabel, txt(12, { bold: debugOn, color: debugColor }));
+    debugBtn.setInteractive({ useHandCursor: true });
+    debugBtn.on("pointerdown", () => {
+      localStorage.setItem("pc_debug", debugOn ? "0" : "1");
+      this.switchTab("settings");
+    });
+    this.contentContainer.add(debugBtn);
+    y += 28;
+
+    // Fog of War (spyglass range) toggle
+    settingsItems.push({ type: "fog", y });
+    const fogOn = localStorage.getItem("pc_fog") === "1";
+    const fogLabel = fogOn ? "\u25B8 Spyglass range: ON" : "  Spyglass range: OFF";
+    const fogColor = fogOn ? "#2266aa" : "#888888";
+    const fogBtn = this.add.text(x + 10, y, fogLabel, txt(12, { bold: fogOn, color: fogColor }));
+    fogBtn.setInteractive({ useHandCursor: true });
+    fogBtn.on("pointerdown", () => {
+      localStorage.setItem("pc_fog", fogOn ? "0" : "1");
+      this.switchTab("settings");
+    });
+    this.contentContainer.add(fogBtn);
+    y += 32;
+
     // Language
     const langIdx = settingsItems.length;
     settingsItems.push({ type: "lang", y });
@@ -895,6 +886,15 @@ export class OptionsMenuScene extends Phaser.Scene {
         if (mainScene) {
           mainScene.cameras.main.setZoom(ZOOM_VALUES[level]);
         }
+        this.switchTab("settings");
+      } else if (item.type === "fog") {
+        const isFogOn = localStorage.getItem("pc_fog") === "1";
+        localStorage.setItem("pc_fog", isFogOn ? "0" : "1");
+        this.switchTab("settings");
+      } else if (item.type === "debug") {
+        const debugRawKb = localStorage.getItem("pc_debug");
+        const isOn = debugRawKb === null ? true : debugRawKb === "1";
+        localStorage.setItem("pc_debug", isOn ? "0" : "1");
         this.switchTab("settings");
       } else if (item.type === "lang") {
         const current = getLang();
