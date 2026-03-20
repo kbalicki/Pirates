@@ -244,7 +244,7 @@ interface PlacedPalm {
 }
 
 const CELL = 32;
-const MAX_PALMS = 3000;
+const MAX_PALMS = 6000;
 const PALM_DEPTH_BASE = -700; // Between shore waves (-800) and grid (50)
 const PORT_EXCLUSION_PX = 15;
 
@@ -304,13 +304,13 @@ export class PalmRenderer {
       // Density per cell: more near coast, fewer inland
       let density: number;
       if (dist <= 1) {
-        density = 2 + Math.floor(placementRng() * 2); // 2-3 coastal
+        density = 4 + Math.floor(placementRng() * 4); // 4-7 coastal
       } else if (dist <= 3) {
-        density = 1 + Math.floor(placementRng() * 2); // 1-2
+        density = 3 + Math.floor(placementRng() * 3); // 3-5
       } else if (dist <= 5) {
-        density = placementRng() < 0.6 ? 1 : 0;
+        density = 1 + Math.floor(placementRng() * 3); // 1-3
       } else {
-        density = placementRng() < 0.15 ? 1 : 0; // sparse inland
+        density = placementRng() < 0.3 ? 1 : 0; // sparse inland
       }
 
       for (let p = 0; p < density; p++) {
@@ -354,7 +354,7 @@ export class PalmRenderer {
 
         const baseIdx = typeIdx * 9;
         const spriteIdx = baseIdx + Math.floor(placementRng() * 9);
-        const baseScale = 0.4 + placementRng() * 0.4;
+        const baseScale = 0.08 + placementRng() * 0.10; // small: ~3-7px world-space
 
         const sprite = this.sprites[spriteIdx];
         const key = `palm_gen_${spriteIdx}`;
@@ -375,17 +375,17 @@ export class PalmRenderer {
     const cam = this.scene.cameras.main;
     const zoom = cam.zoom;
 
-    // Hidden below zoom 2
-    if (zoom < 2) {
+    // Hidden below zoom 3
+    if (zoom < 3) {
       for (const palm of this.palms) {
         if (palm.image.visible) palm.image.setVisible(false);
       }
       return;
     }
 
-    // Scale factor: full size at zoom 6+, smaller at lower zoom
-    const zoomT = Math.min(1, Math.max(0, (zoom - 2) / (6 - 2)));
-    const scaleMul = 0.3 + zoomT * 0.7; // 0.3 at zoom 2, 1.0 at zoom 6+
+    // Scale factor: full size at zoom 8+, smaller at lower zoom
+    const zoomT = Math.min(1, Math.max(0, (zoom - 3) / (8 - 3)));
+    const scaleMul = 0.4 + zoomT * 0.6; // 0.4 at zoom 3, 1.0 at zoom 8+
 
     // Camera viewport in world coordinates (with margin for culling)
     // Use worldView — scrollX/scrollY doesn't account for camera origin offset
