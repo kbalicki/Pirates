@@ -383,43 +383,26 @@ export class MainMapScene extends Phaser.Scene {
       landGfx.fillPath();
     }
 
-    // Beach: 3 layered strokes on canvas — outer→inner with increasing opacity
-    // Total ~4px: 1px 34% + 1px 67% + 2px center + 1px 67% + 1px 34%
-    const beachCanvas = document.createElement("canvas");
-    beachCanvas.width = mapW;
-    beachCanvas.height = mapH;
-    const bchCtx = beachCanvas.getContext("2d")!;
-    bchCtx.lineJoin = "round";
-    bchCtx.lineCap = "round";
-
-    const strokeAllCoasts = (lw: number, color: string) => {
-      bchCtx.lineWidth = lw;
-      bchCtx.strokeStyle = color;
-      for (const lm of LANDMASSES) {
-        if (lm.polygon.length < 3) continue;
-        const smooth = chaikinSmooth(lm.polygon, 2);
-        bchCtx.beginPath();
-        bchCtx.moveTo(smooth[0].x, smooth[0].y);
-        for (let i = 1; i < smooth.length; i++) bchCtx.lineTo(smooth[i].x, smooth[i].y);
-        bchCtx.closePath();
-        bchCtx.stroke();
-      }
-    };
-
-    // Outer: 4px at 25% → outermost 1px on each side
-    strokeAllCoasts(4, "rgba(200, 168, 78, 0.25)");
-    // Mid: 2.5px at 40% → stacks with outer for ~65% at 1px inward
-    strokeAllCoasts(2.5, "rgba(200, 168, 78, 0.40)");
-    // Center: 1.2px at 35% → stacks to ~100% at center
-    strokeAllCoasts(1.2, "rgba(200, 168, 78, 0.35)");
-
-    const beachKey = "__beach_gradient";
-    if (this.textures.exists(beachKey)) this.textures.remove(beachKey);
-    this.textures.addCanvas(beachKey, beachCanvas);
-    const beachImg = this.add.image(mapW / 2, mapH / 2, beachKey);
-    beachImg.setDisplaySize(mapW, mapH);
-    beachImg.setOrigin(0.5, 0.5);
-    beachImg.setDepth(-895);
+    // Beach: Phaser Graphics strokes (GPU-rendered, no pixelation)
+    // 3 overlapping strokes: outer faint → center bright
+    const beachGfx = this.add.graphics();
+    beachGfx.setDepth(-895);
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      const smooth = chaikinSmooth(lm.polygon, 2);
+      // Outer glow (3px, 20% alpha)
+      beachGfx.lineStyle(3, 0xc8a84e, 0.20);
+      drawPoly(beachGfx, smooth);
+      beachGfx.strokePath();
+      // Mid (2px, 35%)
+      beachGfx.lineStyle(2, 0xc8a84e, 0.35);
+      drawPoly(beachGfx, smooth);
+      beachGfx.strokePath();
+      // Center (1px, 60%)
+      beachGfx.lineStyle(1, 0xc8a84e, 0.60);
+      drawPoly(beachGfx, smooth);
+      beachGfx.strokePath();
+    }
 
     // Build land grid from polygons for navigation/seagulls
     // Sample a 4x4 sub-grid per cell so small islands (< 32px) aren't missed
@@ -694,10 +677,10 @@ export class MainMapScene extends Phaser.Scene {
       this.cityGraphics.setVisible(camZoom > 2);
     }
 
-    // FLAGS: scale down, disappear later than icons
+    // FLAGS: small at max zoom, scale with inverse zoom for constant screen size
     for (const flag of this.flagImages) {
-      const flagT = Math.min(1, (camZoom - 1.5) / (5 - 1.5));
-      const flagScale = 0.15 + flagT * 0.35; // 0.15 → 0.5
+      // Constant ~20 screen pixels wide at any zoom: 20 / zoom / textureWidth
+      const flagScale = 20 / camZoom / 16; // 16 = flag texture width
       flag.setScale(flagScale);
       flag.setVisible(camZoom > 1.6);
     }
