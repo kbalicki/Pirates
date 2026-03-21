@@ -277,57 +277,9 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
-    // Shore gradient: draw polygon strokes on canvas with blur → soft transition
-    const SHORE_SCALE = 0.25; // 3200→800, 2400→600
-    const shoreCanvas = document.createElement("canvas");
-    shoreCanvas.width = Math.ceil(mapW * SHORE_SCALE);
-    shoreCanvas.height = Math.ceil(mapH * SHORE_SCALE);
-    const sctx = shoreCanvas.getContext("2d")!;
-    sctx.scale(SHORE_SCALE, SHORE_SCALE);
-
-    const drawCanvasPoly = (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) => {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-    };
-
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      const smooth = chaikinSmooth(lm.polygon, 2);
-      // Outer: lighter blue
-      sctx.lineWidth = 8;
-      sctx.strokeStyle = "rgba(34, 136, 170, 0.30)";
-      drawCanvasPoly(sctx, smooth);
-      sctx.stroke();
-      // Mid: cyan
-      sctx.lineWidth = 5;
-      sctx.strokeStyle = "rgba(85, 204, 221, 0.35)";
-      drawCanvasPoly(sctx, smooth);
-      sctx.stroke();
-      // Inner: near-white
-      sctx.lineWidth = 2.5;
-      sctx.strokeStyle = "rgba(204, 238, 255, 0.40)";
-      drawCanvasPoly(sctx, smooth);
-      sctx.stroke();
-    }
-
-    // Apply blur for smooth blending
-    const blurredShore = document.createElement("canvas");
-    blurredShore.width = shoreCanvas.width;
-    blurredShore.height = shoreCanvas.height;
-    const bctx = blurredShore.getContext("2d")!;
-    bctx.filter = "blur(3px)";
-    bctx.drawImage(shoreCanvas, 0, 0);
-
-    const shoreKey = "__shore_gradient";
-    if (this.textures.exists(shoreKey)) this.textures.remove(shoreKey);
-    const shoreTex = this.textures.addCanvas(shoreKey, blurredShore);
-    if (shoreTex) shoreTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
-    const shoreImg = this.add.image(mapW / 2, mapH / 2, shoreKey);
-    shoreImg.setDisplaySize(mapW, mapH);
-    shoreImg.setOrigin(0.5, 0.5);
-    shoreImg.setDepth(-950);
+    // Shore gradient: 8 overlapping strokes from wide/dark to narrow/bright
+    const shoreGfx = this.add.graphics();
+    shoreGfx.setDepth(-950);
 
     const drawPoly = (gfx: Phaser.GameObjects.Graphics, pts: { x: number; y: number }[]) => {
       gfx.beginPath();
@@ -335,6 +287,29 @@ export class MainMapScene extends Phaser.Scene {
       for (let i = 1; i < pts.length; i++) gfx.lineTo(pts[i].x, pts[i].y);
       gfx.closePath();
     };
+
+    // 8 layers: wide→narrow, dark blue→white, low→higher alpha
+    const shoreLayers: [number, number, number][] = [
+      // [lineWidth, color, alpha]
+      [10,  0x1a6688, 0.10],
+      [8,   0x1f7799, 0.12],
+      [7,   0x2588aa, 0.14],
+      [6,   0x3099bb, 0.16],
+      [5,   0x44aacc, 0.18],
+      [4,   0x66bbdd, 0.22],
+      [2.5, 0x99ddee, 0.26],
+      [1.5, 0xcceeff, 0.30],
+    ];
+
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      const smooth = chaikinSmooth(lm.polygon, 2);
+      for (const [w, c, a] of shoreLayers) {
+        shoreGfx.lineStyle(w, c, a);
+        drawPoly(shoreGfx, smooth);
+        shoreGfx.strokePath();
+      }
+    }
 
     // Draw landmasses with smoothed coastlines
     const landGfx = this.add.graphics();
