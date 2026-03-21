@@ -381,11 +381,41 @@ export class MainMapScene extends Phaser.Scene {
       landGfx.fillStyle(0x5C6628, 1);
       drawPoly(landGfx, smooth);
       landGfx.fillPath();
-      // Yellow/sand coastline outline
-      landGfx.lineStyle(1.5, 0xc8a84e, 0.8);
-      drawPoly(landGfx, smooth);
-      landGfx.strokePath();
     }
+
+    // Beach: thick sand stroke on canvas + blur → gradient fade into land & sea
+    const beachCanvas = document.createElement("canvas");
+    beachCanvas.width = mapW;
+    beachCanvas.height = mapH;
+    const bchCtx = beachCanvas.getContext("2d")!;
+    bchCtx.strokeStyle = "rgba(200, 168, 78, 0.9)";
+    bchCtx.lineWidth = 6;
+    bchCtx.lineJoin = "round";
+    bchCtx.lineCap = "round";
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      const smooth = chaikinSmooth(lm.polygon, 2);
+      bchCtx.beginPath();
+      bchCtx.moveTo(smooth[0].x, smooth[0].y);
+      for (let i = 1; i < smooth.length; i++) bchCtx.lineTo(smooth[i].x, smooth[i].y);
+      bchCtx.closePath();
+      bchCtx.stroke();
+    }
+    // Blur for smooth gradient on both sides
+    const beachBlurred = document.createElement("canvas");
+    beachBlurred.width = mapW;
+    beachBlurred.height = mapH;
+    const bbCtx = beachBlurred.getContext("2d")!;
+    bbCtx.filter = "blur(3px)";
+    bbCtx.drawImage(beachCanvas, 0, 0);
+
+    const beachKey = "__beach_blurred";
+    if (this.textures.exists(beachKey)) this.textures.remove(beachKey);
+    this.textures.addCanvas(beachKey, beachBlurred);
+    const beachImg = this.add.image(mapW / 2, mapH / 2, beachKey);
+    beachImg.setDisplaySize(mapW, mapH);
+    beachImg.setOrigin(0.5, 0.5);
+    beachImg.setDepth(-895); // above land texture (-899), below cities
 
     // Build land grid from polygons for navigation/seagulls
     // Sample a 4x4 sub-grid per cell so small islands (< 32px) aren't missed
