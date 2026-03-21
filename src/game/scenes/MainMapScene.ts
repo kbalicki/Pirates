@@ -44,6 +44,7 @@ export class MainMapScene extends Phaser.Scene {
 
 
   private palmRenderer!: PalmRenderer;
+  private seaTextureTile: Phaser.GameObjects.TileSprite | null = null;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
   private waterRenderer!: WaterRenderer;
@@ -309,12 +310,12 @@ export class MainMapScene extends Phaser.Scene {
       if (seaTex) seaTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
       // TileSprite: scaled so 1 texture pixel ≈ 1 screen pixel at max zoom (12x)
-      const seaTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, seaKey);
-      seaTile.setOrigin(0.5, 0.5);
-      seaTile.setDepth(-999); // below everything — base water texture
-      seaTile.setAlpha(0.66);
+      this.seaTextureTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, seaKey);
+      this.seaTextureTile.setOrigin(0.5, 0.5);
+      this.seaTextureTile.setDepth(-999);
+      this.seaTextureTile.setAlpha(0.66);
       const MAX_ZOOM = 12;
-      seaTile.setTileScale(1 / MAX_ZOOM, 1 / MAX_ZOOM);
+      this.seaTextureTile.setTileScale(1 / MAX_ZOOM, 1 / MAX_ZOOM);
     }
 
     // Cartographic lat/lon grid (visible at far zoom only)
@@ -693,6 +694,23 @@ export class MainMapScene extends Phaser.Scene {
 
 
     this.palmRenderer.update();
+
+    // Sea texture: visible at high zoom, fades out at low zoom (hides tiling repetition)
+    if (this.seaTextureTile) {
+      const z = this.cameras.main.zoom;
+      // zoom 8+: alpha 0.66, zoom 4-8: fade, zoom <4: invisible
+      if (z < 4) {
+        this.seaTextureTile.setAlpha(0);
+      } else if (z < 8) {
+        // 4→8: alpha 0→0.10 (90% transparent at medium zoom)
+        this.seaTextureTile.setAlpha(((z - 4) / (8 - 4)) * 0.10);
+      } else {
+        // 8→12: alpha 0.10→0.66
+        const t = Math.min(1, (z - 8) / (12 - 8));
+        this.seaTextureTile.setAlpha(0.10 + t * 0.56);
+      }
+    }
+
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
