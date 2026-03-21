@@ -26,7 +26,11 @@ export function drawCityIcon(
     if (spriteKey) {
       const cityImg = scene.add.image(x, y, spriteKey);
       cityImg.setDepth(500);
-      cityImg.setScale(pop === "large" || pop === "capital" ? 0.8 : pop === "medium" ? 0.65 : 0.5);
+      // Scale so city is ~25 world pixels at large, ~18 medium, ~12 small
+      // Image is ~1536px wide, so scale = targetWorldSize / imageWidth
+      const texW = scene.textures.getFrame(spriteKey).width || 1024;
+      const targetSize = pop === "large" || pop === "capital" ? 25 : pop === "medium" ? 18 : 12;
+      cityImg.setScale(targetSize / texW);
       return;
     }
   }

@@ -58,6 +58,9 @@ export class PreloadScene extends Phaser.Scene {
     // Sea photo texture (for water overlay)
     this.load.image("sea_texture", "assets/sprites/sea_texture.jpg");
 
+    // City sprites (transparent PNG, used if available)
+    this.load.image("city_large", "assets/sprites/city_large.png");
+
     // Animated water spritesheet (40 frames, 128x128 each, 8 cols × 5 rows)
     this.load.spritesheet("water_anim", "assets/tiles/water_anim.png", {
       frameWidth: 128,
