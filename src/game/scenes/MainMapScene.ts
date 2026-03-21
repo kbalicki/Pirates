@@ -277,6 +277,34 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
+    // Shore gradient: lighter blue → white strokes behind land (only visible on water side)
+    const shoreGfx = this.add.graphics();
+    shoreGfx.setDepth(-950); // between water (-997) and land (-900)
+
+    const drawPoly = (gfx: Phaser.GameObjects.Graphics, pts: { x: number; y: number }[]) => {
+      gfx.beginPath();
+      gfx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) gfx.lineTo(pts[i].x, pts[i].y);
+      gfx.closePath();
+    };
+
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      const smooth = chaikinSmooth(lm.polygon, 2);
+      // Outer: subtle lighter blue (6px wide, land covers half → ~3px visible on water)
+      shoreGfx.lineStyle(6, 0x2288aa, 0.25);
+      drawPoly(shoreGfx, smooth);
+      shoreGfx.strokePath();
+      // Mid: brighter cyan (4px)
+      shoreGfx.lineStyle(4, 0x55ccdd, 0.3);
+      drawPoly(shoreGfx, smooth);
+      shoreGfx.strokePath();
+      // Inner: near-white foam line (2px)
+      shoreGfx.lineStyle(2, 0xcceeff, 0.35);
+      drawPoly(shoreGfx, smooth);
+      shoreGfx.strokePath();
+    }
+
     // Draw landmasses with smoothed coastlines
     const landGfx = this.add.graphics();
     landGfx.setDepth(-900);
@@ -285,21 +313,11 @@ export class MainMapScene extends Phaser.Scene {
       const smooth = chaikinSmooth(lm.polygon, 2);
       // Filled green land
       landGfx.fillStyle(0x2d6a1e, 1);
-      landGfx.beginPath();
-      landGfx.moveTo(smooth[0].x, smooth[0].y);
-      for (let i = 1; i < smooth.length; i++) {
-        landGfx.lineTo(smooth[i].x, smooth[i].y);
-      }
-      landGfx.closePath();
+      drawPoly(landGfx, smooth);
       landGfx.fillPath();
       // Yellow/sand coastline outline
       landGfx.lineStyle(1.5, 0xc8a84e, 0.8);
-      landGfx.beginPath();
-      landGfx.moveTo(smooth[0].x, smooth[0].y);
-      for (let i = 1; i < smooth.length; i++) {
-        landGfx.lineTo(smooth[i].x, smooth[i].y);
-      }
-      landGfx.closePath();
+      drawPoly(landGfx, smooth);
       landGfx.strokePath();
     }
 
