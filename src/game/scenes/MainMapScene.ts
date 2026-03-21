@@ -391,16 +391,16 @@ export class MainMapScene extends Phaser.Scene {
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       const smooth = chaikinSmooth(lm.polygon, 2);
-      // Outer glow (1.5px, 20% alpha)
-      this.beachGfx.lineStyle(1.5, 0xc8a84e, 0.20);
+      // Outer glow (0.8px, 20% alpha)
+      this.beachGfx.lineStyle(0.8, 0xc8a84e, 0.20);
       drawPoly(this.beachGfx, smooth);
       this.beachGfx.strokePath();
-      // Mid (1px, 35%)
-      this.beachGfx.lineStyle(1, 0xc8a84e, 0.35);
+      // Mid (0.5px, 35%)
+      this.beachGfx.lineStyle(0.5, 0xc8a84e, 0.35);
       drawPoly(this.beachGfx, smooth);
       this.beachGfx.strokePath();
-      // Center (0.5px, 60%)
-      this.beachGfx.lineStyle(0.5, 0xc8a84e, 0.60);
+      // Center (0.3px, 60%)
+      this.beachGfx.lineStyle(0.3, 0xc8a84e, 0.60);
       drawPoly(this.beachGfx, smooth);
       this.beachGfx.strokePath();
     }
@@ -724,8 +724,8 @@ export class MainMapScene extends Phaser.Scene {
     // Beach: fade with zoom, invisible at far zoom
     if (this.beachGfx) {
       const z = this.cameras.main.zoom;
-      // zoom <2: invisible, zoom 2→6: fade 0→1, zoom 6+: full
-      const beachAlpha = z < 2 ? 0 : z < 6 ? (z - 2) / (6 - 2) : 1;
+      // zoom <2: invisible, zoom 2→4: fade 0→1, zoom 4+: full
+      const beachAlpha = z < 2 ? 0 : z < 4 ? (z - 2) / (4 - 2) : 1;
       this.beachGfx.setAlpha(beachAlpha);
     }
 
