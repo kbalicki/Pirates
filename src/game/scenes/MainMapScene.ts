@@ -682,7 +682,7 @@ export class MainMapScene extends Phaser.Scene {
       // Constant ~20 screen pixels wide at any zoom: 20 / zoom / textureWidth
       const flagScale = 20 / camZoom / 16; // 16 = flag texture width
       flag.setScale(flagScale);
-      flag.setVisible(camZoom > 1.6);
+      flag.setVisible(true);
     }
 
     // LABELS: sqrt scaling, grid labels hide with grid
