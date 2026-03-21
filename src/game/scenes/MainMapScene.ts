@@ -686,8 +686,8 @@ export class MainMapScene extends Phaser.Scene {
       flag.setVisible(true);
     }
 
-    // LABELS: sqrt scaling, grid labels hide with grid
-    const labelScale = 1 / Math.sqrt(camZoom);
+    // LABELS: constant screen size (inverse zoom)
+    const labelScale = 1 / camZoom;
     const gridAlpha = camZoom < 2.2 ? 1 : camZoom < 3 ? 1 - (camZoom - 2.2) / 0.8 : 0;
     for (const entry of this.cityLabels) {
       const isGrid = entry.text.getData("isGrid");
