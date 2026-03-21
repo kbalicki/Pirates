@@ -277,15 +277,11 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
-    // Shore gradient: canvas shadowBlur for TRUE smooth Gaussian gradient (no banding)
-    const SHORE_S = 0.5; // canvas scale: 1600×1200
-    const shoreW = Math.ceil(mapW * SHORE_S);
-    const shoreH = Math.ceil(mapH * SHORE_S);
+    // Shore gradient: full-size canvas + shadowBlur for smooth Gaussian glow
     const shoreCanvas = document.createElement("canvas");
-    shoreCanvas.width = shoreW;
-    shoreCanvas.height = shoreH;
+    shoreCanvas.width = mapW;
+    shoreCanvas.height = mapH;
     const sctx = shoreCanvas.getContext("2d")!;
-    sctx.scale(SHORE_S, SHORE_S);
 
     const fillCanvasPoly = (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) => {
       ctx.beginPath();
@@ -295,21 +291,21 @@ export class MainMapScene extends Phaser.Scene {
       ctx.fill();
     };
 
-    // Pass 1: outer glow — light blue shadow
+    // Pass 1: outer glow — turquoise shadow
     sctx.shadowOffsetX = 0;
     sctx.shadowOffsetY = 0;
-    sctx.shadowBlur = 12;
-    sctx.shadowColor = "rgba(40, 160, 190, 0.45)";
-    sctx.fillStyle = "rgba(40, 160, 190, 0.20)";
+    sctx.shadowBlur = 20;
+    sctx.shadowColor = "rgba(40, 160, 190, 0.50)";
+    sctx.fillStyle = "rgba(40, 160, 190, 0.25)";
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
     }
 
-    // Pass 2: inner foam — near-white shadow, tighter
-    sctx.shadowBlur = 5;
-    sctx.shadowColor = "rgba(200, 235, 245, 0.40)";
-    sctx.fillStyle = "rgba(200, 235, 245, 0.15)";
+    // Pass 2: inner foam — near-white, tighter
+    sctx.shadowBlur = 8;
+    sctx.shadowColor = "rgba(200, 240, 250, 0.45)";
+    sctx.fillStyle = "rgba(200, 240, 250, 0.20)";
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
@@ -317,8 +313,7 @@ export class MainMapScene extends Phaser.Scene {
 
     const shoreKey = "__shore_shadow";
     if (this.textures.exists(shoreKey)) this.textures.remove(shoreKey);
-    const shoreTex = this.textures.addCanvas(shoreKey, shoreCanvas);
-    if (shoreTex) shoreTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    this.textures.addCanvas(shoreKey, shoreCanvas);
     const shoreImg = this.add.image(mapW / 2, mapH / 2, shoreKey);
     shoreImg.setDisplaySize(mapW, mapH);
     shoreImg.setOrigin(0.5, 0.5);
