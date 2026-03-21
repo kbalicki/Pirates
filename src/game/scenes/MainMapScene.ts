@@ -277,9 +277,52 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
-    // Shore gradient: 8 overlapping strokes from wide/dark to narrow/bright
-    const shoreGfx = this.add.graphics();
-    shoreGfx.setDepth(-950);
+    // Shore gradient: canvas shadowBlur for TRUE smooth Gaussian gradient (no banding)
+    const SHORE_S = 0.5; // canvas scale: 1600×1200
+    const shoreW = Math.ceil(mapW * SHORE_S);
+    const shoreH = Math.ceil(mapH * SHORE_S);
+    const shoreCanvas = document.createElement("canvas");
+    shoreCanvas.width = shoreW;
+    shoreCanvas.height = shoreH;
+    const sctx = shoreCanvas.getContext("2d")!;
+    sctx.scale(SHORE_S, SHORE_S);
+
+    const fillCanvasPoly = (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) => {
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+      ctx.closePath();
+      ctx.fill();
+    };
+
+    // Pass 1: outer glow — light blue shadow
+    sctx.shadowOffsetX = 0;
+    sctx.shadowOffsetY = 0;
+    sctx.shadowBlur = 12;
+    sctx.shadowColor = "rgba(40, 160, 190, 0.45)";
+    sctx.fillStyle = "rgba(40, 160, 190, 0.20)";
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
+    }
+
+    // Pass 2: inner foam — near-white shadow, tighter
+    sctx.shadowBlur = 5;
+    sctx.shadowColor = "rgba(200, 235, 245, 0.40)";
+    sctx.fillStyle = "rgba(200, 235, 245, 0.15)";
+    for (const lm of LANDMASSES) {
+      if (lm.polygon.length < 3) continue;
+      fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
+    }
+
+    const shoreKey = "__shore_shadow";
+    if (this.textures.exists(shoreKey)) this.textures.remove(shoreKey);
+    const shoreTex = this.textures.addCanvas(shoreKey, shoreCanvas);
+    if (shoreTex) shoreTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    const shoreImg = this.add.image(mapW / 2, mapH / 2, shoreKey);
+    shoreImg.setDisplaySize(mapW, mapH);
+    shoreImg.setOrigin(0.5, 0.5);
+    shoreImg.setDepth(-950);
 
     const drawPoly = (gfx: Phaser.GameObjects.Graphics, pts: { x: number; y: number }[]) => {
       gfx.beginPath();
@@ -287,29 +330,6 @@ export class MainMapScene extends Phaser.Scene {
       for (let i = 1; i < pts.length; i++) gfx.lineTo(pts[i].x, pts[i].y);
       gfx.closePath();
     };
-
-    // 8 layers: wide→narrow, dark blue→white, low→higher alpha
-    const shoreLayers: [number, number, number][] = [
-      // [lineWidth, color, alpha]
-      [10,  0x1a6688, 0.10],
-      [8,   0x1f7799, 0.12],
-      [7,   0x2588aa, 0.14],
-      [6,   0x3099bb, 0.16],
-      [5,   0x44aacc, 0.18],
-      [4,   0x66bbdd, 0.22],
-      [2.5, 0x99ddee, 0.26],
-      [1.5, 0xcceeff, 0.30],
-    ];
-
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      const smooth = chaikinSmooth(lm.polygon, 2);
-      for (const [w, c, a] of shoreLayers) {
-        shoreGfx.lineStyle(w, c, a);
-        drawPoly(shoreGfx, smooth);
-        shoreGfx.strokePath();
-      }
-    }
 
     // Draw landmasses with smoothed coastlines
     const landGfx = this.add.graphics();
