@@ -1,20 +1,18 @@
 /**
- * Palm forest renderer — tiles a procedural palm forest texture over land.
+ * Land texture renderer — tiles a photo texture (tropical forest from above)
+ * over land areas using TileSprite + GeometryMask.
  *
- * Uses Phaser TileSprite (auto-repeating) + GeometryMask from land polygons.
- * The texture is 512×512 and tiles at world scale — camera zoom naturally
- * makes it appear smaller when zoomed out, detailed when zoomed in.
+ * Uses land_texture.png if available, falls back to procedural generation.
+ * Camera zoom naturally scales the texture.
  */
 import Phaser from "phaser";
 import { LANDMASSES } from "../../core/data/geography.ts";
 import { chaikinSmooth } from "../../core/services/Geometry.ts";
-import { generatePalmForestTexture } from "./PalmForestTexture.ts";
 
-const PALM_DEPTH = -899; // just above land (-900), below cities (500+)
-const TILE_SIZE = 512;
-// How many world pixels one texture tile covers.
-// At max zoom (12x), 64 world px = 768 screen px — good palm detail.
-const WORLD_TILE_SIZE = 64;
+const LAND_TEX_DEPTH = -899; // just above land (-900), below cities (500+)
+// How many world pixels one texture tile covers at 1:1.
+// At max zoom (12x), each texel ≈ 1 screen pixel.
+const WORLD_TILE_SIZE = 80;
 
 export class PalmRenderer {
   private tileSprite: Phaser.GameObjects.TileSprite | null = null;
@@ -24,51 +22,71 @@ export class PalmRenderer {
     const mapW = 3200;
     const mapH = 2400;
 
-    // Generate tileable palm forest texture
-    const forestCanvas = generatePalmForestTexture(TILE_SIZE, 0.012, 1.0, 42);
+    // Use photo texture if loaded, otherwise skip
+    let texKey = "land_texture";
+    if (!scene.textures.exists(texKey)) {
+      console.log("PalmRenderer: no land_texture found, skipping");
+      return;
+    }
 
-    // Register as Phaser texture
-    const key = "__palm_forest_tile";
-    if (scene.textures.exists(key)) scene.textures.remove(key);
-    const tex = scene.textures.addCanvas(key, forestCanvas);
-    if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+    // Set LINEAR filtering for smooth scaling
+    scene.textures.get(texKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-    // Create TileSprite covering entire map
-    this.tileSprite = scene.add.tileSprite(
-      mapW / 2, mapH / 2, mapW, mapH, key,
-    );
+    // Mirror-tile for seamless joins
+    const srcImg = scene.textures.get(texKey).getSourceImage() as HTMLImageElement;
+    const HALF = Math.min(srcImg.width, srcImg.height, 1024);
+    const cropCanvas = document.createElement("canvas");
+    cropCanvas.width = HALF;
+    cropCanvas.height = HALF;
+    const cctx = cropCanvas.getContext("2d")!;
+    cctx.drawImage(srcImg, 0, 0, srcImg.width, srcImg.height, 0, 0, HALF, HALF);
+
+    const mirrorCanvas = document.createElement("canvas");
+    mirrorCanvas.width = HALF * 2;
+    mirrorCanvas.height = HALF * 2;
+    const mctx = mirrorCanvas.getContext("2d")!;
+    mctx.drawImage(cropCanvas, 0, 0);
+    mctx.save(); mctx.translate(HALF * 2, 0); mctx.scale(-1, 1);
+    mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+    mctx.save(); mctx.translate(0, HALF * 2); mctx.scale(1, -1);
+    mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+    mctx.save(); mctx.translate(HALF * 2, HALF * 2); mctx.scale(-1, -1);
+    mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+
+    const mirrorKey = "__land_mirror";
+    if (scene.textures.exists(mirrorKey)) scene.textures.remove(mirrorKey);
+    const mirrorTex = scene.textures.addCanvas(mirrorKey, mirrorCanvas);
+    if (mirrorTex) mirrorTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+    // TileSprite covering entire map
+    this.tileSprite = scene.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, mirrorKey);
     this.tileSprite.setOrigin(0.5, 0.5);
-    this.tileSprite.setDepth(PALM_DEPTH);
+    this.tileSprite.setDepth(LAND_TEX_DEPTH);
 
-    // Scale the tile pattern: TILE_SIZE texture pixels = WORLD_TILE_SIZE world pixels
-    const tileScale = WORLD_TILE_SIZE / TILE_SIZE;
+    // Scale: mirror tile is HALF*2 pixels, should cover WORLD_TILE_SIZE world pixels
+    const tileScale = WORLD_TILE_SIZE / (HALF * 2);
     this.tileSprite.setTileScale(tileScale, tileScale);
 
-    // Create mask from land polygons — palms only visible on land
+    // Mask: only visible on land polygons
     this.maskGfx = scene.add.graphics();
-    this.maskGfx.setVisible(false); // mask shape doesn't need to be visible
-
+    this.maskGfx.setVisible(false);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       const pts = chaikinSmooth(lm.polygon, 2);
       this.maskGfx.fillStyle(0xffffff);
       this.maskGfx.beginPath();
       this.maskGfx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) {
-        this.maskGfx.lineTo(pts[i].x, pts[i].y);
-      }
+      for (let i = 1; i < pts.length; i++) this.maskGfx.lineTo(pts[i].x, pts[i].y);
       this.maskGfx.closePath();
       this.maskGfx.fillPath();
     }
+    this.tileSprite.setMask(new Phaser.Display.Masks.GeometryMask(scene, this.maskGfx));
 
-    const mask = new Phaser.Display.Masks.GeometryMask(scene, this.maskGfx);
-    this.tileSprite.setMask(mask);
-
-    console.log(`PalmRenderer: TileSprite ${TILE_SIZE}px tile → ${WORLD_TILE_SIZE}px world, masked to land`);
+    console.log(`PalmRenderer: land_texture mirror-tiled, tileScale ${tileScale.toFixed(4)}`);
   }
 
   update(): void {
-    // No per-frame update — camera zoom handles scaling naturally
+    // Static — camera zoom handles scaling naturally
   }
 
   destroy(): void {
