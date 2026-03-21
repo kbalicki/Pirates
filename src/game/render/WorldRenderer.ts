@@ -251,7 +251,7 @@ export class WorldRenderer {
     const key = scene.textures.exists("crew_party") ? "crew_party" : "sailship";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, key, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(key === "crew_party" ? 1.0 : 0.15);
+    sprite.setScale(key === "crew_party" ? 0.10 : 0.015);
     return sprite;
   }
 

@@ -139,6 +139,13 @@ export class PreloadScene extends Phaser.Scene {
       this.textures.get("cloud_spite").setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
 
+    // City sprites need LINEAR filtering (pixelArt:true forces NEAREST by default)
+    for (const key of ["city_large", "city_medium", "city_small"]) {
+      if (this.textures.exists(key)) {
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+      }
+    }
+
     // Initialize music manager (accessible from all scenes via registry)
     this.registry.set("musicManager", new MusicManager(this.game));
 
