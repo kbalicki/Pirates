@@ -101,7 +101,9 @@ export class UIOverlayScene extends Phaser.Scene {
   /** Called from MainMapScene each frame with current zoom level */
   updateZoom(zoom: number): void {
     if (this.zoomText) {
-      this.zoomText.setText(`zoom: ${zoom.toFixed(1)}x`);
+      // Normalize: camera 1.5→12 displayed as 0→10
+      const normalized = ((zoom - 1.5) / (12 - 1.5)) * 10;
+      this.zoomText.setText(`zoom: ${normalized.toFixed(1)}`);
     }
   }
 
