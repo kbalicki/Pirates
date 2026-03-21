@@ -686,6 +686,17 @@ export class MainMapScene extends Phaser.Scene {
       flag.setVisible(true);
     }
 
+    // CITY SPRITES: constant screen size (like flags)
+    const children = this.children?.list || [];
+    for (const child of children) {
+      if ((child as Phaser.GameObjects.Image).getData?.("isCitySprite")) {
+        const img = child as Phaser.GameObjects.Image;
+        const targetPx = img.getData("targetScreenPx") || 100;
+        const texW = img.width || 1024;
+        img.setScale(targetPx / camZoom / texW);
+      }
+    }
+
     // LABELS: constant screen size (inverse zoom)
     const labelScale = 1 / camZoom;
     const gridAlpha = camZoom < 2.2 ? 1 : camZoom < 3 ? 1 - (camZoom - 2.2) / 0.8 : 0;

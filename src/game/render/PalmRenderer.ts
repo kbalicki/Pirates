@@ -65,45 +65,20 @@ export class PalmRenderer {
     const tileScale = 1 / MAX_ZOOM;
     this.tileSprite.setTileScale(tileScale, tileScale);
 
-    // BitmapMask with blurred edges for smooth land↔water transition
-    // Draw polygons on canvas, blur → feathered alpha at coastline
-    const maskCanvas = document.createElement("canvas");
-    maskCanvas.width = mapW;
-    maskCanvas.height = mapH;
-    const mctx2 = maskCanvas.getContext("2d")!;
-
-    // Fill land polygons with solid white
-    mctx2.fillStyle = "#ffffff";
+    // GeometryMask: clips land texture strictly to land polygons (no leaking onto water)
+    this.maskGfx = scene.add.graphics();
+    this.maskGfx.setVisible(false);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       const pts = chaikinSmooth(lm.polygon, 2);
-      mctx2.beginPath();
-      mctx2.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) mctx2.lineTo(pts[i].x, pts[i].y);
-      mctx2.closePath();
-      mctx2.fill();
+      this.maskGfx.fillStyle(0xffffff);
+      this.maskGfx.beginPath();
+      this.maskGfx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 1; i < pts.length; i++) this.maskGfx.lineTo(pts[i].x, pts[i].y);
+      this.maskGfx.closePath();
+      this.maskGfx.fillPath();
     }
-
-    // Blur for feathered edges (~4px gradient on each side)
-    const blurred = document.createElement("canvas");
-    blurred.width = mapW;
-    blurred.height = mapH;
-    const bctx2 = blurred.getContext("2d")!;
-    bctx2.filter = "blur(4px)";
-    bctx2.drawImage(maskCanvas, 0, 0);
-
-    const maskKey = "__land_mask_blurred";
-    if (scene.textures.exists(maskKey)) scene.textures.remove(maskKey);
-    scene.textures.addCanvas(maskKey, blurred);
-
-    // Create invisible Image as mask source
-    const maskImg = scene.add.image(mapW / 2, mapH / 2, maskKey);
-    maskImg.setOrigin(0.5, 0.5);
-    maskImg.setDisplaySize(mapW, mapH);
-    maskImg.setVisible(false);
-    this.maskGfx = maskImg as unknown as Phaser.GameObjects.Graphics; // store for cleanup
-
-    this.tileSprite.setMask(new Phaser.Display.Masks.BitmapMask(scene, maskImg));
+    this.tileSprite.setMask(new Phaser.Display.Masks.GeometryMask(scene, this.maskGfx));
 
     console.log(`PalmRenderer: land_texture mirror-tiled, tileScale ${tileScale.toFixed(4)}`);
   }
