@@ -1,26 +1,24 @@
 /**
- * Shallow water renderer — turquoise gradient + animated shimmer.
+ * Shallow water renderer — blurred canvas gradient + animated shimmer.
  *
- * 1. Static turquoise gradient along coastlines (Graphics strokes).
- * 2. Animated noise shimmer: 4 pre-rendered canvas frames cycled every ~350ms.
- *    Each frame has random white/cyan dots in the "shore zone" (water near land).
- *    Canvas is 200×150 (2× grid resolution) scaled to 3200×2400 with LINEAR filtering.
+ * NO polygon strokes. Instead:
+ * 1. Paint turquoise pixels on a 400×300 canvas at water cells near coast.
+ * 2. Apply blur(4px) for natural, soft gradient of varying width.
+ * 3. Overlay as a single Image scaled to map size.
+ * 4. Shimmer: 4 noise frames cycled for animation.
  *
- * Total objects: 1 Graphics + 4 Images. No per-pixel per-frame updates.
+ * Total: 5 Images (1 gradient + 4 shimmer). Zero Graphics objects.
  */
 import Phaser from "phaser";
-import { LANDMASSES } from "../../core/data/geography.ts";
-import { chaikinSmooth } from "../../core/services/Geometry.ts";
 
 const SHALLOW_DEPTH = -950;
 const SHIMMER_DEPTH = -948;
 const SHIMMER_FRAMES = 4;
-const FRAME_DURATION = 350; // ms per shimmer frame
-const CANVAS_SCALE = 2;     // pixels per grid cell (100×75 grid → 200×150 canvas)
+const FRAME_DURATION = 400; // ms per shimmer frame
 const CELL = 32;
 
 export class ShallowWaterRenderer {
-  private gradientGfx: Phaser.GameObjects.Graphics;
+  private gradientImage: Phaser.GameObjects.Image | null = null;
   private shimmerImages: Phaser.GameObjects.Image[] = [];
   private currentFrame = 0;
   private frameTimer = 0;
@@ -28,79 +26,111 @@ export class ShallowWaterRenderer {
   constructor(scene: Phaser.Scene, landGrid: boolean[][]) {
     const gridRows = landGrid.length;
     const gridCols = landGrid[0]?.length ?? 0;
-
-    // ── 1. Static turquoise gradient ──
-    this.gradientGfx = scene.add.graphics();
-    this.gradientGfx.setDepth(SHALLOW_DEPTH);
-
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      const pts = chaikinSmooth(lm.polygon, 2);
-      this.strokePoly(this.gradientGfx, pts, 18, 0x186068, 0.12);
-      this.strokePoly(this.gradientGfx, pts, 10, 0x209888, 0.16);
-      this.strokePoly(this.gradientGfx, pts, 5, 0x40c8b8, 0.20);
-    }
-
-    // ── 2. Compute water-coast distance (BFS from land into water) ──
-    const waterDist = this.buildWaterCoastDist(landGrid, gridRows, gridCols);
-
-    // ── 3. Generate shimmer frames ──
-    const cw = gridCols * CANVAS_SCALE;
-    const ch = gridRows * CANVAS_SCALE;
     const mapW = gridCols * CELL;
     const mapH = gridRows * CELL;
 
+    // ── 1. Water-coast distance (BFS from land into water) ──
+    const waterDist = this.buildWaterCoastDist(landGrid, gridRows, gridCols);
+
+    // ── 2. Blurred turquoise gradient canvas ──
+    const SCALE = 4; // pixels per grid cell → 400×300
+    const cw = gridCols * SCALE;
+    const ch = gridRows * SCALE;
+
+    const gradCanvas = document.createElement("canvas");
+    gradCanvas.width = cw;
+    gradCanvas.height = ch;
+    const gctx = gradCanvas.getContext("2d")!;
+
+    // Paint turquoise in shore zone water cells
+    for (let gr = 0; gr < gridRows; gr++) {
+      for (let gc = 0; gc < gridCols; gc++) {
+        const dist = waterDist[gr][gc];
+        if (dist < 1 || dist > 4) continue;
+
+        let color: string;
+        if (dist === 1) color = "rgba(30, 160, 150, 0.50)";
+        else if (dist === 2) color = "rgba(25, 140, 135, 0.30)";
+        else if (dist === 3) color = "rgba(20, 120, 120, 0.15)";
+        else color = "rgba(18, 100, 110, 0.07)";
+
+        gctx.fillStyle = color;
+        gctx.fillRect(gc * SCALE, gr * SCALE, SCALE, SCALE);
+      }
+    }
+
+    // Apply blur for soft natural gradient
+    const blurred = document.createElement("canvas");
+    blurred.width = cw;
+    blurred.height = ch;
+    const bctx = blurred.getContext("2d")!;
+    bctx.filter = "blur(5px)";
+    bctx.drawImage(gradCanvas, 0, 0);
+    // Second pass for extra smoothness
+    bctx.filter = "blur(3px)";
+    bctx.drawImage(blurred, 0, 0);
+
+    const gradKey = "shallow_water_grad";
+    if (scene.textures.exists(gradKey)) scene.textures.remove(gradKey);
+    const gradTex = scene.textures.addCanvas(gradKey, blurred);
+    if (gradTex) gradTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+    this.gradientImage = scene.add.image(mapW / 2, mapH / 2, gradKey);
+    this.gradientImage.setDisplaySize(mapW, mapH);
+    this.gradientImage.setOrigin(0.5, 0.5);
+    this.gradientImage.setDepth(SHALLOW_DEPTH);
+
+    // ── 3. Shimmer noise frames ──
     for (let f = 0; f < SHIMMER_FRAMES; f++) {
       const canvas = document.createElement("canvas");
       canvas.width = cw;
       canvas.height = ch;
       const ctx = canvas.getContext("2d")!;
 
-      // Seed per frame for different noise patterns
-      let seed = f * 9973 + 12345;
+      let seed = f * 7919 + 54321;
       const rng = () => {
         seed = (seed * 16807 + 0) % 2147483647;
         return seed / 2147483647;
       };
 
-      // Paint noise in shore zone
       for (let gr = 0; gr < gridRows; gr++) {
         for (let gc = 0; gc < gridCols; gc++) {
           const dist = waterDist[gr][gc];
-          if (dist < 1 || dist > 4) continue; // only shore zone water cells
+          if (dist < 1 || dist > 3) continue;
 
-          // More noise closer to coast
-          const intensity = dist === 1 ? 0.6 : dist === 2 ? 0.35 : dist === 3 ? 0.15 : 0.06;
-          const dotCount = dist === 1 ? 3 : dist === 2 ? 2 : 1;
+          const dotCount = dist === 1 ? 5 : dist === 2 ? 3 : 1;
 
           for (let d = 0; d < dotCount; d++) {
-            const px = gc * CANVAS_SCALE + rng() * CANVAS_SCALE;
-            const py = gr * CANVAS_SCALE + rng() * CANVAS_SCALE;
+            const px = gc * SCALE + rng() * SCALE;
+            const py = gr * SCALE + rng() * SCALE;
+            const alpha = (dist === 1 ? 0.7 : dist === 2 ? 0.4 : 0.2) * (0.4 + rng() * 0.6);
+            const isCyan = rng() > 0.4;
 
-            // White or light cyan
-            const isCyan = rng() > 0.5;
-            const alpha = intensity * (0.3 + rng() * 0.7);
+            ctx.fillStyle = isCyan
+              ? `rgba(180, 240, 245, ${alpha})`
+              : `rgba(255, 255, 255, ${alpha})`;
 
-            if (isCyan) {
-              ctx.fillStyle = `rgba(140, 220, 230, ${alpha})`;
-            } else {
-              ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-            }
-
-            // Draw a small dot (1-2 canvas pixels)
-            const size = 0.5 + rng() * 1.0;
-            ctx.fillRect(px, py, size, size);
+            const size = 0.8 + rng() * 1.5;
+            ctx.beginPath();
+            ctx.arc(px, py, size / 2, 0, Math.PI * 2);
+            ctx.fill();
           }
         }
       }
 
-      // Register as Phaser texture
+      // Light blur to blend dots
+      const blurredShimmer = document.createElement("canvas");
+      blurredShimmer.width = cw;
+      blurredShimmer.height = ch;
+      const sctx = blurredShimmer.getContext("2d")!;
+      sctx.filter = "blur(1px)";
+      sctx.drawImage(canvas, 0, 0);
+
       const key = `shimmer_frame_${f}`;
       if (scene.textures.exists(key)) scene.textures.remove(key);
-      const tex = scene.textures.addCanvas(key, canvas);
+      const tex = scene.textures.addCanvas(key, blurredShimmer);
       if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-      // Create Image scaled to full map
       const img = scene.add.image(mapW / 2, mapH / 2, key);
       img.setDisplaySize(mapW, mapH);
       img.setOrigin(0.5, 0.5);
@@ -110,30 +140,23 @@ export class ShallowWaterRenderer {
       this.shimmerImages.push(img);
     }
 
-    console.log(`ShallowWater: gradient + ${SHIMMER_FRAMES} shimmer frames (${cw}×${ch})`);
+    console.log(`ShallowWater: blurred gradient (${cw}×${ch}) + ${SHIMMER_FRAMES} shimmer frames`);
   }
 
   update(): void {
-    this.frameTimer += 16; // ~60fps
+    this.frameTimer += 16;
     if (this.frameTimer >= FRAME_DURATION) {
       this.frameTimer -= FRAME_DURATION;
-
-      // Hide current frame, show next
       this.shimmerImages[this.currentFrame].setVisible(false);
       this.currentFrame = (this.currentFrame + 1) % SHIMMER_FRAMES;
       this.shimmerImages[this.currentFrame].setVisible(true);
     }
   }
 
-  /**
-   * BFS from land cells outward into water.
-   * Returns grid where: land = 0, water adjacent to land = 1, etc.
-   */
   private buildWaterCoastDist(landGrid: boolean[][], rows: number, cols: number): number[][] {
     const dist: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(999));
     const queue: [number, number][] = [];
 
-    // Seed: all land cells = 0
     for (let r = 0; r < rows; r++) {
       for (let c = 0; c < cols; c++) {
         if (landGrid[r][c]) {
@@ -143,7 +166,6 @@ export class ShallowWaterRenderer {
       }
     }
 
-    // BFS outward into water
     let head = 0;
     while (head < queue.length) {
       const [cr, cc] = queue[head++];
@@ -161,25 +183,8 @@ export class ShallowWaterRenderer {
     return dist;
   }
 
-  private strokePoly(
-    gfx: Phaser.GameObjects.Graphics,
-    pts: { x: number; y: number }[],
-    width: number,
-    color: number,
-    alpha: number,
-  ): void {
-    gfx.lineStyle(width, color, alpha);
-    gfx.beginPath();
-    gfx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length; i++) {
-      gfx.lineTo(pts[i].x, pts[i].y);
-    }
-    gfx.closePath();
-    gfx.strokePath();
-  }
-
   destroy(): void {
-    this.gradientGfx.destroy();
+    if (this.gradientImage) this.gradientImage.destroy();
     for (const img of this.shimmerImages) img.destroy();
     this.shimmerImages = [];
   }
