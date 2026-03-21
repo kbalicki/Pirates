@@ -154,6 +154,14 @@ export class WaterRenderer {
 
     this.layer2.tilePositionX += Math.sin(windDirRad + 0.5) * s2;
     this.layer2.tilePositionY += -Math.cos(windDirRad + 0.5) * s2;
+
+    // Waves hidden at far zoom, fade in at medium zoom
+    // zoom <3: invisible, zoom 3→6: fade 0→1.0, zoom 6+: full
+    const cam = this.layer1.scene.cameras.main;
+    const z = cam.zoom;
+    const waveAlpha = z < 3 ? 0 : z < 6 ? (z - 3) / (6 - 3) : 1;
+    this.layer1.setAlpha(waveAlpha);
+    this.layer2.setAlpha(waveAlpha * 0.7);
   }
 
   destroy(): void {
