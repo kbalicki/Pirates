@@ -49,13 +49,15 @@ export class PortMarkerRenderer {
       const factionId = port.factionId as string;
       const flagKey = `flag_${factionId}`;
       if (this.scene.textures.exists(flagKey)) {
+        // LINEAR filtering for crisp flags at all zoom levels
+        this.scene.textures.get(flagKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
         const isLg = port.population === "large" || port.population === "capital";
         const isFort = port.type === "fort";
-        const flagX = safePos.x + (isFort ? -9 : isLg ? 14 : port.population === "medium" ? 9 : 8);
-        const flagY = safePos.y - (isFort ? 16 : isLg ? 16 : port.population === "medium" ? 10 : 8);
+        const flagX = safePos.x + (isFort ? -5 : isLg ? 7 : port.population === "medium" ? 5 : 4);
+        const flagY = safePos.y - (isFort ? 8 : isLg ? 8 : port.population === "medium" ? 6 : 5);
         const flagImg = this.scene.add.image(flagX, flagY, flagKey);
         flagImg.setDepth(501);
-        flagImg.setScale(0.5);
+        flagImg.setScale(0.25);
         flagImg.setData("origX", flagX);
         flagImg.setData("origY", flagY);
         flagImages.push(flagImg);
