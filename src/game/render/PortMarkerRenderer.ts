@@ -57,7 +57,7 @@ export class PortMarkerRenderer {
         const flagY = safePos.y - (isFort ? 8 : isLg ? 8 : port.population === "medium" ? 6 : 5);
         const flagImg = this.scene.add.image(flagX, flagY, flagKey);
         flagImg.setDepth(501);
-        flagImg.setScale(0.083);
+        flagImg.setScale(0.042);
         flagImg.setData("origX", flagX);
         flagImg.setData("origY", flagY);
         flagImages.push(flagImg);
