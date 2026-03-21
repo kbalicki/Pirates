@@ -273,6 +273,16 @@ export class MainMapScene extends Phaser.Scene {
 
     // Animated water surface with subtle wave patterns
     this.waterRenderer = new WaterRenderer(this, mapW, mapH);
+
+    // Sea photo texture overlay (50% alpha, tiled)
+    if (this.textures.exists("sea_texture")) {
+      const seaTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, "sea_texture");
+      seaTile.setOrigin(0.5, 0.5);
+      seaTile.setDepth(-996); // between water layers (-998/-997) and land (-900)
+      seaTile.setAlpha(0.5);
+      seaTile.setTileScale(0.5, 0.5); // scale down the photo for better tiling
+    }
+
     // Cartographic lat/lon grid (visible at far zoom only)
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
