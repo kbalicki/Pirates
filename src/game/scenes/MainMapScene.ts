@@ -291,21 +291,21 @@ export class MainMapScene extends Phaser.Scene {
       ctx.fill();
     };
 
-    // Pass 1: outer glow — turquoise shadow
+    // Pass 1: outer glow — turquoise shadow (strong, wide)
     sctx.shadowOffsetX = 0;
     sctx.shadowOffsetY = 0;
-    sctx.shadowBlur = 20;
-    sctx.shadowColor = "rgba(40, 160, 190, 0.50)";
-    sctx.fillStyle = "rgba(40, 160, 190, 0.25)";
+    sctx.shadowBlur = 25;
+    sctx.shadowColor = "rgba(50, 180, 200, 0.7)";
+    sctx.fillStyle = "rgba(50, 180, 200, 0.35)";
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
     }
 
-    // Pass 2: inner foam — near-white, tighter
-    sctx.shadowBlur = 8;
-    sctx.shadowColor = "rgba(200, 240, 250, 0.45)";
-    sctx.fillStyle = "rgba(200, 240, 250, 0.20)";
+    // Pass 2: inner foam — bright white, tight
+    sctx.shadowBlur = 10;
+    sctx.shadowColor = "rgba(220, 245, 255, 0.6)";
+    sctx.fillStyle = "rgba(220, 245, 255, 0.3)";
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
