@@ -274,13 +274,47 @@ export class MainMapScene extends Phaser.Scene {
     // Animated water surface with subtle wave patterns
     this.waterRenderer = new WaterRenderer(this, mapW, mapH);
 
-    // Sea photo texture overlay (50% alpha, tiled)
+    // Sea photo texture — mirror-tiled for seamless joins, UNDER wave layers
     if (this.textures.exists("sea_texture")) {
-      const seaTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, "sea_texture");
+      // Crop center 512×512 from the 3840×2160 photo, then mirror-tile → 1024×1024
+      const srcImg = this.textures.get("sea_texture").getSourceImage() as HTMLImageElement;
+      const HALF = 512;
+      const cropCanvas = document.createElement("canvas");
+      cropCanvas.width = HALF;
+      cropCanvas.height = HALF;
+      const cctx = cropCanvas.getContext("2d")!;
+      // Crop from center of source image
+      const sx = (srcImg.width - HALF) / 2;
+      const sy = (srcImg.height - HALF) / 2;
+      cctx.drawImage(srcImg, sx, sy, HALF, HALF, 0, 0, HALF, HALF);
+
+      // Mirror-tile: 2×2 → seamless 1024×1024
+      const mirrorCanvas = document.createElement("canvas");
+      mirrorCanvas.width = HALF * 2;
+      mirrorCanvas.height = HALF * 2;
+      const mctx = mirrorCanvas.getContext("2d")!;
+      // Top-left: original
+      mctx.drawImage(cropCanvas, 0, 0);
+      // Top-right: flip horizontal
+      mctx.save(); mctx.translate(HALF * 2, 0); mctx.scale(-1, 1);
+      mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+      // Bottom-left: flip vertical
+      mctx.save(); mctx.translate(0, HALF * 2); mctx.scale(1, -1);
+      mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+      // Bottom-right: flip both
+      mctx.save(); mctx.translate(HALF * 2, HALF * 2); mctx.scale(-1, -1);
+      mctx.drawImage(cropCanvas, 0, 0); mctx.restore();
+
+      const seaKey = "__sea_mirror";
+      if (this.textures.exists(seaKey)) this.textures.remove(seaKey);
+      const seaTex = this.textures.addCanvas(seaKey, mirrorCanvas);
+      if (seaTex) seaTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+
+      // TileSprite: 1:1 world scale, depth BELOW wave layers (-999)
+      const seaTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, seaKey);
       seaTile.setOrigin(0.5, 0.5);
-      seaTile.setDepth(-996); // between water layers (-998/-997) and land (-900)
-      seaTile.setAlpha(0.5);
-      seaTile.setTileScale(0.5, 0.5); // scale down the photo for better tiling
+      seaTile.setDepth(-999); // below everything — base water texture
+      seaTile.setAlpha(0.66);
     }
 
     // Cartographic lat/lon grid (visible at far zoom only)
