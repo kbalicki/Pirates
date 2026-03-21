@@ -122,13 +122,13 @@ export class WorldRenderer {
       // Depth sort: y + offset
       sprite.setDepth(entity.pos.y + entity.depthOffset);
 
-      // Scale ship: 50% at max zoom in, smaller at zoom out
+      // Scale ship: 33% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
         const cam = scene.cameras.main;
         const baseScale = 0.23;
-        // At zoom 12 (max in): 50% base, at zoom 1.5 (max out): 15% base
+        // At zoom 12 (max in): 33% base, at zoom 1.5 (max out): 10% base
         const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5)); // 0→1
-        const zoomFactor = 0.15 + t * 0.35; // 0.15 → 0.5
+        const zoomFactor = 0.10 + t * 0.23; // 0.10 → 0.33
         sprite.setScale(baseScale * zoomFactor);
       }
 
