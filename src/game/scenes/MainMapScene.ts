@@ -15,7 +15,7 @@ import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
-import { ShallowWaterRenderer } from "../render/ShallowWaterRenderer.ts";
+
 import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
@@ -42,7 +42,7 @@ export class MainMapScene extends Phaser.Scene {
   private cloudRenderer!: CloudRenderer;
   private cirrusRenderer!: CirrusRenderer;
 
-  private shallowWaterRenderer!: ShallowWaterRenderer;
+
   private palmRenderer!: PalmRenderer;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
@@ -115,7 +115,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
 
-    this.shallowWaterRenderer = new ShallowWaterRenderer(this, this.landGrid);
+
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
@@ -608,7 +608,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
 
-    this.shallowWaterRenderer.update();
+
     this.palmRenderer.update();
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
@@ -771,7 +771,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer.destroy();
     this.cirrusRenderer.destroy();
 
-    this.shallowWaterRenderer.destroy();
+
     this.palmRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
