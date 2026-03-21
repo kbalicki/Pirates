@@ -276,19 +276,17 @@ export class MainMapScene extends Phaser.Scene {
 
     // Sea photo texture — mirror-tiled for seamless joins, UNDER wave layers
     if (this.textures.exists("sea_texture")) {
-      // Crop center 512×512 from the 3840×2160 photo, then mirror-tile → 1024×1024
+      // Scale source to 1024×1024 square, then mirror-tile → 2048×2048 seamless
       const srcImg = this.textures.get("sea_texture").getSourceImage() as HTMLImageElement;
-      const HALF = 512;
+      const HALF = 1024;
       const cropCanvas = document.createElement("canvas");
       cropCanvas.width = HALF;
       cropCanvas.height = HALF;
       const cctx = cropCanvas.getContext("2d")!;
-      // Crop from center of source image
-      const sx = (srcImg.width - HALF) / 2;
-      const sy = (srcImg.height - HALF) / 2;
-      cctx.drawImage(srcImg, sx, sy, HALF, HALF, 0, 0, HALF, HALF);
+      // Scale full source into 1024×1024 (slight stretch OK — it's water)
+      cctx.drawImage(srcImg, 0, 0, srcImg.width, srcImg.height, 0, 0, HALF, HALF);
 
-      // Mirror-tile: 2×2 → seamless 1024×1024
+      // Mirror-tile: 2×2 → seamless 2048×2048
       const mirrorCanvas = document.createElement("canvas");
       mirrorCanvas.width = HALF * 2;
       mirrorCanvas.height = HALF * 2;
@@ -310,11 +308,13 @@ export class MainMapScene extends Phaser.Scene {
       const seaTex = this.textures.addCanvas(seaKey, mirrorCanvas);
       if (seaTex) seaTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-      // TileSprite: 1:1 world scale, depth BELOW wave layers (-999)
+      // TileSprite: scaled so 1 texture pixel ≈ 1 screen pixel at max zoom (12x)
       const seaTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, seaKey);
       seaTile.setOrigin(0.5, 0.5);
       seaTile.setDepth(-999); // below everything — base water texture
       seaTile.setAlpha(0.66);
+      const MAX_ZOOM = 12;
+      seaTile.setTileScale(1 / MAX_ZOOM, 1 / MAX_ZOOM);
     }
 
     // Cartographic lat/lon grid (visible at far zoom only)
