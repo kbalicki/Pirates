@@ -695,20 +695,12 @@ export class MainMapScene extends Phaser.Scene {
 
     this.palmRenderer.update();
 
-    // Sea texture: visible at high zoom, fades out at low zoom (hides tiling repetition)
+    // Sea texture: smooth alpha ramp from zoom 2 to max zoom
     if (this.seaTextureTile) {
       const z = this.cameras.main.zoom;
-      // zoom 8+: alpha 0.66, zoom 4-8: fade, zoom <4: invisible
-      if (z < 4) {
-        this.seaTextureTile.setAlpha(0);
-      } else if (z < 8) {
-        // 4→8: alpha 0→0.10 (90% transparent at medium zoom)
-        this.seaTextureTile.setAlpha(((z - 4) / (8 - 4)) * 0.10);
-      } else {
-        // 8→12: alpha 0.10→0.66
-        const t = Math.min(1, (z - 8) / (12 - 8));
-        this.seaTextureTile.setAlpha(0.10 + t * 0.56);
-      }
+      // zoom <2: invisible, zoom 2→12: linear 0→0.50
+      const t = Math.max(0, Math.min(1, (z - 2) / (12 - 2)));
+      this.seaTextureTile.setAlpha(t * 0.50);
     }
 
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
