@@ -115,7 +115,7 @@ export class MainMapScene extends Phaser.Scene {
     this.cloudRenderer = new CloudRenderer(this, mapW, mapH);
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
 
-    this.shallowWaterRenderer = new ShallowWaterRenderer(this);
+    this.shallowWaterRenderer = new ShallowWaterRenderer(this, this.landGrid);
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
