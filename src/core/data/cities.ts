@@ -311,7 +311,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Puerto Príncipe",
     factionId: factionId("spain"),
     type: "city",
-    pos: { x: 1585, y: 1348 }, // Direct pixel: south coast of Cuba near Nuevitas
+    pos: { x: 1620, y: 1348 }, // Direct pixel: south coast of Cuba (shifted east from water)
     dockRadius: 15,
     marketLevel: 3,
     shipyardLevel: 2,
