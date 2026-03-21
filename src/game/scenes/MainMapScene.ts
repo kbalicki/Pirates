@@ -390,16 +390,16 @@ export class MainMapScene extends Phaser.Scene {
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       const smooth = chaikinSmooth(lm.polygon, 2);
-      // Outer glow (3px, 20% alpha)
-      beachGfx.lineStyle(3, 0xc8a84e, 0.20);
+      // Outer glow (1.5px, 20% alpha)
+      beachGfx.lineStyle(1.5, 0xc8a84e, 0.20);
       drawPoly(beachGfx, smooth);
       beachGfx.strokePath();
-      // Mid (2px, 35%)
-      beachGfx.lineStyle(2, 0xc8a84e, 0.35);
+      // Mid (1px, 35%)
+      beachGfx.lineStyle(1, 0xc8a84e, 0.35);
       drawPoly(beachGfx, smooth);
       beachGfx.strokePath();
-      // Center (1px, 60%)
-      beachGfx.lineStyle(1, 0xc8a84e, 0.60);
+      // Center (0.5px, 60%)
+      beachGfx.lineStyle(0.5, 0xc8a84e, 0.60);
       drawPoly(beachGfx, smooth);
       beachGfx.strokePath();
     }
