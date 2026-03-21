@@ -378,7 +378,7 @@ export class MainMapScene extends Phaser.Scene {
       if (lm.polygon.length < 3) continue;
       const smooth = chaikinSmooth(lm.polygon, 2);
       // Filled green land
-      landGfx.fillStyle(0x2d6a1e, 1);
+      landGfx.fillStyle(0x5C6628, 1);
       drawPoly(landGfx, smooth);
       landGfx.fillPath();
       // Yellow/sand coastline outline
