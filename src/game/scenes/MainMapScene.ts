@@ -45,6 +45,7 @@ export class MainMapScene extends Phaser.Scene {
 
   private palmRenderer!: PalmRenderer;
   private seaTextureTile: Phaser.GameObjects.TileSprite | null = null;
+  private beachGfx: Phaser.GameObjects.Graphics | null = null;
   private seagullRenderer!: SeagullRenderer;
   private uiOverlay!: UIOverlayScene;
   private waterRenderer!: WaterRenderer;
@@ -385,23 +386,23 @@ export class MainMapScene extends Phaser.Scene {
 
     // Beach: Phaser Graphics strokes (GPU-rendered, no pixelation)
     // 3 overlapping strokes: outer faint → center bright
-    const beachGfx = this.add.graphics();
-    beachGfx.setDepth(-895);
+    this.beachGfx = this.add.graphics();
+    this.beachGfx.setDepth(-895);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
       const smooth = chaikinSmooth(lm.polygon, 2);
       // Outer glow (1.5px, 20% alpha)
-      beachGfx.lineStyle(1.5, 0xc8a84e, 0.20);
-      drawPoly(beachGfx, smooth);
-      beachGfx.strokePath();
+      this.beachGfx.lineStyle(1.5, 0xc8a84e, 0.20);
+      drawPoly(this.beachGfx, smooth);
+      this.beachGfx.strokePath();
       // Mid (1px, 35%)
-      beachGfx.lineStyle(1, 0xc8a84e, 0.35);
-      drawPoly(beachGfx, smooth);
-      beachGfx.strokePath();
+      this.beachGfx.lineStyle(1, 0xc8a84e, 0.35);
+      drawPoly(this.beachGfx, smooth);
+      this.beachGfx.strokePath();
       // Center (0.5px, 60%)
-      beachGfx.lineStyle(0.5, 0xc8a84e, 0.60);
-      drawPoly(beachGfx, smooth);
-      beachGfx.strokePath();
+      this.beachGfx.lineStyle(0.5, 0xc8a84e, 0.60);
+      drawPoly(this.beachGfx, smooth);
+      this.beachGfx.strokePath();
     }
 
     // Build land grid from polygons for navigation/seagulls
@@ -720,8 +721,17 @@ export class MainMapScene extends Phaser.Scene {
       this.seaTextureTile.setAlpha(t * 0.50);
     }
 
+    // Beach: fade with zoom, invisible at far zoom
+    if (this.beachGfx) {
+      const z = this.cameras.main.zoom;
+      // zoom <2: invisible, zoom 2→6: fade 0→1, zoom 6+: full
+      const beachAlpha = z < 2 ? 0 : z < 6 ? (z - 2) / (6 - 2) : 1;
+      this.beachGfx.setAlpha(beachAlpha);
+    }
+
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.uiOverlay?.updateZoom(this.cameras.main.zoom);
 
     // Animate water surface with wind
     this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);

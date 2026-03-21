@@ -15,6 +15,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private compass!: WindCompassWidget;
   private versionText!: Phaser.GameObjects.Text;
   private dateText!: Phaser.GameObjects.Text;
+  private zoomText!: Phaser.GameObjects.Text;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -57,6 +58,15 @@ export class UIOverlayScene extends Phaser.Scene {
     this.versionText.setOrigin(1, 1);
     this.versionText.setDepth(10);
 
+    // Zoom label — bottom-left
+    this.zoomText = this.add.text(6, cam.height - 4, "zoom: ?", {
+      ...txt(12, { color: "#888888" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.zoomText.setOrigin(0, 1);
+    this.zoomText.setDepth(10);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -71,6 +81,7 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.dateText) this.dateText.setPosition(MARGIN, MARGIN);
     if (this.compass) this.compass.reposition(cx, cy);
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
+    if (this.zoomText) this.zoomText.setPosition(6, height - 4);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -84,6 +95,13 @@ export class UIOverlayScene extends Phaser.Scene {
   updateWind(windDirRad: number, windStrength: number): void {
     if (this.compass) {
       this.compass.updateWind(windDirRad, windStrength);
+    }
+  }
+
+  /** Called from MainMapScene each frame with current zoom level */
+  updateZoom(zoom: number): void {
+    if (this.zoomText) {
+      this.zoomText.setText(`zoom: ${zoom.toFixed(1)}x`);
     }
   }
 
