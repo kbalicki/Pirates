@@ -410,6 +410,8 @@ export class CharacterCreationScene extends Phaser.Scene {
   }
 
   private addBackground(cx: number, cy: number, cam: Phaser.Cameras.Scene2D.Camera): void {
+    // Solid opaque fill to prevent any other scene bleeding through
+    this.cameras.main.setBackgroundColor("#0a0a1a");
     if (this.textures.exists("start_bg")) {
       const bg = this.add.image(cx, cy, "start_bg");
       const texFrame = this.textures.getFrame("start_bg");
@@ -418,8 +420,6 @@ export class CharacterCreationScene extends Phaser.Scene {
       bg.setScale(Math.max(scaleX, scaleY));
       bg.setDepth(0);
       this.add.rectangle(cx, cy, cam.width, cam.height, 0x000000, 0.25).setDepth(1);
-    } else {
-      this.cameras.main.setBackgroundColor("#0a0a1a");
     }
   }
 
