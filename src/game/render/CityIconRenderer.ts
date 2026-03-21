@@ -3,8 +3,9 @@ import type { PortDef } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 
 /**
- * Draws a city/fort icon for a port on the map.
- * 17th-century Caribbean colonial style with 3 sizes.
+ * City/fort icons — 3/4 top-down view (bird's eye, ~60° angle).
+ * You see ROOFS as the dominant element, thin wall edges at bottom,
+ * cast shadows to the right. 17th-century Caribbean colonial style.
  */
 export function drawCityIcon(
   scene: Phaser.Scene,
@@ -17,266 +18,259 @@ export function drawCityIcon(
   const flagColor = factionDef?.color ?? 0xaaaaaa;
   const pop = port.population;
 
-  // Try AI-generated city sprite first (not for forts)
   if (port.type !== "fort") {
     let spriteKey: string | null = null;
-    if ((pop === "large" || pop === "capital") && scene.textures.exists("city_large")) {
-      spriteKey = "city_large";
-    } else if (pop === "medium" && scene.textures.exists("city_medium")) {
-      spriteKey = "city_medium";
-    } else if (scene.textures.exists("city_small")) {
-      spriteKey = "city_small";
-    }
-
+    if ((pop === "large" || pop === "capital") && scene.textures.exists("city_large")) spriteKey = "city_large";
+    else if (pop === "medium" && scene.textures.exists("city_medium")) spriteKey = "city_medium";
+    else if (scene.textures.exists("city_small")) spriteKey = "city_small";
     if (spriteKey) {
       const cityImg = scene.add.image(x, y, spriteKey);
       cityImg.setDepth(500);
-      const scale = pop === "large" || pop === "capital" ? 0.8 : pop === "medium" ? 0.65 : 0.5;
-      cityImg.setScale(scale);
+      cityImg.setScale(pop === "large" || pop === "capital" ? 0.8 : pop === "medium" ? 0.65 : 0.5);
       return;
     }
   }
 
-  // Fallback: procedural drawing
-  if (port.type === "fort") {
-    drawFort(g, x, y, flagColor, pop);
-  } else if (pop === "large" || pop === "capital") {
-    drawCityLarge(g, x, y, flagColor);
-  } else if (pop === "medium") {
-    drawCityMedium(g, x, y, flagColor);
-  } else {
-    drawCitySmall(g, x, y, flagColor);
+  if (port.type === "fort") drawFort(g, x, y, flagColor, pop);
+  else if (pop === "large" || pop === "capital") drawCityLarge(g, x, y, flagColor);
+  else if (pop === "medium") drawCityMedium(g, x, y, flagColor);
+  else drawCitySmall(g, x, y, flagColor);
+}
+
+/* ── Isometric-ish building helper ──
+ * Draws a building seen from above: roof is main element,
+ * thin south wall edge visible, shadow cast right+down.
+ *
+ *   bx,by = top-left corner of roof footprint
+ *   w = width, d = depth (north-south), h = wall height visible
+ */
+function isoBuilding(
+  g: Phaser.GameObjects.Graphics,
+  bx: number, by: number,
+  w: number, d: number, h: number,
+  roofColor: number, wallColor: number,
+): void {
+  // Cast shadow (right + down)
+  g.fillStyle(0x000000, 0.2);
+  g.fillRect(bx + 1, by + d, w, h + 0.5);
+  g.fillRect(bx + w, by + 1, 1, d + h);
+
+  // South wall (thin edge at bottom of building)
+  g.fillStyle(wallColor, 1);
+  g.fillRect(bx, by + d, w, h);
+
+  // Roof (main visible element from above)
+  g.fillStyle(roofColor, 1);
+  g.fillRect(bx - 0.5, by, w + 1, d);
+
+  // Roof ridge (darker line in center)
+  g.fillStyle(0x000000, 0.15);
+  g.fillRect(bx, by + d * 0.45, w, 0.6);
+}
+
+function isoTower(
+  g: Phaser.GameObjects.Graphics,
+  cx: number, cy: number,
+  radius: number, h: number,
+  roofColor: number, wallColor: number,
+): void {
+  // Shadow
+  g.fillStyle(0x000000, 0.2);
+  g.fillCircle(cx + 0.8, cy + h + 0.5, radius);
+
+  // Wall (visible as a ring at the bottom)
+  g.fillStyle(wallColor, 1);
+  g.fillCircle(cx, cy + h * 0.5, radius);
+
+  // Roof top (circle seen from above)
+  g.fillStyle(roofColor, 1);
+  g.fillCircle(cx, cy, radius);
+
+  // Highlight on roof
+  g.fillStyle(0xffffff, 0.1);
+  g.fillCircle(cx - radius * 0.2, cy - radius * 0.2, radius * 0.5);
+}
+
+function palmTopDown(g: Phaser.GameObjects.Graphics, cx: number, cy: number, size: number): void {
+  // From above: dark trunk dot in center, green fronds radiating out
+  g.fillStyle(0x1d6a1d, 0.8);
+  // Frond lobes (4-5 circles around center)
+  for (let i = 0; i < 5; i++) {
+    const a = (i / 5) * Math.PI * 2 - 0.3;
+    g.fillCircle(cx + Math.cos(a) * size * 0.7, cy + Math.sin(a) * size * 0.6, size * 0.5);
   }
+  // Darker center fronds
+  g.fillStyle(0x155a15, 0.7);
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5;
+    g.fillCircle(cx + Math.cos(a) * size * 0.3, cy + Math.sin(a) * size * 0.3, size * 0.35);
+  }
+  // Trunk center
+  g.fillStyle(0x6b5030, 1);
+  g.fillCircle(cx, cy, size * 0.15);
 }
 
-/* ── helpers ── */
-
-function roof(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, color: number): void {
-  // Triangular terracotta roof
-  g.fillStyle(color, 1);
-  g.fillTriangle(x - 1, y, x + w + 1, y, x + w / 2, y - Math.max(2, w * 0.5));
-}
-
-function window(g: Phaser.GameObjects.Graphics, x: number, y: number, lit = true): void {
-  g.fillStyle(lit ? 0xffdd44 : 0x332211, lit ? 0.7 : 0.8);
-  g.fillRect(x, y, 1, 1);
-}
-
-function palmTree(g: Phaser.GameObjects.Graphics, x: number, y: number, h: number): void {
-  // Curved trunk
-  g.lineStyle(0.8, 0x6b5030, 1);
-  g.lineBetween(x, y, x + 0.5, y - h);
-  // Crown — multiple green dots
-  g.fillStyle(0x2d8a2d, 0.85);
-  g.fillCircle(x + 0.5, y - h, 1.2);
-  g.fillCircle(x - 0.5, y - h + 0.3, 1);
-  g.fillCircle(x + 1.5, y - h + 0.3, 1);
-  g.fillStyle(0x1d6a1d, 0.7);
-  g.fillCircle(x + 0.5, y - h - 0.5, 0.8);
-}
-
-/* ── Large city: colonial port town ── */
+/* ── Large city: colonial port town from above ── */
 
 export function drawCityLarge(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
-  // Sandy plaza ground
-  g.fillStyle(0xc4a46a, 0.4);
-  g.fillCircle(x, y + 2, 7);
+  // Ground/plaza (sandy area)
+  g.fillStyle(0xc4a46a, 0.35);
+  g.fillCircle(x, y, 8);
 
-  // Low harbor wall (stone quay)
-  g.fillStyle(0x7a6a4a, 0.7);
-  g.fillRoundedRect(x - 8, y + 3, 16, 1.5, 0.5);
+  // Street (darker sand)
+  g.fillStyle(0xa08855, 0.3);
+  g.fillRect(x - 8, y - 0.5, 16, 1);
 
-  // Left building: 2-story colonial with balcony
-  g.fillStyle(0xe8d5a8, 1);
-  g.fillRect(x - 7, y - 3, 4, 6);
-  g.fillStyle(0xd4c098, 1);
-  g.fillRect(x - 7, y - 1, 4, 0.5); // balcony floor
-  g.fillStyle(0x8b6b45, 1);
-  g.fillRect(x - 7, y - 1.5, 4, 0.5); // balcony railing
-  roof(g, x - 7, y - 3, 4, 0xbb4422);
-  window(g, x - 6, y - 2);
-  window(g, x - 5, y - 2);
-  window(g, x - 6, y);
-  window(g, x - 5, y);
+  // Buildings — arranged around plaza, roofs seen from above
+  // Left: large colonial mansion
+  isoBuilding(g, x - 8, y - 5, 5, 4, 1.5, 0xbb4422, 0xe8d5a8);
+  // Center-left: two-story house
+  isoBuilding(g, x - 3, y - 6, 4, 3, 2, 0xaa3318, 0xf0e0c0);
+  // Center: cathedral (wider, taller walls)
+  isoBuilding(g, x + 1, y - 7, 5, 5, 2.5, 0x993315, 0xf0e0c0);
+  // Cathedral bell tower (circular, rises above)
+  isoTower(g, x + 3.5, y - 5, 1.5, 3, 0x882210, 0xd8c890);
+  // Cross on top of tower
+  g.lineStyle(0.6, 0xffdd44, 0.9);
+  g.lineBetween(x + 3.5, y - 9, x + 3.5, y - 10);
+  g.lineBetween(x + 3, y - 9.5, x + 4, y - 9.5);
 
-  // Central cathedral — tallest building
-  g.fillStyle(0xf0e0c0, 1);
-  g.fillRect(x - 2, y - 5, 5, 8);
-  g.fillStyle(0xe8d0a8, 1);
-  g.fillRect(x - 2, y - 2, 5, 0.5); // cornice
-  roof(g, x - 2, y - 5, 5, 0xaa3318);
-  // Bell tower / spire
-  g.fillStyle(0xd8c890, 1);
-  g.fillRect(x, y - 8, 2, 3);
-  roof(g, x, y - 8, 2, 0xaa3318);
-  // Cross
-  g.lineStyle(0.7, 0xffdd44, 0.9);
-  g.lineBetween(x + 1, y - 9.5, x + 1, y - 10.5);
-  g.lineBetween(x + 0.3, y - 10, x + 1.7, y - 10);
-  // Cathedral windows (arched)
-  window(g, x - 1, y - 4);
-  window(g, x + 1, y - 4);
-  window(g, x - 1, y - 1);
-  window(g, x + 1, y - 1);
-  window(g, x + 2, y - 1);
-  // Grand door
-  g.fillStyle(0x3a2211, 1);
-  g.fillRect(x, y + 1, 2, 2);
-  g.lineStyle(0.5, 0x554433, 0.7);
-  g.strokeCircle(x + 1, y + 1, 1); // arch above door
+  // Right: merchant house
+  isoBuilding(g, x + 5, y - 4, 3, 3, 1.5, 0xcc5533, 0xe0cca0);
+  // South: warehouse near harbor
+  isoBuilding(g, x - 6, y + 2, 4, 2.5, 1, 0xbb4422, 0xd4c098);
+  // South-right: small shop
+  isoBuilding(g, x + 3, y + 2, 3, 2, 1, 0xcc5533, 0xe0cca0);
 
-  // Right building: merchant house
-  g.fillStyle(0xe0cca0, 1);
-  g.fillRect(x + 4, y - 2, 3, 5);
-  roof(g, x + 4, y - 2, 3, 0xcc5533);
-  window(g, x + 5, y - 1);
-  window(g, x + 5, y + 1);
-  g.fillStyle(0x3a2211, 1);
-  g.fillRect(x + 5, y + 2, 1, 1);
+  // Harbor wall (stone quay at south edge)
+  g.fillStyle(0x7a6a4a, 0.6);
+  g.fillRect(x - 9, y + 5, 18, 1);
 
-  // Far-right small house
-  g.fillStyle(0xd8c498, 1);
-  g.fillRect(x + 7, y - 1, 2, 3);
-  roof(g, x + 7, y - 1, 2, 0xbb4422);
-  window(g, x + 8, y);
-
-  // Palm trees
-  palmTree(g, x - 9, y + 2, 5);
-  palmTree(g, x + 10, y + 1, 4);
+  // Palm trees (top-down: green rosettes)
+  palmTopDown(g, x - 9, y - 2, 2);
+  palmTopDown(g, x + 9, y + 1, 1.8);
 
   // Flag pole
-  g.lineStyle(0.7, 0xcccccc, 0.9);
-  g.lineBetween(x + 7, y - 2, x + 7, y - 6);
+  g.lineStyle(0.6, 0xcccccc, 0.9);
+  g.lineBetween(x + 7, y - 3, x + 7, y - 7);
 }
 
 /* ── Medium city: colonial trading post ── */
 
 export function drawCityMedium(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
   // Ground
-  g.fillStyle(0xc4a46a, 0.35);
-  g.fillCircle(x, y + 1, 4.5);
+  g.fillStyle(0xc4a46a, 0.3);
+  g.fillCircle(x, y, 5);
 
-  // Left building: colonial house
-  g.fillStyle(0xe8d5a8, 1);
-  g.fillRect(x - 4, y - 2, 3, 4);
-  roof(g, x - 4, y - 2, 3, 0xcc5533);
-  window(g, x - 3, y - 1);
-  window(g, x - 3, y + 0.5);
-
-  // Center: church/town hall (taller)
-  g.fillStyle(0xf0e0c0, 1);
-  g.fillRect(x - 1, y - 3, 3, 5);
-  roof(g, x - 1, y - 3, 3, 0xaa3318);
+  // Church/town hall (center, largest)
+  isoBuilding(g, x - 2, y - 5, 4, 3.5, 2, 0xaa3318, 0xf0e0c0);
   // Small bell tower
-  g.fillStyle(0xd4c090, 1);
-  g.fillRect(x, y - 5, 1.5, 2);
-  roof(g, x, y - 5, 1.5, 0xaa3318);
-  window(g, x, y - 2);
-  window(g, x + 1, y - 2);
-  window(g, x, y);
-  // Door
-  g.fillStyle(0x3a2211, 1);
-  g.fillRect(x + 0.5, y + 1, 1, 1);
+  isoTower(g, x + 0.5, y - 4, 1, 2, 0x882210, 0xd8c890);
 
-  // Right: smaller building
-  g.fillStyle(0xe0cca0, 1);
-  g.fillRect(x + 3, y - 1, 2, 3);
-  roof(g, x + 3, y - 1, 2, 0xcc5533);
-  window(g, x + 4, y);
+  // Left house
+  isoBuilding(g, x - 5, y - 2, 3, 2.5, 1.2, 0xcc5533, 0xe8d5a8);
+
+  // Right house
+  isoBuilding(g, x + 2, y - 2, 3, 2.5, 1.2, 0xbb4422, 0xe0cca0);
+
+  // South: small building
+  isoBuilding(g, x - 2, y + 1.5, 3, 2, 1, 0xcc5533, 0xd4c098);
 
   // Palm tree
-  palmTree(g, x - 6, y + 1, 4);
+  palmTopDown(g, x - 6, y + 1, 1.6);
 
   // Flag pole
-  g.lineStyle(0.7, 0xcccccc, 0.8);
-  g.lineBetween(x + 5, y - 1, x + 5, y - 4);
+  g.lineStyle(0.6, 0xcccccc, 0.8);
+  g.lineBetween(x + 5, y - 2, x + 5, y - 5);
 }
 
-/* ── Small city: Caribbean fishing village ── */
+/* ── Small city: fishing village ── */
 
 export function drawCitySmall(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number): void {
   // Sandy ground
-  g.fillStyle(0xc4a46a, 0.25);
-  g.fillCircle(x, y + 1, 3);
+  g.fillStyle(0xc4a46a, 0.2);
+  g.fillCircle(x, y, 3);
 
-  // Main hut — wooden walls, palm-leaf roof
-  g.fillStyle(0x8b7355, 1);
-  g.fillRect(x - 2, y - 1, 2.5, 2.5);
-  // Thatched roof (irregular triangle)
+  // Main hut — round thatched roof seen from above
+  g.fillStyle(0x000000, 0.15);
+  g.fillCircle(x + 0.5, y + 1, 2); // shadow
   g.fillStyle(0x667744, 1);
-  g.fillTriangle(x - 2.5, y - 1, x + 1, y - 1, x - 0.5, y - 3);
-  g.fillStyle(0x556633, 0.8);
-  g.fillTriangle(x - 2.5, y - 1, x + 1, y - 1, x - 0.5, y - 2.5);
+  g.fillCircle(x, y, 2); // thatched roof
+  g.fillStyle(0x556633, 0.6);
+  g.fillCircle(x, y, 1.2); // center ridge
+  g.fillStyle(0x6b5030, 0.8);
+  g.fillCircle(x, y, 0.3); // smoke hole
 
   // Second smaller hut
-  g.fillStyle(0x8b7355, 1);
-  g.fillRect(x + 1.5, y, 1.5, 1.5);
+  g.fillStyle(0x000000, 0.12);
+  g.fillCircle(x + 3.3, y + 0.8, 1.2);
   g.fillStyle(0x667744, 1);
-  g.fillTriangle(x + 1, y, x + 3.5, y, x + 2.2, y - 1.5);
+  g.fillCircle(x + 3, y, 1.3);
+  g.fillStyle(0x556633, 0.5);
+  g.fillCircle(x + 3, y, 0.7);
 
-  // Tiny window glow
-  window(g, x - 1, y, true);
+  // Small dock (planks extending south)
+  g.fillStyle(0x7a6040, 0.7);
+  g.fillRect(x + 1, y + 2.5, 0.6, 2);
+  g.fillRect(x + 2.2, y + 2.5, 0.6, 2);
+  g.fillRect(x + 0.5, y + 3.5, 3, 0.4);
 
   // Palm tree
-  palmTree(g, x - 3.5, y + 1, 3.5);
-
-  // Small dock (2 planks into water)
-  g.lineStyle(0.6, 0x7a6040, 0.7);
-  g.lineBetween(x + 2, y + 2, x + 4, y + 2);
-  g.lineBetween(x + 2.5, y + 1.5, x + 2.5, y + 2.5);
-  g.lineBetween(x + 3.5, y + 1.5, x + 3.5, y + 2.5);
+  palmTopDown(g, x - 3, y - 1, 1.4);
 
   // Flag pole
-  g.lineStyle(0.6, 0xaaaaaa, 0.7);
-  g.lineBetween(x + 3, y - 1, x + 3, y - 3);
+  g.lineStyle(0.5, 0xaaaaaa, 0.7);
+  g.lineBetween(x + 4, y - 1, x + 4, y - 3);
 }
 
-/* ── Fort: stone star-fort ── */
+/* ── Fort: star-fort from above ── */
 
 export function drawFort(g: Phaser.GameObjects.Graphics, x: number, y: number, _flagColor: number, pop: string): void {
   const big = pop === "large" || pop === "capital" || pop === "medium";
   const s = big ? 1.3 : 1.0;
 
-  // Main wall
-  g.fillStyle(0x777777, 1);
-  g.fillRect(x - 3 * s, y - 2 * s, 6 * s, 4 * s);
+  // Shadow
+  g.fillStyle(0x000000, 0.2);
+  g.fillRect(x - 2.5 * s + 1, y - 2.5 * s + 1, 5 * s, 5 * s);
 
-  // Corner bastions (diamond-shaped for star-fort look)
-  g.fillStyle(0x666666, 1);
-  const bs = 1.8 * s;
-  // Top-left bastion
-  g.fillTriangle(x - 3 * s, y - 2 * s, x - 3 * s - bs, y - 0.5 * s, x - 3 * s, y + 1 * s);
-  // Top-right bastion
-  g.fillTriangle(x + 3 * s, y - 2 * s, x + 3 * s + bs, y - 0.5 * s, x + 3 * s, y + 1 * s);
-  // Bottom-left bastion
-  g.fillTriangle(x - 3 * s, y - 1 * s, x - 3 * s - bs, y + 0.5 * s, x - 3 * s, y + 2 * s);
-  // Bottom-right bastion
-  g.fillTriangle(x + 3 * s, y - 1 * s, x + 3 * s + bs, y + 0.5 * s, x + 3 * s, y + 2 * s);
+  // Main courtyard (from above: square stone area)
+  g.fillStyle(0x888877, 1);
+  g.fillRect(x - 2.5 * s, y - 2.5 * s, 5 * s, 5 * s);
+
+  // Walls (darker border)
+  g.lineStyle(1.2 * s, 0x666655, 1);
+  g.strokeRect(x - 2.5 * s, y - 2.5 * s, 5 * s, 5 * s);
+
+  // Corner bastions (triangular, pointing outward — star-fort from above)
+  g.fillStyle(0x777766, 1);
+  const b = 2.2 * s;
+  // NW bastion
+  g.fillTriangle(x - 2.5 * s, y - 2.5 * s, x - 2.5 * s - b, y - 2.5 * s + 1.5 * s, x - 2.5 * s + 1.5 * s, y - 2.5 * s);
+  // NE bastion
+  g.fillTriangle(x + 2.5 * s, y - 2.5 * s, x + 2.5 * s + b, y - 2.5 * s + 1.5 * s, x + 2.5 * s - 1.5 * s, y - 2.5 * s);
+  // SE bastion
+  g.fillTriangle(x + 2.5 * s, y + 2.5 * s, x + 2.5 * s + b, y + 2.5 * s - 1.5 * s, x + 2.5 * s - 1.5 * s, y + 2.5 * s);
+  // SW bastion
+  g.fillTriangle(x - 2.5 * s, y + 2.5 * s, x - 2.5 * s - b, y + 2.5 * s - 1.5 * s, x - 2.5 * s + 1.5 * s, y + 2.5 * s);
 
   // Inner courtyard
-  g.fillStyle(0x999988, 0.6);
-  g.fillRect(x - 1.5 * s, y - 0.5 * s, 3 * s, 2 * s);
+  g.fillStyle(0x999988, 0.5);
+  g.fillRect(x - 1.2 * s, y - 1.2 * s, 2.4 * s, 2.4 * s);
 
-  // Battlements (top wall)
-  g.fillStyle(0x888888, 1);
-  for (let i = -2.5; i <= 2.5; i += 1.2) {
-    g.fillRect(x + i * s, y - 2.8 * s, 0.6 * s, 0.8 * s);
-  }
-
-  // Gate
+  // Gate (south wall opening)
   g.fillStyle(0x443322, 1);
-  g.fillRect(x - 0.5 * s, y + 1.5 * s, 1 * s, 1 * s);
+  g.fillRect(x - 0.5 * s, y + 2 * s, 1 * s, 1 * s);
 
   // Flag pole
-  g.lineStyle(0.7, 0xdddddd, 0.9);
-  g.lineBetween(x, y - 2 * s, x, y - 5 * s);
+  g.lineStyle(0.6, 0xdddddd, 0.9);
+  g.lineBetween(x, y - 1 * s, x, y - 4.5 * s);
 
   if (big) {
-    // Cannon positions on bastions
+    // Cannon positions (dark dots on bastions)
     g.fillStyle(0x333333, 1);
-    g.fillCircle(x - 3 * s - bs * 0.5, y - 0.5 * s, 0.8);
-    g.fillCircle(x + 3 * s + bs * 0.5, y - 0.5 * s, 0.8);
-    g.fillCircle(x - 3 * s - bs * 0.5, y + 0.5 * s, 0.8);
-    g.fillCircle(x + 3 * s + bs * 0.5, y + 0.5 * s, 0.8);
+    g.fillCircle(x - 2.5 * s - b * 0.4, y - 2.5 * s + 1 * s, 0.7);
+    g.fillCircle(x + 2.5 * s + b * 0.4, y - 2.5 * s + 1 * s, 0.7);
+    g.fillCircle(x + 2.5 * s + b * 0.4, y + 2.5 * s - 1 * s, 0.7);
+    g.fillCircle(x - 2.5 * s - b * 0.4, y + 2.5 * s - 1 * s, 0.7);
   }
 }
