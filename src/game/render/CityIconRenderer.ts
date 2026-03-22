@@ -26,13 +26,10 @@ export function drawCityIcon(
     if (spriteKey) {
       const cityImg = scene.add.image(x, y, spriteKey);
       cityImg.setDepth(500);
-      // Store target screen size for zoom-dependent scaling in MainMapScene
-      const targetScreenPx = pop === "large" || pop === "capital" ? 120 : pop === "medium" ? 80 : 50;
-      cityImg.setData("targetScreenPx", targetScreenPx);
-      cityImg.setData("isCitySprite", true);
-      // Initial scale (will be updated per frame)
+      // Fixed world-space size: shrinks naturally with camera zoom
       const texW = scene.textures.getFrame(spriteKey).width || 1024;
-      cityImg.setScale(targetScreenPx / 6 / texW); // initial for ~zoom 6
+      const targetWorldPx = pop === "large" || pop === "capital" ? 10 : pop === "medium" ? 7 : 5;
+      cityImg.setScale(targetWorldPx / texW);
       return;
     }
   }

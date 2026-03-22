@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.2.0",
+    date: "2026-03-21",
+    changes: [
+      "Sea photo texture: mirror-tiled, zoom-dependent alpha (0→50%), depth under wave layers",
+      "Land photo texture: tropical forest aerial, mirror-tiled, GeometryMask to land polygons",
+      "City sprites: PNG assets (city_large.png), isometric colonial town, constant screen size",
+      "Beach gradient: 3 GPU-rendered strokes with zoom fade, no pixelation",
+      "Shore shadow: canvas shadowBlur for smooth Gaussian glow at coastline",
+      "Flags: constant screen size at all zoom levels, LINEAR filtering",
+      "City labels: constant screen size (1/zoom), no more growing at close zoom",
+      "Ship scale: 33% smaller at max zoom",
+      "Crew sprite: 10x smaller on land",
+      "Turn rate: 3x faster key response (0.04 → 0.12 rad/tick)",
+      "Start screen: new Barbados beach background, opaque BG fix",
+      "Zoom indicator: bottom-left corner, normalized 0→10 scale",
+      "URL debug params: ?skip, ?zoom=, ?debug= for testing",
+      "Puerto Príncipe: moved east (was on water)",
+      "Palm forest procedural generator (PalmForestTexture.ts) — ported from HTML tool",
+    ],
+  },
+  {
     version: "0.9.0",
     date: "2026-03-20",
     changes: [
