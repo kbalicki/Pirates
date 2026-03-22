@@ -54,10 +54,27 @@ export class WorldRenderer {
   fogOfWarEnabled = false;
   /** Animation tick */
   private wakeTick = 0;
-  /** Previous ship positions for speed detection */
+  /** Previous positions (before last physics tick) for interpolation */
   private prevPos: Map<string, { x: number; y: number }> = new Map();
 
-  sync(scene: Phaser.Scene, world: WorldState): void {
+  /** Called BEFORE each physics tick — snapshot all entity positions. */
+  snapshotPositions(world: WorldState): void {
+    for (const [id, entity] of Object.entries(world.entities)) {
+      this.prevPos.set(id, { x: entity.pos.x, y: entity.pos.y });
+    }
+  }
+
+  /** Get interpolated position between previous and current tick. */
+  getInterpolatedPos(id: string, entity: EntityState, alpha: number): { x: number; y: number } {
+    const prev = this.prevPos.get(id);
+    if (!prev) return entity.pos;
+    return {
+      x: prev.x + (entity.pos.x - prev.x) * alpha,
+      y: prev.y + (entity.pos.y - prev.y) * alpha,
+    };
+  }
+
+  sync(scene: Phaser.Scene, world: WorldState, interpAlpha = 1): void {
     this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
@@ -103,8 +120,9 @@ export class WorldRenderer {
         this.entitySprites.set(id, sprite);
       }
 
-      // Update position
-      sprite.setPosition(entity.pos.x, entity.pos.y);
+      // Update position — interpolated between physics ticks for smooth movement
+      const interpPos = this.getInterpolatedPos(id, entity, interpAlpha);
+      sprite.setPosition(interpPos.x, interpPos.y);
 
       // Update direction frame
       if (entity.kind === "ship") {
@@ -120,7 +138,7 @@ export class WorldRenderer {
       }
 
       // Depth sort: y + offset
-      sprite.setDepth(entity.pos.y + entity.depthOffset);
+      sprite.setDepth(interpPos.y + entity.depthOffset);
 
       // Scale ship: 33% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
@@ -152,8 +170,8 @@ export class WorldRenderer {
             const sign = Math.random() > 0.5 ? 1 : -1;
             const hullDist = (spreadBase + Math.random() * 0.4) * sign;
 
-            const wx = entity.pos.x - fwX * along + sX * hullDist;
-            const wy = entity.pos.y - fwY * along + sY * hullDist;
+            const wx = interpPos.x - fwX * along + sX * hullDist;
+            const wy = interpPos.y - fwY * along + sY * hullDist;
 
             // Random arc params for irregularity
             const radius = 0.2 + Math.random() * 0.25;
@@ -166,7 +184,7 @@ export class WorldRenderer {
             const arc = scene.add.arc(wx, wy, radius, startDeg, endDeg, false, col, 0);
             arc.setStrokeStyle(0.4, col, 0.12);
             arc.setFillStyle(col, 0);
-            arc.setDepth(entity.pos.y - 1);
+            arc.setDepth(interpPos.y - 1);
             arc.setClosePath(false);
 
             // Drift outward + fade + grow slightly

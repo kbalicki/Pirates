@@ -586,6 +586,9 @@ export class MainMapScene extends Phaser.Scene {
     while (this.tickAccumulator >= TICK_MS) {
       this.tickAccumulator -= TICK_MS;
 
+      // Store previous positions BEFORE physics tick for interpolation
+      this.worldRenderer.snapshotPositions(this.worldState);
+
       const commands = this.commandQueue.drain();
       const result = this.engine.apply(this.worldState, commands, 1);
       this.worldState = result.state;
@@ -611,19 +614,17 @@ export class MainMapScene extends Phaser.Scene {
     const fogSetting = localStorage.getItem("pc_fog") === "1";
     this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
 
-    this.worldRenderer.sync(this, this.worldState);
+    this.worldRenderer.sync(this, this.worldState, interpAlpha);
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (playerEntity) {
-      // Interpolate player position between ticks for smooth movement
-      const vel = playerEntity.vel ?? { x: 0, y: 0 };
-      const interpPos = {
-        x: playerEntity.pos.x + vel.x * interpAlpha,
-        y: playerEntity.pos.y + vel.y * interpAlpha,
-      };
+      // Use interpolated position from WorldRenderer for camera + vision circle
+      const interpPos = this.worldRenderer.getInterpolatedPos(
+        this.worldState.player.shipId as string, playerEntity, interpAlpha,
+      );
       this.cameraCtrl.setTarget(interpPos);
       this.cameraCtrl.update();
-      this.worldRenderer.drawVisionCircle(this, playerEntity.pos);
+      this.worldRenderer.drawVisionCircle(this, interpPos);
     }
 
     // City zoom scaling
