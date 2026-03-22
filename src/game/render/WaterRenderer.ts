@@ -37,7 +37,7 @@ function generateHalfTexture(seed: number, baseAlpha: number): HTMLCanvasElement
     const len = 6 + hash(i * 11.3, seed * 8.7) * 25; // shorter strokes
     const baseAngle = smoothNoise(sx * 0.008 + seed, sy * 0.008) * 1.4 - 0.7;
     const strokeAlpha = baseAlpha * (0.8 + hash(i * 13.1, seed * 4.1) * 1.5);
-    const width = 0.6 + hash(i * 9.3, seed * 6.7) * 1.0;
+    const width = 1.0 + hash(i * 9.3, seed * 6.7) * 1.5;
 
     ctx.globalAlpha = strokeAlpha;
     ctx.strokeStyle = hash(i * 5.1, seed) > 0.3 ? "#88ccee" : "#aaddff";
@@ -121,9 +121,9 @@ export class WaterRenderer {
     // Always regenerate wave textures (colors/params may have changed)
     if (scene.textures.exists("water_wave1")) scene.textures.remove("water_wave1");
     if (scene.textures.exists("water_wave2")) scene.textures.remove("water_wave2");
-    const half1 = generateHalfTexture(0, 0.6);
+    const half1 = generateHalfTexture(0, 1.0);
     scene.textures.addCanvas("water_wave1", mirrorTexture(half1));
-    const half2 = generateHalfTexture(42, 0.45);
+    const half2 = generateHalfTexture(42, 0.8);
     scene.textures.addCanvas("water_wave2", mirrorTexture(half2));
 
     // Set LINEAR filtering to avoid pixelation at max zoom
@@ -153,11 +153,11 @@ export class WaterRenderer {
     this.layer2.tilePositionX += Math.sin(windDirRad + 0.5) * s2;
     this.layer2.tilePositionY += -Math.cos(windDirRad + 0.5) * s2;
 
-    // Waves: visible only at close zoom (normalized 8→10 = camera 9.9→12)
-    // 50% max alpha for natural transparency over sea texture
+    // Waves: visible at close zoom, 50% max alpha
+    // camera zoom 6→12 (normalized ~4→10)
     const cam = this.layer1.scene.cameras.main;
     const z = cam.zoom;
-    const waveAlpha = z < 9.9 ? 0 : Math.min(1, (z - 9.9) / (12 - 9.9)) * 0.5;
+    const waveAlpha = z < 6 ? 0 : Math.min(1, (z - 6) / (12 - 6)) * 0.5;
     this.layer1.setAlpha(waveAlpha);
     this.layer2.setAlpha(waveAlpha * 0.7);
   }
