@@ -54,27 +54,17 @@ export class WorldRenderer {
   fogOfWarEnabled = false;
   /** Animation tick */
   private wakeTick = 0;
-  /** Previous positions (before last physics tick) for interpolation */
-  private prevPos: Map<string, { x: number; y: number }> = new Map();
+  /** Smoothed visual positions per entity (exponential smoothing) */
+  private smoothPos: Map<string, { x: number; y: number }> = new Map();
+  /** Smoothing factor: 0.3 = converges in ~5 frames at 60fps (~83ms lag) */
+  private static readonly SMOOTH = 0.3;
 
-  /** Called BEFORE each physics tick — snapshot all entity positions. */
-  snapshotPositions(world: WorldState): void {
-    for (const [id, entity] of Object.entries(world.entities)) {
-      this.prevPos.set(id, { x: entity.pos.x, y: entity.pos.y });
-    }
+  /** Get the current smoothed position for an entity. */
+  getSmoothedPos(id: string, entity: EntityState): { x: number; y: number } {
+    return this.smoothPos.get(id) ?? entity.pos;
   }
 
-  /** Get interpolated position between previous and current tick. */
-  getInterpolatedPos(id: string, entity: EntityState, alpha: number): { x: number; y: number } {
-    const prev = this.prevPos.get(id);
-    if (!prev) return entity.pos;
-    return {
-      x: prev.x + (entity.pos.x - prev.x) * alpha,
-      y: prev.y + (entity.pos.y - prev.y) * alpha,
-    };
-  }
-
-  sync(scene: Phaser.Scene, world: WorldState, interpAlpha = 1): void {
+  sync(scene: Phaser.Scene, world: WorldState): void {
     this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
@@ -120,9 +110,16 @@ export class WorldRenderer {
         this.entitySprites.set(id, sprite);
       }
 
-      // Update position — interpolated between physics ticks for smooth movement
-      const interpPos = this.getInterpolatedPos(id, entity, interpAlpha);
-      sprite.setPosition(interpPos.x, interpPos.y);
+      // Exponential smoothing: sprite chases entity.pos each frame
+      let sp = this.smoothPos.get(id);
+      if (!sp) {
+        sp = { x: entity.pos.x, y: entity.pos.y };
+        this.smoothPos.set(id, sp);
+      } else {
+        sp.x += (entity.pos.x - sp.x) * WorldRenderer.SMOOTH;
+        sp.y += (entity.pos.y - sp.y) * WorldRenderer.SMOOTH;
+      }
+      sprite.setPosition(sp.x, sp.y);
 
       // Update direction frame
       if (entity.kind === "ship") {
@@ -138,7 +135,7 @@ export class WorldRenderer {
       }
 
       // Depth sort: y + offset
-      sprite.setDepth(interpPos.y + entity.depthOffset);
+      sprite.setDepth(sp.y + entity.depthOffset);
 
       // Scale ship: 33% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
@@ -170,8 +167,8 @@ export class WorldRenderer {
             const sign = Math.random() > 0.5 ? 1 : -1;
             const hullDist = (spreadBase + Math.random() * 0.4) * sign;
 
-            const wx = interpPos.x - fwX * along + sX * hullDist;
-            const wy = interpPos.y - fwY * along + sY * hullDist;
+            const wx = sp.x - fwX * along + sX * hullDist;
+            const wy = sp.y - fwY * along + sY * hullDist;
 
             // Random arc params for irregularity
             const radius = 0.2 + Math.random() * 0.25;
@@ -184,7 +181,7 @@ export class WorldRenderer {
             const arc = scene.add.arc(wx, wy, radius, startDeg, endDeg, false, col, 0);
             arc.setStrokeStyle(0.4, col, 0.12);
             arc.setFillStyle(col, 0);
-            arc.setDepth(interpPos.y - 1);
+            arc.setDepth(sp.y - 1);
             arc.setClosePath(false);
 
             // Drift outward + fade + grow slightly
@@ -235,7 +232,7 @@ export class WorldRenderer {
         sprite.destroy();
         this.entitySprites.delete(id);
         this.entityModes.delete(id);
-        this.prevPos.delete(id);
+        this.smoothPos.delete(id);
         const anchor = this.anchorSprites.get(id);
         if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
       }
