@@ -323,48 +323,6 @@ export class MainMapScene extends Phaser.Scene {
     this.cartographicGrid = new CartographicGrid(this, mapW, mapH);
     // No Graphics needed — eliminates potential WebGL bounding box artifacts
 
-    // Shore gradient: full-size canvas + shadowBlur for smooth Gaussian glow
-    const shoreCanvas = document.createElement("canvas");
-    shoreCanvas.width = mapW;
-    shoreCanvas.height = mapH;
-    const sctx = shoreCanvas.getContext("2d")!;
-
-    const fillCanvasPoly = (ctx: CanvasRenderingContext2D, pts: { x: number; y: number }[]) => {
-      ctx.beginPath();
-      ctx.moveTo(pts[0].x, pts[0].y);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-      ctx.closePath();
-      ctx.fill();
-    };
-
-    // Pass 1: outer glow — turquoise shadow (strong, wide)
-    sctx.shadowOffsetX = 0;
-    sctx.shadowOffsetY = 0;
-    sctx.shadowBlur = 25;
-    sctx.shadowColor = "rgba(50, 180, 200, 0.7)";
-    sctx.fillStyle = "rgba(50, 180, 200, 0.35)";
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
-    }
-
-    // Pass 2: inner foam — bright white, tight
-    sctx.shadowBlur = 10;
-    sctx.shadowColor = "rgba(220, 245, 255, 0.6)";
-    sctx.fillStyle = "rgba(220, 245, 255, 0.3)";
-    for (const lm of LANDMASSES) {
-      if (lm.polygon.length < 3) continue;
-      fillCanvasPoly(sctx, chaikinSmooth(lm.polygon, 2));
-    }
-
-    const shoreKey = "__shore_shadow";
-    if (this.textures.exists(shoreKey)) this.textures.remove(shoreKey);
-    this.textures.addCanvas(shoreKey, shoreCanvas);
-    const shoreImg = this.add.image(mapW / 2, mapH / 2, shoreKey);
-    shoreImg.setDisplaySize(mapW, mapH);
-    shoreImg.setOrigin(0.5, 0.5);
-    shoreImg.setDepth(-950);
-
     const drawPoly = (gfx: Phaser.GameObjects.Graphics, pts: { x: number; y: number }[]) => {
       gfx.beginPath();
       gfx.moveTo(pts[0].x, pts[0].y);
@@ -377,7 +335,7 @@ export class MainMapScene extends Phaser.Scene {
     landGfx.setDepth(-900);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
-      const smooth = chaikinSmooth(lm.polygon, 2);
+      const smooth = chaikinSmooth(lm.polygon, 3);
       // Filled green land
       landGfx.fillStyle(0x5C6628, 1);
       drawPoly(landGfx, smooth);
@@ -390,7 +348,7 @@ export class MainMapScene extends Phaser.Scene {
     this.beachGfx.setDepth(-895);
     for (const lm of LANDMASSES) {
       if (lm.polygon.length < 3) continue;
-      const smooth = chaikinSmooth(lm.polygon, 2);
+      const smooth = chaikinSmooth(lm.polygon, 3); // 3 iterations for smoother curves
       // Outer glow (0.8px, 20% alpha)
       this.beachGfx.lineStyle(0.8, 0xc8a84e, 0.20);
       drawPoly(this.beachGfx, smooth);
