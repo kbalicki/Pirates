@@ -3,7 +3,6 @@ import type { Vec2 } from "../../core/model/WorldState.ts";
 import { lerp } from "../../core/services/Geometry.ts";
 import { getZoomValue, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
 
-const CAMERA_LERP = 0.35;
 const ZOOM_LERP = 0.10;
 const ZOOM_MIN = ZOOM_VALUES.z1;
 const ZOOM_MAX = ZOOM_VALUES.z14;
@@ -51,14 +50,12 @@ export class CameraController {
   }
 
   update(): void {
-    // Smooth follow with lerp
-    const cx = lerp(this.camera.scrollX + this.camera.width / 2, this.targetPos.x, CAMERA_LERP);
-    const cy = lerp(this.camera.scrollY + this.camera.height / 2, this.targetPos.y, CAMERA_LERP);
+    // Direct follow — entity interpolation provides smoothness,
+    // no camera lerp needed (was causing compound delay/jitter)
+    this.camera.scrollX = this.targetPos.x - this.camera.width / 2;
+    this.camera.scrollY = this.targetPos.y - this.camera.height / 2;
 
-    this.camera.scrollX = cx - this.camera.width / 2;
-    this.camera.scrollY = cy - this.camera.height / 2;
-
-    // Smooth zoom
+    // Smooth zoom (lerp OK here — zoom changes are discrete, not per-tick)
     const currentZoom = this.camera.zoom;
     if (Math.abs(currentZoom - this.zoomTarget) > 0.001) {
       this.camera.setZoom(lerp(currentZoom, this.zoomTarget, ZOOM_LERP));

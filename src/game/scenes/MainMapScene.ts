@@ -579,9 +579,10 @@ export class MainMapScene extends Phaser.Scene {
     // Mouse steering: hold left button to steer toward cursor
     this.updateMouseSteering(pe);
 
-    // Game speed multiplier scales the effective simulation rate
+    // Cap delta to prevent large jumps from frame spikes
+    const cappedDelta = Math.min(delta, TICK_MS * 2);
     const speedMultiplier = this.worldState.gameSpeed ?? 1.2;
-    this.tickAccumulator += delta * speedMultiplier;
+    this.tickAccumulator += cappedDelta * speedMultiplier;
 
     while (this.tickAccumulator >= TICK_MS) {
       this.tickAccumulator -= TICK_MS;
