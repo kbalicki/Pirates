@@ -69,7 +69,14 @@ function generateHalfTexture(seed: number, baseAlpha: number): HTMLCanvasElement
     ctx.fill();
   }
 
-  return canvas;
+  // Blur for softer, natural look
+  const blurred = document.createElement("canvas");
+  blurred.width = HALF;
+  blurred.height = HALF;
+  const bctx = blurred.getContext("2d")!;
+  bctx.filter = "blur(2px)";
+  bctx.drawImage(canvas, 0, 0);
+  return blurred;
 }
 
 /** Mirror a half-canvas into 4 quadrants for seamless tiling */
@@ -146,11 +153,11 @@ export class WaterRenderer {
     this.layer2.tilePositionX += Math.sin(windDirRad + 0.5) * s2;
     this.layer2.tilePositionY += -Math.cos(windDirRad + 0.5) * s2;
 
-    // Waves: invisible at far zoom, fade in over texture from medium zoom
-    // zoom <3: invisible, zoom 3→8: smooth fade 0→1.0, zoom 8+: full
+    // Waves: visible only at close zoom (normalized 8→10 = camera 9.9→12)
+    // 50% max alpha for natural transparency over sea texture
     const cam = this.layer1.scene.cameras.main;
     const z = cam.zoom;
-    const waveAlpha = z < 3 ? 0 : z < 8 ? (z - 3) / (8 - 3) : 1;
+    const waveAlpha = z < 9.9 ? 0 : Math.min(1, (z - 9.9) / (12 - 9.9)) * 0.5;
     this.layer1.setAlpha(waveAlpha);
     this.layer2.setAlpha(waveAlpha * 0.7);
   }
