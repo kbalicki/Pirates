@@ -53,8 +53,8 @@ export class PortMarkerRenderer {
         this.scene.textures.get(flagKey).setFilter(Phaser.Textures.FilterMode.LINEAR);
         const isLg = port.population === "large" || port.population === "capital";
         const isFort = port.type === "fort";
-        const flagX = safePos.x + (isFort ? -5 : isLg ? 7 : port.population === "medium" ? 5 : 4);
-        const flagY = safePos.y - (isFort ? 8 : isLg ? 8 : port.population === "medium" ? 6 : 5);
+        const flagX = safePos.x + (isFort ? -3 : isLg ? 3 : port.population === "medium" ? 2 : 2);
+        const flagY = safePos.y - (isFort ? 4 : isLg ? 4 : port.population === "medium" ? 3 : 3);
         const flagImg = this.scene.add.image(flagX, flagY, flagKey);
         flagImg.setDepth(501);
         flagImg.setScale(0.042);
@@ -76,7 +76,7 @@ export class PortMarkerRenderer {
       const labelSize = isLarge ? 16 : port.population === "medium" ? 14 : 11;
       // Label anchored below the city, offset in screen pixels each frame
       const anchorX = safePos.x;
-      const anchorY = safePos.y + (isLarge ? 8 : port.population === "medium" ? 6 : 5);
+      const anchorY = safePos.y + (isLarge ? 4 : port.population === "medium" ? 3 : 2);
 
       const label = this.scene.add.text(anchorX, anchorY, t("port." + portKey + ".name"), {
         ...txt(labelSize, { bold: true, color: "#ffffff" }),

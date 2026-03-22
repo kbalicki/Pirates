@@ -121,9 +121,9 @@ export class WaterRenderer {
     // Always regenerate wave textures (colors/params may have changed)
     if (scene.textures.exists("water_wave1")) scene.textures.remove("water_wave1");
     if (scene.textures.exists("water_wave2")) scene.textures.remove("water_wave2");
-    const half1 = generateHalfTexture(0, 0.18);
+    const half1 = generateHalfTexture(0, 0.6);
     scene.textures.addCanvas("water_wave1", mirrorTexture(half1));
-    const half2 = generateHalfTexture(42, 0.14);
+    const half2 = generateHalfTexture(42, 0.45);
     scene.textures.addCanvas("water_wave2", mirrorTexture(half2));
 
     // Set LINEAR filtering to avoid pixelation at max zoom
