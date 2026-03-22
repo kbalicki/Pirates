@@ -40,7 +40,7 @@ function generateHalfTexture(seed: number, baseAlpha: number): HTMLCanvasElement
     const width = 0.6 + hash(i * 9.3, seed * 6.7) * 1.0;
 
     ctx.globalAlpha = strokeAlpha;
-    ctx.strokeStyle = hash(i * 5.1, seed) > 0.3 ? "#3366aa" : "#4488bb";
+    ctx.strokeStyle = hash(i * 5.1, seed) > 0.3 ? "#88ccee" : "#aaddff";
     ctx.lineWidth = width;
     ctx.lineCap = "round";
 
@@ -59,7 +59,7 @@ function generateHalfTexture(seed: number, baseAlpha: number): HTMLCanvasElement
   }
 
   // Tiny glint dots
-  ctx.fillStyle = "#6699bb";
+  ctx.fillStyle = "#bbddff";
   for (let i = 0; i < 200; i++) {
     const gx = hash(i * 17.3, seed * 23.1) * HALF;
     const gy = hash(i * 31.7, seed * 13.9) * HALF;
@@ -103,15 +103,7 @@ function mirrorTexture(half: HTMLCanvasElement): HTMLCanvasElement {
   ctx.drawImage(half, 0, 0);
   ctx.restore();
 
-  // Soft blur
-  const blurred = document.createElement("canvas");
-  blurred.width = TEX_SIZE;
-  blurred.height = TEX_SIZE;
-  const bctx = blurred.getContext("2d")!;
-  bctx.filter = "blur(2px)";
-  bctx.drawImage(full, 0, 0);
-
-  return blurred;
+  return full;
 }
 
 export class WaterRenderer {
@@ -119,14 +111,13 @@ export class WaterRenderer {
   private layer2: Phaser.GameObjects.TileSprite;
 
   constructor(scene: Phaser.Scene, mapWidth: number, mapHeight: number) {
-    if (!scene.textures.exists("water_wave1")) {
-      const half1 = generateHalfTexture(0, 0.14);
-      scene.textures.addCanvas("water_wave1", mirrorTexture(half1));
-    }
-    if (!scene.textures.exists("water_wave2")) {
-      const half2 = generateHalfTexture(42, 0.10);
-      scene.textures.addCanvas("water_wave2", mirrorTexture(half2));
-    }
+    // Always regenerate wave textures (colors/params may have changed)
+    if (scene.textures.exists("water_wave1")) scene.textures.remove("water_wave1");
+    if (scene.textures.exists("water_wave2")) scene.textures.remove("water_wave2");
+    const half1 = generateHalfTexture(0, 0.18);
+    scene.textures.addCanvas("water_wave1", mirrorTexture(half1));
+    const half2 = generateHalfTexture(42, 0.14);
+    scene.textures.addCanvas("water_wave2", mirrorTexture(half2));
 
     // Set LINEAR filtering to avoid pixelation at max zoom
     scene.textures.get("water_wave1").setFilter(Phaser.Textures.FilterMode.LINEAR);
