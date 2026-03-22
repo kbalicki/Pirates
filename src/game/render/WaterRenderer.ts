@@ -134,12 +134,14 @@ export class WaterRenderer {
       mapWidth / 2, mapHeight / 2, mapWidth, mapHeight, "water_wave1",
     );
     this.layer1.setDepth(-998);
+    this.layer1.setBlendMode(Phaser.BlendModes.ADD);
 
     this.layer2 = scene.add.tileSprite(
       mapWidth / 2, mapHeight / 2, mapWidth, mapHeight, "water_wave2",
     );
     this.layer2.setDepth(-997);
     this.layer2.setAlpha(0.7);
+    this.layer2.setBlendMode(Phaser.BlendModes.ADD);
 
   }
 
