@@ -34,7 +34,7 @@ export function drawCityIcon(
     const cityImg = scene.add.image(x, y, spriteKey);
     cityImg.setDepth(500);
     const texW = scene.textures.getFrame(spriteKey).width || 1024;
-    const targetWorldPx = (pop === "large" || pop === "capital") ? 15 : pop === "medium" ? 10 : 7;
+    const targetWorldPx = (pop === "large" || pop === "capital") ? 22 : pop === "medium" ? 15 : 10;
     cityImg.setScale(targetWorldPx / texW);
     return;
   }
