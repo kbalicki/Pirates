@@ -599,7 +599,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Port de Paix",
     factionId: factionId("france"),
     type: "outpost",
-    pos: { x: 1930, y: 1355 }, // Direct pixel: north coast of Hispaniola (land_6), south of Tortuga
+    pos: { x: 1930, y: 1325 }, // Direct pixel: north coast of Hispaniola, moved to coastline
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
