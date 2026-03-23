@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.2.1",
+    date: "2026-03-23",
+    changes: [
+      "6 city PNG sprites: large/medium/small × city/fort (384×256, pre-scaled for sharpness)",
+      "Cities 50% bigger on max zoom (22/15/10 world px)",
+      "Smooth ship movement: exponential smoothing replaces fixed-timestep interpolation",
+      "Camera direct follow (no lerp delay), delta cap for frame spike protection",
+      "Wave layers: ADD blend mode (fixes blue rectangle artifacts)",
+      "Wave visibility: zoom 6→12, 50% max alpha, blur for natural look",
+      "Fix 5 cities on water: San Juan, Santa Catalina, Montserrat, Curaçao, Port de Paix",
+      "Removed shore shadow canvas (caused pixelated squares at curves)",
+      "Chaikin smoothing 3 iterations for smoother coastlines",
+      "Original city assets preserved in sprites/originals/",
+    ],
+  },
+  {
     version: "0.9.2.0",
     date: "2026-03-21",
     changes: [
