@@ -147,24 +147,10 @@ export class PreloadScene extends Phaser.Scene {
       this.textures.get("cloud_spite").setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
 
-    // City sprites: downscale to 384px wide for sharper rendering at map scale
-    // (1536px → 180px screen = 8.5x reduction = blurry; 384px → 180px = 2x = sharp)
+    // City sprites: LINEAR filtering (files pre-scaled to 384px, no runtime resize)
     for (const key of ["city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small"]) {
       if (this.textures.exists(key)) {
-        const src = this.textures.get(key).getSourceImage() as HTMLImageElement;
-        const TARGET_W = 384;
-        const ratio = src.height / src.width;
-        const TARGET_H = Math.round(TARGET_W * ratio);
-        const canvas = document.createElement("canvas");
-        canvas.width = TARGET_W;
-        canvas.height = TARGET_H;
-        const ctx = canvas.getContext("2d")!;
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(src, 0, 0, TARGET_W, TARGET_H);
-        this.textures.remove(key);
-        const tex = this.textures.addCanvas(key, canvas);
-        if (tex) tex.setFilter(Phaser.Textures.FilterMode.LINEAR);
+        this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       }
     }
 
