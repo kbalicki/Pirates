@@ -58,8 +58,13 @@ export class PreloadScene extends Phaser.Scene {
     // Sea photo texture (for water overlay)
     this.load.image("sea_texture", "assets/sprites/sea_texture.png");
 
-    // City sprites (transparent PNG, used if available)
+    // City sprites (transparent PNG)
     this.load.image("city_large", "assets/sprites/city_large.png");
+    this.load.image("city_medium", "assets/sprites/city_medium.png");
+    this.load.image("city_small", "assets/sprites/city_small.png");
+    this.load.image("city_fort_large", "assets/sprites/city_fort_large.png");
+    this.load.image("city_fort_medium", "assets/sprites/city_fort_medium.png");
+    this.load.image("city_fort_small", "assets/sprites/city_fort_small.png");
 
     // Land texture (tropical forest from above)
     this.load.image("land_texture", "assets/sprites/land_texture.png");
@@ -143,7 +148,7 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     // City sprites need LINEAR filtering (pixelArt:true forces NEAREST by default)
-    for (const key of ["city_large", "city_medium", "city_small"]) {
+    for (const key of ["city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small"]) {
       if (this.textures.exists(key)) {
         this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       }

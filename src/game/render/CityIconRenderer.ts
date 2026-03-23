@@ -18,22 +18,28 @@ export function drawCityIcon(
   const flagColor = factionDef?.color ?? 0xaaaaaa;
   const pop = port.population;
 
-  if (port.type !== "fort") {
-    let spriteKey: string | null = null;
+  // Pick sprite key based on type (fort/city) and population size
+  let spriteKey: string | null = null;
+  if (port.type === "fort") {
+    if ((pop === "large" || pop === "capital") && scene.textures.exists("city_fort_large")) spriteKey = "city_fort_large";
+    else if (pop === "medium" && scene.textures.exists("city_fort_medium")) spriteKey = "city_fort_medium";
+    else if (scene.textures.exists("city_fort_small")) spriteKey = "city_fort_small";
+  } else {
     if ((pop === "large" || pop === "capital") && scene.textures.exists("city_large")) spriteKey = "city_large";
     else if (pop === "medium" && scene.textures.exists("city_medium")) spriteKey = "city_medium";
     else if (scene.textures.exists("city_small")) spriteKey = "city_small";
-    if (spriteKey) {
-      const cityImg = scene.add.image(x, y, spriteKey);
-      cityImg.setDepth(500);
-      // Fixed world-space size: shrinks naturally with camera zoom
-      const texW = scene.textures.getFrame(spriteKey).width || 1024;
-      const targetWorldPx = pop === "large" || pop === "capital" ? 10 : pop === "medium" ? 7 : 5;
-      cityImg.setScale(targetWorldPx / texW);
-      return;
-    }
   }
 
+  if (spriteKey) {
+    const cityImg = scene.add.image(x, y, spriteKey);
+    cityImg.setDepth(500);
+    const texW = scene.textures.getFrame(spriteKey).width || 1024;
+    const targetWorldPx = (pop === "large" || pop === "capital") ? 10 : pop === "medium" ? 7 : 5;
+    cityImg.setScale(targetWorldPx / texW);
+    return;
+  }
+
+  // Procedural fallback (no sprites available)
   if (port.type === "fort") drawFort(g, x, y, flagColor, pop);
   else if (pop === "large" || pop === "capital") drawCityLarge(g, x, y, flagColor);
   else if (pop === "medium") drawCityMedium(g, x, y, flagColor);
