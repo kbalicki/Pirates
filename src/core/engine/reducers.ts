@@ -184,7 +184,7 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
         pos: safeAnchor,
         heading: fallbackHeading,
         anchorPos: undefined,
-        sailLevel: 0.34, // start moving immediately away from land
+        sailLevel: 0.1, // minimal sails — slow departure from land
         vel: { x: 0, y: 0 },
         embarkTick: world.time.tick, // grace period marker
       };
