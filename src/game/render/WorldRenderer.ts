@@ -115,10 +115,14 @@ export class WorldRenderer {
       if (!vp) {
         vp = { x: entity.pos.x, y: entity.pos.y };
         this.visualPos.set(id, vp);
+      } else if (curMode === "landed") {
+        // Landed: snap to position immediately, no velocity prediction
+        vp.x = entity.pos.x;
+        vp.y = entity.pos.y;
       } else {
         // 1. Predict: advance by velocity (match physics speed exactly)
         const vel = entity.vel ?? { x: 0, y: 0 };
-        vp.x += vel.x * deltaSec * 20 * gameSpeed; // vel per-tick × ticks/sec × gameSpeed
+        vp.x += vel.x * deltaSec * 20 * gameSpeed;
         vp.y += vel.y * deltaSec * 20 * gameSpeed;
 
         // 2. Correct: gently pull toward authoritative physics position
