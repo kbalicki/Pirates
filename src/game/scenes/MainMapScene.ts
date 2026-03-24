@@ -610,7 +610,7 @@ export class MainMapScene extends Phaser.Scene {
     this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
 
     // Render: velocity prediction + drift correction each frame
-    this.worldRenderer.sync(this, this.worldState, cappedDelta / 1000);
+    this.worldRenderer.sync(this, this.worldState, cappedDelta / 1000, speedMultiplier);
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (playerEntity) {

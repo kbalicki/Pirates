@@ -56,15 +56,15 @@ export class WorldRenderer {
   private wakeTick = 0;
   /** Visual positions per entity (velocity-predicted + drift-corrected) */
   private visualPos: Map<string, { x: number; y: number }> = new Map();
-  /** Drift correction factor: gentle pull toward authoritative position */
-  private static readonly DRIFT_CORRECTION = 0.1;
+  /** Drift correction factor: very gentle pull toward authoritative position */
+  private static readonly DRIFT_CORRECTION = 0.03;
 
   /** Get the current visual position for an entity. */
   getSmoothedPos(id: string, entity: EntityState): { x: number; y: number } {
     return this.visualPos.get(id) ?? entity.pos;
   }
 
-  sync(scene: Phaser.Scene, world: WorldState, deltaSec = 0.016): void {
+  sync(scene: Phaser.Scene, world: WorldState, deltaSec = 0.016, gameSpeed = 1.2): void {
     this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
@@ -116,10 +116,10 @@ export class WorldRenderer {
         vp = { x: entity.pos.x, y: entity.pos.y };
         this.visualPos.set(id, vp);
       } else {
-        // 1. Predict: advance by velocity (smooth continuous motion each frame)
+        // 1. Predict: advance by velocity (match physics speed exactly)
         const vel = entity.vel ?? { x: 0, y: 0 };
-        vp.x += vel.x * deltaSec * 20; // vel is per-tick, convert to per-second
-        vp.y += vel.y * deltaSec * 20;
+        vp.x += vel.x * deltaSec * 20 * gameSpeed; // vel per-tick × ticks/sec × gameSpeed
+        vp.y += vel.y * deltaSec * 20 * gameSpeed;
 
         // 2. Correct: gently pull toward authoritative physics position
         vp.x += (entity.pos.x - vp.x) * WorldRenderer.DRIFT_CORRECTION;
