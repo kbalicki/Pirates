@@ -54,17 +54,17 @@ export class WorldRenderer {
   fogOfWarEnabled = false;
   /** Animation tick */
   private wakeTick = 0;
-  /** Smoothed visual positions per entity (exponential smoothing) */
-  private smoothPos: Map<string, { x: number; y: number }> = new Map();
-  /** Smoothing factor: 0.3 = converges in ~5 frames at 60fps (~83ms lag) */
-  private static readonly SMOOTH = 0.3;
+  /** Visual positions per entity (velocity-predicted + drift-corrected) */
+  private visualPos: Map<string, { x: number; y: number }> = new Map();
+  /** Drift correction factor: gentle pull toward authoritative position */
+  private static readonly DRIFT_CORRECTION = 0.1;
 
-  /** Get the current smoothed position for an entity. */
+  /** Get the current visual position for an entity. */
   getSmoothedPos(id: string, entity: EntityState): { x: number; y: number } {
-    return this.smoothPos.get(id) ?? entity.pos;
+    return this.visualPos.get(id) ?? entity.pos;
   }
 
-  sync(scene: Phaser.Scene, world: WorldState): void {
+  sync(scene: Phaser.Scene, world: WorldState, deltaSec = 0.016): void {
     this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
@@ -110,16 +110,22 @@ export class WorldRenderer {
         this.entitySprites.set(id, sprite);
       }
 
-      // Exponential smoothing: sprite chases entity.pos each frame
-      let sp = this.smoothPos.get(id);
-      if (!sp) {
-        sp = { x: entity.pos.x, y: entity.pos.y };
-        this.smoothPos.set(id, sp);
+      // Velocity prediction + drift correction (moves EVERY frame like clouds)
+      let vp = this.visualPos.get(id);
+      if (!vp) {
+        vp = { x: entity.pos.x, y: entity.pos.y };
+        this.visualPos.set(id, vp);
       } else {
-        sp.x += (entity.pos.x - sp.x) * WorldRenderer.SMOOTH;
-        sp.y += (entity.pos.y - sp.y) * WorldRenderer.SMOOTH;
+        // 1. Predict: advance by velocity (smooth continuous motion each frame)
+        const vel = entity.vel ?? { x: 0, y: 0 };
+        vp.x += vel.x * deltaSec * 20; // vel is per-tick, convert to per-second
+        vp.y += vel.y * deltaSec * 20;
+
+        // 2. Correct: gently pull toward authoritative physics position
+        vp.x += (entity.pos.x - vp.x) * WorldRenderer.DRIFT_CORRECTION;
+        vp.y += (entity.pos.y - vp.y) * WorldRenderer.DRIFT_CORRECTION;
       }
-      sprite.setPosition(sp.x, sp.y);
+      sprite.setPosition(vp.x, vp.y);
 
       // Update direction frame
       if (entity.kind === "ship") {
@@ -135,7 +141,7 @@ export class WorldRenderer {
       }
 
       // Depth sort: y + offset
-      sprite.setDepth(sp.y + entity.depthOffset);
+      sprite.setDepth(vp.y + entity.depthOffset);
 
       // Scale ship: 33% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
@@ -167,8 +173,8 @@ export class WorldRenderer {
             const sign = Math.random() > 0.5 ? 1 : -1;
             const hullDist = (spreadBase + Math.random() * 0.4) * sign;
 
-            const wx = sp.x - fwX * along + sX * hullDist;
-            const wy = sp.y - fwY * along + sY * hullDist;
+            const wx = vp.x - fwX * along + sX * hullDist;
+            const wy = vp.y - fwY * along + sY * hullDist;
 
             // Random arc params for irregularity
             const radius = 0.2 + Math.random() * 0.25;
@@ -181,7 +187,7 @@ export class WorldRenderer {
             const arc = scene.add.arc(wx, wy, radius, startDeg, endDeg, false, col, 0);
             arc.setStrokeStyle(0.4, col, 0.12);
             arc.setFillStyle(col, 0);
-            arc.setDepth(sp.y - 1);
+            arc.setDepth(vp.y - 1);
             arc.setClosePath(false);
 
             // Drift outward + fade + grow slightly
@@ -232,7 +238,7 @@ export class WorldRenderer {
         sprite.destroy();
         this.entitySprites.delete(id);
         this.entityModes.delete(id);
-        this.smoothPos.delete(id);
+        this.visualPos.delete(id);
         const anchor = this.anchorSprites.get(id);
         if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
       }

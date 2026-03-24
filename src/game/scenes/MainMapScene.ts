@@ -609,8 +609,8 @@ export class MainMapScene extends Phaser.Scene {
     const fogSetting = localStorage.getItem("pc_fog") === "1";
     this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
 
-    // Render: exponential smoothing handles per-frame movement
-    this.worldRenderer.sync(this, this.worldState);
+    // Render: velocity prediction + drift correction each frame
+    this.worldRenderer.sync(this, this.worldState, cappedDelta / 1000);
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (playerEntity) {
