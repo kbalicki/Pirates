@@ -43,10 +43,10 @@ export class PreloadScene extends Phaser.Scene {
   private loadAssets(): void {
     // ──── Common assets (always loaded) ────
 
-    // Sail ship spritesheet (8 directions, 4×2 grid, 192×128 per frame)
+    // Sail ship spritesheet (8 directions, 4×2 grid, 256×256 per frame)
     this.load.spritesheet("sailship", "assets/sprites/sailship.png", {
-      frameWidth: 192,
-      frameHeight: 128,
+      frameWidth: 256,
+      frameHeight: 256,
     });
 
     // Pirate tilepack (384x320, 12×10 grid of 32×32 tiles)

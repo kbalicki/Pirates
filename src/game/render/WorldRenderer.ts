@@ -94,7 +94,7 @@ export class WorldRenderer {
             // Apply zoom-based scaling (same formula as sailing ships)
             const cam = scene.cameras.main;
             const t2 = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
-            anchor.setScale(0.115 * (0.10 + t2 * 0.23));
+            anchor.setScale(0.086 * (0.10 + t2 * 0.23));
             this.anchorSprites.set(id, anchor);
           }
         } else {
@@ -158,7 +158,7 @@ export class WorldRenderer {
       // Scale ship: 33% at max zoom in, smaller at zoom out
       if (entity.kind === "ship" && curMode !== "landed") {
         const cam = scene.cameras.main;
-        const baseScale = 0.115; // halved for 192px frames (was 0.23 for 96px)
+        const baseScale = 0.086; // for 256px frames
         const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
         const zoomFactor = 0.10 + t * 0.23;
         sprite.setScale(baseScale * zoomFactor);
@@ -172,7 +172,7 @@ export class WorldRenderer {
         if (anchorSpr) {
           const cam = scene.cameras.main;
           const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
-          anchorSpr.setScale(0.115 * (0.10 + t * 0.23));
+          anchorSpr.setScale(0.086 * (0.10 + t * 0.23));
         }
       }
 
@@ -287,7 +287,7 @@ export class WorldRenderer {
     let textureKey = entity.kind === "ship" ? "sailship" : "fx_default";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
-    if (entity.kind === "ship") sprite.setScale(0.115);
+    if (entity.kind === "ship") sprite.setScale(0.086);
     return sprite;
   }
 
@@ -313,7 +313,7 @@ export class WorldRenderer {
     void entity; // suppress unused
     const sprite = scene.add.sprite(0, 0, textureKey, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(0.115);
+    sprite.setScale(0.086);
     if (entity.kind === "ship") {
       const dir8 = headingToDir8(entity.heading);
       sprite.setFrame(DIR8_TO_FRAME[dir8]);
