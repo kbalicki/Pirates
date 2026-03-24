@@ -83,12 +83,16 @@ export class WorldRenderer {
         if (oldSprite) { oldSprite.destroy(); this.entitySprites.delete(id); }
         // Also manage anchor sprite
         if (curMode === "landed") {
-          // Show ghost ship at anchor
+          // Show ghost ship at anchor — same zoom-based scale as sailing ships
           if (entity.anchorPos && id === playerShipId) {
             const anchor = this.createShipSprite(scene, entity);
             anchor.setPosition(entity.anchorPos.x, entity.anchorPos.y);
             anchor.setAlpha(0.4);
             anchor.setDepth(entity.anchorPos.y - 1);
+            // Apply zoom-based scaling (same formula as sailing ships)
+            const cam = scene.cameras.main;
+            const t2 = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+            anchor.setScale(0.23 * (0.10 + t2 * 0.23));
             this.anchorSprites.set(id, anchor);
           }
         } else {
@@ -151,10 +155,21 @@ export class WorldRenderer {
       if (entity.kind === "ship" && curMode !== "landed") {
         const cam = scene.cameras.main;
         const baseScale = 0.23;
-        // At zoom 12 (max in): 33% base, at zoom 1.5 (max out): 10% base
-        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5)); // 0→1
-        const zoomFactor = 0.10 + t * 0.23; // 0.10 → 0.33
+        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+        const zoomFactor = 0.10 + t * 0.23;
         sprite.setScale(baseScale * zoomFactor);
+        // Also scale anchor sprite if present
+        const anchorSpr = this.anchorSprites.get(id);
+        if (anchorSpr) anchorSpr.setScale(baseScale * zoomFactor);
+      }
+      // Scale anchor for landed entities too (zoom may change while landed)
+      if (curMode === "landed") {
+        const anchorSpr = this.anchorSprites.get(id);
+        if (anchorSpr) {
+          const cam = scene.cameras.main;
+          const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+          anchorSpr.setScale(0.23 * (0.10 + t * 0.23));
+        }
       }
 
       // Wake: irregular arcs from bow to stern, spreading outward
@@ -276,7 +291,7 @@ export class WorldRenderer {
     const key = scene.textures.exists("crew_party") ? "crew_party" : "sailship";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, key, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(key === "crew_party" ? 0.10 : 0.015);
+    sprite.setScale(key === "crew_party" ? 0.133 : 0.02); // 33% bigger than before
     return sprite;
   }
 

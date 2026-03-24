@@ -94,22 +94,23 @@ export function generateFlagTextures(scene: Phaser.Scene): void {
   }
 }
 
-/** Generate a simple 4-direction crew party spritesheet (16x16 per frame, 4 frames). */
+/** Generate a simple 4-direction crew party spritesheet (24x16 per frame, 4 frames). */
 export function generateCrewTexture(scene: Phaser.Scene): void {
   if (scene.textures.exists("crew_party")) return;
-  const FW = 16, FH = 16;
+  const FW = 24, FH = 16;
   const g = scene.make.graphics({ x: 0, y: 0 });
 
-  // 4 frames side by side: S, W, E, N (each 16x16)
+  // 4 frames side by side: S, W, E, N (each 24x16)
   for (let f = 0; f < 4; f++) {
     const ox = f * FW;
-    // 3 small pirate figures in a group
-    for (let p = 0; p < 3; p++) {
-      const px = ox + 3 + p * 5;
-      const py = 4 + (p === 1 ? -2 : 0);
+    // 5 small pirate figures in a group (was 3)
+    for (let p = 0; p < 5; p++) {
+      const px = ox + 1 + p * 4 + (p >= 3 ? 1 : 0);
+      const py = 4 + (p % 2 === 1 ? -2 : 0);
 
-      // Body
-      g.fillStyle(p === 0 ? 0x8b4513 : p === 1 ? 0xcc3333 : 0x2244aa, 1);
+      // Body — varied colors
+      const bodyColors = [0x8b4513, 0xcc3333, 0x2244aa, 0x448844, 0x886644];
+      g.fillStyle(bodyColors[p], 1);
       g.fillRect(px, py + 4, 3, 5);
 
       // Head
@@ -133,8 +134,8 @@ export function generateCrewTexture(scene: Phaser.Scene): void {
         g.fillRect(px + 1, py + 9, 1, 2);
       }
 
-      // Weapon (cutlass or musket)
-      if (p === 0) {
+      // Weapon (cutlass or musket — first and last figures)
+      if (p === 0 || p === 4) {
         g.fillStyle(0xcccccc, 1);
         g.fillRect(px + 3, py + 5, 1, 4);
       }
@@ -144,10 +145,10 @@ export function generateCrewTexture(scene: Phaser.Scene): void {
   g.generateTexture("crew_party", FW * 4, FH);
   g.destroy();
 
-  // Register as spritesheet
+  // Register as spritesheet (4 direction frames, 24x16 each)
   const tex = scene.textures.get("crew_party");
-  tex.add(0, 0, 0, 0, FW, FH);   // S
-  tex.add(1, 0, FW, 0, FW, FH);   // W
-  tex.add(2, 0, FW * 2, 0, FW, FH); // E
-  tex.add(3, 0, FW * 3, 0, FW, FH); // N
+  tex.add(0, 0, 0, 0, FW, FH);        // S
+  tex.add(1, 0, FW, 0, FW, FH);       // W
+  tex.add(2, 0, FW * 2, 0, FW, FH);   // E
+  tex.add(3, 0, FW * 3, 0, FW, FH);   // N
 }
