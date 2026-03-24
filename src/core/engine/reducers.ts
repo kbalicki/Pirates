@@ -174,7 +174,7 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
         ? normalizeHeading(Math.atan2(edx, -edy))
         : playerEntity.heading;
       // Push anchor further from land in seaward direction to prevent instant re-landing
-      const pushDist = 15;
+      const pushDist = 5;
       const pushX = Math.sin(fallbackHeading) * pushDist;
       const pushY = -Math.cos(fallbackHeading) * pushDist;
       const safeAnchor = { x: anchorPos.x + pushX, y: anchorPos.y + pushY };

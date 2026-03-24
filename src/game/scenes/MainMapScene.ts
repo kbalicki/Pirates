@@ -799,7 +799,7 @@ export class MainMapScene extends Phaser.Scene {
     };
 
     const seaHeading = findOpenSeaHeading(entity.pos.x, entity.pos.y, terrainQuery, entity.heading);
-    const pushDist = 15;
+    const pushDist = 5;
     this.worldState = {
       ...this.worldState,
       entities: {
@@ -807,7 +807,7 @@ export class MainMapScene extends Phaser.Scene {
         [shipId]: {
           ...entity,
           heading: seaHeading,
-          sailLevel: 0.15, // minimal sails on departure
+          sailLevel: 0.05, // barely moving on departure
           pos: {
             x: entity.pos.x + Math.sin(seaHeading) * pushDist,
             y: entity.pos.y - Math.cos(seaHeading) * pushDist,
