@@ -140,10 +140,12 @@ export class WorldRenderer {
       // Update direction frame
       if (entity.kind === "ship") {
         if (curMode === "landed") {
-          // Crew sprite: 4 direction frames (D, L, R, U)
-          const dir8 = headingToDir8(entity.heading);
-          const crewFrame = DIR8_TO_CREW_FRAME[dir8];
-          sprite.setFrame(crewFrame);
+          // PNG crew has no direction frames — only set frame for procedural spritesheet
+          if (sprite.texture.key !== "crew_party_img") {
+            const dir8 = headingToDir8(entity.heading);
+            const crewFrame = DIR8_TO_CREW_FRAME[dir8];
+            sprite.setFrame(crewFrame);
+          }
         } else {
           const dir8 = headingToDir8(entity.heading);
           sprite.setFrame(DIR8_TO_FRAME[dir8]);
@@ -290,10 +292,18 @@ export class WorldRenderer {
   }
 
   private createCrewSprite(scene: Phaser.Scene, entity: EntityState): Phaser.GameObjects.Sprite {
-    const key = scene.textures.exists("crew_party") ? "crew_party" : "sailship";
+    // Use PNG crew sprite if available, fallback to procedural
+    const key = scene.textures.exists("crew_party_img") ? "crew_party_img"
+      : scene.textures.exists("crew_party") ? "crew_party" : "sailship";
     const sprite = scene.add.sprite(entity.pos.x, entity.pos.y, key, 0);
     sprite.setOrigin(0.5, 0.5);
-    sprite.setScale(key === "crew_party" ? 0.133 : 0.02); // 33% bigger than before
+    // PNG is 256px wide — scale to ~6 world px (visible but not huge)
+    if (key === "crew_party_img") {
+      const texW = scene.textures.getFrame(key).width || 256;
+      sprite.setScale(6 / texW);
+    } else {
+      sprite.setScale(key === "crew_party" ? 0.133 : 0.02);
+    }
     return sprite;
   }
 

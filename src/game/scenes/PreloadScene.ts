@@ -58,6 +58,9 @@ export class PreloadScene extends Phaser.Scene {
     // Sea photo texture (for water overlay)
     this.load.image("sea_texture", "assets/sprites/sea_texture.png");
 
+    // Crew party sprite (transparent PNG, replaces procedural)
+    this.load.image("crew_party_img", "assets/sprites/crew_party.png");
+
     // City sprites (transparent PNG)
     this.load.image("city_large", "assets/sprites/city_large.png");
     this.load.image("city_medium", "assets/sprites/city_medium.png");
@@ -147,8 +150,8 @@ export class PreloadScene extends Phaser.Scene {
       this.textures.get("cloud_spite").setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
 
-    // City sprites: LINEAR filtering (files pre-scaled to 384px, no runtime resize)
-    for (const key of ["city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small"]) {
+    // City + crew sprites: LINEAR filtering
+    for (const key of ["city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small", "crew_party_img"]) {
       if (this.textures.exists(key)) {
         this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       }
