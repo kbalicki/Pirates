@@ -207,6 +207,34 @@ export class MainMapScene extends Phaser.Scene {
       this.cameraCtrl.adjustZoom(deltaY);
     });
 
+    // Click on city → show info panel
+    this.input.on("pointerdown", (pointer: Phaser.Input.Pointer) => {
+      if (this.portDialogOpen) return;
+      // Convert screen coords to world coords
+      const worldPos = this.cameras.main.getWorldPoint(pointer.x, pointer.y);
+      // Find nearest city within click radius (scaled by zoom)
+      const clickRadius = 20 / this.cameras.main.zoom + 10; // generous at all zooms
+      let nearestKey: string | null = null;
+      let nearestDist = Infinity;
+      for (const [portKey, port] of Object.entries(PORTS)) {
+        const checkPos = this.portSafePositions.get(portKey) ?? port.pos;
+        const dx = worldPos.x - checkPos.x;
+        const dy = worldPos.y - checkPos.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < clickRadius && dist < nearestDist) {
+          nearestDist = dist;
+          nearestKey = portKey;
+        }
+      }
+      if (nearestKey) {
+        this.scene.launch("CityInfoScene", {
+          portKey: nearestKey,
+          worldState: this.worldState,
+        });
+        this.time.delayedCall(0, () => this.scene.pause());
+      }
+    });
+
     // Listen for PortApproachScene closing — resume ourselves and push ship to open sea
     this.events.on("resume", () => {
       this.portDialogOpen = false;
