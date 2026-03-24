@@ -1,7 +1,8 @@
 import Phaser from "phaser";
+import { PORTS } from "../../core/data/ports.ts";
 
-const MIN_SEAGULLS = 200;
-const MAX_SEAGULLS = 400;
+const MIN_SEAGULLS = 80;
+const MAX_SEAGULLS = 150;
 const SEAGULL_DEPTH = 3500;
 const FLAP_INTERVAL = 300;
 const CULL_MARGIN = 80;
@@ -21,7 +22,12 @@ interface Seagull {
   flapTimer: number;
   /** Wingspan in px — small or large bird */
   wingspan: number;
+  /** If set, this seagull orbits a port and steers back to it */
+  homePort?: { x: number; y: number };
 }
+
+/** Max distance a port seagull can drift from its port (world px) */
+const PORT_GULL_RADIUS = 40;
 
 export class SeagullRenderer {
   private scene: Phaser.Scene;
@@ -49,6 +55,18 @@ export class SeagullRenderer {
       const y = cam.scrollY + this.rand() * cam.height;
       if (this.isCoastalWater(x, y)) {
         this.spawnSeagull(x, y);
+      }
+    }
+
+    // Port seagulls: 3-10 per port, orbit around port position
+    for (const port of Object.values(PORTS)) {
+      const portCount = 3 + Math.floor(this.rand() * 8); // 3-10
+      for (let i = 0; i < portCount; i++) {
+        const angle = this.rand() * Math.PI * 2;
+        const dist = 5 + this.rand() * PORT_GULL_RADIUS;
+        const gx = port.pos.x + Math.cos(angle) * dist;
+        const gy = port.pos.y + Math.sin(angle) * dist;
+        this.spawnSeagull(gx, gy, { x: port.pos.x, y: port.pos.y });
       }
     }
   }
@@ -85,14 +103,25 @@ export class SeagullRenderer {
       gull.vx += (this.rand() - 0.5) * WANDER_STRENGTH;
       gull.vy += (this.rand() - 0.5) * WANDER_STRENGTH;
 
-      // Soft steering: check ahead and steer back toward coast if leaving water zone
-      const lookX = gull.x + (gull.vx + windDx) * 10;
-      const lookY = gull.y + (gull.vy + windDy) * 10;
-      if (!this.isCoastalWater(lookX, lookY)) {
-        // Find nearest coast center and steer toward it
-        const coastPull = this.getCoastPull(gull.x, gull.y);
-        gull.vx += coastPull.x * 0.05;
-        gull.vy += coastPull.y * 0.05;
+      // Port seagulls: steer back to home port when too far
+      if (gull.homePort) {
+        const dx = gull.homePort.x - gull.x;
+        const dy = gull.homePort.y - gull.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > PORT_GULL_RADIUS) {
+          const pull = Math.min(0.08, (dist - PORT_GULL_RADIUS) * 0.003);
+          gull.vx += (dx / dist) * pull;
+          gull.vy += (dy / dist) * pull;
+        }
+      } else {
+        // Ambient seagulls: steer back toward coast if leaving water zone
+        const lookX = gull.x + (gull.vx + windDx) * 10;
+        const lookY = gull.y + (gull.vy + windDy) * 10;
+        if (!this.isCoastalWater(lookX, lookY)) {
+          const coastPull = this.getCoastPull(gull.x, gull.y);
+          gull.vx += coastPull.x * 0.05;
+          gull.vy += coastPull.y * 0.05;
+        }
       }
 
       // Dampen speed so seagulls don't accelerate indefinitely
@@ -114,6 +143,7 @@ export class SeagullRenderer {
 
     for (let i = this.seagulls.length - 1; i >= 0; i--) {
       const g = this.seagulls[i];
+      if (g.homePort) continue; // port seagulls never culled
       if (g.x < viewLeft || g.x > viewRight || g.y < viewTop || g.y > viewBottom) {
         g.gameObject.destroy();
         this.seagulls.splice(i, 1);
@@ -223,7 +253,7 @@ export class SeagullRenderer {
     return d >= 1 && d <= MAX_COAST_DIST;
   }
 
-  private spawnSeagull(x: number, y: number): void {
+  private spawnSeagull(x: number, y: number, homePort?: { x: number; y: number }): void {
     const flapPhase = this.rand() > 0.5;
     const isLarge = this.rand() > 0.6;
     const wingspan = isLarge ? 6 : 3;
@@ -240,6 +270,7 @@ export class SeagullRenderer {
       flapPhase,
       flapTimer: this.rand() * FLAP_INTERVAL,
       wingspan,
+      homePort,
     };
 
     this.drawSeagullGraphics(gull);
