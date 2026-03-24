@@ -43,10 +43,10 @@ export class PreloadScene extends Phaser.Scene {
   private loadAssets(): void {
     // ──── Common assets (always loaded) ────
 
-    // Sail ship spritesheet (8 directions, 4×2 grid, 96×64 per frame)
+    // Sail ship spritesheet (8 directions, 4×2 grid, 192×128 per frame)
     this.load.spritesheet("sailship", "assets/sprites/sailship.png", {
-      frameWidth: 96,
-      frameHeight: 64,
+      frameWidth: 192,
+      frameHeight: 128,
     });
 
     // Pirate tilepack (384x320, 12×10 grid of 32×32 tiles)
@@ -139,7 +139,7 @@ export class PreloadScene extends Phaser.Scene {
 
   create(): void {
     // Set NEAREST filtering on pixel-art sprite textures (keep them crisp)
-    for (const key of ["sailship", "tilepack", "water_anim", "windrose", "compass_needle"]) {
+    for (const key of ["tilepack", "water_anim", "windrose", "compass_needle"]) {
       if (this.textures.exists(key)) {
         this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
       }
@@ -150,8 +150,8 @@ export class PreloadScene extends Phaser.Scene {
       this.textures.get("cloud_spite").setFilter(Phaser.Textures.FilterMode.LINEAR);
     }
 
-    // City + crew sprites: LINEAR filtering
-    for (const key of ["city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small", "crew_party_img"]) {
+    // Ship, city, crew sprites: LINEAR filtering (detailed images, not pixel art)
+    for (const key of ["sailship", "city_large", "city_medium", "city_small", "city_fort_large", "city_fort_medium", "city_fort_small", "crew_party_img"]) {
       if (this.textures.exists(key)) {
         this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
       }
