@@ -58,15 +58,19 @@ export class SeagullRenderer {
       }
     }
 
-    // Port seagulls: 3-10 per port, orbit around port position
+    // Port seagulls: 3-10 per port, orbit over water near port
     for (const port of Object.values(PORTS)) {
+      // Find nearest water position to use as seagull home
+      const waterHome = this.findNearestWater(port.pos.x, port.pos.y);
+      if (!waterHome) continue;
+
       const portCount = 3 + Math.floor(this.rand() * 8); // 3-10
       for (let i = 0; i < portCount; i++) {
         const angle = this.rand() * Math.PI * 2;
         const dist = 5 + this.rand() * PORT_GULL_RADIUS;
-        const gx = port.pos.x + Math.cos(angle) * dist;
-        const gy = port.pos.y + Math.sin(angle) * dist;
-        this.spawnSeagull(gx, gy, { x: port.pos.x, y: port.pos.y });
+        const gx = waterHome.x + Math.cos(angle) * dist;
+        const gy = waterHome.y + Math.sin(angle) * dist;
+        this.spawnSeagull(gx, gy, waterHome);
       }
     }
   }
@@ -99,9 +103,10 @@ export class SeagullRenderer {
         this.drawSeagullGraphics(gull);
       }
 
-      // Random wander
-      gull.vx += (this.rand() - 0.5) * WANDER_STRENGTH;
-      gull.vy += (this.rand() - 0.5) * WANDER_STRENGTH;
+      // Random wander (port seagulls wander more for organic look)
+      const wander = gull.homePort ? WANDER_STRENGTH * 2 : WANDER_STRENGTH;
+      gull.vx += (this.rand() - 0.5) * wander;
+      gull.vy += (this.rand() - 0.5) * wander;
 
       // Port seagulls: steer back to home port when too far
       if (gull.homePort) {
@@ -240,6 +245,30 @@ export class SeagullRenderer {
     }
     const len = Math.sqrt(bestDx * bestDx + bestDy * bestDy) || 1;
     return { x: bestDx / len, y: bestDy / len };
+  }
+
+  /** Find nearest coastal water cell to a world position. */
+  private findNearestWater(wx: number, wy: number): { x: number; y: number } | null {
+    const CELL = 32;
+    const sr = Math.floor(wy / CELL);
+    const sc = Math.floor(wx / CELL);
+    let bestX = 0, bestY = 0, bestD = Infinity;
+    for (let dr = -8; dr <= 8; dr++) {
+      for (let dc = -8; dc <= 8; dc++) {
+        const nr = sr + dr, nc = sc + dc;
+        if (nr < 0 || nr >= this.gridRows || nc < 0 || nc >= this.gridCols) continue;
+        const d = this.coastDist[nr][nc];
+        if (d >= 1 && d <= 3) { // near-coast water
+          const dist = dr * dr + dc * dc;
+          if (dist < bestD) {
+            bestD = dist;
+            bestX = nc * CELL + CELL / 2;
+            bestY = nr * CELL + CELL / 2;
+          }
+        }
+      }
+    }
+    return bestD < Infinity ? { x: bestX, y: bestY } : null;
   }
 
   /** Water tiles near coast only (d=1..MAX_COAST_DIST). Rejects land (d=0) and deep ocean (d>MAX). */
