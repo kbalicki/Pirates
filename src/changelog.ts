@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.2.2",
+    date: "2026-03-24",
+    changes: [
+      "Ship speed halved: Sloop 0.30, Brigantine 0.275, Frigate 0.25, Galleon 0.19, Merchantman 0.16",
+      "Smooth movement v5: velocity prediction with gameSpeed fix + softer drift correction (0.03)",
+      "Embark: minimal sails (0.1) for slow departure from land",
+      "Fix Petit Goâve + Léogane positions (were inland, moved to coast)",
+      "TODO: sailing into wind = speed 0 (advanced wind physics deferred)",
+    ],
+  },
+  {
     version: "0.9.2.1",
     date: "2026-03-23",
     changes: [

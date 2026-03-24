@@ -26,7 +26,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   sloop: {
     id: SHIP_SLOOP,
     name: "Sloop",
-    speedBase: 0.6,
+    speedBase: 0.30,
     turnRate: 0.72,
     hullMax: 60,
     sailsMax: 50,
@@ -40,7 +40,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   brigantine: {
     id: SHIP_BRIGANTINE,
     name: "Brigantine",
-    speedBase: 0.55,
+    speedBase: 0.275,
     turnRate: 0.60,
     hullMax: 80,
     sailsMax: 70,
@@ -54,7 +54,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   frigate: {
     id: SHIP_FRIGATE,
     name: "Frigate",
-    speedBase: 0.5,
+    speedBase: 0.25,
     turnRate: 0.48,
     hullMax: 120,
     sailsMax: 90,
@@ -68,7 +68,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   galleon: {
     id: SHIP_GALLEON,
     name: "Galleon",
-    speedBase: 0.38,
+    speedBase: 0.19,
     turnRate: 0.30,
     hullMax: 180,
     sailsMax: 120,
@@ -82,7 +82,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   merchantman: {
     id: SHIP_MERCHANTMAN,
     name: "Merchantman",
-    speedBase: 0.32,
+    speedBase: 0.16,
     turnRate: 0.36,
     hullMax: 100,
     sailsMax: 80,
