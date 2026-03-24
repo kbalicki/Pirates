@@ -79,6 +79,7 @@ export function updateNavigation(
           pos: landPos,
           vel: { x: 0, y: 0 },
           sailLevel: 0,
+          landedTick: -1, // will be set to actual tick by WorldEngine
         };
       }
     }

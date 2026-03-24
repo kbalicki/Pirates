@@ -727,11 +727,15 @@ export class MainMapScene extends Phaser.Scene {
       );
     }
 
-    // Auto-embark: when crew walks very close to the anchored ship, board automatically
+    // Auto-embark: when crew walks close to the anchored ship, board automatically
+    // Only after at least 40 ticks on land (cooldown prevents instant re-embark after landing)
     if (playerEntity?.mode === "landed" && playerEntity.anchorPos) {
-      const distToShip = vec2Dist(playerEntity.pos, playerEntity.anchorPos);
-      if (distToShip < 20) {
-        this.commandQueue.push({ type: "Embark" });
+      const ticksOnLand = this.worldState.time.tick - (playerEntity.landedTick ?? 0);
+      if (ticksOnLand > 40) {
+        const distToShip = vec2Dist(playerEntity.pos, playerEntity.anchorPos);
+        if (distToShip < 8) {
+          this.commandQueue.push({ type: "Embark" });
+        }
       }
     }
 

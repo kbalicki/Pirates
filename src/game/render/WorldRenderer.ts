@@ -81,6 +81,8 @@ export class WorldRenderer {
       if (prevMode && prevMode !== curMode) {
         const oldSprite = this.entitySprites.get(id);
         if (oldSprite) { oldSprite.destroy(); this.entitySprites.delete(id); }
+        // Reset visual position to prevent velocity prediction artifacts on mode change
+        this.visualPos.delete(id);
         // Also manage anchor sprite
         if (curMode === "landed") {
           // Show ghost ship at anchor — same zoom-based scale as sailing ships

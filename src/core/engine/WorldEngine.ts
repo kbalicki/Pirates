@@ -136,6 +136,8 @@ export class WorldEngine {
 
         // Detect auto-disembark (NavigationSystem switched mode on land collision)
         if (prevEntityMode === "sailing" && updatedPlayer.mode === "landed") {
+          // Record landing tick for cooldown (prevents instant re-embark)
+          updatedEntities[playerShipId] = { ...updatedPlayer, landedTick: newTime.tick };
           world = addLogEntry({ ...world, time: newTime }, "event.disembarked");
           allEvents.push({ type: "Toast", message: "Crew has gone ashore." });
         }
