@@ -585,7 +585,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Petit Goâve",
     factionId: factionId("france"),
     type: "outpost",
-    pos: geoToMap(72.9, 18.4),
+    pos: { x: 1936, y: 1488 }, // Direct pixel: south coast Hispaniola (fixed: geoToMap was inland)
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
@@ -627,7 +627,7 @@ export const CITIES: Record<string, CityDef> = {
     name: "Léogane",
     factionId: factionId("france"),
     type: "outpost",
-    pos: geoToMap(72.6, 18.5),
+    pos: { x: 1968, y: 1488 }, // Direct pixel: south coast Hispaniola, east of Petit Goâve
     dockRadius: 15,
     marketLevel: 2,
     shipyardLevel: 1,
