@@ -95,8 +95,8 @@ export class WorldEngine {
     let updatedEntities = { ...world.entities };
 
     if (playerEntity) {
-      // Grace period: skip navigation for a few ticks after embarking to prevent instant re-landing
-      const EMBARK_GRACE_TICKS = 40; // ~2 seconds at 20 ticks/s
+      // Grace period: skip terrain collision for a few ticks after embarking
+      const EMBARK_GRACE_TICKS = 15; // ~0.75 seconds at 20 ticks/s
       const embarkTick = playerEntity.embarkTick ?? 0;
       const ticksSinceEmbark = newTime.tick - embarkTick;
       const inGracePeriod = embarkTick > 0 && ticksSinceEmbark < EMBARK_GRACE_TICKS;
@@ -104,7 +104,7 @@ export class WorldEngine {
       if (inGracePeriod && playerEntity.mode === "sailing") {
         // During grace period: just move forward without terrain collision checks
         const dir = { x: Math.sin(playerEntity.heading), y: -Math.cos(playerEntity.heading) };
-        const speed = 1.5; // gentle forward movement away from land
+        const speed = 0.15; // very slow drift away from land
         const gracedEntity = {
           ...playerEntity,
           pos: {
