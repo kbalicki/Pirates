@@ -135,6 +135,21 @@ export const EN: LocaleData = {
   "city.wealth_prosperous": "Prosperous",
   "city.wealth_wealthy": "Wealthy",
 
+  // -- City info panel --
+  "cityinfo.type": "Type",
+  "cityinfo.fort": "Defensive Fort",
+  "cityinfo.shipyard": "Shipyard",
+  "cityinfo.shipyard_1": "Sloops",
+  "cityinfo.shipyard_2": "Brigantines",
+  "cityinfo.shipyard_3": "Frigates",
+  "cityinfo.shipyard_4": "Galleons",
+  "cityinfo.exports": "Exports",
+  "cityinfo.imports": "Imports",
+  "cityinfo.reputation": "Reputation",
+  "cityinfo.last_visit": "Last Visit",
+  "cityinfo.never_visited": "Never",
+  "cityinfo.day": "Day",
+
   // -- Reputation levels --
   "rep.hostile": "HOSTILE",
   "rep.unfriendly": "UNFRIENDLY",

@@ -135,6 +135,21 @@ export const PL: LocaleData = {
   "city.wealth_prosperous": "Zamożne",
   "city.wealth_wealthy": "Bogate",
 
+  // -- City info panel --
+  "cityinfo.type": "Typ",
+  "cityinfo.fort": "Fort obronny",
+  "cityinfo.shipyard": "Stocznia",
+  "cityinfo.shipyard_1": "Slupy",
+  "cityinfo.shipyard_2": "Brygantyny",
+  "cityinfo.shipyard_3": "Fregaty",
+  "cityinfo.shipyard_4": "Galeony",
+  "cityinfo.exports": "Eksport",
+  "cityinfo.imports": "Import",
+  "cityinfo.reputation": "Reputacja",
+  "cityinfo.last_visit": "Ostatnia wizyta",
+  "cityinfo.never_visited": "Nigdy",
+  "cityinfo.day": "Dzień",
+
   // -- Reputation levels --
   "rep.hostile": "WROGI",
   "rep.unfriendly": "NIEPRZYJAZNY",
