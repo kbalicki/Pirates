@@ -69,8 +69,8 @@ export function updateNavigation(
         const safet = i === 1 ? 0 : (i - 1) / steps;
         const anchorPos: Vec2 = { x: entity.pos.x + dx * safet, y: entity.pos.y + dy * safet };
 
-        // Find the deepest inland position by searching multiple directions
-        const landPos = findDeepInlandPos(cx, cy, terrainAt);
+        // Land just a few pixels onto shore (not deep inland)
+        const landPos = findShorePos(cx, cy, entity.heading, terrainAt);
 
         return {
           ...entity,
@@ -117,8 +117,25 @@ export function updateNavigation(
 }
 
 /**
- * Find a position well inside the landmass by searching radially from a hit
- * point and picking the direction with the deepest continuous land.
+ * Place crew just a few pixels onto shore from the collision point.
+ * Steps 3px in the ship's heading direction (inland). Falls back to hit point.
+ */
+function findShorePos(hitX: number, hitY: number, heading: number, terrainAt: TerrainQuery): Vec2 {
+  const sx = Math.sin(heading);
+  const sy = -Math.cos(heading);
+  // Step 3px inland from the collision point
+  for (const dist of [3, 2, 1]) {
+    const nx = hitX + sx * dist;
+    const ny = hitY + sy * dist;
+    if (terrainAt(nx, ny) === "land") {
+      return { x: nx, y: ny };
+    }
+  }
+  return { x: hitX, y: hitY };
+}
+
+/**
+ * Find a position well inside the landmass (used for recovery only).
  */
 function findDeepInlandPos(hitX: number, hitY: number, terrainAt: TerrainQuery): Vec2 {
   const TARGET = 20;
