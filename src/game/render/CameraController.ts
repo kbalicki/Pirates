@@ -1,13 +1,11 @@
 import Phaser from "phaser";
 import type { Vec2 } from "../../core/model/WorldState.ts";
 import { lerp } from "../../core/services/Geometry.ts";
-import { getZoomValue, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
+import { getZoomValue } from "../settings/ZoomSetting.ts";
 
-const ZOOM_LERP = 0.10;
-const ZOOM_MIN = ZOOM_VALUES.z1;
-const ZOOM_MAX = ZOOM_VALUES.z14;
-/** Multiplicative step per scroll notch (e.g. 1.15 = 15% per notch). */
-const SCROLL_ZOOM_FACTOR = 1.15;
+const ZOOM_LERP = 0.15;
+const ZOOM_MIN = 1;
+const ZOOM_MAX = 12;
 
 export class CameraController {
   private camera: Phaser.Cameras.Scene2D.Camera;
@@ -39,14 +37,16 @@ export class CameraController {
     this.camera.setZoom(this.zoomTarget);
   }
 
-  /** Adjust zoom by mouse-wheel delta (positive = zoom in, negative = zoom out). */
+  /** Adjust zoom by mouse-wheel delta — snaps to integer zoom levels (1,2,3...12). */
   adjustZoom(delta: number): void {
+    const current = Math.round(this.zoomTarget);
     if (delta < 0) {
-      this.zoomTarget *= SCROLL_ZOOM_FACTOR;
+      this.zoomTarget = Math.min(current + 1, ZOOM_MAX);
     } else {
-      this.zoomTarget /= SCROLL_ZOOM_FACTOR;
+      this.zoomTarget = Math.max(current - 1, ZOOM_MIN);
     }
-    this.zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.zoomTarget));
+    // Ensure integer
+    this.zoomTarget = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.zoomTarget)));
   }
 
   update(): void {

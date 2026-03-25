@@ -105,6 +105,8 @@ export class MainMapScene extends Phaser.Scene {
     const mapH = 2400;
 
     this.cameraCtrl = new CameraController(this.cameras.main);
+    // pixelArt:true forces roundPixels=true, causing 1-world-px jumps (12 screen px at max zoom)
+    this.cameras.main.setRoundPixels(false);
     this.cameraCtrl.setBounds(0, 0, mapW, mapH);
 
     // Snap camera to player immediately so we don't start at (0,0)
