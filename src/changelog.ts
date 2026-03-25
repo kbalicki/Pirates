@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.2.3",
+    date: "2026-03-25",
+    changes: [
+      "New ship sprites: 8 directions from ChatGPT image, auto-cut with elliptical mask",
+      "Ship sprite: white bg removed, 256x256 frames, LINEAR filtering",
+      "Crew party PNG sprite (pirate crew with skull flag) replaces procedural rectangles",
+      "Crew 2x bigger (12 world px), ship scale adjusted (0.086 for 256px frames)",
+      "Fix instant re-embark: landedTick cooldown (15 ticks) + auto-embark radius 20→8px",
+      "Fix turbo departure: grace speed 1.5→0.15, pushDist 15→5px, duration 40→15 ticks",
+      "Crew lands 3px from coast (was 20px deep inland)",
+      "City info panel: i18n refactor, fort info, shipyard types, last visit",
+      "Port seagulls: 3-10 per port over water + reduced ambient (80-150)",
+      "Fix ship directions (180° — ships faced inward in source image)",
+    ],
+  },
+  {
     version: "0.9.2.2",
     date: "2026-03-24",
     changes: [
