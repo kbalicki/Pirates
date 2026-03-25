@@ -30,7 +30,7 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 // APP_VERSION moved to UIOverlayScene
 
-const TICK_RATE = 40; // 40Hz for smoother movement (was 20Hz)
+const TICK_RATE = 60; // match render frame rate for smoothest movement
 const TICK_MS = 1000 / TICK_RATE;
 
 export class MainMapScene extends Phaser.Scene {
@@ -616,7 +616,7 @@ export class MainMapScene extends Phaser.Scene {
       this.tickAccumulator -= TICK_MS;
 
       const commands = this.commandQueue.drain();
-      const result = this.engine.apply(this.worldState, commands, 0.5); // half step at 40Hz = same speed as 20Hz×1
+      const result = this.engine.apply(this.worldState, commands, 1 / 3); // 1/3 step at 60Hz = same speed as 20Hz×1
       this.worldState = result.state;
       this.registry.set("worldState", this.worldState);
 
