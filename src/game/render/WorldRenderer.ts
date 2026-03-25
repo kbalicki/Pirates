@@ -128,8 +128,8 @@ export class WorldRenderer {
       } else {
         // 1. Predict: advance by velocity (match physics speed exactly)
         const vel = entity.vel ?? { x: 0, y: 0 };
-        vp.x += vel.x * deltaSec * 20 * gameSpeed;
-        vp.y += vel.y * deltaSec * 20 * gameSpeed;
+        vp.x += vel.x * deltaSec * 40 * gameSpeed; // 40 = TICK_RATE
+        vp.y += vel.y * deltaSec * 40 * gameSpeed;
 
         // 2. Correct: gently pull toward authoritative physics position
         vp.x += (entity.pos.x - vp.x) * WorldRenderer.DRIFT_CORRECTION;
