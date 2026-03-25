@@ -6,6 +6,21 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.3.0",
+    date: "2026-03-25",
+    changes: [
+      "FIX JITTER: root cause was Phaser pixelArt:true forcing roundPixels — camera.setRoundPixels(false)",
+      "Variable timestep: 1 tick per frame, no accumulator (like seagulls/clouds)",
+      "Wave overlay v2: photo-based parallax (two TileSprite layers, ADD blend, no canvas strokes)",
+      "Integer zoom levels: scroll snaps to 1×–12× with smooth lerp transition",
+      "Ship sprites: auto-cut from ChatGPT image, per-frame elliptical masks, white bg removed",
+      "Crew party PNG sprite (pirate crew with skull flag)",
+      "Fix instant re-embark (landedTick cooldown), turbo departure (pushDist 15→5, grace speed 1.5→0.15)",
+      "Crew lands 3px from coast (was 20px deep inland)",
+      "Disabled old wave overlay (blocky canvas strokes) — replaced with photo-based",
+    ],
+  },
+  {
     version: "0.9.2.3",
     date: "2026-03-25",
     changes: [

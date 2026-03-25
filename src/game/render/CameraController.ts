@@ -55,10 +55,14 @@ export class CameraController {
     this.camera.scrollX = this.targetPos.x - this.camera.width / 2;
     this.camera.scrollY = this.targetPos.y - this.camera.height / 2;
 
-    // Smooth zoom (lerp OK here — zoom changes are discrete, not per-tick)
+    // Smooth zoom with snap to integer when close
     const currentZoom = this.camera.zoom;
-    if (Math.abs(currentZoom - this.zoomTarget) > 0.001) {
+    const diff = Math.abs(currentZoom - this.zoomTarget);
+    if (diff > 0.05) {
       this.camera.setZoom(lerp(currentZoom, this.zoomTarget, ZOOM_LERP));
+    } else if (diff > 0.001) {
+      // Snap to exact integer target
+      this.camera.setZoom(this.zoomTarget);
     }
   }
 
