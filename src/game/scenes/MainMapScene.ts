@@ -609,14 +609,14 @@ export class MainMapScene extends Phaser.Scene {
 
     // Cap delta to prevent large jumps from frame spikes
     const cappedDelta = Math.min(delta, TICK_MS * 2);
-    const speedMultiplier = this.worldState.gameSpeed ?? 1.2;
-    this.tickAccumulator += cappedDelta * speedMultiplier;
+    // No speed multiplier on accumulator — ensures exactly 1 tick per frame at 60fps
+    this.tickAccumulator += cappedDelta;
 
     while (this.tickAccumulator >= TICK_MS) {
       this.tickAccumulator -= TICK_MS;
 
       const commands = this.commandQueue.drain();
-      const result = this.engine.apply(this.worldState, commands, 1 / 3); // 1/3 step at 60Hz = same speed as 20Hz×1
+      const result = this.engine.apply(this.worldState, commands, 0.4); // 60Hz × 0.4 = 24 effective ticks/sec (was 20Hz × 1.2 = 24)
       this.worldState = result.state;
       this.registry.set("worldState", this.worldState);
 
@@ -637,8 +637,8 @@ export class MainMapScene extends Phaser.Scene {
     const fogSetting = localStorage.getItem("pc_fog") === "1";
     this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
 
-    // Render: velocity prediction + drift correction each frame
-    this.worldRenderer.sync(this, this.worldState, cappedDelta / 1000, speedMultiplier);
+    // Render: direct position with gentle lerp (no prediction at 60Hz)
+    this.worldRenderer.sync(this, this.worldState);
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (playerEntity) {
