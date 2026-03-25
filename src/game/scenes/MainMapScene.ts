@@ -30,8 +30,7 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 // APP_VERSION moved to UIOverlayScene
 
-const TICK_RATE = 60; // match render frame rate for smoothest movement
-const TICK_MS = 1000 / TICK_RATE;
+// Variable timestep — 1 tick per frame, dtTicks proportional to delta
 
 export class MainMapScene extends Phaser.Scene {
   private worldState!: WorldState;
@@ -54,7 +53,7 @@ export class MainMapScene extends Phaser.Scene {
   private inputMapper!: InputMapper;
   private commandQueue!: CommandQueue;
 
-  private tickAccumulator = 0;
+  // tickAccumulator removed — using variable timestep (1 tick per frame)
   /** Force furled sails on first update tick */
   private needSailReset = true;
   private sailResetFrames = 0;
@@ -607,28 +606,25 @@ export class MainMapScene extends Phaser.Scene {
     // Mouse steering: hold left button to steer toward cursor
     this.updateMouseSteering(pe);
 
-    // Cap delta to prevent large jumps from frame spikes
-    const cappedDelta = Math.min(delta, TICK_MS * 2);
-    // No speed multiplier on accumulator — ensures exactly 1 tick per frame at 60fps
-    this.tickAccumulator += cappedDelta;
+    // Variable timestep: exactly 1 tick per frame, proportional to delta.
+    // Like seagulls — movement every frame, no accumulator, no 0-tick or 2-tick frames.
+    const cappedDelta = Math.min(delta, 50); // cap at 50ms (20fps min)
+    const dtTicks = cappedDelta / (1000 / 20); // normalized: 1.0 at 20fps, ~0.33 at 60fps
+    const gameSpeed = this.worldState.gameSpeed ?? 1.2;
 
-    while (this.tickAccumulator >= TICK_MS) {
-      this.tickAccumulator -= TICK_MS;
+    const commands = this.commandQueue.drain();
+    const result = this.engine.apply(this.worldState, commands, dtTicks * gameSpeed);
+    this.worldState = result.state;
+    this.registry.set("worldState", this.worldState);
 
-      const commands = this.commandQueue.drain();
-      const result = this.engine.apply(this.worldState, commands, 0.4); // 60Hz × 0.4 = 24 effective ticks/sec (was 20Hz × 1.2 = 24)
-      this.worldState = result.state;
-      this.registry.set("worldState", this.worldState);
+    if (result.events.length > 0) {
+      this.worldRenderer.applyEvents(this, result.events);
+    }
 
-      if (result.events.length > 0) {
-        this.worldRenderer.applyEvents(this, result.events);
-      }
-
-      if (result.transitions) {
-        for (const t of result.transitions) {
-          this.handleTransition(t);
-          return;
-        }
+    if (result.transitions) {
+      for (const t of result.transitions) {
+        this.handleTransition(t);
+        return;
       }
     }
 
