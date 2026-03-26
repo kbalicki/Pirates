@@ -168,44 +168,40 @@ export class WorldRenderer {
           const sX = Math.cos(heading);
           const sY = Math.sin(heading);
           const int = Math.min(1, entity.sailLevel);
-          const count = 4 + Math.floor(int * 4); // 4-8
+          const count = 12 + Math.floor(int * 12); // 12-24 (3× more)
 
           for (let i = 0; i < count; i++) {
-            // From bow (-2) to past stern (+3) — not just behind
-            const along = -2 + Math.random() * 5;
-            // Irregularity: random side offset, wider further back
-            const spreadBase = 0.8 + Math.max(0, along) * 0.3;
+            const along = -1 + Math.random() * 3; // shorter range: -1 to +2 (was -2 to +3)
+            const spreadBase = 0.4 + Math.max(0, along) * 0.2; // tighter spread
             const sign = Math.random() > 0.5 ? 1 : -1;
-            const hullDist = (spreadBase + Math.random() * 0.4) * sign;
+            const hullDist = (spreadBase + Math.random() * 0.3) * sign;
 
             const wx = vp.x - fwX * along + sX * hullDist;
             const wy = vp.y - fwY * along + sY * hullDist;
 
-            // Random arc params for irregularity
-            const radius = 0.2 + Math.random() * 0.25;
-            const arcSpan = 20 + Math.random() * 25; // 20-45 degree arc (half length)
+            const radius = 0.1 + Math.random() * 0.12; // 50% smaller radius
+            const arcSpan = 10 + Math.random() * 12; // 50% shorter arcs
             const baseAngle = Phaser.Math.RadToDeg(heading) + (sign > 0 ? -90 : 90);
-            const startDeg = baseAngle - arcSpan / 2 + (Math.random() - 0.5) * 30;
+            const startDeg = baseAngle - arcSpan / 2 + (Math.random() - 0.5) * 15;
             const endDeg = startDeg + arcSpan;
             const col = Math.random() > 0.4 ? 0xffffff : 0xccddff;
 
             const arc = scene.add.arc(wx, wy, radius, startDeg, endDeg, false, col, 0);
-            arc.setStrokeStyle(0.4, col, 0.12);
+            arc.setStrokeStyle(0.3, col, 0.15);
             arc.setFillStyle(col, 0);
             arc.setDepth(vp.y - 1);
             arc.setClosePath(false);
 
-            // Drift outward + fade + grow slightly
-            const driftX = sX * sign * 0.4;
-            const driftY = sY * sign * 0.4;
+            const driftX = sX * sign * 0.2; // 50% shorter drift
+            const driftY = sY * sign * 0.2;
             scene.tweens.add({
               targets: arc,
               alpha: 0,
               x: wx + driftX,
               y: wy + driftY,
-              scaleX: 1.2 + Math.random() * 0.3,
-              scaleY: 1.2 + Math.random() * 0.3,
-              duration: 350 + Math.random() * 350,
+              scaleX: 1.1 + Math.random() * 0.15,
+              scaleY: 1.1 + Math.random() * 0.15,
+              duration: 200 + Math.random() * 200, // shorter lifetime
               onComplete: () => arc.destroy(),
             });
           }

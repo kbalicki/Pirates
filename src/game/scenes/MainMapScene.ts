@@ -18,6 +18,7 @@ import { CirrusRenderer } from "../render/CirrusRenderer.ts";
 
 import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
+import { SailSystem } from "../../core/systems/SailSystem.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import type { PortDef } from "../../core/data/ports.ts";
@@ -51,6 +52,7 @@ export class MainMapScene extends Phaser.Scene {
   private cartographicGrid!: CartographicGrid;
   private landGrid!: boolean[][];
   private inputMapper!: InputMapper;
+  private sailSystem = new SailSystem(0);
   private commandQueue!: CommandQueue;
 
   // tickAccumulator removed — using variable timestep (1 tick per frame)
@@ -130,9 +132,8 @@ export class MainMapScene extends Phaser.Scene {
     new FxManager(this);
 
     this.commandQueue = new CommandQueue();
-    this.inputMapper = new InputMapper(this, this.commandQueue);
-    // Ensure InputMapper starts with furled sails (synced with entity state)
-    this.inputMapper.setSailLevel(0);
+    this.sailSystem = new SailSystem(0);
+    this.inputMapper = new InputMapper(this, this.commandQueue, this.sailSystem);
 
     // Date display moved to UIOverlayScene
 
@@ -240,8 +241,8 @@ export class MainMapScene extends Phaser.Scene {
     this.events.on("resume", () => {
       this.portDialogOpen = false;
       this.pushShipToOpenSea();
-      // Reset sails to minimum on departure
-      this.inputMapper.setSailLevel(0.15);
+      // Reset sails to reefed on departure
+      this.sailSystem.setImmediate(1); // 1 = Reefed
     });
 
     // Dynamic resize handling
@@ -529,7 +530,7 @@ export class MainMapScene extends Phaser.Scene {
     if (!playerEntity) return null;
 
     const isLanded = playerEntity.mode === "landed";
-    const radius = isLanded ? 20 : 6;
+    const radius = isLanded ? 10 : 6; // tighter on foot
 
     for (const [portKey, port] of Object.entries(PORTS)) {
       // Use coast-snapped position (on land, adjacent to water) for all checks
@@ -565,9 +566,11 @@ export class MainMapScene extends Phaser.Scene {
       this.registry.set("worldState", this.worldState);
     }
 
+    const isOnFoot = playerEntity?.mode === "landed";
     this.scene.launch("PortApproachScene", {
       worldState: this.worldState,
       portId: portKey,
+      isOnFoot,
     });
     this.time.delayedCall(0, () => {
       this.scene.pause();
@@ -595,14 +598,14 @@ export class MainMapScene extends Phaser.Scene {
     if (this.sailResetFrames > 0) {
       this.sailResetFrames--;
       // Drain any stale keyboard commands and discard them
-      this.inputMapper.setSailLevel(0);
+      this.sailSystem.setImmediate(0);
       this.commandQueue.drain();
       return; // Skip entire update — no input, no simulation, no movement
     }
 
     // Sync input mode with entity mode
     const pe = this.worldState.entities[this.worldState.player.shipId as string];
-    this.inputMapper.setLandedMode(pe?.mode === "landed", pe?.sailLevel);
+    this.inputMapper.setLandedMode(pe?.mode === "landed");
     this.inputMapper.update();
 
     // Mouse steering: hold left button to steer toward cursor
@@ -613,6 +616,14 @@ export class MainMapScene extends Phaser.Scene {
     const cappedDelta = Math.min(delta, 50); // cap at 50ms (20fps min)
     const dtTicks = cappedDelta / (1000 / 20); // normalized: 1.0 at 20fps, ~0.33 at 60fps
     const gameSpeed = this.worldState.gameSpeed ?? 1.2;
+
+    // Update sail transition (smooth 3s between levels)
+    this.sailSystem.update(cappedDelta);
+    // Push current sail value as command each frame
+    const pe2 = this.worldState.entities[this.worldState.player.shipId as string];
+    if (pe2?.mode === "sailing") {
+      this.commandQueue.push({ type: "SetSailLevel", value: this.sailSystem.getCurrentValue() });
+    }
 
     const commands = this.commandQueue.drain();
     const result = this.engine.apply(this.worldState, commands, dtTicks * gameSpeed);
@@ -712,6 +723,10 @@ export class MainMapScene extends Phaser.Scene {
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
+    this.uiOverlay?.updateSail(
+      t(this.sailSystem.getTargetDef().nameKey),
+      this.sailSystem.isTransitioning(),
+    );
 
     // Animate water surface with wind
     this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);

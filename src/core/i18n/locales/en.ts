@@ -106,6 +106,7 @@ export const EN: LocaleData = {
   "port.sell": "[Sell]",
   "port.repair": "[ REPAIR SHIP (2 Gold/HP) ]",
   "port.set_sail": "[ SET SAIL ]",
+  "port.leave_on_foot": "[ WALK AWAY ]",
 
   // -- Port Approach --
   "approach.enter": "ENTER PORT",
@@ -116,6 +117,7 @@ export const EN: LocaleData = {
   "approach.attack": "ATTACK",
   "approach.attack_desc": "Open fire on the fort. All-out battle!",
   "approach.leave": "SAIL AWAY",
+  "approach.leave_on_foot": "WALK AWAY",
   "approach.leave_desc": "Continue sailing.",
   "approach.reputation": "Reputation: {{level}} ({{value}})",
   "approach.prompt": "Press E to open menu — {{name}}",
@@ -134,6 +136,13 @@ export const EN: LocaleData = {
   "city.wealth_modest": "Modest",
   "city.wealth_prosperous": "Prosperous",
   "city.wealth_wealthy": "Wealthy",
+
+  // -- Sail levels --
+  "sail.furled": "Furled",
+  "sail.reefed": "Reefed",
+  "sail.half": "Half Sail",
+  "sail.full": "Full Sail",
+  "sail.transitioning": "Setting sails...",
 
   // -- City info panel --
   "cityinfo.type": "Type",

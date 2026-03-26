@@ -67,10 +67,13 @@ export class PortScene extends Phaser.Scene {
     super({ key: "PortScene" });
   }
 
-  init(data: { worldState: WorldState; portId: PortId; returnToView?: PortView }): void {
+  private isOnFoot = false;
+
+  init(data: { worldState: WorldState; portId: PortId; returnToView?: PortView; isOnFoot?: boolean }): void {
     this.worldState = data.worldState;
     this.currentPortId = data.portId;
     this.currentView = data.returnToView ?? "menu";
+    this.isOnFoot = data.isOnFoot ?? false;
   }
 
   create(): void {
@@ -276,7 +279,7 @@ export class PortScene extends Phaser.Scene {
       { label: t("port.visit_tavern"), key: "tavern" },
       { label: t("port.visit_merchant"), key: "merchant" },
       { label: t("port.visit_shipyard"), key: "shipyard" },
-      { label: t("port.set_sail"), key: "sail" },
+      { label: this.isOnFoot ? t("port.leave_on_foot") ?? "ODEJDŹ" : t("port.set_sail"), key: "sail" },
     ];
 
     this.setupActionList(actions, y, (key) => {
@@ -862,27 +865,45 @@ export class PortScene extends Phaser.Scene {
   }
 
   private leavePort(): void {
-    // Offset ship position south of port so it spawns in water, not on land
     const portDef = PORTS[this.currentPortId as string];
-    const offset = portDef ? portDef.dockRadius + 50 : 100;
-    const portPos = this.worldState.player.location.pos;
-    const seaPos = { x: portPos.x, y: portPos.y + offset };
-
-    // Also update entity position
     const shipId = this.worldState.player.shipId as string;
     const entity = this.worldState.entities[shipId];
-    const updatedEntities = entity
-      ? { ...this.worldState.entities, [shipId]: { ...entity, pos: seaPos, vel: { x: 0, y: 0 }, sailLevel: 0 } }
-      : this.worldState.entities;
 
-    this.worldState = {
-      ...this.worldState,
-      player: {
-        ...this.worldState.player,
-        location: { type: "sea", pos: seaPos },
-      },
-      entities: updatedEntities,
-    };
+    if (this.isOnFoot) {
+      // On foot: return to map at port position, still in landed mode
+      const portPos = portDef?.pos ?? this.worldState.player.location.pos;
+      const updatedEntities = entity
+        ? { ...this.worldState.entities, [shipId]: { ...entity, pos: portPos, vel: { x: 0, y: 0 }, sailLevel: 0, mode: "landed" as const } }
+        : this.worldState.entities;
+
+      this.worldState = {
+        ...this.worldState,
+        player: {
+          ...this.worldState.player,
+          location: { type: "port" as const, pos: portPos, portId: this.currentPortId },
+        },
+        entities: updatedEntities,
+      };
+    } else {
+      // From ship: spawn in water south of port
+      const offset = portDef ? portDef.dockRadius + 50 : 100;
+      const portPos = this.worldState.player.location.pos;
+      const seaPos = { x: portPos.x, y: portPos.y + offset };
+
+      const updatedEntities = entity
+        ? { ...this.worldState.entities, [shipId]: { ...entity, pos: seaPos, vel: { x: 0, y: 0 }, sailLevel: 0, mode: "sailing" as const } }
+        : this.worldState.entities;
+
+      this.worldState = {
+        ...this.worldState,
+        player: {
+          ...this.worldState.player,
+          location: { type: "sea", pos: seaPos },
+        },
+        entities: updatedEntities,
+      };
+    }
+
     this.registry.set("worldState", this.worldState);
     this.scene.start("MainMapScene", { worldState: this.worldState });
   }

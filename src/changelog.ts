@@ -6,6 +6,19 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.3.1",
+    date: "2026-03-26",
+    changes: [
+      "Sail system: 4 named levels (Furled/Reefed/Half/Full), 3s smooth transitions",
+      "Sail UI: level name displayed under compass",
+      "On-foot port visits: entering on foot → leaving returns on foot (no ship teleport)",
+      "Port labels: 'ODEJDŹ' when on foot, 'ODPŁYŃ' when sailing (approach + port scenes)",
+      "Port interaction radius reduced on foot (20→10px)",
+      "Wake particles: 3× more, 50% shorter, tighter spread",
+      "Wave overlay disabled (blocky) — replaced with photo-based parallax",
+    ],
+  },
+  {
     version: "0.9.3.0",
     date: "2026-03-25",
     changes: [

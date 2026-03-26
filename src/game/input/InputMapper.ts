@@ -1,12 +1,13 @@
 import Phaser from "phaser";
 import { CommandQueue } from "./CommandQueue.ts";
+import type { SailSystem } from "../../core/systems/SailSystem.ts";
 
-const SAIL_STEP = 0.34; // sail level change per key press (~3 presses to max)
-const TURN_AMOUNT = 0.12; // radians per tick while held (3x for responsive steering)
+const TURN_AMOUNT = 0.12; // radians per tick while held
 
 export class InputMapper {
   private scene: Phaser.Scene;
   private queue: CommandQueue;
+  private sailSystem: SailSystem;
   private keys: {
     W: Phaser.Input.Keyboard.Key;
     S: Phaser.Input.Keyboard.Key;
@@ -18,13 +19,13 @@ export class InputMapper {
     RIGHT: Phaser.Input.Keyboard.Key;
   } | null = null;
 
-  private currentSailLevel = 0;
   /** When true, movement uses hold-to-walk instead of sail level. */
   private landed = false;
 
-  constructor(scene: Phaser.Scene, queue: CommandQueue) {
+  constructor(scene: Phaser.Scene, queue: CommandQueue, sailSystem: SailSystem) {
     this.scene = scene;
     this.queue = queue;
+    this.sailSystem = sailSystem;
 
     if (scene.input.keyboard) {
       this.keys = {
@@ -45,8 +46,6 @@ export class InputMapper {
 
     if (this.landed) {
       // ---- LANDED MODE: directional walking ----
-      // Arrow keys / WASD directly control movement direction (top-down style).
-      // UP=north, DOWN=south, LEFT=west, RIGHT=east. Diagonals supported.
       let dx = 0, dy = 0;
       if (this.keys.W.isDown || this.keys.UP.isDown) dy -= 1;
       if (this.keys.S.isDown || this.keys.DOWN.isDown) dy += 1;
@@ -54,32 +53,27 @@ export class InputMapper {
       if (this.keys.D.isDown || this.keys.RIGHT.isDown) dx += 1;
 
       if (dx !== 0 || dy !== 0) {
-        // Set heading to the arrow direction, set sail to walk
-        const heading = Math.atan2(dx, -dy); // heading: 0=N, PI/2=E, PI=S, 3PI/2=W
+        const heading = Math.atan2(dx, -dy);
         this.queue.push({ type: "SetHeading", heading });
         this.queue.push({ type: "SetSailLevel", value: 1 });
       } else {
         this.queue.push({ type: "SetSailLevel", value: 0 });
       }
     } else {
-      // ---- SAILING MODE: incremental sail level ----
-      // W / Up: increase sail level
+      // ---- SAILING MODE: named sail levels via SailSystem ----
       if (Phaser.Input.Keyboard.JustDown(this.keys.W) || Phaser.Input.Keyboard.JustDown(this.keys.UP)) {
-        this.currentSailLevel = Math.min(1, this.currentSailLevel + SAIL_STEP);
-        this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
+        this.sailSystem.raise();
+      }
+      if (Phaser.Input.Keyboard.JustDown(this.keys.S) || Phaser.Input.Keyboard.JustDown(this.keys.DOWN)) {
+        this.sailSystem.lower();
       }
 
-      // S / Down: decrease sail level
-      if (Phaser.Input.Keyboard.JustDown(this.keys.S) || Phaser.Input.Keyboard.JustDown(this.keys.DOWN)) {
-        this.currentSailLevel = Math.max(0, this.currentSailLevel - SAIL_STEP);
-        this.queue.push({ type: "SetSailLevel", value: this.currentSailLevel });
-      }
+      // SailSystem.getCurrentValue() pushed as command by MainMapScene each frame
 
       // A / Left: turn left (held)
       if (this.keys.A.isDown || this.keys.LEFT.isDown) {
         this.queue.push({ type: "Turn", dir: "left", amount: TURN_AMOUNT });
       }
-
       // D / Right: turn right (held)
       if (this.keys.D.isDown || this.keys.RIGHT.isDown) {
         this.queue.push({ type: "Turn", dir: "right", amount: TURN_AMOUNT });
@@ -87,20 +81,17 @@ export class InputMapper {
     }
   }
 
-  setLandedMode(landed: boolean, entitySailLevel?: number): void {
+  setLandedMode(landed: boolean): void {
     if (this.landed !== landed) {
       this.landed = landed;
       if (landed) {
-        this.currentSailLevel = 0;
-      } else {
-        // Sync sail level when transitioning back to sailing (e.g. after embark)
-        this.currentSailLevel = entitySailLevel ?? 0;
+        this.sailSystem.setImmediate(0);
       }
     }
   }
 
-  setSailLevel(level: number): void {
-    this.currentSailLevel = level;
+  setSailLevel(_level: number): void {
+    // Deprecated — SailSystem handles levels now
   }
 
   destroy(): void {

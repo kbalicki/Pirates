@@ -32,10 +32,13 @@ export class PortApproachScene extends Phaser.Scene {
     super({ key: "PortApproachScene" });
   }
 
-  init(data: { worldState: WorldState; portId: PortId }): void {
+  private isOnFoot = false;
+
+  init(data: { worldState: WorldState; portId: PortId; isOnFoot?: boolean }): void {
     this.worldState = data.worldState;
     this.portId = data.portId;
     this.portDef = PORTS[this.portId as string];
+    this.isOnFoot = data.isOnFoot ?? false;
   }
 
   create(): void {
@@ -132,7 +135,10 @@ export class PortApproachScene extends Phaser.Scene {
     } else {
       this.actions.push({ label: t("approach.enter"), action: "enter" });
     }
-    this.actions.push({ label: t("approach.leave"), action: "leave" });
+    this.actions.push({
+      label: this.isOnFoot ? t("approach.leave_on_foot") ?? "Odejdź" : t("approach.leave"),
+      action: "leave",
+    });
 
     // --- Selection highlight bar (behind selected action) ---
     const barW = DLG_W - PAD * 2;
@@ -350,6 +356,7 @@ export class PortApproachScene extends Phaser.Scene {
         this.scene.start("PortScene", {
           worldState: enterWorld,
           portId: this.portId,
+          isOnFoot: this.isOnFoot,
         });
         break;
       }
@@ -368,6 +375,7 @@ export class PortApproachScene extends Phaser.Scene {
           this.scene.start("PortScene", {
             worldState: sneakWorld,
             portId: this.portId,
+            isOnFoot: this.isOnFoot,
           });
         } else {
           this.scene.stop();

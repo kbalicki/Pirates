@@ -106,6 +106,7 @@ export const PL: LocaleData = {
   "port.sell": "[Sprzedaj]",
   "port.repair": "[ NAPRAW STATEK (2 Złoto/PŻ) ]",
   "port.set_sail": "[ WYPŁYŃ ]",
+  "port.leave_on_foot": "[ ODEJDŹ ]",
 
   // -- Port Approach --
   "approach.enter": "WEJDŹ DO PORTU",
@@ -116,6 +117,7 @@ export const PL: LocaleData = {
   "approach.attack": "ATAK",
   "approach.attack_desc": "Otwórz ogień na fort. Bitwa na pełną skalę!",
   "approach.leave": "ODPŁYŃ",
+  "approach.leave_on_foot": "ODEJDŹ",
   "approach.leave_desc": "Kontynuuj żeglugę.",
   "approach.reputation": "Reputacja: {{level}} ({{value}})",
   "approach.prompt": "Naciśnij E aby otworzyć menu — {{name}}",
@@ -134,6 +136,13 @@ export const PL: LocaleData = {
   "city.wealth_modest": "Skromne",
   "city.wealth_prosperous": "Zamożne",
   "city.wealth_wealthy": "Bogate",
+
+  // -- Sail levels --
+  "sail.furled": "Zwinięte",
+  "sail.reefed": "Zrefowane",
+  "sail.half": "Połowa żagli",
+  "sail.full": "Pełne żagle",
+  "sail.transitioning": "Zmiana żagli...",
 
   // -- City info panel --
   "cityinfo.type": "Typ",

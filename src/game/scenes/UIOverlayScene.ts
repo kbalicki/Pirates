@@ -16,6 +16,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private versionText!: Phaser.GameObjects.Text;
   private dateText!: Phaser.GameObjects.Text;
   private zoomText!: Phaser.GameObjects.Text;
+  private sailText!: Phaser.GameObjects.Text;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -67,6 +68,16 @@ export class UIOverlayScene extends Phaser.Scene {
     this.zoomText.setOrigin(0, 1);
     this.zoomText.setDepth(10);
 
+    // Sail level — below compass, text only
+    const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
+    this.sailText = this.add.text(cam.width - MARGIN, sailY, "", {
+      ...txt(13, { color: "#ffdd88" }),
+      stroke: "#000000",
+      strokeThickness: 3,
+    });
+    this.sailText.setOrigin(1, 0);
+    this.sailText.setDepth(30);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -82,6 +93,7 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.compass) this.compass.reposition(cx, cy);
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
     if (this.zoomText) this.zoomText.setPosition(6, height - 4);
+    if (this.sailText) this.sailText.setPosition(width - MARGIN, MARGIN + 18 + COMPASS_SIZE + 28);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -95,6 +107,14 @@ export class UIOverlayScene extends Phaser.Scene {
   updateWind(windDirRad: number, windStrength: number): void {
     if (this.compass) {
       this.compass.updateWind(windDirRad, windStrength);
+    }
+  }
+
+  /** Called from MainMapScene each frame with sail info */
+  updateSail(levelName: string, transitioning: boolean): void {
+    if (this.sailText) {
+      const suffix = transitioning ? "..." : " żagle";
+      this.sailText.setText(levelName + suffix);
     }
   }
 

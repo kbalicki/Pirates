@@ -61,6 +61,9 @@ export class PreloadScene extends Phaser.Scene {
     // Crew party sprite (transparent PNG, replaces procedural)
     this.load.image("crew_party_img", "assets/sprites/crew_party.png");
 
+    // Sail icon for UI
+    this.load.image("sail_icon", "assets/ui/sail_icon.png");
+
     // City sprites (transparent PNG)
     this.load.image("city_large", "assets/sprites/city_large.png");
     this.load.image("city_medium", "assets/sprites/city_medium.png");
