@@ -23,6 +23,7 @@ import { PortApproachScene } from "./scenes/PortApproachScene.ts";
 import { OptionsMenuScene } from "./scenes/OptionsMenuScene.ts";
 import { UIOverlayScene } from "./scenes/UIOverlayScene.ts";
 import { CityInfoScene } from "./scenes/CityInfoScene.ts";
+import { HelpScene } from "./scenes/HelpScene.ts";
 
 export function createNewWorldState(
   seed: number,
@@ -165,6 +166,7 @@ export function launchGame(containerId: string): Phaser.Game {
       OptionsMenuScene,
       UIOverlayScene,
       CityInfoScene,
+      HelpScene,
     ],
     physics: {
       default: "arcade",

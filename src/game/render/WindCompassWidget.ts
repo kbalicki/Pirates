@@ -106,11 +106,11 @@ export class WindCompassWidget {
 
     this.windLabel = scene.add.text(x, y + size / 2 + 6, "Calm", {
       fontFamily: UI_FONT,
-      fontSize: "12px",
+      fontSize: "14px",
       color: "#cccccc",
       resolution: TEXT_RES,
       stroke: "#000000",
-      strokeThickness: 2,
+      strokeThickness: 3,
     });
     this.windLabel.setOrigin(0.5, 0);
     this.windLabel.setDepth(30);

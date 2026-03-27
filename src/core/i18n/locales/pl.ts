@@ -138,10 +138,11 @@ export const PL: LocaleData = {
   "city.wealth_wealthy": "Bogate",
 
   // -- Sail levels --
-  "sail.furled": "Zwinięte",
-  "sail.reefed": "Zrefowane",
+  "sail.furled": "Żagle zwinięte",
+  "sail.reefed": "Żagle zrefowane",
   "sail.half": "Połowa żagli",
   "sail.full": "Pełne żagle",
+  "sail.in_irons": "⚠ Pod wiatr!",
   "sail.transitioning": "Zmiana żagli...",
 
   // -- City info panel --

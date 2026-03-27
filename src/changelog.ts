@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.4.0",
+    date: "2026-03-27",
+    changes: [
+      "Wind physics: realistic polar diagram with ship-specific dead zones",
+      "  Sloop 35° (fore-and-aft), Brigantine 40°, Frigate 50°, Galleon 60°, Merchantman 55°",
+      "  Dead zone → close hauled → beam reach (peak) → running",
+      "  'Pod wiatr!' warning in UI when in irons",
+      "Ship parameters: minWindAngle, mastHeight, rigType, tonnage, draft added",
+      "Help screen (H key): 4 sections — Controls, Ships, Sailing, World",
+      "  Ships table with all parameters, sailing guide with wind angles",
+      "Ship speed display under sail level (knots)",
+      "Wind label enlarged (14px)",
+      "Sail transition: 3s → 2s",
+    ],
+  },
+  {
     version: "0.9.3.1",
     date: "2026-03-26",
     changes: [

@@ -90,19 +90,52 @@ export function updateWeather(
   };
 }
 
-// Calculate wind effect on a ship given its heading
-// Returns a speed multiplier (0.3 = beating into wind, 1.5 = running with wind)
-export function windSpeedModifier(shipHeading: HeadingRad, windDirRad: HeadingRad, windStrength: number): number {
-  // Angle between ship heading and wind direction
+/**
+ * Realistic wind speed modifier based on sailing polar diagram.
+ *
+ * Wind angle (degrees from wind):
+ *   0-30°   DEAD ZONE ("in irons") — speed = 0, can't sail into wind
+ *   30-60°  Close hauled (beating)  — 0.2–0.5× slow upwind work
+ *   60-120° Beam reach / broad reach — 0.9–1.2× fastest point of sail
+ *   120-180° Running (downwind)      — 0.7–0.9× good but not best
+ *
+ * Returns 0..~1.2 multiplied by windStrength. No wind = base speed (1.0).
+ */
+export function windSpeedModifier(
+  shipHeading: HeadingRad,
+  windDirRad: HeadingRad,
+  windStrength: number,
+  minWindAngle = 30, // ship-specific dead zone in degrees
+): number {
   const angleDiff = Math.abs(normalizeHeading(shipHeading - windDirRad));
-  // 0 = heading directly into wind, PI = running with wind
   const windAngle = angleDiff > Math.PI ? TWO_PI - angleDiff : angleDiff;
+  const deg = windAngle * (180 / Math.PI);
 
-  // Sailing into wind: slow. With wind: fast. Cross-wind: moderate.
-  // Cosine curve: cos(0) = 1 (into wind), cos(PI) = -1 (with wind)
-  // We want: into wind → 0.3, beam reach → 1.0, running → 1.3
-  const factor = 0.8 - 0.5 * Math.cos(windAngle);
+  let factor: number;
+  if (deg < minWindAngle) {
+    // Dead zone: can't sail into wind (ship-specific angle)
+    factor = 0;
+  } else if (deg < minWindAngle + 30) {
+    // Close hauled: 0→0.5 transition from dead zone edge
+    factor = ((deg - minWindAngle) / 30) * 0.5;
+  } else if (deg < 120) {
+    // Beam reach to broad reach: 0.5→1.2→1.0
+    const reachStart = minWindAngle + 30;
+    const t = (deg - reachStart) / (120 - reachStart);
+    factor = 0.5 + 0.7 * Math.sin(t * Math.PI);
+  } else {
+    // Running: 1.0→0.8 (slightly less efficient than reaching)
+    const t = (deg - 120) / 60; // 0→1
+    factor = 1.0 - t * 0.2; // 1.0→0.8
+  }
 
-  // Scale by wind strength (no wind = everything is base speed)
+  // Scale by wind strength (no wind = base speed 1.0)
   return 1.0 + (factor - 1.0) * windStrength;
+}
+
+/** Check if ship heading is in the dead zone. */
+export function isInIrons(shipHeading: HeadingRad, windDirRad: HeadingRad, minWindAngle = 30): boolean {
+  const angleDiff = Math.abs(normalizeHeading(shipHeading - windDirRad));
+  const windAngle = angleDiff > Math.PI ? TWO_PI - angleDiff : angleDiff;
+  return windAngle * (180 / Math.PI) < minWindAngle;
 }

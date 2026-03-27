@@ -142,6 +142,7 @@ export const EN: LocaleData = {
   "sail.reefed": "Reefed",
   "sail.half": "Half Sail",
   "sail.full": "Full Sail",
+  "sail.in_irons": "⚠ Into the wind!",
   "sail.transitioning": "Setting sails...",
 
   // -- City info panel --

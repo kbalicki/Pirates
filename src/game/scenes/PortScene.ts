@@ -871,16 +871,28 @@ export class PortScene extends Phaser.Scene {
 
     if (this.isOnFoot) {
       // On foot: return to map at port position, still in landed mode
+      // Preserve anchorPos (where ship is parked) so it stays visible
       const portPos = portDef?.pos ?? this.worldState.player.location.pos;
       const updatedEntities = entity
-        ? { ...this.worldState.entities, [shipId]: { ...entity, pos: portPos, vel: { x: 0, y: 0 }, sailLevel: 0, mode: "landed" as const } }
+        ? {
+            ...this.worldState.entities,
+            [shipId]: {
+              ...entity,
+              pos: portPos,
+              vel: { x: 0, y: 0 },
+              sailLevel: 0,
+              mode: "landed" as const,
+              // Keep anchorPos from original landing (ship stays where it was parked)
+              anchorPos: entity.anchorPos,
+            },
+          }
         : this.worldState.entities;
 
       this.worldState = {
         ...this.worldState,
         player: {
           ...this.worldState.player,
-          location: { type: "port" as const, pos: portPos, portId: this.currentPortId },
+          location: { type: "sea" as const, pos: portPos },
         },
         entities: updatedEntities,
       };

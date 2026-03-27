@@ -33,7 +33,7 @@ export function updateNavigation(
   if (!shipClass) return entity;
 
   // Calculate effective speed
-  const windMod = windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength);
+  const windMod = windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30);
   const sailsMod = entity.ship.sailsHp / entity.ship.sailsMax;
   const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * sailsMod;
 

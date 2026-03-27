@@ -19,6 +19,8 @@ import { CirrusRenderer } from "../render/CirrusRenderer.ts";
 import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { SailSystem } from "../../core/systems/SailSystem.ts";
+import { isInIrons } from "../../core/systems/WeatherSystem.ts";
+import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import type { PortDef } from "../../core/data/ports.ts";
@@ -183,6 +185,11 @@ export class MainMapScene extends Phaser.Scene {
         this.toggleGrid();
       });
 
+      this.input.keyboard.on("keydown-H", () => {
+        this.scene.launch("HelpScene");
+        this.time.delayedCall(0, () => this.scene.pause());
+      });
+
       this.input.keyboard.on("keydown-V", () => {
         this.worldRenderer.fogOfWarEnabled = !this.worldRenderer.fogOfWarEnabled;
         // minimap removed
@@ -237,12 +244,15 @@ export class MainMapScene extends Phaser.Scene {
       }
     });
 
-    // Listen for PortApproachScene closing — resume ourselves and push ship to open sea
+    // Listen for PortApproachScene closing — resume ourselves
     this.events.on("resume", () => {
       this.portDialogOpen = false;
-      this.pushShipToOpenSea();
-      // Reset sails to reefed on departure
-      this.sailSystem.setImmediate(1); // 1 = Reefed
+      // Only push to open sea if ship is sailing AND not in embark grace period
+      const pe = this.worldState.entities[this.worldState.player.shipId as string];
+      if (pe?.mode === "sailing" && !pe.embarkTick) {
+        this.pushShipToOpenSea();
+        this.sailSystem.setImmediate(1); // Reefed on departure
+      }
     });
 
     // Dynamic resize handling
@@ -723,10 +733,21 @@ export class MainMapScene extends Phaser.Scene {
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
+    // Check if sailing into wind (dead zone)
+    const pe3 = this.worldState.entities[this.worldState.player.shipId as string];
+    const playerShipClass = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;
+    const inIrons = pe3?.mode === "sailing" && pe3.sailLevel > 0
+      && isInIrons(pe3.heading, this.worldState.weather.windDirRad, playerShipClass?.minWindAngle);
+
     this.uiOverlay?.updateSail(
-      t(this.sailSystem.getTargetDef().nameKey),
+      inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey),
       this.sailSystem.isTransitioning(),
     );
+
+    // Ship speed display
+    const vel3 = pe3?.vel ?? { x: 0, y: 0 };
+    const shipSpeed = Math.sqrt(vel3.x * vel3.x + vel3.y * vel3.y);
+    this.uiOverlay?.updateSpeed(pe3?.mode === "sailing" ? shipSpeed : 0);
 
     // Animate water surface with wind
     this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);

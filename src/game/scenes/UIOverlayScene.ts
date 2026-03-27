@@ -17,6 +17,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private dateText!: Phaser.GameObjects.Text;
   private zoomText!: Phaser.GameObjects.Text;
   private sailText!: Phaser.GameObjects.Text;
+  private speedText!: Phaser.GameObjects.Text;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -78,6 +79,15 @@ export class UIOverlayScene extends Phaser.Scene {
     this.sailText.setOrigin(1, 0);
     this.sailText.setDepth(30);
 
+    // Ship speed — below sail text
+    this.speedText = this.add.text(cam.width - MARGIN, sailY + 18, "", {
+      ...txt(12, { color: "#aaccee" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.speedText.setOrigin(1, 0);
+    this.speedText.setDepth(30);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -93,7 +103,9 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.compass) this.compass.reposition(cx, cy);
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
     if (this.zoomText) this.zoomText.setPosition(6, height - 4);
-    if (this.sailText) this.sailText.setPosition(width - MARGIN, MARGIN + 18 + COMPASS_SIZE + 28);
+    const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
+    if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY);
+    if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -113,8 +125,20 @@ export class UIOverlayScene extends Phaser.Scene {
   /** Called from MainMapScene each frame with sail info */
   updateSail(levelName: string, transitioning: boolean): void {
     if (this.sailText) {
-      const suffix = transitioning ? "..." : " żagle";
-      this.sailText.setText(levelName + suffix);
+      this.sailText.setText(transitioning ? levelName + "..." : levelName);
+    }
+  }
+
+  /** Called from MainMapScene each frame with ship speed */
+  updateSpeed(speed: number): void {
+    if (this.speedText) {
+      if (speed < 0.001) {
+        this.speedText.setText("");
+      } else {
+        // Convert to knots-like display (speed × 10 for readable number)
+        const knots = (speed * 10).toFixed(1);
+        this.speedText.setText(`${knots} kn`);
+      }
     }
   }
 

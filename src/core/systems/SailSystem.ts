@@ -33,7 +33,7 @@ export const SAIL_LEVELS: SailLevelDef[] = [
 ];
 
 /** Time in milliseconds to transition between adjacent sail levels. */
-const TRANSITION_TIME_MS = 3000;
+const TRANSITION_TIME_MS = 2000;
 
 export class SailSystem {
   /** Target sail level index (0-3). Set by player input. */
