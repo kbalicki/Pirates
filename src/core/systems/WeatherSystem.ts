@@ -97,9 +97,9 @@ export function updateWeather(
  *   0-30°   DEAD ZONE ("in irons") — speed = 0, can't sail into wind
  *   30-60°  Close hauled (beating)  — 0.2–0.5× slow upwind work
  *   60-120° Beam reach / broad reach — 0.9–1.2× fastest point of sail
- *   120-180° Running (downwind)      — 0.7–0.9× good but not best
+ *   120-180° Running (downwind)      — 0.9–1.1× good but not best
  *
- * Returns 0..~1.2 multiplied by windStrength. No wind = base speed (1.0).
+ * Returns 0..~1.5 multiplied by windStrength. No wind = base speed (1.0).
  */
 export function windSpeedModifier(
   shipHeading: HeadingRad,
@@ -116,17 +116,17 @@ export function windSpeedModifier(
     // Dead zone: can't sail into wind (ship-specific angle)
     factor = 0;
   } else if (deg < minWindAngle + 30) {
-    // Close hauled: 0→0.5 transition from dead zone edge
-    factor = ((deg - minWindAngle) / 30) * 0.5;
+    // Close hauled: 0→0.4 slow transition from dead zone edge
+    factor = ((deg - minWindAngle) / 30) * 0.4;
   } else if (deg < 120) {
-    // Beam reach to broad reach: 0.5→1.2→1.0
+    // Beam reach to broad reach: 0.4→1.5→1.1 (peak at ~90°)
     const reachStart = minWindAngle + 30;
     const t = (deg - reachStart) / (120 - reachStart);
-    factor = 0.5 + 0.7 * Math.sin(t * Math.PI);
+    factor = 0.4 + 1.1 * Math.sin(t * Math.PI);
   } else {
-    // Running: 1.0→0.8 (slightly less efficient than reaching)
+    // Running: 1.1→0.9 (good but not peak)
     const t = (deg - 120) / 60; // 0→1
-    factor = 1.0 - t * 0.2; // 1.0→0.8
+    factor = 1.1 - t * 0.2; // 1.1→0.9
   }
 
   // Scale by wind strength (no wind = base speed 1.0)

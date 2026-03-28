@@ -91,6 +91,7 @@ export function createNewWorldState(
       ranks: { spain: 0, england: 0, france: 0, netherlands: 0, pirates: 0 },
       location: { type: "sea", pos: startPos },
       questLog: [],
+      fleet: [],
     },
     entities: {
       [playerShipId as string]: {
@@ -129,6 +130,8 @@ export function createNewWorldState(
     },
     worldFlags: {},
     eventLog: [],
+    worldEvents: [],
+    knownEventIds: [],
     playerName,
     eraId,
     startYear,

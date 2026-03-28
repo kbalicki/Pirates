@@ -18,6 +18,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private zoomText!: Phaser.GameObjects.Text;
   private sailText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
+  private fleetText!: Phaser.GameObjects.Text;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -88,6 +89,15 @@ export class UIOverlayScene extends Phaser.Scene {
     this.speedText.setOrigin(1, 0);
     this.speedText.setDepth(30);
 
+    // Fleet info — below speed
+    this.fleetText = this.add.text(cam.width - MARGIN, sailY + 36, "", {
+      ...txt(11, { color: "#6699cc" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.fleetText.setOrigin(1, 0);
+    this.fleetText.setDepth(30);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -106,6 +116,7 @@ export class UIOverlayScene extends Phaser.Scene {
     const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
     if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY);
     if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
+    if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 36);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -135,9 +146,20 @@ export class UIOverlayScene extends Phaser.Scene {
       if (speed < 0.001) {
         this.speedText.setText("");
       } else {
-        // Convert to knots-like display (speed × 10 for readable number)
-        const knots = (speed * 10).toFixed(1);
+        // Convert to knots display: speedBase×windMod×32 = max knots (frigate=12kn)
+        const knots = (speed * 32).toFixed(1);
         this.speedText.setText(`${knots} kn`);
+      }
+    }
+  }
+
+  /** Called from MainMapScene each frame with fleet info */
+  updateFleet(fleetCount: number): void {
+    if (this.fleetText) {
+      if (fleetCount > 0) {
+        this.fleetText.setText(`Flota: ${fleetCount + 1}/3`);
+      } else {
+        this.fleetText.setText("");
       }
     }
   }

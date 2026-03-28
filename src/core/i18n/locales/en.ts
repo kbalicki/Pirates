@@ -64,9 +64,13 @@ export const EN: LocaleData = {
   "faction.pirates.name": "Pirates",
 
   // -- Ship Classes --
+  "ship.pinnace.name": "Pinnace",
   "ship.sloop.name": "Sloop",
+  "ship.barque.name": "Barque",
   "ship.brigantine.name": "Brigantine",
+  "ship.fluyt.name": "Fluyt",
   "ship.frigate.name": "Frigate",
+  "ship.fast_galleon.name": "Fast Galleon",
   "ship.galleon.name": "Galleon",
   "ship.merchantman.name": "Merchantman",
 
@@ -316,6 +320,29 @@ export const EN: LocaleData = {
   "shipyard.buy": "[Buy]",
   "shipyard.current": "(current)",
   "event.bought_ship": "Purchased a {{ship}} for {{cost}} Gold.",
+  "event.bought_escort": "Added {{ship}} to fleet for {{cost}} Gold.",
+  "event.sold_escort": "Sold {{ship}} for {{price}} Gold.",
+  "event.abandoned_ship": "Abandoned {{ship}} at sea.",
+  "fleet.title": "Fleet",
+  "fleet.flagship": "Flagship",
+  "fleet.escort": "Escort",
+  "fleet.add_to_fleet": "[Add to Fleet]",
+  "fleet.sell": "[Sell]",
+  "fleet.abandon": "[Abandon]",
+  "fleet.full": "Fleet is full (max 3 ships).",
+  "fleet.not_enough_crew": "Not enough crew to man another ship.",
+  "fleet.ships": "{{count}}/3 ships",
+
+  // -- World Events / News --
+  "news.war_start": "War declared! {{faction1}} vs {{faction2}}!",
+  "news.war_end": "Peace treaty signed between {{faction1}} and {{faction2}}.",
+  "news.epidemic": "Epidemic in {{port}}! Many have fallen ill.",
+  "news.pirate_raid": "Pirates raided {{port}}! Trade disrupted.",
+  "news.trade_boom": "Trade boom in {{port}}! Merchants flock to the harbor.",
+  "news.slave_revolt": "Slave revolt in {{port}}! The colony is in turmoil.",
+  "news.hurricane": "Hurricane struck {{port}}! Ships and buildings damaged.",
+  "news.treasure_fleet": "Spanish treasure fleet preparing to sail from {{port}}.",
+  "news.new_governor": "New governor appointed in {{port}} by {{faction}}.",
 
   // -- Ranks: Spain --
   "rank.spain.0": "Sin rango",

@@ -31,6 +31,16 @@ export type PlayerLocation = {
   pos: Vec2;
 };
 
+/** An escort ship in the player's fleet (not the flagship). */
+export type FleetShip = {
+  classId: string;       // ShipClassId as string
+  hullHp: number;
+  hullMax: number;
+  sailsHp: number;
+  sailsMax: number;
+  cannons: number;
+};
+
 export type PlayerState = {
   id: EntityId;
   shipId: EntityId;
@@ -40,6 +50,8 @@ export type PlayerState = {
   ranks: Record<string, number>; // factionId -> rank index (0 = no rank)
   location: PlayerLocation;
   questLog: QuestRuntimeState[];
+  /** Escort ships (0-2). Flagship = entity's ship. Total fleet max 3. */
+  fleet: FleetShip[];
 };
 
 export type WeatherState = {
@@ -66,6 +78,23 @@ export type GameEventEntry = {
   vars?: Record<string, string | number>;
 };
 
+export type WorldEventType =
+  | "war_start" | "war_end" | "epidemic" | "pirate_raid"
+  | "trade_boom" | "slave_revolt" | "hurricane"
+  | "treasure_fleet" | "new_governor";
+
+export type WorldEventState = {
+  id: string;
+  type: WorldEventType;
+  startDay: number;
+  endDay: number;
+  ports: string[];        // affected port IDs
+  factions: string[];     // involved faction IDs
+  severity: 1 | 2 | 3;
+  headline: string;       // i18n key
+  vars: Record<string, string | number>;
+};
+
 export type WorldState = {
   version: number;
   time: GameTime;
@@ -76,6 +105,10 @@ export type WorldState = {
   weather: WeatherState;
   worldFlags: Record<string, boolean>;
   eventLog: GameEventEntry[];
+  /** Active world events (wars, epidemics, etc.) */
+  worldEvents: WorldEventState[];
+  /** IDs of world events player has already been notified about */
+  knownEventIds: string[];
   playerName: string;
   eraId: string;
   startYear: number;

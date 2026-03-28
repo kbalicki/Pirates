@@ -21,6 +21,8 @@ export function updateNavigation(
   weather: WeatherState,
   terrainAt: TerrainQuery,
   dtTicks: number,
+  /** Fleet speed multiplier (1.0 = solo, <1 = slowest escort limits speed). */
+  fleetSpeedMul = 1,
 ): EntityState {
   if (entity.kind !== "ship" || !entity.ship) return entity;
 
@@ -32,10 +34,10 @@ export function updateNavigation(
   const shipClass = SHIP_CLASSES[entity.ship.classId as string];
   if (!shipClass) return entity;
 
-  // Calculate effective speed
+  // Calculate effective speed (fleet multiplier slows to slowest ship)
   const windMod = windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30);
   const sailsMod = entity.ship.sailsHp / entity.ship.sailsMax;
-  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * sailsMod;
+  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * sailsMod * fleetSpeedMul;
 
   // Direction vector from heading
   const dir = headingToVec(entity.heading);
@@ -260,7 +262,10 @@ export function applyTurn(entity: EntityState, dir: "left" | "right", amount: nu
 
   const turnRate = entity.mode === "landed" ? 0.96 : (() => {
     const shipClass = SHIP_CLASSES[entity.ship!.classId as string];
-    return shipClass?.turnRate ?? 0.48;
+    const baseTurn = shipClass?.turnRate ?? 0.48;
+    // Reefed sails = more maneuverable: 0→+50%, 0.33→+33%, 0.5→+25%, 1.0→+0%
+    const sailBonus = 1 + (1 - entity.sailLevel) * 0.5;
+    return baseTurn * sailBonus;
   })();
 
   const clampedAmount = clamp(amount, 0, turnRate);

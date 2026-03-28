@@ -18,6 +18,14 @@ export type ShipData = {
   };
 };
 
+export type NewsItem = {
+  eventId: string;
+  headline: string;       // i18n key
+  vars: Record<string, string | number>;
+  dayHeard: number;
+  sourcePort: string;     // port where NPC heard this
+};
+
 export type AiData = {
   behavior: "trader" | "pirate" | "navy" | "escort" | "pirate_hunter";
   state: "patrol" | "travel" | "chase" | "flee" | "dock";
@@ -25,6 +33,10 @@ export type AiData = {
   targetPortId?: PortId;
   aggression: number; // 0..1
   awarenessRadius: number; // in world units
+  /** News carried by this NPC (max 5). Picked up at ports. */
+  news?: NewsItem[];
+  /** Last port visited — determines when NPC gets fresh news. */
+  lastPortVisited?: string;
 };
 
 export type EntityMode = "sailing" | "landed";

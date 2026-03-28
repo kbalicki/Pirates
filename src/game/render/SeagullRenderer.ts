@@ -29,6 +29,63 @@ interface Seagull {
 /** Max distance a port seagull can drift from its port (world px) */
 const PORT_GULL_RADIUS = 40;
 
+/** Seagull cry via Web Audio synthesis — no external file needed */
+const SEAGULL_CRY_INTERVAL_MIN = 8_000;  // ms between cries
+const SEAGULL_CRY_INTERVAL_MAX = 25_000;
+const SEAGULL_CRY_ZOOM_MIN = 5;  // only play at zoom 5+
+
+function playSeagullCry(audioCtx: AudioContext, volume = 0.12): void {
+  const now = audioCtx.currentTime;
+  const gain = audioCtx.createGain();
+  gain.connect(audioCtx.destination);
+
+  // Seagull cry: 2 overlapping oscillators with pitch sweep
+  for (let i = 0; i < 2; i++) {
+    const osc = audioCtx.createOscillator();
+    const oscGain = audioCtx.createGain();
+    osc.connect(oscGain);
+    oscGain.connect(gain);
+
+    osc.type = "sine";
+    const baseFreq = 1800 + i * 400 + (Math.random() - 0.5) * 200;
+    const t0 = now + i * 0.08;
+
+    // Pitch rises then falls — classic gull cry
+    osc.frequency.setValueAtTime(baseFreq * 0.6, t0);
+    osc.frequency.linearRampToValueAtTime(baseFreq, t0 + 0.15);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 1.1, t0 + 0.25);
+    osc.frequency.linearRampToValueAtTime(baseFreq * 0.5, t0 + 0.6);
+
+    // Volume envelope
+    oscGain.gain.setValueAtTime(0, t0);
+    oscGain.gain.linearRampToValueAtTime(volume * (i === 0 ? 1 : 0.5), t0 + 0.05);
+    oscGain.gain.linearRampToValueAtTime(volume * 0.7, t0 + 0.3);
+    oscGain.gain.linearRampToValueAtTime(0, t0 + 0.6);
+
+    osc.start(t0);
+    osc.stop(t0 + 0.65);
+  }
+
+  // Optional second chirp (50% chance)
+  if (Math.random() > 0.5) {
+    const osc2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    osc2.connect(g2);
+    g2.connect(gain);
+    osc2.type = "sine";
+    const t1 = now + 0.5;
+    const f2 = 2200 + Math.random() * 400;
+    osc2.frequency.setValueAtTime(f2 * 0.7, t1);
+    osc2.frequency.linearRampToValueAtTime(f2, t1 + 0.1);
+    osc2.frequency.linearRampToValueAtTime(f2 * 0.4, t1 + 0.4);
+    g2.gain.setValueAtTime(0, t1);
+    g2.gain.linearRampToValueAtTime(volume * 0.6, t1 + 0.05);
+    g2.gain.linearRampToValueAtTime(0, t1 + 0.4);
+    osc2.start(t1);
+    osc2.stop(t1 + 0.45);
+  }
+}
+
 export class SeagullRenderer {
   private scene: Phaser.Scene;
   private landGrid: boolean[][];
@@ -38,6 +95,8 @@ export class SeagullRenderer {
   private coastDist: number[][];
   private gridRows: number;
   private gridCols: number;
+  private audioCtx: AudioContext | null = null;
+  private nextCryTime = 0;
 
   constructor(scene: Phaser.Scene, landGrid: boolean[][]) {
     this.scene = scene;
@@ -167,6 +226,22 @@ export class SeagullRenderer {
         }
       }
       if (!spawned) break;
+    }
+
+    // Seagull cry sounds at zoom 5+
+    if (cam.zoom >= SEAGULL_CRY_ZOOM_MIN) {
+      const now = Date.now();
+      if (now >= this.nextCryTime) {
+        if (!this.audioCtx) {
+          try { this.audioCtx = new AudioContext(); } catch { /* no audio */ }
+        }
+        if (this.audioCtx) {
+          const vol = 0.06 + (cam.zoom - SEAGULL_CRY_ZOOM_MIN) / (12 - SEAGULL_CRY_ZOOM_MIN) * 0.08;
+          playSeagullCry(this.audioCtx, vol);
+        }
+        this.nextCryTime = now + SEAGULL_CRY_INTERVAL_MIN +
+          Math.random() * (SEAGULL_CRY_INTERVAL_MAX - SEAGULL_CRY_INTERVAL_MIN);
+      }
     }
 
     // Occasionally spawn extras near coast

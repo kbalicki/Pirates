@@ -5,11 +5,14 @@ import { reduceCommand } from "./reducers.ts";
 import { advanceTime, dayToCalendar, daysInMonth } from "../systems/TimeSystem.ts";
 import { updateWeather } from "../systems/WeatherSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
+import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
 import { processCrewConsumption, hourBoundaryCrossed } from "../systems/CrewConsumptionSystem.ts";
 import { addLogEntry } from "../systems/EventLogSystem.ts";
 import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
+import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
+import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 
 export class WorldEngine {
   private terrainQuery: TerrainQuery;
@@ -68,13 +71,15 @@ export class WorldEngine {
     const oldTime = world.time;
     const newTime = advanceTime(world.time, dtTicks);
 
-    // 2.5 Day change logging
+    // 2.5 Day change logging + world events
     if (oldTime.day !== newTime.day) {
       world = addLogEntry(
         { ...world, time: newTime },
         "event.day_passed",
         { day: String(newTime.day) },
       );
+      // Generate/expire world events once per day
+      world = updateWorldEvents(world);
     }
 
     // 2.6 Crew consumption (once per game-hour)
@@ -126,11 +131,15 @@ export class WorldEngine {
         };
       } else {
         const prevEntityMode = playerEntity.mode;
+        const fleetMul = playerEntity.ship
+          ? fleetSpeedMultiplier(playerEntity.ship.classId as string, world.player.fleet ?? [])
+          : 1;
         const updatedPlayer = updateNavigation(
           playerEntity,
           weatherResult.weather,
           this.terrainQuery,
           dtTicks,
+          fleetMul,
         );
         updatedEntities[playerShipId] = updatedPlayer;
 
@@ -166,6 +175,16 @@ export class WorldEngine {
 
     // 6.5 NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);
+
+    // 6.5b NPC news exchange — check every ~20 ticks (~1s)
+    if (world.time.tick % 20 === 0) {
+      const newsResult = checkNpcNewsExchange(world);
+      world = newsResult.world;
+      if (newsResult.newNews.length > 0) {
+        allEvents.push({ type: "npc_news", news: newsResult.newNews });
+      }
+    }
+
     updatedEntities = { ...world.entities };
 
     // 6.6 Update all AI ship navigation (movement + collision)

@@ -3,7 +3,8 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { Transition } from "../../core/model/Events.ts";
 import { WorldEngine } from "../../core/engine/WorldEngine.ts";
 import { type TerrainType, findOpenSeaHeading } from "../../core/systems/NavigationSystem.ts";
-import { WorldRenderer } from "../render/WorldRenderer.ts";
+import { WorldRenderer, visionRangeForMast } from "../render/WorldRenderer.ts";
+import { fleetMaxMastHeight } from "../../core/systems/FleetSystem.ts";
 import { CameraController } from "../render/CameraController.ts";
 // MinimapRenderer removed — map available in SPACE menu
 import { CloudRenderer } from "../render/CloudRenderer.ts";
@@ -642,6 +643,12 @@ export class MainMapScene extends Phaser.Scene {
 
     if (result.events.length > 0) {
       this.worldRenderer.applyEvents(this, result.events);
+      // Show NPC news popup
+      for (const ev of result.events) {
+        if (ev.type === "npc_news" && ev.news.length > 0) {
+          this.showNewsPopup(ev.news);
+        }
+      }
     }
 
     if (result.transitions) {
@@ -656,17 +663,24 @@ export class MainMapScene extends Phaser.Scene {
     const fogSetting = localStorage.getItem("pc_fog") === "1";
     this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
 
-    // Render: direct position with gentle lerp (no prediction at 60Hz)
-    this.worldRenderer.sync(this, this.worldState);
-
+    // Calculate vision range from fleet's tallest mast
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
+    const playerShipClass = playerEntity?.ship ? SHIP_CLASSES[playerEntity.ship.classId as string] : null;
+    const maxMast = playerEntity?.ship
+      ? fleetMaxMastHeight(playerEntity.ship.classId as string, this.worldState.player.fleet ?? [])
+      : (playerShipClass?.mastHeight ?? 15);
+    const visionRange = visionRangeForMast(maxMast);
+
+    // Render: direct position with gentle lerp (no prediction at 60Hz)
+    this.worldRenderer.sync(this, this.worldState, visionRange);
+
     if (playerEntity) {
       const smoothPos = this.worldRenderer.getSmoothedPos(
         this.worldState.player.shipId as string, playerEntity,
       );
       this.cameraCtrl.setTarget(smoothPos);
       this.cameraCtrl.update();
-      this.worldRenderer.drawVisionCircle(this, smoothPos);
+      this.worldRenderer.drawVisionCircle(this, smoothPos, visionRange);
     }
 
     // City zoom scaling
@@ -733,11 +747,12 @@ export class MainMapScene extends Phaser.Scene {
     this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
+    this.uiOverlay?.updateFleet(this.worldState.player.fleet?.length ?? 0);
     // Check if sailing into wind (dead zone)
     const pe3 = this.worldState.entities[this.worldState.player.shipId as string];
-    const playerShipClass = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;
+    const psc = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;
     const inIrons = pe3?.mode === "sailing" && pe3.sailLevel > 0
-      && isInIrons(pe3.heading, this.worldState.weather.windDirRad, playerShipClass?.minWindAngle);
+      && isInIrons(pe3.heading, this.worldState.weather.windDirRad, psc?.minWindAngle);
 
     this.uiOverlay?.updateSail(
       inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey),
@@ -885,6 +900,51 @@ export class MainMapScene extends Phaser.Scene {
     }
 
     this.portPromptText!.setVisible(false);
+  }
+
+  private showNewsPopup(news: import("../../core/model/EntityState.ts").NewsItem[]): void {
+    const cam = this.cameras.main;
+    const cx = cam.width / 2;
+    const startY = 60;
+
+    // Semi-transparent backdrop
+    const bg = this.add.rectangle(cx, startY + news.length * 14, 400, 20 + news.length * 28, 0x1a1a2e, 0.85);
+    bg.setScrollFactor(0).setDepth(9000);
+    bg.setStrokeStyle(1, 0xccaa55, 0.5);
+
+    const title = this.add.text(cx, startY, "⚓ Wiadomości z morza", {
+      ...txt(13, { bold: true, color: "#ffdd88" }),
+      stroke: "#000000", strokeThickness: 3,
+    });
+    title.setOrigin(0.5, 0).setScrollFactor(0).setDepth(9001);
+
+    const textObjs = [bg, title];
+    let y = startY + 22;
+    for (const item of news) {
+      const headline = t(item.headline, item.vars as Record<string, string>);
+      const line = this.add.text(cx, y, `• ${headline}`, {
+        ...txt(11, { color: "#cccccc" }),
+        stroke: "#000000", strokeThickness: 2,
+        wordWrap: { width: 370 },
+      });
+      line.setOrigin(0.5, 0).setScrollFactor(0).setDepth(9001);
+      textObjs.push(line);
+      y += 26;
+    }
+
+    // Resize bg
+    bg.setSize(400, y - startY + 10);
+    bg.setPosition(cx, startY + (y - startY) / 2);
+
+    // Auto-fade after 5s
+    this.time.delayedCall(5000, () => {
+      for (const obj of textObjs) {
+        this.tweens.add({
+          targets: obj, alpha: 0, duration: 1000,
+          onComplete: () => obj.destroy(),
+        });
+      }
+    });
   }
 
   private handleTransition(t: Transition): void {

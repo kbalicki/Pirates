@@ -6,6 +6,23 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.5.0",
+    date: "2026-03-28",
+    changes: [
+      "9 ship classes: Pinnace, Sloop, Barque, Brigantine, Fluyt, Frigate, Fast Galleon, Galleon, Merchantman",
+      "Fleet system: max 3 ships, buy/sell/abandon escorts in shipyard",
+      "  Fleet speed = slowest ship, vision = tallest mast",
+      "World Events: 10 historical wars (1568-1697) + 7 random event types",
+      "NPC News: traders/navy carry news from ports, share on approach",
+      "  Tavern rumors now include local world event news",
+      "Seagull sounds: synthesized cries at zoom 5+ (Web Audio)",
+      "Sail level affects turn rate: reefed = +50% maneuverability",
+      "Spyglass range based on ship mast height (fleet max)",
+      "Wind physics: peak 150% at beam reach, realistic polar diagram",
+      "Help screen updated: 12 columns, all 9 ship classes with max knots + luneta range",
+    ],
+  },
+  {
     version: "0.9.4.0",
     date: "2026-03-27",
     changes: [

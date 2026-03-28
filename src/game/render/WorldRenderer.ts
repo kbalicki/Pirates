@@ -6,10 +6,17 @@ import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 // FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
 
-/** Visibility range — how far the player can see NPC ships (in world units) */
-const VISION_RANGE = 50;
+/** Base vision range (world units) — added to mast height bonus */
+const BASE_VISION = 25;
+/** World-px of vision per meter of mast height */
+const RANGE_PER_METER = 1.14;
 /** Distance over which ships fade in/out at the edge of vision range */
 const FADE_BAND = 25;
+
+/** Calculate vision range from mast height: Pinnace(10m)→36, Sloop(15m)→42, Galleon(35m)→65 */
+export function visionRangeForMast(mastHeight: number): number {
+  return BASE_VISION + mastHeight * RANGE_PER_METER;
+}
 
 /**
  * Map headingToDir8 index → sailship spritesheet frame index.
@@ -62,7 +69,7 @@ export class WorldRenderer {
     return this.visualPos.get(id) ?? entity.pos;
   }
 
-  sync(scene: Phaser.Scene, world: WorldState): void {
+  sync(scene: Phaser.Scene, world: WorldState, visionRange = 50): void {
     this.wakeTick++;
     const seenIds = new Set<string>();
     const playerShipId = world.player.shipId as string;
@@ -213,18 +220,18 @@ export class WorldRenderer {
       if (!isPlayer && entity.ai && playerEntity) {
         const dist = vec2Dist(entity.pos, playerEntity.pos);
         if (this.fogOfWarEnabled) {
-          if (dist > VISION_RANGE) {
+          if (dist > visionRange) {
             sprite.setAlpha(0);
-          } else if (dist > VISION_RANGE - FADE_BAND) {
+          } else if (dist > visionRange - FADE_BAND) {
             // Smooth fade at edge of vision
-            const t = (VISION_RANGE - dist) / FADE_BAND;
+            const t = (visionRange - dist) / FADE_BAND;
             sprite.setAlpha(t);
           } else {
             sprite.setAlpha(1);
           }
         } else {
           // Fog-of-war disabled (test mode): show all, dim distant ones slightly
-          const dimAlpha = dist > VISION_RANGE ? 0.4 : 1.0;
+          const dimAlpha = dist > visionRange ? 0.4 : 1.0;
           sprite.setAlpha(dimAlpha);
         }
 
@@ -321,14 +328,14 @@ export class WorldRenderer {
   }
 
   /** Draw vision range circle — uses Arc (not Graphics) to avoid blue rect artifacts. */
-  drawVisionCircle(scene: Phaser.Scene, playerPos: { x: number; y: number }): void {
+  drawVisionCircle(scene: Phaser.Scene, playerPos: { x: number; y: number }, visionRange: number): void {
     if (!this.visionCircle) {
-      this.visionCircle = scene.add.circle(0, 0, VISION_RANGE, 0x000000, 0);
+      this.visionCircle = scene.add.circle(0, 0, visionRange, 0x000000, 0);
       this.visionCircle.setStrokeStyle(1.5, 0xccaa55, this.fogOfWarEnabled ? 0.25 : 0.12);
       this.visionCircle.setDepth(100);
     }
     this.visionCircle.setPosition(playerPos.x, playerPos.y);
-    this.visionCircle.setRadius(VISION_RANGE);
+    this.visionCircle.setRadius(visionRange);
     const alpha = this.fogOfWarEnabled ? 0.25 : 0.12;
     this.visionCircle.setStrokeStyle(1.5, 0xccaa55, alpha);
   }

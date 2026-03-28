@@ -12,6 +12,7 @@ import type { PortId } from "../model/ids.ts";
 import { PORTS } from "../data/ports.ts";
 import type { PortDef } from "../data/ports.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
+import { getPortNews } from "./WorldEventSystem.ts";
 import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
@@ -39,25 +40,25 @@ const BEHAVIOR_TEMPLATES: Record<string, {
   awarenessRadius: number;
 }> = {
   trader: {
-    shipClasses: ["merchantman", "brigantine", "sloop"],
+    shipClasses: ["merchantman", "fluyt", "barque", "brigantine"],
     sailLevel: [0.5, 0.8],
     aggression: [0, 0.1],
     awarenessRadius: 120,
   },
   navy: {
-    shipClasses: ["frigate", "brigantine", "galleon"],
+    shipClasses: ["frigate", "brigantine", "galleon", "fast_galleon"],
     sailLevel: [0.6, 0.9],
     aggression: [0.3, 0.7],
     awarenessRadius: 200,
   },
   pirate: {
-    shipClasses: ["sloop", "brigantine", "frigate"],
+    shipClasses: ["pinnace", "sloop", "brigantine", "frigate"],
     sailLevel: [0.7, 1.0],
     aggression: [0.6, 1.0],
     awarenessRadius: 250,
   },
   pirate_hunter: {
-    shipClasses: ["frigate", "brigantine"],
+    shipClasses: ["frigate", "brigantine", "fast_galleon"],
     sailLevel: [0.8, 1.0],
     aggression: [0.5, 0.9],
     awarenessRadius: 300,
@@ -297,6 +298,8 @@ export function updateNpcSpawns(world: WorldState): WorldState {
           targetPortId: destPortKey as unknown as PortId,
           aggression,
           awarenessRadius: template.awarenessRadius,
+          news: getPortNews(world, portKey).slice(0, 5),
+          lastPortVisited: portKey,
         },
       };
 

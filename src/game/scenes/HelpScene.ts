@@ -4,6 +4,7 @@
  */
 import Phaser from "phaser";
 import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
+import { visionRangeForMast } from "../render/WorldRenderer.ts";
 import { txt } from "../ui/textStyle.ts";
 
 type HelpSection = "controls" | "ships" | "sailing" | "world";
@@ -113,34 +114,38 @@ export class HelpScene extends Phaser.Scene {
 
   private renderShips(left: number, y: number, right: number, contentH: number): void {
     y += 8;
-    // Header
-    const cols = [0, 100, 180, 240, 300, 355, 420, 495, 580, 680];
-    const headers = ["Statek", "Prędkość", "Skręt", "Kadłub", "Żagle", "Armaty", "Ładunek", "Załoga", "Kąt wiatru", "Ożaglowanie"];
+    // Header — max knots = speedBase × peakWindMod(1.5) × displayMultiplier(32)
+    const cols = [0, 105, 160, 215, 265, 310, 365, 425, 500, 565, 630, 710];
+    const headers = ["Statek", "Max kn", "Skręt", "Kadłub", "Żagle", "Armaty", "Ładunek", "Załoga", "Wiatr°", "Luneta", "Tonaż", "Ożaglow."];
     headers.forEach((h, i) => {
-      this.add.text(left + cols[i], y, h, { ...txt(12, { bold: true, color: "#888888" }) }).setDepth(5);
+      this.add.text(left + cols[i], y, h, { ...txt(10, { bold: true, color: "#888888" }) }).setDepth(5);
     });
-    y += 22;
+    y += 20;
 
     // Separator
     const g = this.add.graphics().setDepth(4);
     g.lineStyle(1, 0x444444, 0.5);
     g.lineBetween(left, y, right, y);
-    y += 6;
+    y += 4;
 
     // Ship rows
     for (const ship of Object.values(SHIP_CLASSES) as ShipClassDef[]) {
       if (y > contentH + 80) break;
-      this.add.text(left + cols[0], y, ship.name, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
-      this.add.text(left + cols[1], y, `${(ship.speedBase * 100).toFixed(0)}`, { ...txt(13, { color: "#88cc88" }) }).setDepth(5);
-      this.add.text(left + cols[2], y, `${(ship.turnRate * 100).toFixed(0)}°`, { ...txt(13, { color: "#88bbee" }) }).setDepth(5);
-      this.add.text(left + cols[3], y, `${ship.hullMax}`, { ...txt(13, { color: "#cccccc" }) }).setDepth(5);
-      this.add.text(left + cols[4], y, `${ship.sailsMax}`, { ...txt(13, { color: "#cccccc" }) }).setDepth(5);
-      this.add.text(left + cols[5], y, `${ship.cannons}`, { ...txt(13, { color: "#cc8888" }) }).setDepth(5);
-      this.add.text(left + cols[6], y, `${ship.cargoCap}t`, { ...txt(13, { color: "#ccaa66" }) }).setDepth(5);
-      this.add.text(left + cols[7], y, `${ship.crewMin}-${ship.crewMax}`, { ...txt(13, { color: "#cccccc" }) }).setDepth(5);
-      this.add.text(left + cols[8], y, `${ship.minWindAngle}°`, { ...txt(13, { color: "#ee8844" }) }).setDepth(5);
-      this.add.text(left + cols[9], y, ship.rigType, { ...txt(13, { color: "#aaaaaa" }) }).setDepth(5);
-      y += 28;
+      const maxKnots = (ship.speedBase * 1.5 * 32).toFixed(0);
+      const vision = Math.round(visionRangeForMast(ship.mastHeight));
+      this.add.text(left + cols[0], y, ship.name, { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      this.add.text(left + cols[1], y, `${maxKnots}`, { ...txt(11, { color: "#88cc88" }) }).setDepth(5);
+      this.add.text(left + cols[2], y, `${(ship.turnRate * 100).toFixed(0)}°`, { ...txt(11, { color: "#88bbee" }) }).setDepth(5);
+      this.add.text(left + cols[3], y, `${ship.hullMax}`, { ...txt(11, { color: "#cccccc" }) }).setDepth(5);
+      this.add.text(left + cols[4], y, `${ship.sailsMax}`, { ...txt(11, { color: "#cccccc" }) }).setDepth(5);
+      this.add.text(left + cols[5], y, `${ship.cannons}`, { ...txt(11, { color: "#cc8888" }) }).setDepth(5);
+      this.add.text(left + cols[6], y, `${ship.cargoCap}t`, { ...txt(11, { color: "#ccaa66" }) }).setDepth(5);
+      this.add.text(left + cols[7], y, `${ship.crewMin}-${ship.crewMax}`, { ...txt(11, { color: "#cccccc" }) }).setDepth(5);
+      this.add.text(left + cols[8], y, `${ship.minWindAngle}°`, { ...txt(11, { color: "#ee8844" }) }).setDepth(5);
+      this.add.text(left + cols[9], y, `${vision}`, { ...txt(11, { color: "#66ccff" }) }).setDepth(5);
+      this.add.text(left + cols[10], y, `${ship.tonnage}t`, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
+      this.add.text(left + cols[11], y, ship.rigType, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
+      y += 22;
     }
   }
 
@@ -150,10 +155,11 @@ export class HelpScene extends Phaser.Scene {
       { title: "Kierunek wiatru", desc: "Kompas pokazuje skąd wieje wiatr. Strzałka = kierunek." },
       { title: "Martwa strefa", desc: "Nie można płynąć bezpośrednio pod wiatr. Kąt zależy od statku (35°–60°)." },
       { title: "Hals (close hauled)", desc: "Tuż za martwą strefą. Wolno, ale możliwe. Najlepsza do bicia pod wiatr." },
-      { title: "Baksztag (beam reach)", desc: "~90° do wiatru. NAJSZYBSZY punkt żeglowania." },
-      { title: "Z wiatrem (running)", desc: "Wiatr w rufę. Szybko, ale nie najszybciej (brak siły bocznej)." },
+      { title: "Baksztag (beam reach)", desc: "~90° do wiatru. NAJSZYBSZY punkt żeglowania (150% prędkości bazowej)." },
+      { title: "Z wiatrem (running)", desc: "Wiatr w rufę. ~90-110% prędkości, ale nie najszybciej." },
       { title: "Poziomy żagli", desc: "W/S zmienia: Zwinięte → Zrefowane → Połowa → Pełne. Zmiana trwa 2s." },
       { title: "Typ ożaglowania", desc: "Fore-and-aft (slup): bliżej pod wiatr (35°). Square (galeon): dalej (60°)." },
+      { title: "Luneta", desc: "Zasięg widzenia zależy od wysokości masztów statku. Wyższy maszt = dalej widzisz." },
     ];
     for (const { title, desc } of lines) {
       this.add.text(left, y, title, { ...txt(15, { bold: true, color: "#ffdd88" }) }).setDepth(5);
@@ -166,7 +172,7 @@ export class HelpScene extends Phaser.Scene {
   private renderWorld(left: number, y: number, _right: number): void {
     y += 10;
     const lines = [
-      { title: "Karaiby, XVII wiek", desc: "45 portów, 5 frakcji: Hiszpania, Anglia, Francja, Holandia, Piraci." },
+      { title: "Karaiby, XVII wiek", desc: "45 portów, 5 frakcji: Hiszpania, Anglia, Francja, Holandia, Piraci. 9 klas statków." },
       { title: "Ery gry", desc: "1560–1700. Każda era ma inny układ sił i wydarzenia historyczne." },
       { title: "Porty", desc: "Kliknij miasto na mapie aby zobaczyć informacje. Podejdź blisko aby wejść." },
       { title: "Handel", desc: "Kupuj tanio towary eksportowe, sprzedawaj drogo w portach z popytem." },

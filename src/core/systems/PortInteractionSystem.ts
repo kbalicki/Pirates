@@ -3,6 +3,7 @@ import type { FactionId, PortId, ShipClassId } from "../model/ids.ts";
 import type { CitySize } from "../data/cities.ts";
 import { CITIES } from "../data/cities.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
+import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew } from "./FleetSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
@@ -338,6 +339,119 @@ export function buyShip(
   );
 
   return { world: newWorld, bought: true };
+}
+
+// ── Fleet Management ─────────────────────────────────────
+
+export type FleetBuyResult = {
+  world: WorldState;
+  bought: boolean;
+  error?: string;
+};
+
+/** Buy a ship and ADD it to the fleet as an escort (max 3 total). */
+export function buyShipToFleet(
+  world: WorldState,
+  newShipClassId: ShipClassId,
+): FleetBuyResult {
+  if (!canAddToFleet(world.player)) {
+    return { world, bought: false, error: "fleet_full" };
+  }
+
+  const classDef = SHIP_CLASSES[newShipClassId as string];
+  if (!classDef) return { world, bought: false, error: "unknown_ship_class" };
+
+  if (world.player.gold < classDef.buyPrice) {
+    return { world, bought: false, error: "not_enough_gold" };
+  }
+
+  // Check if player has enough crew to man the new ship
+  const playerEntity = world.entities[world.player.shipId as string];
+  const currentCrew = playerEntity?.ship?.crew.current ?? 0;
+  const newFleet = addToFleet(world.player.fleet ?? [], newShipClassId as string);
+  if (!newFleet) return { world, bought: false, error: "fleet_full" };
+
+  const flagshipClassId = playerEntity?.ship?.classId as string;
+  const minCrewNeeded = fleetMinCrew(flagshipClassId, newFleet);
+  if (currentCrew < minCrewNeeded) {
+    return { world, bought: false, error: "not_enough_crew" };
+  }
+
+  const newWorld = addLogEntry(
+    {
+      ...world,
+      player: {
+        ...world.player,
+        gold: world.player.gold - classDef.buyPrice,
+        fleet: newFleet,
+      },
+    },
+    "event.bought_escort",
+    { ship: classDef.name, cost: classDef.buyPrice },
+  );
+
+  return { world: newWorld, bought: true };
+}
+
+export type FleetSellResult = {
+  world: WorldState;
+  sold: boolean;
+  goldReceived: number;
+  error?: string;
+};
+
+/** Sell an escort ship from the fleet. Returns 40% of buy price. */
+export function sellFleetShip(
+  world: WorldState,
+  fleetIndex: number,
+): FleetSellResult {
+  const fleet = world.player.fleet ?? [];
+  if (fleetIndex < 0 || fleetIndex >= fleet.length) {
+    return { world, sold: false, goldReceived: 0, error: "invalid_index" };
+  }
+
+  const escort = fleet[fleetIndex];
+  const classDef = SHIP_CLASSES[escort.classId];
+  const sellPrice = classDef ? Math.floor(classDef.buyPrice * 0.4) : 0;
+
+  const newWorld = addLogEntry(
+    {
+      ...world,
+      player: {
+        ...world.player,
+        gold: world.player.gold + sellPrice,
+        fleet: removeFromFleet(fleet, fleetIndex),
+      },
+    },
+    "event.sold_escort",
+    { ship: classDef?.name ?? "Ship", price: sellPrice },
+  );
+
+  return { world: newWorld, sold: true, goldReceived: sellPrice };
+}
+
+/** Abandon an escort ship at sea (no gold received). */
+export function abandonFleetShip(
+  world: WorldState,
+  fleetIndex: number,
+): WorldState {
+  const fleet = world.player.fleet ?? [];
+  if (fleetIndex < 0 || fleetIndex >= fleet.length) return world;
+
+  const escort = fleet[fleetIndex];
+  const classDef = SHIP_CLASSES[escort.classId];
+
+  return addLogEntry(
+    {
+      ...world,
+      player: {
+        ...world.player,
+        fleet: removeFromFleet(fleet, fleetIndex),
+      },
+    },
+    "event.abandoned_ship",
+    { ship: classDef?.name ?? "Ship" },
+  );
 }
 
 // ── Rumors ────────────────────────────────────────────────

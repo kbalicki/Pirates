@@ -1,5 +1,6 @@
 import type { EntityId, PortId, ItemId } from "./ids.ts";
 import type { Vec2 } from "./WorldState.ts";
+import type { NewsItem } from "./EntityState.ts";
 
 export type Transition = {
   type: "GoToScene";
@@ -14,7 +15,8 @@ export type WorldEvent =
   | { type: "Encounter"; encounterId: string; kind: string }
   | { type: "PortEntered"; portId: PortId }
   | { type: "BattleStarted"; enemyId: EntityId }
-  | { type: "Trade"; itemId: ItemId; qty: number; goldDelta: number };
+  | { type: "Trade"; itemId: ItemId; qty: number; goldDelta: number }
+  | { type: "npc_news"; news: NewsItem[] };
 
 export type EngineResult<S, E> = {
   state: S;

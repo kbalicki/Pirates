@@ -64,9 +64,13 @@ export const PL: LocaleData = {
   "faction.pirates.name": "Piraci",
 
   // -- Ship Classes --
+  "ship.pinnace.name": "Pinas",
   "ship.sloop.name": "Slup",
+  "ship.barque.name": "Barka",
   "ship.brigantine.name": "Brygantyna",
+  "ship.fluyt.name": "Fluit",
   "ship.frigate.name": "Fregata",
+  "ship.fast_galleon.name": "Szybki Galeon",
   "ship.galleon.name": "Galeon",
   "ship.merchantman.name": "Statek handlowy",
 
@@ -316,6 +320,29 @@ export const PL: LocaleData = {
   "shipyard.buy": "[Kup]",
   "shipyard.current": "(obecny)",
   "event.bought_ship": "Zakupiono {{ship}} za {{cost}} Złoto.",
+  "event.bought_escort": "Dodano {{ship}} do floty za {{cost}} Złoto.",
+  "event.sold_escort": "Sprzedano {{ship}} za {{price}} Złoto.",
+  "event.abandoned_ship": "Porzucono {{ship}} na morzu.",
+  "fleet.title": "Flota",
+  "fleet.flagship": "Flagowiec",
+  "fleet.escort": "Eskorta",
+  "fleet.add_to_fleet": "[Dodaj do floty]",
+  "fleet.sell": "[Sprzedaj]",
+  "fleet.abandon": "[Porzuć]",
+  "fleet.full": "Flota pełna (max 3 statki).",
+  "fleet.not_enough_crew": "Za mało załogi na kolejny statek.",
+  "fleet.ships": "{{count}}/3 statków",
+
+  // -- World Events / News --
+  "news.war_start": "Wojna! {{faction1}} wypowiedziała wojnę {{faction2}}!",
+  "news.war_end": "Pokój między {{faction1}} a {{faction2}}.",
+  "news.epidemic": "Epidemia w {{port}}! Wielu zachorowało.",
+  "news.pirate_raid": "Piraci napadli na {{port}}! Handel przerwany.",
+  "news.trade_boom": "Rozkwit handlu w {{port}}! Kupcy zjeżdżają tłumnie.",
+  "news.slave_revolt": "Bunt niewolników w {{port}}! Kolonia w chaosie.",
+  "news.hurricane": "Huragan uderzył w {{port}}! Statki i budynki zniszczone.",
+  "news.treasure_fleet": "Hiszpańska flota skarbowa szykuje się w {{port}}.",
+  "news.new_governor": "Nowy gubernator mianowany w {{port}} przez {{faction}}.",
 
   // -- Ranks: Spain --
   "rank.spain.0": "Sin rango",

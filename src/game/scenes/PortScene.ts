@@ -16,7 +16,11 @@ import {
   getRumorKey,
   repairShip,
   buyShip,
+  buyShipToFleet,
+  sellFleetShip,
 } from "../../core/systems/PortInteractionSystem.ts";
+import { canAddToFleet, fleetSize } from "../../core/systems/FleetSystem.ts";
+import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -31,10 +35,10 @@ type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
-  1: ["sloop"],
-  2: ["sloop", "brigantine", "merchantman"],
-  3: ["sloop", "brigantine", "merchantman", "frigate"],
-  4: ["sloop", "brigantine", "merchantman", "frigate", "galleon"],
+  1: ["pinnace", "sloop"],
+  2: ["pinnace", "sloop", "barque", "brigantine", "fluyt"],
+  3: ["pinnace", "sloop", "barque", "brigantine", "fluyt", "merchantman", "frigate"],
+  4: ["pinnace", "sloop", "barque", "brigantine", "fluyt", "merchantman", "frigate", "fast_galleon", "galleon"],
 };
 
 export class PortScene extends Phaser.Scene {
@@ -485,6 +489,33 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(title);
     y += 28;
 
+    // World event news for this port
+    const portNews = getPortNews(this.worldState, this.currentPortId as string);
+    if (portNews.length > 0) {
+      for (const news of portNews.slice(0, 3)) {
+        const headline = t(news.headline, news.vars as Record<string, string>);
+        const newsText = this.add.text(this.infoX, y, `• ${headline}`, {
+          ...txt(12, { color: "#444444" }),
+          wordWrap: { width: DLG_W - PAD * 2 },
+        });
+        this.contentContainer.add(newsText);
+        y += 22;
+
+        // Log news player hasn't seen
+        const knownIds = new Set(this.worldState.knownEventIds ?? []);
+        if (!knownIds.has(news.eventId)) {
+          knownIds.add(news.eventId);
+          this.worldState = {
+            ...this.worldState,
+            knownEventIds: [...knownIds],
+          };
+          this.registry.set("worldState", this.worldState);
+        }
+      }
+      y += 6;
+    }
+
+    // Classic rumor
     const rumorText = this.add.text(this.infoX, y, t(rumorKey), {
       ...txt(13, { color: "#444444" }),
       wordWrap: { width: DLG_W - PAD * 2 },
@@ -764,6 +795,14 @@ export class PortScene extends Phaser.Scene {
           buyBtn.on("pointerdown", () => this.handleBuyShip(classKey));
         }
         this.contentContainer.add(buyBtn);
+
+        // Add to Fleet button (if fleet not full)
+        if (canAddToFleet(this.worldState.player) && canAfford) {
+          const fleetBtn = this.add.text(colPrice + 100, y, t("fleet.add_to_fleet"), txt(10, { bold: true, color: "#2255aa" }));
+          fleetBtn.setInteractive({ useHandCursor: true });
+          fleetBtn.on("pointerdown", () => this.handleBuyToFleet(classKey));
+          this.contentContainer.add(fleetBtn);
+        }
       }
 
       if (isFocused) {
@@ -772,6 +811,29 @@ export class PortScene extends Phaser.Scene {
       }
 
       y += 20;
+    }
+
+    // Fleet section — show escort ships with sell buttons
+    const fleet = this.worldState.player.fleet ?? [];
+    if (fleet.length > 0) {
+      y += 10;
+      this.contentContainer.add(this.add.text(colName, y, t("fleet.title") + ` (${fleetSize(this.worldState.player)}/3)`, txt(12, { bold: true, color: "#336699" })));
+      y += 18;
+      for (let fi = 0; fi < fleet.length; fi++) {
+        const esc = fleet[fi];
+        const escCls = SHIP_CLASSES[esc.classId];
+        if (!escCls) continue;
+        const hullPct = Math.round((esc.hullHp / esc.hullMax) * 100);
+        const sellPrice = Math.floor(escCls.buyPrice * 0.4);
+        this.contentContainer.add(this.add.text(colName, y, `${t("fleet.escort")}: ${escCls.name}`, txt(11, { color: "#336699" })));
+        this.contentContainer.add(this.add.text(colHull, y, `${hullPct}%`, txt(11, { color: hullPct > 50 ? "#555555" : "#aa3333" })));
+        const sellBtn = this.add.text(colPrice, y, `${t("fleet.sell")} (${sellPrice}g)`, txt(10, { bold: true, color: "#aa3333" }));
+        sellBtn.setInteractive({ useHandCursor: true });
+        const fleetIdx = fi;
+        sellBtn.on("pointerdown", () => this.handleSellFleetShip(fleetIdx));
+        this.contentContainer.add(sellBtn);
+        y += 18;
+      }
     }
 
     // Hint
@@ -838,6 +900,24 @@ export class PortScene extends Phaser.Scene {
   private handleBuyShip(classKey: string): void {
     const result = buyShip(this.worldState, shipClassId(classKey));
     if (result.bought) {
+      this.worldState = result.world;
+      this.registry.set("worldState", this.worldState);
+      this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "shipyard" as PortView });
+    }
+  }
+
+  private handleBuyToFleet(classKey: string): void {
+    const result = buyShipToFleet(this.worldState, shipClassId(classKey));
+    if (result.bought) {
+      this.worldState = result.world;
+      this.registry.set("worldState", this.worldState);
+      this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "shipyard" as PortView });
+    }
+  }
+
+  private handleSellFleetShip(fleetIndex: number): void {
+    const result = sellFleetShip(this.worldState, fleetIndex);
+    if (result.sold) {
       this.worldState = result.world;
       this.registry.set("worldState", this.worldState);
       this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "shipyard" as PortView });
