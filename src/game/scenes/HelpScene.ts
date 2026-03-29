@@ -26,8 +26,8 @@ export class HelpScene extends Phaser.Scene {
     backdrop.setInteractive();
 
     // Panel — fill most of screen
-    const pw = Math.min(900, cam.width - 60);
-    const ph = Math.min(620, cam.height - 60);
+    const pw = Math.min(900, cam.width - 40);
+    const ph = Math.min(700, cam.height - 40);
     this.add.rectangle(cx, cy, pw + 4, ph + 4, 0x1a1a2e).setDepth(1);
     this.add.rectangle(cx, cy, pw, ph, 0x0a0a1a, 0.97).setDepth(2);
     const border = this.add.graphics().setDepth(3);
@@ -162,10 +162,10 @@ export class HelpScene extends Phaser.Scene {
       { title: "Luneta", desc: "Zasięg widzenia zależy od wysokości masztów statku. Wyższy maszt = dalej widzisz." },
     ];
     for (const { title, desc } of lines) {
-      this.add.text(left, y, title, { ...txt(15, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      y += 18;
+      this.add.text(left + 12, y, desc, { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
       y += 22;
-      this.add.text(left + 12, y, desc, { ...txt(13, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
-      y += 28;
     }
   }
 
@@ -179,10 +179,10 @@ export class HelpScene extends Phaser.Scene {
       { title: "Reputacja", desc: "Każda frakcja pamięta twoje czyny. Wrogość = trudniejszy dostęp do portów." },
     ];
     for (const { title, desc } of lines) {
-      this.add.text(left, y, title, { ...txt(15, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      y += 18;
+      this.add.text(left + 12, y, desc, { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
       y += 22;
-      this.add.text(left + 12, y, desc, { ...txt(13, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
-      y += 28;
     }
   }
 }
