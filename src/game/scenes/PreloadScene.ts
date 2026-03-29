@@ -87,6 +87,9 @@ export class PreloadScene extends Phaser.Scene {
     // Wind loop (CC BY 3.0 — Jonathan Shaw / InspectorJ, looped by AntumDeluge)
     this.load.audio("wind_loop", "assets/audio/wind_loop.ogg");
 
+    // Seagull cry (soundreality — Pixabay license)
+    this.load.audio("seagull", "assets/audio/seagull.mp3");
+
     // Caribbean map background (3200x2400, matches game world)
     this.load.image("caribbean_bg", "assets/map/caribbean_bg.png");
 

@@ -67,6 +67,8 @@ export class MainMapScene extends Phaser.Scene {
   private portPromptText: Phaser.GameObjects.Text | null = null;
   private portDialogOpen = false;
   private wasNearPort = false;
+  private shipEncounterOpen = false;
+  private lastEncounteredNpcId: string | null = null;
   // versionText moved to UIOverlayScene
   private onResize: ((gameSize: Phaser.Structs.Size) => void) | null = null;
   private windSound: Phaser.Sound.BaseSound | null = null;
@@ -643,12 +645,6 @@ export class MainMapScene extends Phaser.Scene {
 
     if (result.events.length > 0) {
       this.worldRenderer.applyEvents(this, result.events);
-      // Show NPC news popup
-      for (const ev of result.events) {
-        if (ev.type === "npc_news" && ev.news.length > 0) {
-          this.showNewsPopup(ev.news);
-        }
-      }
     }
 
     if (result.transitions) {
@@ -790,6 +786,7 @@ export class MainMapScene extends Phaser.Scene {
 
     this.updateHud();
     this.updatePortPrompt();
+    this.checkNpcEncounter();
   }
 
   /** Steer ship/crew toward mouse cursor while left button is held. */
@@ -867,6 +864,57 @@ export class MainMapScene extends Phaser.Scene {
     };
   }
 
+  /** Check if player is close to a friendly NPC — trigger encounter dialog. */
+  private checkNpcEncounter(): void {
+    if (this.shipEncounterOpen || this.portDialogOpen) return;
+
+    const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
+    if (!playerEntity || playerEntity.mode !== "sailing") return;
+
+    const ENCOUNTER_RANGE = 18; // world px — very close, like port approach
+    const playerShipId = this.worldState.player.shipId as string;
+
+    for (const [id, entity] of Object.entries(this.worldState.entities)) {
+      if (id === playerShipId) continue;
+      if (entity.kind !== "ship" || !entity.ai) continue;
+      // Only friendly NPC trigger encounter (trader, navy, escort)
+      const behavior = entity.ai.behavior;
+      if (behavior === "pirate" || behavior === "pirate_hunter") continue;
+
+      const dist = vec2Dist(playerEntity.pos, entity.pos);
+      if (dist > ENCOUNTER_RANGE) continue;
+
+      // Don't re-trigger same NPC until they move away
+      if (id === this.lastEncounteredNpcId) continue;
+
+      this.shipEncounterOpen = true;
+      this.lastEncounteredNpcId = id;
+
+      this.scene.pause();
+      this.scene.launch("ShipEncounterScene", {
+        worldState: this.worldState,
+        npcEntityId: id,
+      });
+
+      // When encounter scene stops, resume
+      this.scene.get("ShipEncounterScene")?.events.once("shutdown", () => {
+        this.shipEncounterOpen = false;
+        // Retrieve updated worldState from registry
+        this.worldState = this.registry.get("worldState") ?? this.worldState;
+      });
+
+      return; // one encounter at a time
+    }
+
+    // Reset last encountered NPC when far from all
+    if (this.lastEncounteredNpcId) {
+      const lastNpc = this.worldState.entities[this.lastEncounteredNpcId];
+      if (!lastNpc || vec2Dist(playerEntity.pos, lastNpc.pos) > ENCOUNTER_RANGE * 3) {
+        this.lastEncounteredNpcId = null;
+      }
+    }
+  }
+
   private updatePortPrompt(): void {
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
 
@@ -900,51 +948,6 @@ export class MainMapScene extends Phaser.Scene {
     }
 
     this.portPromptText!.setVisible(false);
-  }
-
-  private showNewsPopup(news: import("../../core/model/EntityState.ts").NewsItem[]): void {
-    const cam = this.cameras.main;
-    const cx = cam.width / 2;
-    const startY = 60;
-
-    // Semi-transparent backdrop
-    const bg = this.add.rectangle(cx, startY + news.length * 14, 400, 20 + news.length * 28, 0x1a1a2e, 0.85);
-    bg.setScrollFactor(0).setDepth(9000);
-    bg.setStrokeStyle(1, 0xccaa55, 0.5);
-
-    const title = this.add.text(cx, startY, "⚓ Wiadomości z morza", {
-      ...txt(13, { bold: true, color: "#ffdd88" }),
-      stroke: "#000000", strokeThickness: 3,
-    });
-    title.setOrigin(0.5, 0).setScrollFactor(0).setDepth(9001);
-
-    const textObjs = [bg, title];
-    let y = startY + 22;
-    for (const item of news) {
-      const headline = t(item.headline, item.vars as Record<string, string>);
-      const line = this.add.text(cx, y, `• ${headline}`, {
-        ...txt(11, { color: "#cccccc" }),
-        stroke: "#000000", strokeThickness: 2,
-        wordWrap: { width: 370 },
-      });
-      line.setOrigin(0.5, 0).setScrollFactor(0).setDepth(9001);
-      textObjs.push(line);
-      y += 26;
-    }
-
-    // Resize bg
-    bg.setSize(400, y - startY + 10);
-    bg.setPosition(cx, startY + (y - startY) / 2);
-
-    // Auto-fade after 5s
-    this.time.delayedCall(5000, () => {
-      for (const obj of textObjs) {
-        this.tweens.add({
-          targets: obj, alpha: 0, duration: 1000,
-          onComplete: () => obj.destroy(),
-        });
-      }
-    });
   }
 
   private handleTransition(t: Transition): void {

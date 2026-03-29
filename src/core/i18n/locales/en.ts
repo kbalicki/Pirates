@@ -344,6 +344,23 @@ export const EN: LocaleData = {
   "news.treasure_fleet": "Spanish treasure fleet preparing to sail from {{port}}.",
   "news.new_governor": "New governor appointed in {{port}} by {{faction}}.",
 
+  // -- Ship Encounter --
+  "encounter.behavior_trader": "Merchant",
+  "encounter.behavior_navy": "Navy Warship",
+  "encounter.behavior_escort": "Escort",
+  "encounter.behavior_pirate": "Pirate",
+  "encounter.behavior_pirate_hunter": "Pirate Hunter",
+  "encounter.cannons": "Guns",
+  "encounter.crew": "Crew",
+  "encounter.hull": "Hull",
+  "encounter.ask_news": "Ask for news",
+  "encounter.no_news": "No news to share",
+  "encounter.attack": "Attack!",
+  "encounter.sail_away": "Sail away",
+  "encounter.not_available": "not yet",
+  "encounter.news_title": "News from the seas",
+  "encounter.ok": "[ OK ]",
+
   // -- Ranks: Spain --
   "rank.spain.0": "Sin rango",
   "rank.spain.1": "Capitán",
