@@ -6,6 +6,35 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.6.0",
+    date: "2026-05-11",
+    changes: [
+      "SEA BATTLES — Sid Meier's Pirates! style combat scene",
+      "  ?battle=1|trader|navy|pirate|hunter URL params for direct testing",
+      "  Camera follows player (always centered), arena 3× viewport",
+      "  Manual broadsides: Q (port) / E (starboard), arc-restricted (no fore/aft)",
+      "  3 ammo types: 1=Round, 2=Chain, 3=Grape — switching resets reload",
+      "  Flying cannonballs with parabolic arc, splash on miss/overshoot",
+      "  Cannon range = half screen; visible port + starboard arc indicators",
+      "  Per-cannon damage scaling: broadside = ship.cannons / 2",
+      "  Hull armor per ship class (Galleon 0.60 thick → Sloop 0.10 paper)",
+      "  Quadratic distance falloff + ×1.6 point-blank bonus + accuracy roll",
+      "  Wind- and hull-modulated steering (damaged hull = sluggish rudder)",
+      "  Sail level affects speed; W/S cycles Furled / Battle / Full",
+      "  9-second reload per broadside, color-coded L (red) / R (green) bars",
+      "  AI archetypes: aggressive / defensive / tactical; crew-ratio override",
+      "  Enemy with ≥1.5× player crew aims to board; ≤0.5× tries to flee",
+      "  Boarding (B) when enemy weakened; capture adds ship to fleet",
+      "  Auto-surrender at hull ≤10% OR sails ≤10% OR crew <10",
+      "  60s far-distance → 60s countdown → auto-disengage",
+      "  Battle Help (H) — in-battle manual with full damage formula spec",
+      "  HUD top-right: ammo / sails / speed (kn) / cannons",
+      "  Under each ship: hull/sails bars + crew & cannon counts + reload",
+      "  Damage floaters: hull (red) / sails (cyan) / crew (orange), 2s",
+      "  Outcomes apply to world: damage, loot, capture, reputation",
+    ],
+  },
+  {
     version: "0.9.5.0",
     date: "2026-03-28",
     changes: [

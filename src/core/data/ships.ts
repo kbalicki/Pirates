@@ -25,6 +25,10 @@ export type ShipClassDef = {
   tonnage: number;
   /** Draft in meters (how deep ship sits). */
   draft: number;
+  /** Hull armor 0..1 — fraction of incoming cannon damage absorbed by the planking.
+   *  0.10 = nimble light hull, 0.60 = thick galleon-class oak sides.
+   *  Damage taken = incoming × (1 − armor). Grape shot bypasses 70% of armor (anti-personnel). */
+  armor: number;
 };
 
 export const SHIP_PINNACE = shipClassId("pinnace");
@@ -57,6 +61,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Fore-and-aft",
     tonnage: 30,
     draft: 1.0,
+    armor: 0.10,
   },
   sloop: {
     id: SHIP_SLOOP,
@@ -77,6 +82,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Fore-and-aft",
     tonnage: 50,
     draft: 1.5,
+    armor: 0.12,
   },
   barque: {
     id: SHIP_BARQUE,
@@ -97,6 +103,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Mixed",
     tonnage: 100,
     draft: 2.0,
+    armor: 0.22,
   },
   brigantine: {
     id: SHIP_BRIGANTINE,
@@ -117,6 +124,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Mixed",
     tonnage: 120,
     draft: 2.5,
+    armor: 0.28,
   },
   fluyt: {
     id: SHIP_FLUYT,
@@ -137,6 +145,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Square",
     tonnage: 200,
     draft: 4.0,
+    armor: 0.40,
   },
   frigate: {
     id: SHIP_FRIGATE,
@@ -157,6 +166,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Square",
     tonnage: 300,
     draft: 4.0,
+    armor: 0.42,
   },
   fast_galleon: {
     id: SHIP_FAST_GALLEON,
@@ -177,6 +187,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Square",
     tonnage: 400,
     draft: 4.5,
+    armor: 0.50,
   },
   galleon: {
     id: SHIP_GALLEON,
@@ -197,6 +208,7 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Square",
     tonnage: 500,
     draft: 5.5,
+    armor: 0.60,
   },
   merchantman: {
     id: SHIP_MERCHANTMAN,
@@ -217,5 +229,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
     rigType: "Square",
     tonnage: 400,
     draft: 5.0,
+    armor: 0.50,
   },
 };

@@ -1,4 +1,5 @@
 import type Phaser from "phaser";
+import { getSoundGain } from "../settings/SoundSettings.ts";
 
 /**
  * Known music track identifiers.
@@ -55,9 +56,10 @@ export class MusicManager {
     }
 
     this.currentTrack = track;
+    const finalVolume = volume * getSoundGain("music");
     const sound = this.game.sound.add(assetKey, {
       loop: TRACK_LOOP[track],
-      volume,
+      volume: finalVolume,
     });
     this.currentSound = sound;
 

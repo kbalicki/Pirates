@@ -197,6 +197,57 @@ function factionName(id: string): string {
 
 // ── Main update function ─────────────────────────────────
 
+/**
+ * Seed an initial pool of world events at game start so NPCs always have
+ * something to talk about on day 1. Picks 4-6 random event templates and
+ * scatters them across random ports with a positive remaining duration.
+ */
+export function seedInitialEvents(world: WorldState): WorldState {
+  if (world.worldEvents.length > 0) return world;
+  let w = world;
+  let rng = w.rng;
+  const allPorts = Object.keys(PORTS);
+  const seedCount = 5;
+
+  for (let i = 0; i < seedCount; i++) {
+    const tmplR = rngNextFloat(rng, 0, 1);
+    rng = tmplR.state;
+    const tmpl = RANDOM_EVENTS[Math.floor(tmplR.value * RANDOM_EVENTS.length)];
+    if (!tmpl) continue;
+
+    const portR = rngNext(rng);
+    rng = portR.state;
+    const port = allPorts[portR.value % allPorts.length];
+    const portDef = PORTS[port];
+    const portName = portDef?.name ?? port;
+    const factionId = portDef?.factionId as string ?? "pirates";
+
+    const durR = rngNextFloat(rng, 0, 1);
+    rng = durR.state;
+    const duration = Math.round(
+      tmpl.durationDays[0] + durR.value * (tmpl.durationDays[1] - tmpl.durationDays[0]),
+    );
+
+    const eventId = `seed_${tmpl.type}_${i}_${port}`;
+    const newEvent: WorldEventState = {
+      id: eventId,
+      type: tmpl.type,
+      startDay: w.time.day,
+      endDay: w.time.day + duration,
+      ports: tmpl.affectsPorts === 0
+        ? allPorts.filter(k => PORTS[k].factionId === "spain")
+        : [port],
+      factions: [factionId],
+      severity: tmpl.severity,
+      headline: tmpl.headline,
+      vars: { port: portName, faction: factionName(factionId), duration },
+    };
+    w = { ...w, worldEvents: [...w.worldEvents, newEvent] };
+  }
+
+  return { ...w, rng };
+}
+
 /** Call once per game day. Returns updated world with new events. */
 export function updateWorldEvents(world: WorldState): WorldState {
   const cal = dayToCalendar(world.time.day, world.startYear);

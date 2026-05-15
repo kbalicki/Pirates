@@ -23,6 +23,8 @@ import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
+import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
+import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
 import { CHANGELOG } from "../../changelog.ts";
 
@@ -296,7 +298,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     const shipClassName = t("ship." + (ship.classId as string) + ".name");
     const shipInfo = this.add.text(x + 10, y,
-      `1. ${shipClassName}\n` +
+      `1. ${shipClassName} (${t("fleet.flagship")})\n` +
       `   ${t("hud.hull", { current: Math.round(ship.hullHp), max: ship.hullMax })}` +
       `  |  ${t("hud.sails", { current: Math.round(ship.sailsHp), max: ship.sailsMax })}` +
       `  |  ${t("cabin.cannons", { count: ship.cannons })}`,
@@ -304,9 +306,50 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(shipInfo);
     y += 38;
 
+    // Fleet ships — show with abandon button (at-sea action; sell is in shipyard)
+    const fleet = player.fleet ?? [];
+    if (fleet.length > 0) {
+      for (let i = 0; i < fleet.length; i++) {
+        const fs = fleet[i];
+        const fsClassName = t("ship." + fs.classId + ".name");
+        const fsInfo = this.add.text(x + 10, y,
+          `${i + 2}. ${fsClassName}\n` +
+          `   ${t("hud.hull", { current: Math.round(fs.hullHp), max: fs.hullMax })}` +
+          `  |  ${t("hud.sails", { current: Math.round(fs.sailsHp), max: fs.sailsMax })}` +
+          `  |  ${t("cabin.cannons", { count: fs.cannons })}`,
+          { ...txt(11), lineSpacing: 4 });
+        this.contentContainer.add(fsInfo);
+
+        const fsIdx = i;
+        const abandonBtn = this.add.text(x + 320, y, t("fleet.abandon"),
+          txt(11, { bold: true, color: "#aa3333" }));
+        abandonBtn.setInteractive({ useHandCursor: true });
+        abandonBtn.on("pointerdown", () => this.doAbandonFleet(fsIdx));
+        this.contentContainer.add(abandonBtn);
+
+        y += 38;
+      }
+    }
+
     // Gold
     this.contentContainer.add(
       this.add.text(x, y, `${t("hud.gold")}: ${player.gold}`, txt(14, { bold: true })));
+  }
+
+  /** Apply newly-changed volume to live sources without leaving the menu. */
+  private applyVolumeLive(ch: SoundChannel): void {
+    if (ch === "wind") {
+      const main = this.scene.get("MainMapScene") as Phaser.Scene & { applyWindVolume?: () => void };
+      main?.applyWindVolume?.();
+    }
+    // music: re-applied next time a track starts (rare during a paused menu)
+    // seagulls: applied at next cry interval (≤30s)
+  }
+
+  private doAbandonFleet(index: number): void {
+    this.worldState = abandonFleetShip(this.worldState, index);
+    this.registry.set("worldState", this.worldState);
+    this.switchTab("cabin");
   }
 
   // ---- Tab 2: Captain ----
@@ -676,7 +719,84 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.switchTab("settings");
     });
     this.contentContainer.add(soundLabel);
-    y += 28;
+    y += 24;
+
+    // Volume sliders: wind, seagulls, music (0-10)
+    this.contentContainer.add(
+      this.add.text(x, y, t("sound.section_title"), txt(12, { bold: true, color: "#555555" })));
+    y += 20;
+
+    const channels: { id: SoundChannel; labelKey: string }[] = [
+      { id: "wind", labelKey: "sound.wind" },
+      { id: "seagulls", labelKey: "sound.seagulls" },
+      { id: "music", labelKey: "sound.music" },
+    ];
+
+    for (const ch of channels) {
+      const volIdx = settingsItems.length;
+      settingsItems.push({ type: "vol:" + ch.id, y });
+      const isVolFocused = this.selectedItemIndex === volIdx;
+      const lvl = getSoundLevel(ch.id);
+
+      const labelMarker = isVolFocused ? "▶ " : "  ";
+      const chLabel = this.add.text(x + 4, y, labelMarker + t(ch.labelKey),
+        txt(11, { bold: isVolFocused, color: isVolFocused ? "#000000" : "#1a1a1a" }));
+      this.contentContainer.add(chLabel);
+
+      // [-] button
+      const minus = this.add.text(x + 100, y, "[-]",
+        txt(12, { bold: true, color: lvl > SOUND_MIN ? "#2266aa" : "#bbbbbb" }));
+      if (lvl > SOUND_MIN) {
+        minus.setInteractive({ useHandCursor: true });
+        minus.on("pointerdown", () => {
+          setSoundLevel(ch.id, lvl - 1);
+          this.applyVolumeLive(ch.id);
+          this.switchTab("settings");
+        });
+      }
+      this.contentContainer.add(minus);
+
+      // Value bar: 10 segments
+      const barX = x + 130;
+      const barY = y + 7;
+      const segW = 10;
+      const segH = 10;
+      for (let i = 0; i < SOUND_MAX; i++) {
+        const filled = i < lvl;
+        const seg = this.add.rectangle(barX + i * (segW + 2), barY, segW, segH,
+          filled ? 0x44aa44 : 0xdddddd);
+        seg.setOrigin(0, 0.5);
+        this.contentContainer.add(seg);
+        const border = this.add.graphics();
+        border.lineStyle(1, 0x999999, 1);
+        border.strokeRect(barX + i * (segW + 2), barY - segH / 2, segW, segH);
+        this.contentContainer.add(border);
+      }
+
+      // [+] button
+      const plus = this.add.text(barX + SOUND_MAX * (segW + 2) + 6, y, "[+]",
+        txt(12, { bold: true, color: lvl < SOUND_MAX ? "#2266aa" : "#bbbbbb" }));
+      if (lvl < SOUND_MAX) {
+        plus.setInteractive({ useHandCursor: true });
+        plus.on("pointerdown", () => {
+          setSoundLevel(ch.id, lvl + 1);
+          this.applyVolumeLive(ch.id);
+          this.switchTab("settings");
+        });
+      }
+      this.contentContainer.add(plus);
+
+      // Numeric value
+      const numText = this.add.text(barX + SOUND_MAX * (segW + 2) + 38, y, String(lvl),
+        txt(11, { bold: true, color: "#555555" }));
+      this.contentContainer.add(numText);
+
+      y += 22;
+    }
+
+    this.contentContainer.add(
+      this.add.text(x + 10, y, t("sound.hint"), txt(10, { color: "#888888" })));
+    y += 22;
 
     // Visual Style (asset pack) — numbered radio list
     this.contentContainer.add(
@@ -896,6 +1016,12 @@ export class OptionsMenuScene extends Phaser.Scene {
         const isOn = debugRawKb === null ? true : debugRawKb === "1";
         localStorage.setItem("pc_debug", isOn ? "0" : "1");
         this.switchTab("settings");
+      } else if (item.type.startsWith("vol:")) {
+        const ch = item.type.split(":")[1] as SoundChannel;
+        const cur = getSoundLevel(ch);
+        const next = cur >= SOUND_MAX ? SOUND_MIN : cur + 1;
+        setSoundLevel(ch, next);
+        this.switchTab("settings");
       } else if (item.type === "lang") {
         const current = getLang();
         setLang(current === "en" ? "pl" : "en");
@@ -903,11 +1029,23 @@ export class OptionsMenuScene extends Phaser.Scene {
       }
     };
 
+    const adjustVolume = (delta: number) => {
+      const item = settingsItems[this.selectedItemIndex];
+      if (!item || !item.type.startsWith("vol:")) return;
+      const ch = item.type.split(":")[1] as SoundChannel;
+      setSoundLevel(ch, getSoundLevel(ch) + delta);
+      this.applyVolumeLive(ch);
+      this.switchTab("settings");
+    };
+
     this.bindTabKey("keydown-UP", moveUp);
     this.bindTabKey("keydown-W", moveUp);
     this.bindTabKey("keydown-DOWN", moveDown);
     this.bindTabKey("keydown-S", moveDown);
     this.bindTabKey("keydown-ENTER", confirmSetting);
+    // ← / → adjust volume when a vol: item is focused (Settings tab only)
+    this.bindTabKey("keydown-A", () => adjustVolume(-1));
+    this.bindTabKey("keydown-D", () => adjustVolume(1));
   }
 
   private cycleSpeed(): void {

@@ -2,6 +2,7 @@ import Phaser from "phaser";
 import { initLang } from "../../core/i18n/index.ts";
 import { initAssetPack } from "../settings/AssetPack.ts";
 import { initZoomSetting } from "../settings/ZoomSetting.ts";
+import { initSoundSettings } from "../settings/SoundSettings.ts";
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -16,6 +17,7 @@ export class BootScene extends Phaser.Scene {
     initLang();
     initAssetPack();
     initZoomSetting();
+    initSoundSettings();
     this.scene.start("PreloadScene");
   }
 }

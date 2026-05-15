@@ -109,7 +109,6 @@ export class ShipEncounterScene extends Phaser.Scene {
     this.actions.push({
       label: t("encounter.attack"),
       action: "attack",
-      disabled: true, // combat not implemented yet
     });
     this.actions.push({
       label: t("encounter.sail_away"),
@@ -251,7 +250,12 @@ export class ShipEncounterScene extends Phaser.Scene {
         }
         break;
       case "attack":
-        // Combat not yet implemented
+        // Launch sea battle scene with the current encountered NPC
+        this.scene.stop();
+        this.scene.start("SeaBattleScene", {
+          worldState: this.worldState,
+          enemyId: this.npcEntity.id,
+        });
         break;
       case "leave":
         this.scene.stop();

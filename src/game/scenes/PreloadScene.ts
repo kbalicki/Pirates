@@ -167,15 +167,24 @@ export class PreloadScene extends Phaser.Scene {
     this.registry.set("musicManager", new MusicManager(this.game));
 
     // URL params for dev/debug:
-    //   ?skip       — bypass character creation, go straight to map
-    //   ?zoom=N     — set initial zoom level (e.g. ?zoom=z10 or ?zoom=8)
-    //   ?debug=1    — enable debug mode
+    //   ?skip        — bypass character creation, go straight to map
+    //   ?zoom=N      — set initial zoom level (e.g. ?zoom=z10 or ?zoom=8)
+    //   ?debug=1     — enable debug mode
+    //   ?battle=1    — bypass everything, launch straight into a sea battle vs a test enemy
+    //   ?battle=trader|navy|pirate — choose enemy archetype
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
     }
     if (params.has("debug")) {
       localStorage.setItem("pc_debug", params.get("debug")!);
+    }
+    if (params.has("battle")) {
+      const world = this.createBattleWorld(params.get("battle") ?? "1");
+      this.registry.set("worldState", world);
+      // jump straight to combat — testMode triggers random corner spawn
+      this.scene.start("SeaBattleScene", { worldState: world, enemyId: "test_enemy", testMode: true });
+      return;
     }
     if (params.has("skip")) {
       const world = createNewWorldState(Date.now());
@@ -184,6 +193,48 @@ export class PreloadScene extends Phaser.Scene {
     } else {
       this.scene.start("CharacterCreationScene");
     }
+  }
+
+  /** Build a minimal world with the player + one test enemy NPC near them for ?battle testing. */
+  private createBattleWorld(kind: string): import("../../core/model/WorldState.ts").WorldState {
+    const world = createNewWorldState(Date.now());
+    const playerEntity = world.entities[world.player.shipId as string];
+    if (!playerEntity) return world;
+    // Pick enemy behavior from ?battle=trader|navy|pirate (default = trader)
+    let behavior: "trader" | "navy" | "pirate" | "pirate_hunter" = "trader";
+    if (kind === "navy") behavior = "navy";
+    else if (kind === "pirate") behavior = "pirate";
+    else if (kind === "hunter") behavior = "pirate_hunter";
+    const enemy: import("../../core/model/EntityState.ts").EntityState = {
+      id: "test_enemy" as import("../../core/model/ids.ts").EntityId,
+      kind: "ship",
+      pos: { x: playerEntity.pos.x + 50, y: playerEntity.pos.y },
+      vel: { x: 0, y: 0 },
+      heading: Math.PI,
+      sailLevel: 0.5,
+      mode: "sailing",
+      depthOffset: 0,
+      ship: {
+        classId: "brigantine" as import("../../core/model/ids.ts").ShipClassId,
+        factionId: (behavior === "navy" ? "england" : behavior === "pirate" || behavior === "pirate_hunter" ? "pirates" : "spain") as import("../../core/model/ids.ts").FactionId,
+        hullHp: 80, hullMax: 80,
+        sailsHp: 60, sailsMax: 60,
+        cannons: 16,
+        cargoCap: 100,
+        cargo: {},
+        crew: { current: 30, max: 40, morale: 0.7 },
+      },
+      ai: {
+        behavior,
+        state: "travel",
+        aggression: 0.5,
+        awarenessRadius: 200,
+      },
+    };
+    return {
+      ...world,
+      entities: { ...world.entities, [enemy.id as string]: enemy },
+    };
   }
 
 }

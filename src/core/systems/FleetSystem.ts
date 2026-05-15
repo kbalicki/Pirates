@@ -1,15 +1,15 @@
 /**
  * Fleet management system.
  *
- * The player's fleet = 1 flagship (entity.ship) + 0-2 escorts (player.fleet[]).
- * Max 3 ships total.
+ * The player's fleet = 1 flagship (entity.ship) + 0-2 extra ships (player.fleet[]).
+ * Max 3 ships total. All ships in the fleet belong to the player.
  *
  * Fleet rules:
  * - Speed = MIN speedBase across all ships (slowest ship limits fleet)
  * - Vision = MAX mastHeight across all ships (tallest mast sees furthest)
  * - Crew = shared pool on flagship; each ship needs crewMin to operate
  * - Cargo = flagship only
- * - Abandon escort at sea anytime; sell in shipyard
+ * - Abandon extra ship at sea anytime; sell in shipyard
  * - Capture in combat (future) adds to fleet if slot available
  */
 

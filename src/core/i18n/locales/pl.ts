@@ -218,7 +218,65 @@ export const PL: LocaleData = {
   "battle.defeat": "PORAŻKA! Twój statek został zniszczony...",
   "battle.disengaged": "Udało ci się wycofać z bitwy.",
   "battle.continue": "Kliknij aby kontynuować",
-  "battle.controls": "WSAD: Żagle/Ster  |  Q: Ogień lewo  |  E: Ogień prawo  |  ESC: Wycofaj",
+  "battle.controls": "WSAD: Żagle/Ster  |  Q/E: Ogień L/P  |  1/2/3: Amunicja  |  B: Abordaż  |  H: Pomoc  |  ESC: Wycofaj",
+  "battle.log_won": "Zwycięstwo na morzu! +{{gold}} Złoto.",
+  "battle.log_captured": "Przejęto statek i dołączono do floty! +{{gold}} Złoto.",
+  "battle.log_lost": "Bitwa przegrana — statek poważnie uszkodzony.",
+  "battle.log_fled": "Wycofano się z bitwy.",
+  "battle.continue_hint": "ENTER / SPACJA / ESC / kliknij aby kontynuować",
+  "battle.timeout_countdown": "Wycofanie za {{sec}}s — zbliż się aby walczyć",
+  "battle.miss": "PUDŁO",
+  "battle.hud_ammo": "Amunicja",
+  "battle.hud_sails": "Żagle",
+  "battle.hud_speed": "Prędkość",
+  "battle.hud_cannons": "Działa",
+  "battle.sail_furled": "Złożone",
+  "battle.sail_battle": "Bojowe",
+  "battle.sail_full": "Pełne",
+  "battle.your_label": "Twój statek",
+  "battle.enemy_label": "Wróg",
+  "battle.dmg_hull": "kadłub",
+  "battle.dmg_sails": "żagle",
+  "battle.dmg_crew": "załoga",
+
+  // -- Battle Help Screen (spec dla backendu bitwy) --
+  "battle.help_title": "PODRĘCZNIK BITWY",
+  "battle.help_close_hint": "H / ESC / SPACJA / kliknij — zamknij",
+
+  "battle.help_controls_h": "Sterowanie",
+  "battle.help_controls_body": "W / S — żagle: cykl (Złożone → Bojowe → Pełne)\nA / D — skręt w lewo / prawo\nQ — ogień LEWĄ burtą\nE — ogień PRAWĄ burtą\n1 / 2 / 3 — załaduj kulę / łańcuch / kartacz\nB — abordaż\nESC — wycofaj się\nH — ta pomoc",
+
+  "battle.help_sails_h": "Żagle i prędkość",
+  "battle.help_sails_body": "Trzy poziomy żagli: Złożone (0%), Bojowe (50%), Pełne (100%). Prędkość = bazowa × poziom × wiatr × kondycja żagli. Uszkodzone żagle obniżają prędkość liniowo. Beam reach (wiatr w burtę) daje peak; pod wiatr wpadasz w martwy punkt i prawie się nie ruszasz.",
+
+  "battle.help_turn_h": "Sterowność (zwrotność)",
+  "battle.help_turn_body": "Każda klasa statku ma własny bazowy turnRate (Pinasa zwinna, Merchantman ociężały). Efektywny = bazowy × wiatr × kara_żagli × kara_kadłuba.\n• Beam reach skręca najlepiej, in irons (dziób w wiatr) najgorzej.\n• Pełne żagle = -25% zwrotności.\n• Uszkodzony kadłub psuje sterowanie (woda w zęzie, ster zwalnia): pełny = 1.0, połowa ≈ 0.7, prawie zatopiony ≈ 0.4.",
+
+  "battle.help_range_h": "Zasięg armat i strefy ognia",
+  "battle.help_range_body": "Efektywny zasięg = pół szerokości ekranu. Lekko widoczne łuki wokół statku oznaczają strefę ognia LEWEJ i PRAWEJ burty (±60° od prostopadłej). Strefa za dziobem i za rufą to MARTWY PUNKT — działo tam nie wycelujesz.\n\nKula nigdy nie leci dalej niż zasięg; cokolwiek poza granicą wpada do morza z pluskiem (zero obrażeń).",
+
+  "battle.help_ammo_h": "Amunicja (1 / 2 / 3)",
+  "battle.help_ammo_body": "Kula — anty-kadłub. Standardowa, równomiernie rozkłada obrażenia.\nŁańcuch — anty-żagle. Dwie kule spięte łańcuchem rwą olinowanie (3× obrażeń żagli względem kuli).\nKartacz — anty-załoga. Wiązka małych kulek; KRÓTKI zasięg (~połowa normalnego), zabija marynarzy.\n\nZmiana amunicji RESETUJE oba paski reloadu — marnujesz to, co już było w lufach.",
+
+  "battle.help_damage_h": "Model obrażeń",
+  "battle.help_damage_body": "Każda salwa burtowa to POŁOWA wszystkich dział statku (Galeon 36 → 18 z burty, Slup 8 → 4).\n\nWzór:\n  shots = działa / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  celność = max(0.15, 1 − 0.7·dRatio)\n  kadłub = -3.5 · shots · ammo.hullMul  · distFactor · (1 − pancerz)\n  żagle  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − pancerz)\n  załoga = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − pancerz·0.3))\n\nMultiplikatory amunicji:\n  Kula:    kadłub 1.0 | żagle 0.55 | załoga 0.40 | pełen zasięg\n  Łańcuch: kadłub 0.15 | żagle 4.5 (anty-takielunek) | załoga 0.10 | 90% zasięgu\n  Kartacz: kadłub 0.10 | żagle 0.0 | załoga 1.30 (anty-personel) | POŁOWA zasięgu\n\nPancerz (grubość burt celu):\n  Pinasa/Slup 0.10 — papier\n  Brygantyna 0.28, Fregata 0.42\n  Galeon 0.60 (grube dębowe burty)\n  Kartacz omija 70% pancerza (kanister wybucha nad pokładem).\n\nPrzykłady (point-blank, trafienie):\n  Brygantyna (8) kulą → Brygantyna: ~35 kadłuba, ~10 żagli, ~15 załogi\n  Galeon (18) kulą → Slup:    ~85 kadłuba (jedna salwa = zatopienie)\n  Galeon (18) łańcuchem → Slup: ~300 żagli (takielunek znika)\n  Galeon (18) kartaczem → Slup: ~110 załogi (cała załoga martwa)\n  Slup (4) kulą → Galeon:     ~10 kadłuba (~18 salw do zatopienia)\n  1 działo @ daleko → Galeon: ~0 (rysa)\n\nReload: 9 s na burtę, L i P niezależne. Zmiana amunicji resetuje oba do zera.",
+
+  "battle.help_boarding_h": "Abordaż (B)",
+  "battle.help_boarding_body": "Wymaga dystansu ≤ 30 px ORAZ osłabienia wroga (kadłub < 35% lub załoga < 50%).\nRozstrzygnięcie: Twoja załoga × morale × (1 + szermierka/10) vs ich. Zwycięzca traci niewielu, przegrany jest zdziesiątkowany.\nPrzejęcie: statek dołącza do floty (jeśli masz wolny slot) + 150–300 g łupów.\n\nAUTO-PODDANIE — wróg wywiesza białą flagę gdy spełniony jest dowolny warunek:\n  • kadłub ≤ 10% maksimum\n  • żagle ≤ 10% maksimum\n  • załoga < 10 marynarzy (bezwzględnie)\nBiała flaga = natychmiastowe zwycięstwo + łup, bez dalszego ostrzału.",
+
+  "battle.help_timeout_h": "Zasada timeoutu",
+  "battle.help_timeout_body": "Jeśli pozostajesz poza 90% zasięgu armat przez 60 s, pojawia się czerwony licznik. Kolejne 60 s rozdziału kończy bitwę jako 'disengaged' i oba statki wracają na mapę świata.\nZbliżenie się znów do zasięgu RESETUJE oba liczniki.",
+  "battle.surrender": "WRÓG SIĘ PODDAJE!",
+  "battle.boarding": "ABORDAŻ...",
+  "battle.boarding_won": "Abordaż zwycięski! Statek przejęty.",
+  "battle.boarding_lost": "Abordaż odparty!",
+  "battle.captured": "PRZEJĘTO STATEK!",
+  "battle.cannot_board": "Podpłyń bliżej (≤30 px), aby abordażować.",
+  "battle.enemy_too_strong": "Wróg zbyt silny — osłab go (kadłub lub załoga).",
+  "battle.capture_note": "statek dołącza do floty (jeśli wolny slot)",
+  "ammo.round": "Kula",
+  "ammo.chain": "Łańcuch",
+  "ammo.grape": "Kartacz",
 
   // -- Event Log --
   "event.departed": "Wypłynięto z {{port}}",
@@ -325,7 +383,7 @@ export const PL: LocaleData = {
   "event.abandoned_ship": "Porzucono {{ship}} na morzu.",
   "fleet.title": "Flota",
   "fleet.flagship": "Flagowiec",
-  "fleet.escort": "Eskorta",
+  "fleet.escort": "Statek floty",
   "fleet.add_to_fleet": "[Dodaj do floty]",
   "fleet.sell": "[Sprzedaj]",
   "fleet.abandon": "[Porzuć]",
@@ -408,6 +466,11 @@ export const PL: LocaleData = {
   // -- Sound --
   "sound.on": "Dźwięk: WŁ",
   "sound.off": "Dźwięk: WYŁ",
+  "sound.section_title": "Głośność (0-10)",
+  "sound.wind": "Wiatr",
+  "sound.seagulls": "Mewy",
+  "sound.music": "Muzyka",
+  "sound.hint": "Kliknij [-] / [+] lub użyj ← →",
 
   // -- Game Speed --
   "speed.label": "Prędkość gry: {{speed}}",

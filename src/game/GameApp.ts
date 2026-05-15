@@ -25,6 +25,8 @@ import { OptionsMenuScene } from "./scenes/OptionsMenuScene.ts";
 import { UIOverlayScene } from "./scenes/UIOverlayScene.ts";
 import { CityInfoScene } from "./scenes/CityInfoScene.ts";
 import { HelpScene } from "./scenes/HelpScene.ts";
+import { BattleHelpScene } from "./scenes/BattleHelpScene.ts";
+import { seedInitialEvents } from "../core/systems/WorldEventSystem.ts";
 
 export function createNewWorldState(
   seed: number,
@@ -140,7 +142,8 @@ export function createNewWorldState(
     captain: captainProfile,
   };
 
-  return world;
+  // Seed initial events so NPCs already have news to share on day 1
+  return seedInitialEvents(world);
 }
 
 export function launchGame(containerId: string): Phaser.Game {
@@ -172,6 +175,7 @@ export function launchGame(containerId: string): Phaser.Game {
       UIOverlayScene,
       CityInfoScene,
       HelpScene,
+      BattleHelpScene,
     ],
     physics: {
       default: "arcade",

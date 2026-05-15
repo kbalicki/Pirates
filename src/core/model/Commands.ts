@@ -1,5 +1,6 @@
 import type { EntityId, PortId, ItemId, QuestId, SaveSlotId } from "./ids.ts";
 import type { Vec2, HeadingRad } from "./WorldState.ts";
+import type { AmmoType } from "../data/ammo.ts";
 
 export type WorldCommand =
   | { type: "SetSailLevel"; value: number }
@@ -25,6 +26,8 @@ export type CombatCommand =
   | { type: "SetSailLevel"; value: number }
   | { type: "Turn"; dir: "left" | "right"; amount: number }
   | { type: "FireCannons"; side: "left" | "right" }
+  | { type: "SetAmmo"; ammo: AmmoType }
+  | { type: "AttemptBoarding" }
   | { type: "CeaseFire" }
   | { type: "AttemptDisengage" }
   | { type: "EndBattleAcknowledge" };

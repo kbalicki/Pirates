@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { PORTS } from "../../core/data/ports.ts";
+import { getSoundGain } from "../settings/SoundSettings.ts";
 
 const MIN_SEAGULLS = 80;
 const MAX_SEAGULLS = 150;
@@ -185,8 +186,11 @@ export class SeagullRenderer {
             this.seagullSound = this.scene.sound.add("seagull");
           }
           if (this.seagullSound) {
-            const vol = 0.15 + (cam.zoom - SEAGULL_CRY_ZOOM_MIN) / (12 - SEAGULL_CRY_ZOOM_MIN) * 0.25;
-            this.seagullSound.play({ volume: vol });
+            const baseVol = 0.15 + (cam.zoom - SEAGULL_CRY_ZOOM_MIN) / (12 - SEAGULL_CRY_ZOOM_MIN) * 0.25;
+            const userGain = getSoundGain("seagulls");
+            if (userGain > 0) {
+              this.seagullSound.play({ volume: baseVol * userGain });
+            }
           }
         } catch { /* audio not available */ }
         this.nextCryTime = now + SEAGULL_CRY_INTERVAL_MIN +

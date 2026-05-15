@@ -18,6 +18,7 @@ import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
 
 import { PalmRenderer } from "../render/PalmRenderer.ts";
+import { MountainRenderer } from "../render/MountainRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { SailSystem } from "../../core/systems/SailSystem.ts";
 import { isInIrons } from "../../core/systems/WeatherSystem.ts";
@@ -32,6 +33,7 @@ import { buildPortWaterCache } from "../../core/systems/PortWaterPositions.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { getSoundGain } from "../settings/SoundSettings.ts";
 // APP_VERSION moved to UIOverlayScene
 
 // Variable timestep — 1 tick per frame, dtTicks proportional to delta
@@ -47,6 +49,7 @@ export class MainMapScene extends Phaser.Scene {
 
 
   private palmRenderer!: PalmRenderer;
+  private mountainRenderer!: MountainRenderer;
   private seaTextureTile: Phaser.GameObjects.TileSprite | null = null;
   private beachGfx: Phaser.GameObjects.Graphics | null = null;
   private seagullRenderer!: SeagullRenderer;
@@ -72,6 +75,17 @@ export class MainMapScene extends Phaser.Scene {
   // versionText moved to UIOverlayScene
   private onResize: ((gameSize: Phaser.Structs.Size) => void) | null = null;
   private windSound: Phaser.Sound.BaseSound | null = null;
+
+  /** Public: re-apply wind volume immediately (called from OptionsMenu when slider changes). */
+  applyWindVolume(): void {
+    if (this.windSound && "setVolume" in this.windSound) {
+      const gain = getSoundGain("wind");
+      const wind = this.worldState?.weather?.windStrength ?? 0.5;
+      const vol = (0.25 + wind * 0.55) * gain;
+      (this.windSound as Phaser.Sound.WebAudioSound).setVolume(vol);
+    }
+  }
+
   private gridContainer: Phaser.GameObjects.Container | null = null;
   private osmCities: Array<{ name: string; x: number; y: number }> = [];
   /** Cached nudged port positions (on land). Key = port id string. */
@@ -127,6 +141,7 @@ export class MainMapScene extends Phaser.Scene {
 
 
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
+    this.mountainRenderer = new MountainRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
     // Launch UI overlay scene (separate layer, no zoom)
     if (!this.scene.isActive("UIOverlayScene")) {
@@ -205,11 +220,38 @@ export class MainMapScene extends Phaser.Scene {
       });
 
       this.input.keyboard.on("keydown-SPACE", () => {
+        if (this.scene.isActive("OptionsMenuScene") || this.shipEncounterOpen) return;
+        // Snapshot player ship heading/velocity so they survive the pause/resume cycle
+        const pid = this.worldState.player.shipId as string;
+        const pe = this.worldState.entities[pid];
+        const headingSnap = pe?.heading ?? 0;
+        const velSnap = pe?.vel;
+
         this.scene.launch("OptionsMenuScene", {
           worldState: this.worldState,
         });
-        this.time.delayedCall(0, () => {
-          this.scene.pause();
+        this.scene.pause();
+
+        // Pull keyboard state to a safe default so JustDown latches don't fire on resume
+        this.commandQueue.drain();
+        if (this.input.keyboard) this.input.keyboard.resetKeys();
+
+        this.scene.get("OptionsMenuScene")?.events.once("shutdown", () => {
+          // Refresh worldState from registry (menu may have mutated it)
+          this.worldState = this.registry.get("worldState") ?? this.worldState;
+          const cur = this.worldState.entities[pid];
+          if (cur && cur.kind === "ship") {
+            this.worldState = {
+              ...this.worldState,
+              entities: {
+                ...this.worldState.entities,
+                [pid]: { ...cur, heading: headingSnap, vel: velSnap ?? cur.vel },
+              },
+            };
+            this.registry.set("worldState", this.worldState);
+          }
+          this.commandQueue.drain();
+          if (this.input.keyboard) this.input.keyboard.resetKeys();
         });
       });
     }
@@ -764,12 +806,15 @@ export class MainMapScene extends Phaser.Scene {
     this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     // Cartographic grid: show/hide based on zoom
     this.cartographicGrid.update();
+    this.mountainRenderer.update(this.cameras.main.zoom);
 
-    // Wind sound volume follows wind strength
+    // Wind sound volume: base audible level scaled by wind strength × user gain (0..1)
+    // At gain=10 the wind is clearly heard even in calm weather; at gain=0 muted.
     if (this.windSound && "setVolume" in this.windSound) {
-      (this.windSound as Phaser.Sound.WebAudioSound).setVolume(
-        this.worldState.weather.windStrength * 0.6,
-      );
+      const gain = getSoundGain("wind");
+      const wind = this.worldState.weather.windStrength; // 0..1
+      const vol = (0.25 + wind * 0.55) * gain; // 0..0.8 range
+      (this.windSound as Phaser.Sound.WebAudioSound).setVolume(vol);
     }
 
     // Auto-embark: when crew walks close to the anchored ship, board automatically
@@ -877,14 +922,15 @@ export class MainMapScene extends Phaser.Scene {
     for (const [id, entity] of Object.entries(this.worldState.entities)) {
       if (id === playerShipId) continue;
       if (entity.kind !== "ship" || !entity.ai) continue;
-      // Only friendly NPC trigger encounter (trader, navy, escort)
+      // Only friendly NPC trigger encounter (trader, navy)
       const behavior = entity.ai.behavior;
       if (behavior === "pirate" || behavior === "pirate_hunter") continue;
 
       const dist = vec2Dist(playerEntity.pos, entity.pos);
       if (dist > ENCOUNTER_RANGE) continue;
 
-      // Don't re-trigger same NPC until they move away
+      // Same NPC: only re-trigger after player has left & re-entered the range
+      // (lastEncounteredNpcId is cleared in the block below when dist > ENCOUNTER_RANGE).
       if (id === this.lastEncounteredNpcId) continue;
 
       this.shipEncounterOpen = true;
@@ -906,10 +952,10 @@ export class MainMapScene extends Phaser.Scene {
       return; // one encounter at a time
     }
 
-    // Reset last encountered NPC when far from all
+    // Clear the moment player leaves encounter range — re-entry triggers a new encounter.
     if (this.lastEncounteredNpcId) {
       const lastNpc = this.worldState.entities[this.lastEncounteredNpcId];
-      if (!lastNpc || vec2Dist(playerEntity.pos, lastNpc.pos) > ENCOUNTER_RANGE * 3) {
+      if (!lastNpc || vec2Dist(playerEntity.pos, lastNpc.pos) > ENCOUNTER_RANGE) {
         this.lastEncounteredNpcId = null;
       }
     }
@@ -976,6 +1022,7 @@ export class MainMapScene extends Phaser.Scene {
 
 
     this.palmRenderer.destroy();
+    this.mountainRenderer.destroy();
     this.waterRenderer.destroy();
     this.seagullRenderer.destroy();
     this.scene.stop("UIOverlayScene");

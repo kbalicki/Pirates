@@ -8,6 +8,7 @@ import { APP_VERSION } from "../../version.ts";
 import type { MusicManager } from "../audio/MusicManager.ts";
 import { listSaves, loadGame } from "../../persistence/SaveRepository.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
+import { getSoundGain } from "../settings/SoundSettings.ts";
 import {
   dayToCalendar,
   getMonthName,
@@ -437,12 +438,14 @@ export class CharacterCreationScene extends Phaser.Scene {
     const existing = this.sound.get("pirate_theme");
     if (existing && existing.isPlaying) return; // already playing
 
+    const vol = 0.6 * getSoundGain("music");
+    if (vol <= 0) return;
     if (this.sound.locked) {
       this.sound.once("unlocked", () => {
-        this.sound.play("pirate_theme", { loop: false, volume: 0.6 });
+        this.sound.play("pirate_theme", { loop: false, volume: vol });
       });
     } else {
-      this.sound.play("pirate_theme", { loop: false, volume: 0.6 });
+      this.sound.play("pirate_theme", { loop: false, volume: vol });
     }
   }
 

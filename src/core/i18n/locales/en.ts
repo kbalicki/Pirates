@@ -218,7 +218,65 @@ export const EN: LocaleData = {
   "battle.defeat": "DEFEAT! Your ship has been destroyed...",
   "battle.disengaged": "You managed to disengage from battle.",
   "battle.continue": "Click to continue",
-  "battle.controls": "WSAD: Sail/Turn  |  Q: Fire Left  |  E: Fire Right  |  ESC: Disengage",
+  "battle.controls": "WSAD: Sail/Turn  |  Q/E: Fire L/R broadside  |  1/2/3: Ammo  |  B: Board  |  H: Help  |  ESC: Flee",
+  "battle.log_won": "Victory at sea! +{{gold}} gold.",
+  "battle.log_captured": "Ship captured and added to fleet! +{{gold}} gold.",
+  "battle.log_lost": "Battle lost — your ship was crippled.",
+  "battle.log_fled": "Disengaged from battle.",
+  "battle.continue_hint": "ENTER / SPACE / ESC / click to continue",
+  "battle.timeout_countdown": "Disengaging in {{sec}}s — close to engage",
+  "battle.miss": "MISS",
+  "battle.hud_ammo": "Ammo",
+  "battle.hud_sails": "Sails",
+  "battle.hud_speed": "Speed",
+  "battle.hud_cannons": "Cannons",
+  "battle.sail_furled": "Furled",
+  "battle.sail_battle": "Battle",
+  "battle.sail_full": "Full",
+  "battle.your_label": "Your ship",
+  "battle.enemy_label": "Enemy",
+  "battle.dmg_hull": "hull",
+  "battle.dmg_sails": "sails",
+  "battle.dmg_crew": "crew",
+
+  // -- Battle Help Screen (player-facing spec; combat backend honors these rules) --
+  "battle.help_title": "BATTLE MANUAL",
+  "battle.help_close_hint": "H / ESC / SPACE / click — close",
+
+  "battle.help_controls_h": "Controls",
+  "battle.help_controls_body": "W / S — sails cycle (Furled → Battle → Full)\nA / D — turn left / right\nQ — fire LEFT broadside\nE — fire RIGHT broadside\n1 / 2 / 3 — load round / chain / grape shot\nB — attempt boarding\nESC — disengage / flee\nH — this help",
+
+  "battle.help_sails_h": "Sails & Speed",
+  "battle.help_sails_body": "Three sail levels: Furled (0%), Battle (50%), Full (100%). Speed = base × sailLevel × wind × hullSails. Damaged sails cut your speed linearly. Beam reach (wind on the side) gives the peak speed boost; sailing into the wind reaches a dead zone where you barely move.",
+
+  "battle.help_turn_h": "Steering & Maneuverability",
+  "battle.help_turn_body": "Each ship class has its own base turn rate (Pinnace nimble, Merchantman sluggish). Final rate = base × wind × sailPenalty × hullPenalty.\n• Beam reach turns best, in irons (head-to-wind) is the worst.\n• Full sails cost ~25% turn rate.\n• Hull damage hurts turning (rudder lags as the ship takes water): full hull = 1.0, half hull ≈ 0.7, near-sunk ≈ 0.4.",
+
+  "battle.help_range_h": "Cannon Range & Firing Arcs",
+  "battle.help_range_body": "Effective range = half the screen width. The faint dashed arcs around your ship mark the port and starboard firing zones (±60° from the broadside). The fore and aft slices are a DEAD ZONE — cannons can't aim there.\n\nCannonballs never travel further than range; anything past the boundary splashes into the sea harmlessly.",
+
+  "battle.help_ammo_h": "Ammunition (1 / 2 / 3)",
+  "battle.help_ammo_body": "Round shot — anti-hull. Standard ball, even spread of damage.\nChain shot — anti-sails. Two balls linked by chain shred rigging (3× sail damage vs round shot).\nGrape shot — anti-crew. Cluster of small balls; SHORT range (~half normal), kills crew.\n\nSwitching ammo resets BOTH reload bars to zero — you waste whatever was already in the barrels.",
+
+  "battle.help_damage_h": "Damage Model",
+  "battle.help_damage_body": "Each broadside fires HALF the ship's cannons (Galleon 36 → 18 / side, Sloop 8 → 4 / side).\n\nFormula:\n  shots = cannons / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  accuracy = max(0.15, 1 − 0.7·dRatio)\n  hull   = -3.5 · shots · ammo.hullMul  · distFactor · (1 − target.armor)\n  sails  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − target.armor)\n  crew   = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − armor·0.3))\n\nAmmo multipliers:\n  Round:  hull 1.0 | sails 0.55 | crew 0.40 | full range\n  Chain:  hull 0.15 | sails 4.5 (anti-rigging) | crew 0.10 | 90% range\n  Grape:  hull 0.10 | sails 0.0 | crew 1.30 (anti-personnel) | HALF range\n\nArmor (target hull thickness):\n  Pinnace/Sloop 0.10 — paper\n  Brigantine 0.28, Frigate 0.42\n  Galleon 0.60 (thick oak sides)\n  Grape bypasses 70% of armor (canister bursts above deck).\n\nExamples (point-blank, hit):\n  Brigantine (8) round → Brigantine: ~35 hull, ~10 sails, ~15 crew\n  Galleon (18) round → Sloop:  ~85 hull (one-shot sinks it)\n  Galleon (18) chain → Sloop:  ~300 sails (rigging wiped)\n  Galleon (18) grape → Sloop:  ~110 crew (entire crew dead)\n  Sloop (4) round → Galleon:   ~10 hull (must whittle for ~18 broadsides)\n  1 cannon @ far → Galleon:    ~0 (a scratch)\n\nReload: 9 s per side, L and R independent. Switching ammo resets both to zero.",
+
+  "battle.help_boarding_h": "Boarding (B)",
+  "battle.help_boarding_body": "Requires distance ≤ 30 px AND enemy weakened (hull < 35% or crew < 50%).\nResolution: your crew × morale × (1 + swordsmanship/10) vs theirs. Winner takes light casualties, loser is decimated.\nCapture: ship joins your fleet (if you have a free slot) and you take 150–300 gold loot.\n\nAUTO-SURRENDER — enemy strikes their colors when any of:\n  • hull ≤ 10% of max\n  • sails ≤ 10% of max\n  • crew < 10 sailors (absolute)\nA white flag means instant victory + loot, no further fire needed.",
+
+  "battle.help_timeout_h": "Timeout Rule",
+  "battle.help_timeout_body": "If you stay outside 90% of cannon range for 60 s, a red countdown appears. Another 60 s of separation auto-ends the battle as 'disengaged' and both ships return to the world map.\nClosing back into engagement range resets both timers.",
+  "battle.surrender": "ENEMY SURRENDERS!",
+  "battle.boarding": "BOARDING...",
+  "battle.boarding_won": "Boarding won! Ship captured.",
+  "battle.boarding_lost": "Boarding repelled!",
+  "battle.captured": "SHIP CAPTURED!",
+  "battle.cannot_board": "Get closer to board (≤30 px).",
+  "battle.enemy_too_strong": "Enemy too strong — soften first (hull or crew).",
+  "battle.capture_note": "ship added to fleet (if slot available)",
+  "ammo.round": "Round shot",
+  "ammo.chain": "Chain shot",
+  "ammo.grape": "Grape shot",
 
   // -- Event Log --
   "event.departed": "Departed from {{port}}",
@@ -325,7 +383,7 @@ export const EN: LocaleData = {
   "event.abandoned_ship": "Abandoned {{ship}} at sea.",
   "fleet.title": "Fleet",
   "fleet.flagship": "Flagship",
-  "fleet.escort": "Escort",
+  "fleet.escort": "Fleet ship",
   "fleet.add_to_fleet": "[Add to Fleet]",
   "fleet.sell": "[Sell]",
   "fleet.abandon": "[Abandon]",
@@ -408,6 +466,11 @@ export const EN: LocaleData = {
   // -- Sound --
   "sound.on": "Sound: ON",
   "sound.off": "Sound: OFF",
+  "sound.section_title": "Sound Volume (0-10)",
+  "sound.wind": "Wind",
+  "sound.seagulls": "Seagulls",
+  "sound.music": "Music",
+  "sound.hint": "Click [-] / [+] or use ← → keys",
 
   // -- Game Speed --
   "speed.label": "Game Speed: {{speed}}",
