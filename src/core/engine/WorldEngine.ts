@@ -12,6 +12,7 @@ import { addLogEntry } from "../systems/EventLogSystem.ts";
 import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
+import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 
 export class WorldEngine {
@@ -71,7 +72,7 @@ export class WorldEngine {
     const oldTime = world.time;
     const newTime = advanceTime(world.time, dtTicks);
 
-    // 2.5 Day change logging + world events
+    // 2.5 Day change logging + world events + economy tick
     if (oldTime.day !== newTime.day) {
       world = addLogEntry(
         { ...world, time: newTime },
@@ -80,6 +81,8 @@ export class WorldEngine {
       );
       // Generate/expire world events once per day
       world = updateWorldEvents(world);
+      // Daily economy simulation (production, consumption, price update, recovery)
+      world = economyDailyTick(world);
     }
 
     // 2.6 Crew consumption (once per game-hour)

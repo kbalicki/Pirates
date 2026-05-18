@@ -6,6 +6,37 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.7.0",
+    date: "2026-05-18",
+    changes: [
+      "LIVING ECONOMY — cities now grow, shrink, and react to world events",
+      "  Numeric population, wealth (0-1000), and defence (0-100) per port",
+      "  Daily economy tick: production → consumption → price update → recovery",
+      "  Prices respond to supply/demand: shortages cost more, gluts cost less",
+      "  CityInfo panel shows live values with ↑/↓ trend arrows vs baseline",
+      "  CityInfo panel lists active world events affecting that port",
+      "NEW WORLD EVENTS (Phase 2 — events now reshape the world):",
+      "  Gold strike: small/medium town starts producing gold, pop +0.5%/day for a year",
+      "  Indigenous raid: Spanish frontier outposts lose pop, wealth, defence",
+      "  Famine: food/water prices ×2-4, population drops",
+      "  Harvest (autumn): food/sugar prices ×0.6, +inventory boost",
+      "  Royal decree: faction-wide tariff change, lasts up to a year",
+      "EVENT EFFECTS — every event now applies daily state deltas:",
+      "  Epidemic → population drop, crew recruitment halved, prices spike",
+      "  Pirate raid (one-shot) → wealth -80, inventory -30%, defence decays",
+      "  Hurricane → port closed, inventory damage, ships hit",
+      "  Trade boom → production ×1.5, prices -20%",
+      "  Slave revolt → production ×0.3, wealth drains",
+      "  New governor → wealth windfall +50",
+      "WAR DRIVES SEA TRAFFIC:",
+      "  Warring factions spawn 2× more ships",
+      "  Wartime spawns shift 45% → 70% navy, trader share drops",
+      "  Production -15% / prices +10% in warring nations",
+      "Migration v7 for old saves — fills new numeric fields from baseline",
+      "i18n: 6 new news headline keys (EN + PL)",
+    ],
+  },
+  {
     version: "0.9.6.0",
     date: "2026-05-11",
     changes: [

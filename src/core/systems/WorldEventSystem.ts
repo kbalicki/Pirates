@@ -119,7 +119,20 @@ type RandomEventTemplate = {
   severity: 1 | 2 | 3;
   affectsPorts: number;    // how many ports affected (0 = all of faction)
   seasonal?: number[];     // months when this can happen (empty = any)
+  /** Restrict to a specific list of port keys. If undefined, any port. */
+  portWhitelist?: string[];
+  /** Restrict to a faction id. If undefined, any faction. */
+  factionWhitelist?: string[];
+  /** Skip ports where this predicate returns false. */
+  filter?: (portKey: string) => boolean;
 };
+
+// Spanish frontier outposts — vulnerable to indigenous raids
+const NATIVE_RAID_PORTS = [
+  "villa_hermosa", "campeche", "cumana", "rio_de_la_hacha",
+  "trinidad", "santa_marta", "st_augustine", "nombre_de_dios",
+  "margarita", "gibraltar", "puerto_cabello",
+];
 
 const RANDOM_EVENTS: RandomEventTemplate[] = [
   {
@@ -178,6 +191,55 @@ const RANDOM_EVENTS: RandomEventTemplate[] = [
     durationDays: [1, 1], // instant event
     severity: 1,
     affectsPorts: 1,
+  },
+  // ── v0.9.7 economy expansion ─────────────────────────────
+  {
+    type: "gold_discovery",
+    headline: "news.gold_discovery",
+    weight: 1,
+    durationDays: [180, 365],
+    severity: 2,
+    affectsPorts: 1,
+    // Small or medium towns only — capitals aren't "discovering" gold
+    filter: (k: string) => {
+      const c = PORTS[k];
+      return !!c && (c.population === "small" || c.population === "medium");
+    },
+  },
+  {
+    type: "native_raid",
+    headline: "news.native_raid",
+    weight: 2,
+    durationDays: [30, 60],
+    severity: 2,
+    affectsPorts: 1,
+    portWhitelist: NATIVE_RAID_PORTS,
+  },
+  {
+    type: "famine",
+    headline: "news.famine",
+    weight: 1,
+    durationDays: [30, 120],
+    severity: 2,
+    affectsPorts: 1,
+  },
+  {
+    type: "harvest",
+    headline: "news.harvest",
+    weight: 4,
+    durationDays: [45, 90],
+    severity: 1,
+    affectsPorts: 2,
+    seasonal: [9, 10, 11],
+    filter: (k: string) => !!PORTS[k]?.produces?.includes("sugar_cane") || !!PORTS[k]?.produces?.includes("food"),
+  },
+  {
+    type: "royal_decree",
+    headline: "news.royal_decree",
+    weight: 2,
+    durationDays: [180, 365],
+    severity: 1,
+    affectsPorts: 0,  // applies to all ports of the faction
   },
 ];
 
@@ -383,19 +445,32 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
   const sameTypeCount = w.worldEvents.filter(ev => ev.type === chosen!.type).length;
   if (sameTypeCount >= 3) return { ...w, rng };
 
-  // Pick random port(s)
+  // Build candidate-port pool honoring whitelist + filter
   const allPorts = Object.keys(PORTS);
+  let pool = allPorts;
+  if (chosen.portWhitelist) pool = pool.filter(k => chosen!.portWhitelist!.includes(k));
+  if (chosen.factionWhitelist) pool = pool.filter(k => chosen!.factionWhitelist!.includes(PORTS[k].factionId as string));
+  if (chosen.filter) pool = pool.filter(chosen.filter);
+  // Gold discovery: skip ports that already produce gold
+  if (chosen.type === "gold_discovery") {
+    pool = pool.filter(k => !w.ports[k]?.bonusProduces?.includes("gold"));
+  }
+  if (pool.length === 0) return { ...w, rng };
+
+  // Pick a port from the eligible pool
   const portRng = rngNext(rng);
   rng = portRng.state;
   const portIdx = portRng.value;
-  const mainPort = allPorts[portIdx % allPorts.length];
+  const mainPort = pool[portIdx % pool.length];
   const portDef = PORTS[mainPort];
   const portName = portDef?.name ?? mainPort;
 
   let affectedPorts: string[];
   if (chosen.affectsPorts === 0) {
-    // All ports of a faction (treasure fleet = spanish ports)
-    affectedPorts = allPorts.filter(k => PORTS[k].factionId === "spain");
+    // All ports of the chosen port's faction. treasure_fleet stays Spanish-only
+    // (its faction is naturally Spain via its source port).
+    const targetFaction = chosen.type === "treasure_fleet" ? "spain" : (portDef?.factionId as string);
+    affectedPorts = allPorts.filter(k => PORTS[k].factionId === targetFaction);
   } else {
     affectedPorts = [mainPort];
     // Add nearby ports for multi-port events

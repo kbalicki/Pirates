@@ -68,6 +68,15 @@ export type PortRuntimeState = {
   inventory: Record<string, number>; // itemId -> qty available
   shipyardQueue: string[];
   availableCrew: number; // crew available for recruitment at tavern
+  // ── Living-world numerics (v7+) ────────────────────────────
+  /** Current population (people). Drifts toward baseline; events push it. */
+  population: number;
+  /** Current wealth (0..1000). Drifts toward baseline; events push it. */
+  wealth: number;
+  /** Garrison strength (0..100). Drops on raids; recovers slowly. */
+  defense: number;
+  /** Extra goods this port temporarily produces (e.g. "gold" after a strike). */
+  bonusProduces: string[];
 };
 
 export type GameEventEntry = {
@@ -81,7 +90,10 @@ export type GameEventEntry = {
 export type WorldEventType =
   | "war_start" | "war_end" | "epidemic" | "pirate_raid"
   | "trade_boom" | "slave_revolt" | "hurricane"
-  | "treasure_fleet" | "new_governor";
+  | "treasure_fleet" | "new_governor"
+  // ── v0.9.7 economy expansion ────────────────────────────
+  | "gold_discovery" | "native_raid" | "famine" | "harvest"
+  | "royal_decree" | "treaty_signed";
 
 export type WorldEventState = {
   id: string;

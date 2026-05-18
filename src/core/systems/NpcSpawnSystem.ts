@@ -13,6 +13,7 @@ import { PORTS } from "../data/ports.ts";
 import type { PortDef } from "../data/ports.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { getPortNews } from "./WorldEventSystem.ts";
+import { warSpawnMultipliers } from "./EventEffectsSystem.ts";
 import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
@@ -133,11 +134,15 @@ function pickDestinationPort(
 /**
  * Determine NPC behavior based on faction. European factions produce traders + navy.
  * Pirates faction produces pirates. 10% chance of pirate_hunter from European factions.
+ *
+ * When `atWar` is true (faction is involved in an active war), navy frequency
+ * jumps from ~45% to ~70% at the expense of traders.
  */
-function pickBehavior(factionId: string, roll: number): AiData["behavior"] {
+function pickBehavior(factionId: string, roll: number, atWar: boolean): AiData["behavior"] {
   if (factionId === "pirates") return "pirate";
   if (roll < 0.10) return "pirate_hunter" as AiData["behavior"];
-  if (roll < 0.55) return "trader";
+  const traderCutoff = atWar ? 0.30 : 0.55;
+  if (roll < traderCutoff) return "trader";
   return "navy";
 }
 
@@ -200,10 +205,17 @@ export function updateNpcSpawns(world: WorldState): WorldState {
   if (currentNpcCount < MAX_NPC_SHIPS) {
     const spawnsToAttempt = Math.min(2, MAX_NPC_SHIPS - currentNpcCount);
 
+    // War-driven faction spawn multiplier (≥1 for warring nations).
+    const warMul = warSpawnMultipliers(world);
+
     for (let s = 0; s < spawnsToAttempt; s++) {
-      // Weight port selection by population (bigger city = more ships)
+      // Weight port selection by population × war multiplier (bigger city + at war = more ships)
       const portEntries = Object.entries(PORTS);
-      const weights = portEntries.map(([, p]) => POP_SHIP_WEIGHT[p.population] ?? 1);
+      const weights = portEntries.map(([, p]) => {
+        const pop = POP_SHIP_WEIGHT[p.population] ?? 1;
+        const war = warMul[p.factionId as string] ?? 1;
+        return pop * war;
+      });
       const totalWeight = weights.reduce((a, b) => a + b, 0);
 
       let roll: number;
@@ -217,15 +229,16 @@ export function updateNpcSpawns(world: WorldState): WorldState {
 
       const [portKey, port] = portEntries[chosenIdx];
       const factionKey = port.factionId as string;
+      const factionAtWar = (warMul[factionKey] ?? 1) > 1;
 
       // Find valid water spawn position near this port
       const spawnPoint = findWaterNearPort(port, rng);
       if (!spawnPoint) continue; // Skip if port is landlocked
 
-      // Pick behavior
+      // Pick behavior — wartime shifts traders → navy
       let behaviorRoll: number;
       ({ value: behaviorRoll, state: rng } = rngNext(rng));
-      const behavior = pickBehavior(factionKey, behaviorRoll);
+      const behavior = pickBehavior(factionKey, behaviorRoll, factionAtWar);
       const template = BEHAVIOR_TEMPLATES[behavior] ?? BEHAVIOR_TEMPLATES.trader;
 
       // Pick ship class

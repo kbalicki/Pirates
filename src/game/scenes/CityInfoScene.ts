@@ -8,6 +8,7 @@ import { PORTS, type PortDef } from "../../core/data/ports.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 
 export class CityInfoScene extends Phaser.Scene {
   private portKey!: string;
@@ -75,13 +76,41 @@ export class CityInfoScene extends Phaser.Scene {
 
     drawSep();
 
-    // ── Basic info ──
-    addRow(t("approach.population", { size: "" }).replace(/[: ]+$/, ""),
-      t("city.pop_" + this.portDef.population));
+    // ── Living-world state (numeric, updates daily) ──
+    const runtime = this.worldState.ports[this.portKey];
+    const baseline = getPortBaseline(this.portKey);
 
-    const wealthColors: Record<string, string> = { poor: "#aa6666", modest: "#aaaaaa", prosperous: "#88bb88", wealthy: "#ccaa44" };
+    const trendArrow = (cur: number, base: number): string => {
+      const diff = cur - base;
+      if (Math.abs(diff) < base * 0.05) return "";
+      return diff > 0 ? " ↑" : " ↓";
+    };
+    const trendColor = (cur: number, base: number): string => {
+      const diff = cur - base;
+      if (Math.abs(diff) < base * 0.05) return "#ffffff";
+      return diff > 0 ? "#88cc88" : "#cc8866";
+    };
+
+    const popVal = runtime?.population ?? baseline.population;
+    addRow(t("approach.population", { size: "" }).replace(/[: ]+$/, ""),
+      popVal.toLocaleString() + trendArrow(popVal, baseline.population),
+      trendColor(popVal, baseline.population));
+
+    const wealthVal = runtime?.wealth ?? baseline.wealth;
+    const wealthColor =
+      wealthVal >= 750 ? "#ccaa44" :
+      wealthVal >= 450 ? "#88bb88" :
+      wealthVal >= 200 ? "#aaaaaa" : "#aa6666";
     addRow(t("approach.wealth", { level: "" }).replace(/[: ]+$/, ""),
-      t("city.wealth_" + this.portDef.wealth), wealthColors[this.portDef.wealth] ?? "#ffffff");
+      `${wealthVal}/1000${trendArrow(wealthVal, baseline.wealth)}`, wealthColor);
+
+    const defVal = runtime?.defense ?? baseline.defense;
+    const defColor =
+      defVal >= 70 ? "#88bb88" :
+      defVal >= 40 ? "#aaaaaa" :
+      defVal >= 20 ? "#cc8866" : "#cc4444";
+    addRow(t("cityinfo.defense") ?? "Obrona",
+      `${defVal}/100${trendArrow(defVal, baseline.defense)}`, defColor);
 
     // Fort info
     if (this.portDef.type === "fort") {
@@ -125,6 +154,28 @@ export class CityInfoScene extends Phaser.Scene {
 
     y += 4;
     drawSep();
+
+    // ── Active world events affecting this port ──
+    const activeEvents = this.worldState.worldEvents.filter(ev => {
+      if (ev.endDay < this.worldState.time.day) return false;
+      if (ev.type === "war_start") return ev.factions.includes(factionId);
+      return ev.ports.length === 0 || ev.ports.includes(this.portKey);
+    });
+    if (activeEvents.length > 0) {
+      this.add.text(left, y, t("cityinfo.active_events") ?? "Aktualne wydarzenia", {
+        ...txt(13, { color: "#888888" }),
+      }).setDepth(5);
+      y += 20;
+      for (const ev of activeEvents.slice(0, 4)) {
+        const sevColor = ev.severity >= 3 ? "#cc4444" : ev.severity === 2 ? "#cc8844" : "#cccc88";
+        const headline = t(ev.headline, ev.vars as Record<string, string | number>);
+        const trimmed = headline.length > 48 ? headline.slice(0, 47) + "…" : headline;
+        this.add.text(left + 10, y, "• " + trimmed, { ...txt(11, { color: sevColor }) }).setDepth(5);
+        y += 18;
+      }
+      y += 4;
+      drawSep();
+    }
 
     // ── Reputation ──
     const rep = this.worldState.player.reputation?.[factionId] ?? 0;

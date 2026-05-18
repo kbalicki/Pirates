@@ -163,6 +163,8 @@ export const PL: LocaleData = {
   "cityinfo.last_visit": "Ostatnia wizyta",
   "cityinfo.never_visited": "Nigdy",
   "cityinfo.day": "Dzień",
+  "cityinfo.defense": "Obrona",
+  "cityinfo.active_events": "Aktualne wydarzenia",
 
   // -- Reputation levels --
   "rep.hostile": "WROGI",
@@ -401,6 +403,12 @@ export const PL: LocaleData = {
   "news.hurricane": "Huragan uderzył w {{port}}! Statki i budynki zniszczone.",
   "news.treasure_fleet": "Hiszpańska flota skarbowa szykuje się w {{port}}.",
   "news.new_governor": "Nowy gubernator mianowany w {{port}} przez {{faction}}.",
+  "news.gold_discovery": "Odkryto złoto pod {{port}}! Osadnicy ściągają do kopalni.",
+  "news.native_raid": "Indianie napadli na {{port}}! Wielu zabitych, fortyfikacje zniszczone.",
+  "news.famine": "Klęska głodu w {{port}}. Ceny żywności szybują w górę.",
+  "news.harvest": "Rekordowe zbiory pod {{port}}. Spichlerze pełne.",
+  "news.royal_decree": "Dekret królewski {{faction}} zmienia taryfy w koloniach.",
+  "news.treaty_signed": "Pokój podpisany — {{faction1}} i {{faction2}} wznawiają handel.",
 
   // -- Ship Encounter --
   "encounter.behavior_trader": "Statek handlowy",

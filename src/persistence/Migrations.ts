@@ -3,8 +3,9 @@ import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
 import { CITIES } from "../core/data/cities.ts";
 import { portId } from "../core/model/ids.ts";
 import { createDefaultCaptainProfile } from "../core/model/CaptainState.ts";
+import { getPortBaseline } from "../core/data/economyBaselines.ts";
 
-export const CURRENT_WORLD_VERSION = 6;
+export const CURRENT_WORLD_VERSION = 7;
 
 type Migration = (world: unknown) => unknown;
 
@@ -108,6 +109,32 @@ const migrations: Record<number, Migration> = {
       entities[id] = { ...entity, mode: entity.mode ?? "sailing" };
     }
     return { ...world, version: 6, entities };
+  },
+
+  7: (world: any) => {
+    // Living-world economy: add numeric population/wealth/defense to every port.
+    // Old enum-only saves get fresh baselines from CityDef.
+    const oldPorts = (world.ports ?? {}) as Record<string, any>;
+    const ports: Record<string, any> = {};
+    for (const key of Object.keys(CITIES)) {
+      const baseline = getPortBaseline(key);
+      const old = oldPorts[key];
+      ports[key] = {
+        ...(old ?? {
+          portId: portId(key),
+          factionId: CITIES[key].factionId,
+          prices: initPortPrices(key),
+          inventory: initPortInventory(key),
+          shipyardQueue: [],
+          availableCrew: 0,
+        }),
+        population: old?.population ?? baseline.population,
+        wealth: typeof old?.wealth === "number" ? old.wealth : baseline.wealth,
+        defense: old?.defense ?? baseline.defense,
+        bonusProduces: old?.bonusProduces ?? [],
+      };
+    }
+    return { ...world, version: 7, ports };
   },
 };
 

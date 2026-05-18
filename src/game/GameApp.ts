@@ -6,6 +6,7 @@ import { PORTS } from "../core/data/ports.ts";
 import { FACTIONS } from "../core/data/factions.ts";
 import { SHIP_CLASSES } from "../core/data/ships.ts";
 import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
+import { getPortBaseline } from "../core/data/economyBaselines.ts";
 import { CURRENT_WORLD_VERSION } from "../persistence/Migrations.ts";
 import { DEFAULT_ERA, ERAS } from "../core/data/eras.ts";
 import type { CaptainProfile } from "../core/model/CaptainState.ts";
@@ -45,6 +46,7 @@ export function createNewWorldState(
   // Initialize port runtime states from all cities
   const ports: Record<string, WorldState["ports"][string]> = {};
   for (const [key, portDef] of Object.entries(PORTS)) {
+    const baseline = getPortBaseline(key);
     ports[key] = {
       portId: portDef.id,
       factionId: portDef.factionId,
@@ -52,6 +54,10 @@ export function createNewWorldState(
       inventory: initPortInventory(key),
       shipyardQueue: [],
       availableCrew: 0,
+      population: baseline.population,
+      wealth: baseline.wealth,
+      defense: baseline.defense,
+      bonusProduces: [],
     };
   }
 
