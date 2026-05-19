@@ -7,7 +7,7 @@ import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
 import { visionRangeForMast } from "../render/WorldRenderer.ts";
 import { txt } from "../ui/textStyle.ts";
 
-type HelpSection = "controls" | "ships" | "sailing" | "world";
+type HelpSection = "controls" | "ships" | "sailing" | "world" | "economy";
 
 export class HelpScene extends Phaser.Scene {
   private currentSection: HelpSection = "controls";
@@ -45,6 +45,7 @@ export class HelpScene extends Phaser.Scene {
       { label: "Statki", key: "ships" },
       { label: "Żeglowanie", key: "sailing" },
       { label: "Świat", key: "world" },
+      { label: "Ekonomia", key: "economy" },
     ];
     const tabY = cy - ph / 2 + 50;
     const tabW = (pw - 60) / tabs.length;
@@ -74,6 +75,7 @@ export class HelpScene extends Phaser.Scene {
       case "ships": this.renderShips(left, contentY, right, contentH); break;
       case "sailing": this.renderSailing(left, contentY, right); break;
       case "world": this.renderWorld(left, contentY, right); break;
+      case "economy": this.renderEconomy(left, contentY, right); break;
     }
 
     // Close hint
@@ -177,6 +179,7 @@ export class HelpScene extends Phaser.Scene {
       { title: "Porty", desc: "Kliknij miasto na mapie aby zobaczyć informacje. Podejdź blisko aby wejść." },
       { title: "Handel", desc: "Kupuj tanio towary eksportowe, sprzedawaj drogo w portach z popytem." },
       { title: "Reputacja", desc: "Każda frakcja pamięta twoje czyny. Wrogość = trudniejszy dostęp do portów." },
+      { title: "Ekonomia (zakładka obok)", desc: "Miasta żyją: rosną, biednieją, są napadane. Każde wydarzenie zmienia stan portu." },
     ];
     for (const { title, desc } of lines) {
       this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
@@ -184,5 +187,110 @@ export class HelpScene extends Phaser.Scene {
       this.add.text(left + 12, y, desc, { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
       y += 22;
     }
+  }
+
+  private renderEconomy(left: number, y: number, right: number): void {
+    const colW = (right - left - 20) / 2;
+    const colA = left;
+    const colB = left + colW + 20;
+    y += 8;
+
+    // ── Header ─────────────────────────────────────────────
+    this.add.text((left + right) / 2, y,
+      "Karaiby żyją własnym życiem — miasta rosną, biednieją, walczą.",
+      { ...txt(12, { color: "#cccccc" }) }).setOrigin(0.5, 0).setDepth(5);
+    y += 22;
+
+    // ── Two-column layout ──────────────────────────────────
+    let yA = y;
+    let yB = y;
+
+    const heading = (col: number, yPos: number, text: string): number => {
+      this.add.text(col, yPos, text, { ...txt(13, { bold: true, color: "#c8a84e" }) }).setDepth(5);
+      return yPos + 20;
+    };
+    const para = (col: number, yPos: number, text: string, color = "#aaaaaa"): number => {
+      this.add.text(col, yPos, text, {
+        ...txt(11, { color }),
+        wordWrap: { width: colW },
+      }).setDepth(5);
+      // Rough height estimate — count newlines + soft wrap by ~70 chars
+      const lines = text.split("\n").reduce((n, ln) => n + Math.max(1, Math.ceil(ln.length / 70)), 0);
+      return yPos + 14 * lines + 4;
+    };
+    const eventRow = (col: number, yPos: number, name: string, effect: string, sevColor: string): number => {
+      this.add.text(col, yPos, "•", { ...txt(11, { color: sevColor }) }).setDepth(5);
+      this.add.text(col + 10, yPos, name, { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      this.add.text(col + 110, yPos, effect, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
+      return yPos + 16;
+    };
+
+    // ─── COLUMN A — state model ────────────────────────────
+    yA = heading(colA, yA, "JAK ŻYJE MIASTO");
+    yA = para(colA, yA,
+      "Każdy port ma 3 liczby: populacja, bogactwo (0–1000), obrona (0–100). " +
+      "Co dnia powoli wracają do bazowej wartości — chyba że wydarzenie je zaburza."
+    );
+    yA = para(colA, yA,
+      "Kliknij miasto na mapie aby zobaczyć aktualne wartości i aktywne wydarzenia. " +
+      "Strzałki ↑↓ pokazują czy port jest powyżej/poniżej baseline."
+    );
+
+    yA += 6;
+    yA = heading(colA, yA, "CENY I MAGAZYN");
+    yA = para(colA, yA,
+      "Cena = bazowa × stosunek popytu do podaży × modyfikator wydarzeń.\n" +
+      "Pusty magazyn → cena rośnie (do ×3).\n" +
+      "Pełny magazyn → cena spada (do ×0.4)."
+    );
+    yA = para(colA, yA,
+      "Każdy port produkuje swoje towary eksportowe (×2–12 j./dzień zależnie od marketLevel) " +
+      "i konsumuje importowe (skala z populacją). Magazyn ma limit marketLevel × 50."
+    );
+
+    yA += 6;
+    yA = heading(colA, yA, "BOGACTWO I OBRONA");
+    yA = para(colA, yA,
+      "Sprzedaż towarów z popytem podnosi bogactwo. Niedobór importu obniża je o 1/dzień.\n" +
+      "Obrona spada po napadach piratów/Indian. Słaba obrona = łatwiejszy port do rabunku."
+    );
+
+    yA += 6;
+    yA = heading(colA, yA, "WOJNA NA MORZU");
+    yA = para(colA, yA,
+      "Aktywna wojna → walczące frakcje wypuszczają ×2 więcej statków, " +
+      "a udział okrętów wojennych rośnie z 45% do 70%."
+    );
+    yA = para(colA, yA,
+      "Historyczne wojny mają stałe daty (np. 1689–1697 Wojna 9-letnia: Francja vs Anglia + Niderlandy + Hiszpania). " +
+      "Lista wojen w karczmie i u napotkanych NPC."
+    );
+
+    // ─── COLUMN B — events table ───────────────────────────
+    yB = heading(colB, yB, "WYDARZENIA ŚWIATA");
+    const RED = "#cc4444", AMBER = "#cc8844", YELLOW = "#cccc88";
+    yB = eventRow(colB, yB, "Odkrycie złota", "+pop, +bogactwo, nowy towar gold", AMBER);
+    yB = eventRow(colB, yB, "Najazd Indian", "−15% pop, −150 bog., −40 obrony", AMBER);
+    yB = eventRow(colB, yB, "Epidemia", "−pop, −rekrutacja, ↑ ceny żywności", AMBER);
+    yB = eventRow(colB, yB, "Najazd piratów", "−80 bog., −30% magaz., obrona spada", YELLOW);
+    yB = eventRow(colB, yB, "Huragan", "port zamknięty, statki uszkodzone", RED);
+    yB = eventRow(colB, yB, "Boom handlowy", "produkcja ×1.5, ceny ×0.8", YELLOW);
+    yB = eventRow(colB, yB, "Bunt niewolników", "produkcja ×0.3, bogactwo spada", AMBER);
+    yB = eventRow(colB, yB, "Głód", "żywność ×2, woda ×2, populacja maleje", AMBER);
+    yB = eventRow(colB, yB, "Żniwa (jesień)", "ceny ×0.6, +zapasy żywności i cukru", YELLOW);
+    yB = eventRow(colB, yB, "Dekret królewski", "taryfy zmieniają ceny w całej frakcji", YELLOW);
+    yB = eventRow(colB, yB, "Nowy gubernator", "+50 bogactwa, możliwy reset reputacji", YELLOW);
+    yB = eventRow(colB, yB, "Flota skarbowa", "hiszp. eskorta Vera Cruz → Hawana", AMBER);
+    yB = eventRow(colB, yB, "Wojna", "−15% produkcji, +10% ceny, ×2 okrętów", RED);
+
+    yB += 6;
+    yB = heading(colB, yB, "CO MOŻESZ ZROBIĆ");
+    yB = para(colB, yB,
+      "• Boom: kup tanio, sprzedaj drogo w sąsiednim porcie.\n" +
+      "• Głód: dowieź żywność za 2–4× cenę.\n" +
+      "• Złoto: nowy szlak skarbowy, ale więcej eskort.\n" +
+      "• Najazd Indian: hiszp. fort osłabiony — okazja dla pirata.\n" +
+      "• Wojna: weź list kaperski, polowanie na wroga legalne."
+    );
   }
 }

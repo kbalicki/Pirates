@@ -6,6 +6,17 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.7.1",
+    date: "2026-05-19",
+    changes: [
+      "HELP screen — new EKONOMIA tab with full living-world documentation",
+      "  Two-column layout: state model on left, event catalogue on right",
+      "  All 13 event types listed with one-line effect summaries",
+      "  Color-coded severity dots (yellow / amber / red)",
+      "  Player tips: how to profit from booms, famines, gold strikes, wars",
+    ],
+  },
+  {
     version: "0.9.7.0",
     date: "2026-05-18",
     changes: [
