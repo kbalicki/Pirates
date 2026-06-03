@@ -2,10 +2,10 @@ import type { WorldState } from "../core/model/WorldState.ts";
 import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
 import { CITIES } from "../core/data/cities.ts";
 import { portId } from "../core/model/ids.ts";
-import { createDefaultCaptainProfile } from "../core/model/CaptainState.ts";
+import { createDefaultCaptainProfile, TRAINING_DEFAULT } from "../core/model/CaptainState.ts";
 import { getPortBaseline } from "../core/data/economyBaselines.ts";
 
-export const CURRENT_WORLD_VERSION = 7;
+export const CURRENT_WORLD_VERSION = 8;
 
 type Migration = (world: unknown) => unknown;
 
@@ -109,6 +109,16 @@ const migrations: Record<number, Migration> = {
       entities[id] = { ...entity, mode: entity.mode ?? "sailing" };
     }
     return { ...world, version: 6, entities };
+  },
+
+  8: (world: any) => {
+    // Add captain.training field for crew reload-speed mechanic.
+    const captain = world.captain ?? createDefaultCaptainProfile();
+    return {
+      ...world,
+      version: 8,
+      captain: { ...captain, training: typeof captain.training === "number" ? captain.training : TRAINING_DEFAULT },
+    };
   },
 
   7: (world: any) => {

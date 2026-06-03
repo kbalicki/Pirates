@@ -7,6 +7,7 @@ import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew } from "./Flee
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
+import { diluteTraining } from "../model/CaptainState.ts";
 
 // ── Governor ──────────────────────────────────────────────
 
@@ -140,6 +141,13 @@ export function recruitCrew(
 
   const cost = actual * RECRUIT_COST_PER_SAILOR;
 
+  // Fresh recruits are untrained — they dilute the crew's overall training
+  // by a weighted average against rookie value 0.
+  const captain = world.captain;
+  const newTraining = captain
+    ? diluteTraining(captain.training ?? 0.3, crew.current, actual)
+    : undefined;
+
   const newWorld = addLogEntry(
     {
       ...world,
@@ -163,6 +171,9 @@ export function recruitCrew(
             },
           }
         : world.ports,
+      captain: captain && newTraining !== undefined
+        ? { ...captain, training: newTraining }
+        : world.captain,
     },
     "event.recruited_crew",
     { count: actual, cost },

@@ -190,6 +190,7 @@ export const PL: LocaleData = {
 
   // -- Captain's Cabin --
   "cabin.crew_title": "Załoga",
+  "cabin.training": "Wyszkolenie załogi: {{pct}}%",
   "cabin.cargo_title": "Manifest ładunku",
   "cabin.ships_title": "Twoja flota",
   "cabin.no_cargo": "Ładownia jest pusta.",
@@ -232,6 +233,8 @@ export const PL: LocaleData = {
   "battle.hud_sails": "Żagle",
   "battle.hud_speed": "Prędkość",
   "battle.hud_cannons": "Działa",
+  "battle.hud_morale": "Morale",
+  "battle.hud_training": "Wyszkolenie",
   "battle.sail_furled": "Złożone",
   "battle.sail_battle": "Bojowe",
   "battle.sail_full": "Pełne",
@@ -261,10 +264,13 @@ export const PL: LocaleData = {
   "battle.help_ammo_body": "Kula — anty-kadłub. Standardowa, równomiernie rozkłada obrażenia.\nŁańcuch — anty-żagle. Dwie kule spięte łańcuchem rwą olinowanie (3× obrażeń żagli względem kuli).\nKartacz — anty-załoga. Wiązka małych kulek; KRÓTKI zasięg (~połowa normalnego), zabija marynarzy.\n\nZmiana amunicji RESETUJE oba paski reloadu — marnujesz to, co już było w lufach.",
 
   "battle.help_damage_h": "Model obrażeń",
-  "battle.help_damage_body": "Każda salwa burtowa to POŁOWA wszystkich dział statku (Galeon 36 → 18 z burty, Slup 8 → 4).\n\nWzór:\n  shots = działa / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  celność = max(0.15, 1 − 0.7·dRatio)\n  kadłub = -3.5 · shots · ammo.hullMul  · distFactor · (1 − pancerz)\n  żagle  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − pancerz)\n  załoga = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − pancerz·0.3))\n\nMultiplikatory amunicji:\n  Kula:    kadłub 1.0 | żagle 0.55 | załoga 0.40 | pełen zasięg\n  Łańcuch: kadłub 0.15 | żagle 4.5 (anty-takielunek) | załoga 0.10 | 90% zasięgu\n  Kartacz: kadłub 0.10 | żagle 0.0 | załoga 1.30 (anty-personel) | POŁOWA zasięgu\n\nPancerz (grubość burt celu):\n  Pinasa/Slup 0.10 — papier\n  Brygantyna 0.28, Fregata 0.42\n  Galeon 0.60 (grube dębowe burty)\n  Kartacz omija 70% pancerza (kanister wybucha nad pokładem).\n\nPrzykłady (point-blank, trafienie):\n  Brygantyna (8) kulą → Brygantyna: ~35 kadłuba, ~10 żagli, ~15 załogi\n  Galeon (18) kulą → Slup:    ~85 kadłuba (jedna salwa = zatopienie)\n  Galeon (18) łańcuchem → Slup: ~300 żagli (takielunek znika)\n  Galeon (18) kartaczem → Slup: ~110 załogi (cała załoga martwa)\n  Slup (4) kulą → Galeon:     ~10 kadłuba (~18 salw do zatopienia)\n  1 działo @ daleko → Galeon: ~0 (rysa)\n\nReload: 9 s na burtę, L i P niezależne. Zmiana amunicji resetuje oba do zera.",
+  "battle.help_damage_body": "Każda salwa burtowa to POŁOWA wszystkich dział statku (Galeon 36 → 18 z burty, Slup 8 → 4).\n\nWzór:\n  shots = działa / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  celność = max(0.15, 1 − 0.7·dRatio)\n  kadłub = -3.5 · shots · ammo.hullMul  · distFactor · (1 − pancerz)\n  żagle  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − pancerz)\n  załoga = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − pancerz·0.3))\n\nMultiplikatory amunicji:\n  Kula:    kadłub 1.0 | żagle 0.55 | załoga 0.40 | pełen zasięg\n  Łańcuch: kadłub 0.15 | żagle 4.5 (anty-takielunek) | załoga 0.10 | 90% zasięgu\n  Kartacz: kadłub 0.10 | żagle 0.0 | załoga 1.30 (anty-personel) | POŁOWA zasięgu\n\nPancerz (grubość burt celu):\n  Pinasa/Slup 0.10 — papier\n  Brygantyna 0.28, Fregata 0.42\n  Galeon 0.60 (grube dębowe burty)\n  Kartacz omija 70% pancerza (kanister wybucha nad pokładem).\n\nPrzykłady (point-blank, trafienie):\n  Brygantyna (8) kulą → Brygantyna: ~35 kadłuba, ~10 żagli, ~15 załogi\n  Galeon (18) kulą → Slup:    ~85 kadłuba (jedna salwa = zatopienie)\n  Galeon (18) łańcuchem → Slup: ~300 żagli (takielunek znika)\n  Galeon (18) kartaczem → Slup: ~110 załogi (cała załoga martwa)\n  Slup (4) kulą → Galeon:     ~10 kadłuba (~18 salw do zatopienia)\n  1 działo @ daleko → Galeon: ~0 (rysa)\n\nReload: 9 s na burtę (bazowo), modyfikowany przez załogę/morale/wyszkolenie — patrz sekcja Reload. L i P niezależne. Zmiana amunicji resetuje oba do zera.",
 
   "battle.help_boarding_h": "Abordaż (B)",
   "battle.help_boarding_body": "Wymaga dystansu ≤ 30 px ORAZ osłabienia wroga (kadłub < 35% lub załoga < 50%).\nRozstrzygnięcie: Twoja załoga × morale × (1 + szermierka/10) vs ich. Zwycięzca traci niewielu, przegrany jest zdziesiątkowany.\nPrzejęcie: statek dołącza do floty (jeśli masz wolny slot) + 150–300 g łupów.\n\nAUTO-PODDANIE — wróg wywiesza białą flagę gdy spełniony jest dowolny warunek:\n  • kadłub ≤ 10% maksimum\n  • żagle ≤ 10% maksimum\n  • załoga < 10 marynarzy (bezwzględnie)\nBiała flaga = natychmiastowe zwycięstwo + łup, bez dalszego ostrzału.",
+
+  "battle.help_reload_h": "Szybkość reloadu (Załoga · Morale · Wyszkolenie)",
+  "battle.help_reload_body": "Bazowa kadencja salwy to 9 sekund na burtę. Trzy czynniki ją spowalniają — każdy daje mnożnik 0.70..1.00 na tempo reloadu:\n\n  • LICZEBNOŚĆ ZAŁOGI: pełna = 1.00, połowa = 0.85, 20% i mniej = 0.70.\n  • MORALE (0..100%): 100% = 1.00, 0% = 0.80.\n  • WYSZKOLENIE (0..100%): 100% = 1.00, 0% = 0.75.\n\n  ticki reloadu = 180 / (crewMul × moraleMul × trainingMul)\n\nPełnowartościowa załoga (komplet, odważni, weterani) ładuje w 9 s. Wyczerpana (20% załogi, zero morale, zieloni rekruci) — ok. 24 s.\n\nWYSZKOLENIE rośnie automatycznie:\n  +0.0005 za dzień spędzony na morzu (≈ +0.18 na rok)\n  +0.02 za wygraną bitwę (≈ 10 wygranych → +0.20)\n\nWYSZKOLENIE jest rozcieńczane gdy najmujesz świeżych rekrutów w karczmie — wnoszą zero doświadczenia i obniżają średnią (proporcjonalnie do liczby rekrutów wobec obecnej załogi).\n\nMORALE spada gdy giną marynarze i gdy oberwiesz kartaczem. Podnosisz je stawiając kolejkę w karczmie (10g).\n\nWartości widzisz na żywo w HUD prawym górnym rogu i pod etykietą swojego statku. W Kabinie (SPACE → Kabina) jest pasek długoterminowego wyszkolenia.",
 
   "battle.help_timeout_h": "Zasada timeoutu",
   "battle.help_timeout_body": "Jeśli pozostajesz poza 90% zasięgu armat przez 60 s, pojawia się czerwony licznik. Kolejne 60 s rozdziału kończy bitwę jako 'disengaged' i oba statki wracają na mapę świata.\nZbliżenie się znów do zasięgu RESETUJE oba liczniki.",

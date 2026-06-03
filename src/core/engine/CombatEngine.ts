@@ -4,7 +4,7 @@ import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windSpeedModifier } from "../systems/WeatherSystem.ts";
-import { CANNON_COOLDOWN_TICKS, CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW } from "../systems/CombatSystem.ts";
+import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
 
@@ -24,6 +24,10 @@ export class CombatEngine {
   private archetype: AiArchetype = "aggressive";
   /** Captain swordsmanship 0..10 — affects boarding outcome. */
   private swordsmanship = 5;
+  /** Player crew training 0..1 — affects reload speed for the player ship only. */
+  private playerTraining = 0.5;
+  /** Enemy crew training 0..1 — kept separate so AI ships reload at their own pace. */
+  private enemyTraining = 0.5;
 
   setArchetype(a: AiArchetype): void {
     this.archetype = a;
@@ -31,6 +35,19 @@ export class CombatEngine {
 
   setSwordsmanship(v: number): void {
     this.swordsmanship = v;
+  }
+
+  setPlayerTraining(v: number): void {
+    this.playerTraining = Math.max(0, Math.min(1, v));
+  }
+
+  setEnemyTraining(v: number): void {
+    this.enemyTraining = Math.max(0, Math.min(1, v));
+  }
+
+  /** Pick the right training value depending on which ship is firing. */
+  private trainingFor(shipId: string, state: CombatState): number {
+    return shipId === (state.playerShipId as string) ? this.playerTraining : this.enemyTraining;
   }
 
   /** Wind angle modulates how easily the ship turns.
@@ -186,10 +203,14 @@ export class CombatEngine {
             };
           }
         }
-        // Set cooldown regardless of hit/miss
+        // Set cooldown regardless of hit/miss — allies share the player's training level.
+        const allyReload = effectiveReloadTicks(
+          ally.ship.crew.current, ally.ship.crew.max,
+          ally.ship.crew.morale, this.playerTraining,
+        );
         updatedEntities[id] = {
           ...ally,
-          ship: { ...ally.ship, cooldown: { ...ally.ship.cooldown, left: CANNON_COOLDOWN_TICKS } },
+          ship: { ...ally.ship, cooldown: { ...ally.ship.cooldown, left: allyReload } },
         };
       }
     }
@@ -284,8 +305,12 @@ export class CombatEngine {
       case "SetAmmo": {
         // Switching ammo wastes the prior round in the barrels — both broadsides reload from zero.
         const ammoChanged = entity.ship.ammoType !== cmd.ammo;
+        const reloadTicks = effectiveReloadTicks(
+          entity.ship.crew.current, entity.ship.crew.max,
+          entity.ship.crew.morale, this.trainingFor(shipId, state),
+        );
         const newCooldown = ammoChanged
-          ? { left: CANNON_COOLDOWN_TICKS, right: CANNON_COOLDOWN_TICKS }
+          ? { left: reloadTicks, right: reloadTicks }
           : entity.ship.cooldown;
         return {
           state: {
@@ -409,9 +434,13 @@ export class CombatEngine {
       }
     }
 
+    const reloadTicks = effectiveReloadTicks(
+      entity.ship.crew.current, entity.ship.crew.max,
+      entity.ship.crew.morale, this.trainingFor(shipId, state),
+    );
     const newCooldown = { ...entity.ship.cooldown };
-    if (side === "left") newCooldown.left = CANNON_COOLDOWN_TICKS;
-    else newCooldown.right = CANNON_COOLDOWN_TICKS;
+    if (side === "left") newCooldown.left = reloadTicks;
+    else newCooldown.right = reloadTicks;
 
     if (!target || !target.ship) {
       events.push({ type: "CannonFired", side, shipId: entity.id, ammo, hit: false, fromPos: entity.pos });
@@ -587,8 +616,12 @@ export class CombatEngine {
 
     // Load preferred ammo (also resets cooldowns if changed)
     const ammoChanged = enemy.ship.ammoType !== preferredAmmo;
+    const enemyReloadOnSwitch = effectiveReloadTicks(
+      enemy.ship.crew.current, enemy.ship.crew.max,
+      enemy.ship.crew.morale, this.enemyTraining,
+    );
     const ship = ammoChanged
-      ? { ...enemy.ship, ammoType: preferredAmmo, cooldown: { left: CANNON_COOLDOWN_TICKS, right: CANNON_COOLDOWN_TICKS } }
+      ? { ...enemy.ship, ammoType: preferredAmmo, cooldown: { left: enemyReloadOnSwitch, right: enemyReloadOnSwitch } }
       : { ...enemy.ship, ammoType: preferredAmmo };
 
     updated = {
@@ -634,11 +667,15 @@ export class CombatEngine {
         });
       }
 
+      const enemyReloadOnFire = effectiveReloadTicks(
+        updated.ship!.crew.current, updated.ship!.crew.max,
+        updated.ship!.crew.morale, this.enemyTraining,
+      );
       updated = {
         ...updated,
         ship: {
           ...updated.ship!,
-          cooldown: { ...updated.ship!.cooldown, left: CANNON_COOLDOWN_TICKS },
+          cooldown: { ...updated.ship!.cooldown, left: enemyReloadOnFire },
         },
       };
     }

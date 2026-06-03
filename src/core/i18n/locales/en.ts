@@ -190,6 +190,7 @@ export const EN: LocaleData = {
 
   // -- Captain's Cabin --
   "cabin.crew_title": "Crew",
+  "cabin.training": "Crew training: {{pct}}%",
   "cabin.cargo_title": "Cargo Manifest",
   "cabin.ships_title": "Your Fleet",
   "cabin.no_cargo": "Cargo hold is empty.",
@@ -232,6 +233,8 @@ export const EN: LocaleData = {
   "battle.hud_sails": "Sails",
   "battle.hud_speed": "Speed",
   "battle.hud_cannons": "Cannons",
+  "battle.hud_morale": "Morale",
+  "battle.hud_training": "Training",
   "battle.sail_furled": "Furled",
   "battle.sail_battle": "Battle",
   "battle.sail_full": "Full",
@@ -261,10 +264,13 @@ export const EN: LocaleData = {
   "battle.help_ammo_body": "Round shot — anti-hull. Standard ball, even spread of damage.\nChain shot — anti-sails. Two balls linked by chain shred rigging (3× sail damage vs round shot).\nGrape shot — anti-crew. Cluster of small balls; SHORT range (~half normal), kills crew.\n\nSwitching ammo resets BOTH reload bars to zero — you waste whatever was already in the barrels.",
 
   "battle.help_damage_h": "Damage Model",
-  "battle.help_damage_body": "Each broadside fires HALF the ship's cannons (Galleon 36 → 18 / side, Sloop 8 → 4 / side).\n\nFormula:\n  shots = cannons / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  accuracy = max(0.15, 1 − 0.7·dRatio)\n  hull   = -3.5 · shots · ammo.hullMul  · distFactor · (1 − target.armor)\n  sails  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − target.armor)\n  crew   = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − armor·0.3))\n\nAmmo multipliers:\n  Round:  hull 1.0 | sails 0.55 | crew 0.40 | full range\n  Chain:  hull 0.15 | sails 4.5 (anti-rigging) | crew 0.10 | 90% range\n  Grape:  hull 0.10 | sails 0.0 | crew 1.30 (anti-personnel) | HALF range\n\nArmor (target hull thickness):\n  Pinnace/Sloop 0.10 — paper\n  Brigantine 0.28, Frigate 0.42\n  Galleon 0.60 (thick oak sides)\n  Grape bypasses 70% of armor (canister bursts above deck).\n\nExamples (point-blank, hit):\n  Brigantine (8) round → Brigantine: ~35 hull, ~10 sails, ~15 crew\n  Galleon (18) round → Sloop:  ~85 hull (one-shot sinks it)\n  Galleon (18) chain → Sloop:  ~300 sails (rigging wiped)\n  Galleon (18) grape → Sloop:  ~110 crew (entire crew dead)\n  Sloop (4) round → Galleon:   ~10 hull (must whittle for ~18 broadsides)\n  1 cannon @ far → Galleon:    ~0 (a scratch)\n\nReload: 9 s per side, L and R independent. Switching ammo resets both to zero.",
+  "battle.help_damage_body": "Each broadside fires HALF the ship's cannons (Galleon 36 → 18 / side, Sloop 8 → 4 / side).\n\nFormula:\n  shots = cannons / 2\n  distFactor = (1 − dRatio)^1.5;  point-blank (<15%) × 1.6\n  accuracy = max(0.15, 1 − 0.7·dRatio)\n  hull   = -3.5 · shots · ammo.hullMul  · distFactor · (1 − target.armor)\n  sails  = -3.0 · shots · ammo.sailsMul · distFactor · (1 − target.armor)\n  crew   = -round(4.5 · shots · ammo.crewMul · distFactor · (1 − armor·0.3))\n\nAmmo multipliers:\n  Round:  hull 1.0 | sails 0.55 | crew 0.40 | full range\n  Chain:  hull 0.15 | sails 4.5 (anti-rigging) | crew 0.10 | 90% range\n  Grape:  hull 0.10 | sails 0.0 | crew 1.30 (anti-personnel) | HALF range\n\nArmor (target hull thickness):\n  Pinnace/Sloop 0.10 — paper\n  Brigantine 0.28, Frigate 0.42\n  Galleon 0.60 (thick oak sides)\n  Grape bypasses 70% of armor (canister bursts above deck).\n\nExamples (point-blank, hit):\n  Brigantine (8) round → Brigantine: ~35 hull, ~10 sails, ~15 crew\n  Galleon (18) round → Sloop:  ~85 hull (one-shot sinks it)\n  Galleon (18) chain → Sloop:  ~300 sails (rigging wiped)\n  Galleon (18) grape → Sloop:  ~110 crew (entire crew dead)\n  Sloop (4) round → Galleon:   ~10 hull (must whittle for ~18 broadsides)\n  1 cannon @ far → Galleon:    ~0 (a scratch)\n\nReload: 9 s per side (base), modulated by crew/morale/training — see the Reload section. L and R independent. Switching ammo resets both to zero.",
 
   "battle.help_boarding_h": "Boarding (B)",
   "battle.help_boarding_body": "Requires distance ≤ 30 px AND enemy weakened (hull < 35% or crew < 50%).\nResolution: your crew × morale × (1 + swordsmanship/10) vs theirs. Winner takes light casualties, loser is decimated.\nCapture: ship joins your fleet (if you have a free slot) and you take 150–300 gold loot.\n\nAUTO-SURRENDER — enemy strikes their colors when any of:\n  • hull ≤ 10% of max\n  • sails ≤ 10% of max\n  • crew < 10 sailors (absolute)\nA white flag means instant victory + loot, no further fire needed.",
+
+  "battle.help_reload_h": "Reload Speed (Crew · Morale · Training)",
+  "battle.help_reload_body": "Base broadside cadence is 9 seconds per side. Three factors slow it down — each one a 0.70..1.00 multiplier on the reload tempo:\n\n  • CREW SIZE: full crew = 1.00, half = 0.85, 20% or less = 0.70.\n  • MORALE (0..100%): 100% = 1.00, 0% = 0.80.\n  • TRAINING (0..100%): 100% = 1.00, 0% = 0.75.\n\n  reload ticks = 180 / (crewMul × moraleMul × trainingMul)\n\nA pristine crew (full, brave, veteran) reloads in 9 s. A battered crew (20% crew, no morale, green recruits) takes ~24 s.\n\nTRAINING grows automatically:\n  +0.0005 per day spent at sea (≈ +0.18 per year)\n  +0.02 per battle won (≈ 10 wins → +0.20)\n\nTRAINING is diluted whenever you hire fresh recruits in a tavern — they bring zero experience and pull the average down (weighted by recruit count vs current crew).\n\nMORALE drops when crew are killed and when you take grape shot. Restored by buying a round of drinks (10g in tavern).\n\nSee values live in the top-right HUD during battle and under your ship label. The Cabin tab (SPACE → Cabin) shows the long-term training bar.",
 
   "battle.help_timeout_h": "Timeout Rule",
   "battle.help_timeout_body": "If you stay outside 90% of cannon range for 60 s, a red countdown appears. Another 60 s of separation auto-ends the battle as 'disengaged' and both ships return to the world map.\nClosing back into engagement range resets both timers.",

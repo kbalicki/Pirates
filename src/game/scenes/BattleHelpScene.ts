@@ -48,6 +48,7 @@ export class BattleHelpScene extends Phaser.Scene {
     this.renderColumn(rightX, startY, colW, [
       ["battle.help_ammo_h", "battle.help_ammo_body"],
       ["battle.help_damage_h", "battle.help_damage_body"],
+      ["battle.help_reload_h", "battle.help_reload_body"],
       ["battle.help_boarding_h", "battle.help_boarding_body"],
       ["battle.help_timeout_h", "battle.help_timeout_body"],
     ]);

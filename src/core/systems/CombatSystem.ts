@@ -1,7 +1,40 @@
 // Placeholder for Phase 6 combat system
 // CombatEngine will use this module for combat mechanics
 
-export const CANNON_COOLDOWN_TICKS = 180; // 9 seconds at 20 ticks/sec — slow, deliberate broadside cadence
+export const CANNON_COOLDOWN_TICKS = 180; // 9 seconds at 20 ticks/sec — best-case broadside cadence
+
+/**
+ * Effective reload time in ticks.
+ *
+ * Three factors slow down the base 9-second cadence:
+ *   • crew shortage   — fewer hands on the guns
+ *   • low morale      — frightened gunners are slow
+ *   • low training    — green crews fumble powder & ramming
+ *
+ * Each factor contributes a 0.7..1.0 multiplier; total is at worst 0.7³≈0.343,
+ * so the slowest a battered, terrified, untrained crew can reload is ~26 s.
+ * A pristine, brave, veteran crew clears in the full 9 s.
+ *
+ * Formula:
+ *   crewFrac    = clamp((crew/max - 0.2) / 0.8, 0, 1)   // ramp 20%..100%
+ *   crewMul     = 0.70 + 0.30 × crewFrac
+ *   moraleMul   = 0.80 + 0.20 × morale
+ *   trainingMul = 0.75 + 0.25 × training
+ *   ticks       = CANNON_COOLDOWN_TICKS / (crewMul × moraleMul × trainingMul)
+ */
+export function effectiveReloadTicks(
+  crewCurrent: number,
+  crewMax: number,
+  morale: number,
+  training: number,
+): number {
+  const crewFrac = Math.max(0, Math.min(1, (crewCurrent / Math.max(1, crewMax) - 0.2) / 0.8));
+  const crewMul = 0.70 + 0.30 * crewFrac;
+  const moraleMul = 0.80 + 0.20 * Math.max(0, Math.min(1, morale));
+  const trainingMul = 0.75 + 0.25 * Math.max(0, Math.min(1, training));
+  const totalMul = crewMul * moraleMul * trainingMul;
+  return Math.round(CANNON_COOLDOWN_TICKS / Math.max(0.2, totalMul));
+}
 /** Fallback range when state.cannonRange is missing; real value computed per-battle as arena.width/2. */
 export const CANNON_RANGE = 480;
 

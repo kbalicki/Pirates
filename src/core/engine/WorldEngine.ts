@@ -72,7 +72,7 @@ export class WorldEngine {
     const oldTime = world.time;
     const newTime = advanceTime(world.time, dtTicks);
 
-    // 2.5 Day change logging + world events + economy tick
+    // 2.5 Day change logging + world events + economy tick + training drift
     if (oldTime.day !== newTime.day) {
       world = addLogEntry(
         { ...world, time: newTime },
@@ -83,6 +83,14 @@ export class WorldEngine {
       world = updateWorldEvents(world);
       // Daily economy simulation (production, consumption, price update, recovery)
       world = economyDailyTick(world);
+      // Crew gains experience every day spent at sea (not in port)
+      if (world.player.location.type === "sea" && world.captain) {
+        const prev = world.captain.training ?? 0.3;
+        const next = Math.min(1, prev + 0.0005);
+        if (next !== prev) {
+          world = { ...world, captain: { ...world.captain, training: next } };
+        }
+      }
     }
 
     // 2.6 Crew consumption (once per game-hour)

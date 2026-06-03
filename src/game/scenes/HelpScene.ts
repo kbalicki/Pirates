@@ -180,6 +180,7 @@ export class HelpScene extends Phaser.Scene {
       { title: "Handel", desc: "Kupuj tanio towary eksportowe, sprzedawaj drogo w portach z popytem." },
       { title: "Reputacja", desc: "Każda frakcja pamięta twoje czyny. Wrogość = trudniejszy dostęp do portów." },
       { title: "Ekonomia (zakładka obok)", desc: "Miasta żyją: rosną, biednieją, są napadane. Każde wydarzenie zmienia stan portu." },
+      { title: "Wyszkolenie załogi", desc: "Pasek w Kabinie (SPACE). Rośnie na morzu i po wygranych. Nowi rekruci obniżają średnią. Wpływa na szybkość reloadu armat w bitwie. Pełny opis: H w czasie bitwy." },
     ];
     for (const { title, desc } of lines) {
       this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);

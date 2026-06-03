@@ -6,6 +6,28 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.8.0",
+    date: "2026-05-31",
+    changes: [
+      "RELOAD SPEED — broadside cadence now reflects the crew's state",
+      "  Base 9 s scales by crew size × morale × training (best 9 s, worst ~24 s)",
+      "  CREW: 0.70 at 20%, 1.00 at full",
+      "  MORALE: 0.80 at 0%, 1.00 at 100%",
+      "  TRAINING: 0.75 untrained, 1.00 veteran",
+      "CREW TRAINING — new long-term stat on the captain",
+      "  +0.0005 per day at sea (~+0.18 per year of sailing)",
+      "  +0.02 per battle won (~10 wins → +0.20)",
+      "  Dilutes when fresh recruits join the crew (weighted average)",
+      "  Visible as a bar in the Cabin tab (SPACE)",
+      "BATTLE UI — morale and training now visible during combat",
+      "  Player + enemy ship labels show Morale % alongside crew/cannons",
+      "  Player morale colour-coded green / amber / red",
+      "  Top-right HUD includes Training: NN%",
+      "DOCS — full formula in BattleHelpScene (H during battle)",
+      "Migration v8 backfills training field on old saves (default 0.30)",
+    ],
+  },
+  {
     version: "0.9.7.1",
     date: "2026-05-19",
     changes: [

@@ -247,6 +247,12 @@ export class SeaBattleScene extends Phaser.Scene {
     else if (behavior === "navy" || behavior === "pirate_hunter") archetype = "tactical";
     this.combatEngine.setArchetype(archetype);
 
+    // Reload speed depends on crew training. Player uses captain's current value;
+    // NPC enemies default to 0.5 (decent professional crew).
+    const playerTraining = this.worldState.captain?.training ?? 0.5;
+    this.combatEngine.setPlayerTraining(playerTraining);
+    this.combatEngine.setEnemyTraining(0.5);
+
     const cam = this.cameras.main;
     // Arena coordinates ARE world coordinates; camera will follow the player.
     this.arenaOriginX = 0;
@@ -466,12 +472,15 @@ export class SeaBattleScene extends Phaser.Scene {
       this.drawBars(this.playerHullBar, this.playerSailBar, sx, sy + 22, playerEntity.ship);
       this.maybeDamageSmoke(sx, sy, playerEntity.ship);
       this.drawReload(this.reloadBars[this.combatState.playerShipId as string], sx, sy + 38, playerEntity.ship);
-      // Crew + cannons label centered under bars — explicit so meaning is obvious
+      // Crew + cannons + morale label centered under bars — explicit so meaning is obvious
       const pShip = playerEntity.ship;
       if (pShip) {
+        const moralePct = Math.round(pShip.crew.morale * 100);
+        const moraleColor = pShip.crew.morale > 0.5 ? "#88dd88" : pShip.crew.morale > 0.2 ? "#ddbb55" : "#dd5555";
         this.playerCrewText.setText(
-          `${t("battle.dmg_crew")}: ${pShip.crew.current}/${pShip.crew.max}   ${t("battle.hud_cannons")}: ${pShip.cannons}`,
+          `${t("battle.dmg_crew")}: ${pShip.crew.current}/${pShip.crew.max}   ${t("battle.hud_cannons")}: ${pShip.cannons}   ${t("battle.hud_morale")}: ${moralePct}%`,
         );
+        this.playerCrewText.setColor(moraleColor);
         this.playerCrewText.setPosition(sx, sy + 50);
       }
       // Range arcs (port + starboard) around player, oriented to ship heading
@@ -490,8 +499,9 @@ export class SeaBattleScene extends Phaser.Scene {
       this.drawReload(this.reloadBars[this.combatState.enemyShipId as string], sx, sy + 38, enemyEntity.ship);
       const eShip = enemyEntity.ship;
       if (eShip) {
+        const eMoralePct = Math.round(eShip.crew.morale * 100);
         this.enemyCrewText.setText(
-          `${t("battle.dmg_crew")}: ${eShip.crew.current}/${eShip.crew.max}   ${t("battle.hud_cannons")}: ${eShip.cannons}`,
+          `${t("battle.dmg_crew")}: ${eShip.crew.current}/${eShip.crew.max}   ${t("battle.hud_cannons")}: ${eShip.cannons}   ${t("battle.hud_morale")}: ${eMoralePct}%`,
         );
         this.enemyCrewText.setPosition(sx, sy + 50);
       }
@@ -598,11 +608,13 @@ export class SeaBattleScene extends Phaser.Scene {
       knots = cls.speedBase * playerEntity.sailLevel * windMod * sailsMod * 32;
     }
     const cannons = playerEntity.ship.cannons ?? 0;
+    const training = Math.round((this.worldState.captain?.training ?? 0.3) * 100);
     this.statusText.setText(
       `${t("battle.hud_ammo")}: ${ammoLabel}\n` +
       `${t("battle.hud_sails")}: ${sailLabel}\n` +
       `${t("battle.hud_speed")}: ${knots.toFixed(1)} kn\n` +
-      `${t("battle.hud_cannons")}: ${cannons}`,
+      `${t("battle.hud_cannons")}: ${cannons}\n` +
+      `${t("battle.hud_training")}: ${training}%`,
     );
   }
 
@@ -1102,6 +1114,12 @@ export class SeaBattleScene extends Phaser.Scene {
       w = addLogEntry(w, "battle.log_lost", {});
     } else {
       w = addLogEntry(w, "battle.log_fled", {});
+    }
+
+    // Captain's crew gains training on victorious outcomes.
+    if ((outcome === "win" || outcome === "surrender" || outcome === "captured") && w.captain) {
+      const prev = w.captain.training ?? 0.3;
+      w = { ...w, captain: { ...w.captain, training: Math.min(1, prev + 0.02) } };
     }
 
     return w;

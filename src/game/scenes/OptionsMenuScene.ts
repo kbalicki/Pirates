@@ -267,6 +267,26 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(barBorder);
     y += 20;
 
+    // Training bar — crew experience under this captain's command (0..1).
+    const training = Math.max(0, Math.min(1, this.worldState.captain?.training ?? 0.3));
+    const trainingLabel = this.add.text(x + 10, y,
+      t("cabin.training", { pct: Math.round(training * 100) }),
+      txt(12));
+    this.contentContainer.add(trainingLabel);
+    y += 16;
+    const tBg = this.add.rectangle(x + 10, y, 200, 10, 0xdddddd);
+    tBg.setOrigin(0, 0.5);
+    this.contentContainer.add(tBg);
+    const trainColor = training > 0.66 ? 0x66aa66 : training > 0.33 ? 0xbb9966 : 0xcc6666;
+    const tBar = this.add.rectangle(x + 10, y, 200 * training, 10, trainColor);
+    tBar.setOrigin(0, 0.5);
+    this.contentContainer.add(tBar);
+    const tBorder = this.add.graphics();
+    tBorder.lineStyle(1, 0x999999, 1);
+    tBorder.strokeRect(x + 10, y - 5, 200, 10);
+    this.contentContainer.add(tBorder);
+    y += 20;
+
     // Cargo manifest
     const cargoTitle = this.add.text(x, y, t("cabin.cargo_title"), txt(14, { bold: true }));
     this.contentContainer.add(cargoTitle);
