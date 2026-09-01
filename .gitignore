@@ -27,8 +27,9 @@ ai-assets/output/*.png
 ai-assets/output/*.jpg
 ai-assets/output/*.gif
 
-# Claude settings (local only)
-.claude/
+# Claude settings — local only, EXCEPT the shared project skills
+.claude/*
+!.claude/skills/
 
 # Python cache
 __pycache__/

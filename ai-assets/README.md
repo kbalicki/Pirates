@@ -8,7 +8,11 @@ Stworzenie kompletnego zestawu sprite'ów, kafelków, ikon i efektów w stylu **
 
 ## Status
 
-> ⚠️ **Dotychczasowe wyniki niesatysfakcjonujące.** Pipeline wymaga poprawienia — zarówno model LoRA, jak i workflow'y ComfyUI.
+> ⚠️ **Przyczyna słabych wyników ustalona (2026-09-01).** LoRA `amigapxl_pirates_v1` była trenowana na **pełnych zrzutach ekranu** z Amigi i C64, a nie na wyciętych pojedynczych obiektach. Nauczyła się więc kompozycji całego ekranu gry: przy prompcie o pojedynczy statek zwraca mapę z wyspami, kilkoma statkami i paskiem HUD. Zachowanie potwierdzone przy sile LoRA 0.8 i 0.45; prompt negatywny tego nie usuwa, bo bias jest kompozycyjny, nie leksykalny.
+>
+> **Ścieżka, która działa dzisiaj:** checkpoint `pixel-art-diffusion-v1` **bez** LoRA amigapxl daje czysto izolowane obiekty na jednolitym tle. Przetestowana ikona 64×64 wyszła gotowa do użycia bez poprawek.
+>
+> **Prawdziwa naprawa:** retrening LoRA na wyciętych pojedynczych sprite'ach z przezroczystym tłem — zadanie w [TODO.md](../TODO.md).
 
 ### Dane treningowe
 - Lokalizacja: `C:\GIT\PiratesChronicles\temp\Pirates Amiga assets`
@@ -34,6 +38,9 @@ Stworzenie kompletnego zestawu sprite'ów, kafelków, ikon i efektów w stylu **
 - `PixelArtRedmond15V-PixelArt-PIXARFK.safetensors` (LoRA, 26MB) — Pixel art LoRA
 
 ### Uruchomienie
+
+Najprościej przez skill **`comfyui`** (poziom użytkownika) — zawiera start bez blokowania sesji, dobór modeli i diagnostykę.
+Generowanie z linii poleceń: `node sd-pipeline/tools/comfy.mjs` — patrz [sd-pipeline/README.md](../sd-pipeline/README.md).
 
 ```bash
 # ComfyUI

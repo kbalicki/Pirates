@@ -176,12 +176,15 @@ Szczegóły w `sd-pipeline/README.md` i `ai-assets/README.md`.
 
 ```bash
 # Screenshot gry (wymaga uruchomionego dev servera)
-node scripts/screenshot.mjs http://localhost:3000 screenshot.png 5000
+node scripts/screenshot.mjs <url> <plik-wyjściowy> <czas-ms> <akcja>
 ```
 
-Opcje:
-- URL, ścieżka wyjściowa, czas oczekiwania (ms)
-- Akcje: `--action=start` (start gry), `--action=options` (menu opcji)
+Argumenty są **pozycyjne**, nie flagowe. Akcje: `none` (domyślna), `step2`, `start_game`, `options`.
+
+```bash
+node scripts/screenshot.mjs "http://localhost:3000/?skip&zoom=z10" out.png 6000
+node scripts/screenshot.mjs http://localhost:3000 out.png 4000 options
+```
 
 ## Konwencje wydań
 

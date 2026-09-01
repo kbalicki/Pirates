@@ -6,6 +6,8 @@
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
+> **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
+
 ---
 
 ## 1. Gdzie stoimy
@@ -124,7 +126,8 @@ Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.1
 
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
-- **Assety AI** — pipeline `ai-assets/` + `sd-pipeline/` opisany, sprite'y statków dalej z jednego arkusza `sailship.png` (8 kierunków, brak wariantów klas i frakcji). Moduł uszkodzeń (v0.9.9) będzie potrzebował klatek zniszczeń.
+- **Retrening LoRA `amigapxl_pirates_v1`** — obecna wersja była trenowana na **pełnych zrzutach ekranu** z Amigi, więc generuje całe ekrany gry z HUD-em zamiast pojedynczych sprite'ów (potwierdzone testami przy sile 0.8 i 0.45; prompt negatywny nie pomaga). Naprawa: zbiór treningowy z **wyciętych pojedynczych obiektów na przezroczystym tle**, retrening w `C:\AI\kohya_ss`. Do czasu retreningu izolowane assety rób checkpointem `pixel-art-diffusion-v1` bez tej LoRA — ta ścieżka działa i jest sprawdzona.
+- **Assety AI** — sprite'y statków dalej z jednego arkusza `sailship.png` (8 kierunków, brak wariantów klas i frakcji). Moduł uszkodzeń (v0.9.9) będzie potrzebował klatek zniszczeń. Narzędzie: `node sd-pipeline/tools/comfy.mjs`, playbook `.claude/skills/task/playbooks/assets.md`.
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
 
 ---
@@ -142,3 +145,4 @@ Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.1
 - `src/core/` nie importuje Phasera. Nigdy.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`.
+- Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

@@ -10,16 +10,37 @@ Pipeline for generating 2D pixel art game assets using ComfyUI + Stable Diffusio
 
 ## Quick Start
 
-1. Start ComfyUI: `C:\AI\start_comfyui.bat`
-2. Verify API: `Invoke-RestMethod http://127.0.0.1:8188/system_stats`
-3. Generate a single asset:
-   ```powershell
-   .\tools\generate.ps1 -Prompt "pixel art treasure chest, top-down" -OutputDir ".\assets_raw\test"
-   ```
-4. Batch generate from prompt file:
-   ```powershell
-   .\tools\generate.ps1 -PromptsFile ".\prompts\icons.txt" -Workflow ".\workflows\icon_64x64.json" -OutputDir ".\assets_raw\icons"
-   ```
+Primary tool is `tools/comfy.mjs` — zero dependencies, uses Node's built-in fetch,
+prints machine-readable output and exits non-zero on failure. Run it from the repo root.
+
+```bash
+node sd-pipeline/tools/comfy.mjs status      # server, GPU, free VRAM
+node sd-pipeline/tools/comfy.mjs models      # available checkpoints and LoRAs
+node sd-pipeline/tools/comfy.mjs workflows   # templates: output size, LoRA support
+
+node sd-pipeline/tools/comfy.mjs gen   --workflow icon_64x64   --prompt "wooden treasure chest with gold coins"   --out temp/gen --seed 777   --set 1.ckpt_name=pixel-art-diffusion-v1.safetensors
+```
+
+Options: `--seed --steps --cfg --width --height --batch --negative --lora --lora-strength
+--name --timeout` and `--set <nodeId>.<input>=<value>` for raw graph overrides (repeatable).
+
+Every PNG gets a sibling JSON with the workflow, prompt, seed and sampler settings.
+Keep it — without the seed you cannot reproduce a good result or extend it into a
+consistent series (e.g. eight headings of the same ship).
+
+`tools/generate.ps1` is the older PowerShell client and is kept for reference.
+
+## Model choice
+
+| Checkpoint | Use |
+|---|---|
+| `pixel-art-diffusion-v1` | pixel art, isolated objects on clean backgrounds — **best for game assets** |
+| `dreamshaper_8` | general SD 1.5, illustrations, backgrounds |
+| `sd_xl_base_1.0` | SDXL — higher quality but tight on 6 GB VRAM |
+
+**Do not reach for the `amigapxl_pirates_v1` LoRA to make isolated sprites.** It was
+trained on full game screenshots and reproduces whole screens complete with a HUD bar.
+See `ai-assets/README.md` for the full diagnosis.
 
 ## Workflows
 
@@ -29,6 +50,8 @@ Pipeline for generating 2D pixel art game assets using ComfyUI + Stable Diffusio
 | `tile_32x32.json` | 512x512 → 32x32 | Seamless map tiles |
 | `ship_sprite.json` | 512x512 | Ship sprites |
 | `map_bg.json` | 512x512 | Map backgrounds |
+| `cloud_sprite.json` | 512x512 | Clouds on flat blue |
+| `pirate_lora.json` | 512x512 | Amiga palette via the project LoRA — whole-screen composition, see caveat above |
 
 ## Directory Structure
 
