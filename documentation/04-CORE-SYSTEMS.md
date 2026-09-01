@@ -226,6 +226,32 @@ crewDelta  = −4.5 × shots × ammo.crewMul  × distFactor × (1 − target.arm
 
 Zasięg = `arena.width / 2` (fallback `CANNON_RANGE = 480`). Łuki ostrzału: ±60° od trawersu obu burt — dziób i rufa to martwe pole.
 
+### Stopnie uszkodzeń (`DamageSystem.ts`, v0.9.9)
+
+Kadłub i ożaglowanie to nazwane stany, nie jedna liczba. Progi są ułamkami maksimum, więc pinasa (30 HP) i galeon (180 HP) przechodzą przez te same etapy przy tym samym względnym uszkodzeniu.
+
+| Kadłub | Stan | Prędkość | Skręt |
+|---|---|---|---|
+| ≥ 75% | sprawny | ×1.00 | ×1.00 |
+| ≥ 50% | przeciek | ×0.88 | ×0.85 |
+| ≥ 25% | ciężko uszkodzony | ×0.70 | ×0.65 |
+| > 0% | tonie | ×0.45 | ×0.45 |
+
+| Ożaglowanie | Stan | Prędkość |
+|---|---|---|
+| ≥ 75% | sprawne | ×1.00 |
+| ≥ 40% | podarte żagle | ×0.75 |
+| ≥ 10% | żagle w strzępach | ×0.45 |
+| > 0% | zerwany maszt | ×0.00 (dryf) |
+
+Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami jest wolniejszy niż każdy z osobna.
+
+**Tonięcie.** Poniżej 25% kadłuba statek nabiera wody `0.0005 × hullMax` na tick i idzie na dno w ~23 s bez ani jednego strzału. Dotyczy obu stron — pobity przeciwnik może zatonąć po tym, jak gracz zerwie kontakt.
+
+**Wyjątek dla mapy świata.** `mapDamageSpeedMultiplier()` nigdy nie zwraca zera, dopóki statek jest na wodzie: statek z zerwanym masztem pełznie na prowizorycznym omasztowaniu (×0.15). W bitwie dryf jest w porządku, bo bitwa się kończy — na otwartej mapie zero uwięziłoby gracza na zawsze, bo naprawy istnieją wyłącznie w porcie.
+
+**Utrata ładunku.** Zatonięcie zabiera ładownię: `cargoSurvivingSinking()` zostawia 10-30% w zależności od tego, ile załogi jeszcze żyje.
+
 ### AI wroga
 
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie

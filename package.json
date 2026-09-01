@@ -1,7 +1,7 @@
 {
   "name": "pirates-chronicles",
   "private": true,
-  "version": "0.9.8.3",
+  "version": "0.9.9.0",
   "type": "module",
   "scripts": {
     "dev": "vite",

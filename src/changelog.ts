@@ -6,6 +6,34 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.9.0",
+    date: "2026-09-01",
+    changes: [
+      "DAMAGE STAGES — hull and rigging are named conditions now, not one number",
+      "  HULL: >=75% sound, >=50% leaking, >=25% crippled, below that foundering",
+      "  Speed x1.00 / x0.88 / x0.70 / x0.45, turn rate x1.00 / x0.85 / x0.65 / x0.45",
+      "  RIG: >=75% intact, >=40% torn, >=10% tattered, below that dismasted",
+      "  Rig speed x1.00 / x0.75 / x0.45 / x0.00 — a dismasted ship drifts in battle",
+      "  Hull and rig stack, so a crippled hull under torn canvas is slower than either",
+      "FOUNDERING — below 25% hull a ship takes water every tick and goes down alone",
+      "  ~23 s from the threshold to the bottom: time to break off, not time to ignore",
+      "  Works both ways — a beaten enemy can sink after you disengage",
+      "SINKING — the hull settles, slews and leaves a ring of disturbed water",
+      "  The result banner now waits for the ship to go under before covering it",
+      "  Losing sinks the hold with the ship: 10-30% survives, more with a live crew",
+      "STAGED FX — crippled hulls smoke, foundering hulls smoke harder and burn",
+      "  Was: one smoke puff below 25% and nothing above it",
+      "MAP — the same stages apply to the world map, with one deliberate exception",
+      "  A dismasted ship still crawls at 15% instead of stopping dead",
+      "  Repairs only exist in port, so a true zero would strand the player forever",
+      "HUD — battle status line shows the condition of hull and rigging",
+      "  Speed readout now uses the real damage multiplier, not just sail HP",
+      "  It also calls the engine's own wind curve instead of a hand-copied duplicate",
+      "  That copy still had the discontinuity fixed in v0.9.8.2 — HUD and ship disagreed",
+      "TESTS — 257 -> 295: tier boundaries, stacking, flooding rate, no-strand guarantee",
+    ],
+  },
+  {
     version: "0.9.8.3",
     date: "2026-09-01",
     changes: [

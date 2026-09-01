@@ -7,6 +7,7 @@ import { windSpeedModifier } from "../systems/WeatherSystem.ts";
 import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
+import { damageSpeedMultiplier, damageTurnMultiplier, applyFlooding } from "../systems/DamageSystem.ts";
 
 /** Archetypes drive enemy AI behavior. Mapped from ai.behavior in the world. */
 export type AiArchetype = "aggressive" | "defensive" | "tactical";
@@ -97,10 +98,15 @@ export class CombatEngine {
         const shipClass = SHIP_CLASSES[entity.ship.classId as string];
         if (shipClass) {
           const windMod = windSpeedModifier(entity.heading, state.wind.dirRad, state.wind.strength);
-          const sailsMod = entity.ship.sailsHp / entity.ship.sailsMax;
+          // Damage tiers (v0.9.9): hull and rigging each cost speed in stages.
+          // A dismasted ship returns 0 and drifts, whatever the helm orders.
+          const damageMod = damageSpeedMultiplier(
+            entity.ship.hullHp, entity.ship.hullMax,
+            entity.ship.sailsHp, entity.ship.sailsMax,
+          );
           const sailLvl = entity.sailLevel ?? 0;
           // Speed scales with sail throttle 0..1 and is boosted by COMBAT_SPEED_MUL so battles feel snappy.
-          const speed = COMBAT_SPEED_MUL * shipClass.speedBase * sailLvl * windMod * sailsMod;
+          const speed = COMBAT_SPEED_MUL * shipClass.speedBase * sailLvl * windMod * damageMod;
 
           const dir = headingToVec(entity.heading);
           const vel = vec2Scale(dir, speed);
@@ -117,11 +123,23 @@ export class CombatEngine {
             right: Math.max(0, entity.ship.cooldown.right - dtTicks),
           };
 
+          // A foundering hull keeps taking water even if nobody fires again.
+          const beforeFlood = entity.ship.hullHp;
+          const floodedHull = applyFlooding(beforeFlood, entity.ship.hullMax, dtTicks);
+          if (floodedHull < beforeFlood) {
+            events.push({
+              type: "ShipDamaged",
+              shipId: entity.id,
+              hullDelta: floodedHull - beforeFlood,
+              sailsDelta: 0,
+            });
+          }
+
           updated = {
             ...entity,
             pos: clampedPos,
             vel,
-            ship: { ...entity.ship, cooldown: newCooldown },
+            ship: { ...entity.ship, hullHp: floodedHull, cooldown: newCooldown },
           };
         }
       }
@@ -283,10 +301,10 @@ export class CombatEngine {
         const windFactor = this.windTurnFactor(entity.heading, state.wind.dirRad, state.wind.strength);
         // Heavily-loaded sails also reduce maneuverability slightly (close-hauled with full sails is brutal).
         const sailPenalty = 1 - entity.sailLevel * 0.25;
-        // Hull damage hurts maneuverability — a holed ship takes on water, rudder lags, deck crew slows.
-        // 100% hull = 1.0, 50% = 0.7, 0% = 0.4 (still steerable, but sluggish).
-        const hullFrac = entity.ship.hullHp / entity.ship.hullMax;
-        const hullPenalty = 0.4 + 0.6 * hullFrac;
+        // Hull damage hurts maneuverability — a holed ship takes on water, the
+        // rudder lags, the deck crew slows. Staged since v0.9.9: sound 1.0,
+        // leaking 0.85, crippled 0.65, foundering 0.45.
+        const hullPenalty = damageTurnMultiplier(entity.ship.hullHp, entity.ship.hullMax);
         const maxTurn = baseTurn * windFactor * sailPenalty * hullPenalty;
         const amount = clamp(cmd.amount, 0, maxTurn);
         const delta = cmd.dir === "left" ? -amount : amount;

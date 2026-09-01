@@ -40,6 +40,9 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.9.7 | **Żywa ekonomia** — populacja/zamożność/obrona, dzienny tick, 6 nowych wydarzeń | ✅ |
 | 0.9.8 | Przeładowanie = f(załoga, morale, wyszkolenie); wyszkolenie załogi jako statystyka | ✅ |
 | 0.9.8.1 | Sprzątanie: usunięcie martwych scen, naprawa testów, aktualizacja dokumentacji | ✅ |
+| 0.9.8.2 | Naprawa nieciągłości krzywej polarnej wiatru na granicy 120° | ✅ |
+| 0.9.8.3 | Pokrycie testami 119 → 257; migracja v9 i fix czasu zmiany żagli | ✅ |
+| 0.9.9.0 | **Stopnie uszkodzeń** — stany kadłuba i ożaglowania, tonięcie, animacja zatonięcia, utrata ładunku | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -55,17 +58,17 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 Kolejność wynika z zasady: **najpierw domykamy pętle, które już istnieją**, potem otwieramy nowe moduły. Gracz ma dziś świat, ekonomię, NPC i bitwy — ale brakuje mu powodu, żeby walczyć, i ceny za przegraną.
 
-### Moduł A — Uszkodzenia i tonięcie *(v0.9.9)*
+### Moduł A — Uszkodzenia i tonięcie *(v0.9.9)* — ✅ w większości
 **Priorytet:** WYSOKI | **Złożoność:** Średnia | **Domyka:** bitwy morskie
 
-Bitwa działa, ale nie daje sprzężenia zwrotnego — statek albo pływa, albo znika.
+- ✅ **Kadłub:** ≥75% sprawny, ≥50% przeciek, ≥25% ciężko uszkodzony, poniżej — tonie
+- ✅ **Ożaglowanie:** podarte → w strzępach → zerwany maszt (dryf w bitwie, pełzanie ×0.15 na mapie)
+- ✅ **Wizualne:** dym od stanu „ciężko uszkodzony", ogień przy tonięciu, animacja zatonięcia, utrata ładunku
+- ⬜ **Naprawa prowizoryczna na morzu** — powolna, ograniczona. `repairShip()` w `PortInteractionSystem:241` obsługuje wyłącznie port
+- ⬜ **Przechył** — pominięty świadomie: widok z góry, przechył byłby niewidoczny. Zamiast tego statek osiada, obraca się i zostawia pierścień na wodzie
+- ⬜ **Ratowanie załogi** po zatonięciu
 
-- **Kadłub:** 100→75 sprawny, 75→50 przeciek (wolniejszy), 50→25 ciężkie uszkodzenia, <25 tonięcie
-- **Ożaglowanie:** podarte żagle (wolniej) → zerwany maszt (dryf) → brak żagli (dryfowanie z wiatrem)
-- **Wizualne:** dym, ogień, przechył, animacja zatonięcia, utrata ładunku, ratowanie załogi
-- **Naprawa:** w stoczni (jest) lub prowizoryczna na morzu — powolna, ograniczona (brak)
-
-Łańcuchówki mają już mnożniki obrażeń żagli w `ammo.ts` — brakuje progresji stanu i warstwy wizualnej.
+Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcja „Stopnie uszkodzeń".
 
 ### Moduł B — Pojedynki szermiercze *(v0.10.0)*
 **Priorytet:** WYSOKI | **Złożoność:** Średnia

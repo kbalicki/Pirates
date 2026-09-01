@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.3 · **Branch:** `main`
-**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **257 przechodzi, 0 failuje, 0 `todo`** w 7 plikach
+**Stan na:** 2026-09-01 · **Wersja:** v0.9.9.0 · **Branch:** `main`
+**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **295 przechodzi, 0 failuje, 0 `todo`** w 8 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -86,14 +86,23 @@ Pozostaje nietknięte: `WorldEventSystem`, `NpcAiSystem`, `NpcNewsSystem`, `Comb
 Zasada: **najpierw domknąć pętle, które już istnieją**, dopiero potem otwierać nowe moduły.
 Gracz ma dziś świat, ekonomię, NPC i bitwy morskie — ale nie ma **po co** walczyć (brak celów) ani **czym** przegrywać (brak konsekwencji).
 
-### v0.9.9 — Domknięcie bitwy morskiej
-*Największy zwrot z inwestycji: system gotowy w 80%, brakuje sprzężenia zwrotnego.*
+### ~~v0.9.9 — Domknięcie bitwy morskiej~~ ✅ w większości (v0.9.9.0)
 
-- **Stopnie uszkodzeń kadłuba** — 100→75 sprawny, 75→50 przeciek (wolniej), 50→25 ciężkie, <25 tonie
-- **Wizualizacja** — dym, ogień, przechył; animacja zatonięcia + utrata ładunku
-- **Uszkodzenia ożaglowania** — łańcuchówki mają już mnożniki w `ammo.ts`, brakuje progresji (podarte żagle → zerwany maszt → dryf)
+Zrobione — `src/core/systems/DamageSystem.ts` + wpięcie w `CombatEngine`, `NavigationSystem` i `SeaBattleScene`:
+
+- **Stopnie uszkodzeń kadłuba** — ≥75% sprawny, ≥50% przeciek, ≥25% ciężko uszkodzony, poniżej tonie. Prędkość ×1.00/×0.88/×0.70/×0.45, skręt ×1.00/×0.85/×0.65/×0.45
+- **Uszkodzenia ożaglowania** — ≥75% sprawne, ≥40% podarte, ≥10% w strzępach, poniżej zerwany maszt. Mnożniki kadłuba i takielunku się mnożą
+- **Tonięcie** — poniżej 25% kadłuba statek nabiera wody i idzie na dno w ~23 s bez ani jednego strzału, po obu stronach
+- **Wizualizacja** — dym od „ciężko uszkodzony", dym + ogień przy tonięciu, animacja zatonięcia (osiadanie, obrót, pierścień na wodzie), baner wyniku czeka aż statek zniknie
+- **Utrata ładunku** — zatonięcie zostawia 10-30% ładowni, zależnie od tego ile załogi przeżyło
+- **Mapa świata** — te same stopnie, z jednym świadomym wyjątkiem: statek z zerwanym masztem pełznie ×0.15 zamiast stać. Naprawy istnieją wyłącznie w porcie, więc zero uwięziłoby gracza na zawsze
+
+Przy okazji: HUD bitwy pokazuje stan kadłuba i takielunku, a odczyt prędkości przestał liczyć wiatr z ręcznie skopiowanej krzywej — ta kopia wciąż miała nieciągłość naprawioną w v0.9.8.2, więc HUD kłamał względem statku.
+
+**Zostało w tym module:**
 - **Naprawa prowizoryczna na morzu** — powolna, limitowana; `repairShip()` w `PortInteractionSystem:241` obsługuje tylko port
-- Pliki: `SeaBattleScene.ts`, `CombatEngine.ts`, `EntityState.ts` (`hullHp`/`sailsHp` są — potrzebny próg stanu + FX)
+- **Ratowanie załogi** po zatonięciu
+- Przechył pominięty świadomie — widok z góry, nie byłoby go widać
 
 ### v0.10.0 — Pojedynki szermiercze
 *Umiejętność `fencing` istnieje, ale wpływa wyłącznie na jeden mnożnik w `BoardingSystem.ts:53`.*

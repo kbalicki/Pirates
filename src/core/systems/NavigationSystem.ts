@@ -3,6 +3,7 @@ import type { WeatherState, Vec2 } from "../model/WorldState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windSpeedModifier } from "./WeatherSystem.ts";
+import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
 
 export type TerrainQuery = (worldX: number, worldY: number) => TerrainType;
 
@@ -36,8 +37,13 @@ export function updateNavigation(
 
   // Calculate effective speed (fleet multiplier slows to slowest ship)
   const windMod = windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30);
-  const sailsMod = entity.ship.sailsHp / entity.ship.sailsMax;
-  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * sailsMod * fleetSpeedMul;
+  // Damage tiers (v0.9.9). Unlike in battle, a dismasted ship still crawls —
+  // repairs only exist in port, so a true zero here would strand the player.
+  const damageMod = mapDamageSpeedMultiplier(
+    entity.ship.hullHp, entity.ship.hullMax,
+    entity.ship.sailsHp, entity.ship.sailsMax,
+  );
+  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * damageMod * fleetSpeedMul;
 
   // Direction vector from heading
   const dir = headingToVec(entity.heading);

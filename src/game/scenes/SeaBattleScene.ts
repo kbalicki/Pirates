@@ -17,9 +17,20 @@ import { addToFleet, canAddToFleet } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
+import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
+import {
+  hullCondition,
+  rigCondition,
+  hullTier,
+  rigTier,
+  damageSpeedMultiplier,
+  cargoSurvivingSinking,
+} from "../../core/systems/DamageSystem.ts";
 
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
+/** How long a hull takes to go under once its hull hits zero (v0.9.9). */
+const SINK_DURATION_MS = 1400;
 
 export class SeaBattleScene extends Phaser.Scene {
   private worldState!: WorldState;
@@ -50,6 +61,8 @@ export class SeaBattleScene extends Phaser.Scene {
   private ammoButtonsText: Phaser.GameObjects.Text[] = [];
   /** Allied fleet sprites + bars keyed by entity id. */
   private allySprites: Record<string, Phaser.GameObjects.Sprite> = {};
+  /** Ships whose sinking animation has already been started, by entity id. */
+  private sinkingSprites = new Set<string>();
   private allyBars: Record<string, { hull: Phaser.GameObjects.Graphics; sail: Phaser.GameObjects.Graphics }> = {};
   /** True when launched via ?battle URL param — uses random corner spawns. */
   private testMode = false;
@@ -466,8 +479,12 @@ export class SeaBattleScene extends Phaser.Scene {
     if (playerEntity) {
       const sx = ax + playerEntity.pos.x;
       const sy = ay + playerEntity.pos.y;
-      this.playerSprite.setPosition(sx, sy);
-      this.playerSprite.setFrame(DIR8_TO_FRAME[headingToDir8(playerEntity.heading)]);
+      if (playerEntity.ship && playerEntity.ship.hullHp <= 0) {
+        this.playSinking(this.playerSprite, "player");
+      } else {
+        this.playerSprite.setPosition(sx, sy);
+        this.playerSprite.setFrame(DIR8_TO_FRAME[headingToDir8(playerEntity.heading)]);
+      }
       this.playerLabel.setPosition(sx, sy - 26);
       this.drawBars(this.playerHullBar, this.playerSailBar, sx, sy + 22, playerEntity.ship);
       this.maybeDamageSmoke(sx, sy, playerEntity.ship);
@@ -491,8 +508,12 @@ export class SeaBattleScene extends Phaser.Scene {
     if (enemyEntity) {
       const sx = ax + enemyEntity.pos.x;
       const sy = ay + enemyEntity.pos.y;
-      this.enemySprite.setPosition(sx, sy);
-      this.enemySprite.setFrame(DIR8_TO_FRAME[headingToDir8(enemyEntity.heading)]);
+      if (enemyEntity.ship && enemyEntity.ship.hullHp <= 0) {
+        this.playSinking(this.enemySprite, "enemy");
+      } else {
+        this.enemySprite.setPosition(sx, sy);
+        this.enemySprite.setFrame(DIR8_TO_FRAME[headingToDir8(enemyEntity.heading)]);
+      }
       this.enemyLabel.setPosition(sx, sy - 26);
       this.drawBars(this.enemyHullBar, this.enemySailBar, sx, sy + 22, enemyEntity.ship);
       this.maybeDamageSmoke(sx, sy, enemyEntity.ship);
@@ -515,12 +536,11 @@ export class SeaBattleScene extends Phaser.Scene {
       if (!ent) { sprite.setVisible(false); continue; }
       const sx = ax + ent.pos.x;
       const sy = ay + ent.pos.y;
-      sprite.setPosition(sx, sy);
-      sprite.setFrame(DIR8_TO_FRAME[headingToDir8(ent.heading)]);
-      // Sink visual
       if (ent.ship && ent.ship.hullHp <= 0) {
-        sprite.setAlpha(0.3);
-        sprite.setRotation((sprite.rotation + 0.02) % (Math.PI * 2));
+        this.playSinking(sprite, id);
+      } else {
+        sprite.setPosition(sx, sy);
+        sprite.setFrame(DIR8_TO_FRAME[headingToDir8(ent.heading)]);
       }
       const bars = this.allyBars[id];
       if (bars) this.drawBars(bars.hull, bars.sail, sx, sy + 18, ent.ship);
@@ -603,9 +623,12 @@ export class SeaBattleScene extends Phaser.Scene {
     if (cls) {
       // Same formula as the world map: speedBase * sailLevel * windMod * sailsMod * 32 = display kn
       // (peak wind = 1.5 → max kn = speedBase * 48; e.g. brigantine 0.229 → 11 kn)
-      const sailsMod = playerEntity.ship.sailsHp / playerEntity.ship.sailsMax;
+      const damageMod = damageSpeedMultiplier(
+        playerEntity.ship.hullHp, playerEntity.ship.hullMax,
+        playerEntity.ship.sailsHp, playerEntity.ship.sailsMax,
+      );
       const windMod = this.estimateWindMod(playerEntity.heading);
-      knots = cls.speedBase * playerEntity.sailLevel * windMod * sailsMod * 32;
+      knots = cls.speedBase * playerEntity.sailLevel * windMod * damageMod * 32;
     }
     const cannons = playerEntity.ship.cannons ?? 0;
     const training = Math.round((this.worldState.captain?.training ?? 0.3) * 100);
@@ -614,26 +637,22 @@ export class SeaBattleScene extends Phaser.Scene {
       `${t("battle.hud_sails")}: ${sailLabel}\n` +
       `${t("battle.hud_speed")}: ${knots.toFixed(1)} kn\n` +
       `${t("battle.hud_cannons")}: ${cannons}\n` +
-      `${t("battle.hud_training")}: ${training}%`,
+      `${t("battle.hud_training")}: ${training}%\n` +
+      `${t("battle.hud_condition")}: ${this.conditionLabel(playerEntity.ship)}`,
     );
   }
 
-  /** Lightweight wind-modifier estimate — duplicates WeatherSystem.windSpeedModifier (no import for scene). */
+  /**
+   * Wind modifier for the speed readout. Calls the same `windSpeedModifier` the
+   * engine steers by — this used to be a hand-copied duplicate of the curve,
+   * which silently kept the pre-v0.9.8.2 discontinuity after the engine was
+   * fixed, so the HUD and the ship disagreed.
+   */
   private estimateWindMod(heading: number): number {
-    const TWO_PI = Math.PI * 2;
-    const windDir = this.combatState.wind.dirRad;
-    const windStr = this.combatState.wind.strength;
-    let angleDiff = Math.abs(heading - windDir);
-    angleDiff = ((angleDiff % TWO_PI) + TWO_PI) % TWO_PI;
-    const windAngle = angleDiff > Math.PI ? TWO_PI - angleDiff : angleDiff;
-    const deg = windAngle * (180 / Math.PI);
-    const minA = 30;
-    let factor: number;
-    if (deg < minA) factor = 0;
-    else if (deg < minA + 30) factor = ((deg - minA) / 30) * 0.4;
-    else if (deg < 120) factor = 0.4 + 1.1 * Math.sin(((deg - (minA + 30)) / (120 - (minA + 30))) * Math.PI);
-    else factor = 1.1 - ((deg - 120) / 60) * 0.2;
-    return 1.0 + (factor - 1.0) * windStr;
+    const minWindAngle = SHIP_CLASSES[
+      this.combatState.entities[this.worldState.player.shipId as string]?.ship?.classId as string
+    ]?.minWindAngle ?? 30;
+    return windSpeedModifier(heading, this.combatState.wind.dirRad, this.combatState.wind.strength, minWindAngle);
   }
 
   /** Faint dashed arcs showing port + starboard firing zones (no fore/aft dead-zone). */
@@ -693,26 +712,94 @@ export class SeaBattleScene extends Phaser.Scene {
     g.lineStyle(1, 0x77dd77, 0.9).strokeRect(rx, topY, W, H);
   }
 
-  /** Spawn a wispy smoke puff when a ship is critically damaged (hull < 25%). */
+  /**
+   * Damage stage for the HUD: hull condition, plus the rig once the canvas is
+   * torn enough to matter. A dismasted ship says so loudly — that is the
+   * difference between "slow" and "cannot leave".
+   */
+  private conditionLabel(ship: { hullHp: number; hullMax: number; sailsHp: number; sailsMax: number }): string {
+    const hull = t(hullTier(ship.hullHp, ship.hullMax).nameKey);
+    if (rigCondition(ship.sailsHp, ship.sailsMax) === "full") return hull;
+    return `${hull} / ${t(rigTier(ship.sailsHp, ship.sailsMax).nameKey)}`;
+  }
+
+  /**
+   * Staged damage FX (v0.9.9). A crippled hull smokes; a foundering one burns
+   * and smokes twice as hard. Nothing is drawn above the "crippled" stage — the
+   * bars already say that much, and constant smoke would read as critical.
+   */
   private maybeDamageSmoke(
     sx: number, sy: number,
     ship: { hullHp: number; hullMax: number } | undefined,
   ): void {
     if (!ship) return;
-    const hullPct = ship.hullMax > 0 ? ship.hullHp / ship.hullMax : 1;
-    if (hullPct >= 0.25) return;
-    // Rate-limit via random sampling (≈10% per frame at 60fps = 6/s)
-    if (Math.random() > 0.1) return;
-    const c = this.add.circle(sx + (Math.random() - 0.5) * 14, sy - 14, 6 + Math.random() * 4,
-      0x444444, 0.6);
-    c.setDepth(70);
+    const stage = hullCondition(ship.hullHp, ship.hullMax);
+    if (stage !== "crippled" && stage !== "foundering") return;
+    const foundering = stage === "foundering";
+
+    // Rate-limit via random sampling: ~6 puffs/s crippled, ~12/s foundering.
+    if (Math.random() > (foundering ? 0.2 : 0.1)) return;
+
+    const puff = this.add.circle(
+      sx + (Math.random() - 0.5) * 14, sy - 14,
+      (foundering ? 7 : 6) + Math.random() * 4,
+      foundering ? 0x2a2a2a : 0x444444,
+      foundering ? 0.7 : 0.6,
+    );
+    puff.setDepth(70);
     this.tweens.add({
-      targets: c,
-      y: sy - 50,
+      targets: puff,
+      y: sy - (foundering ? 62 : 50),
       alpha: 0,
-      scale: 2.0,
-      duration: 1200,
-      onComplete: () => c.destroy(),
+      scale: foundering ? 2.6 : 2.0,
+      duration: foundering ? 1500 : 1200,
+      onComplete: () => puff.destroy(),
+    });
+
+    // Fire only once the ship is going down, and only on some puffs.
+    if (!foundering || Math.random() > 0.5) return;
+    const flame = this.add.circle(
+      sx + (Math.random() - 0.5) * 10, sy - 6,
+      3 + Math.random() * 3,
+      Math.random() > 0.5 ? 0xff8822 : 0xffcc33, 0.9,
+    );
+    flame.setDepth(71);
+    this.tweens.add({
+      targets: flame,
+      y: sy - 20,
+      alpha: 0,
+      scale: 0.4,
+      duration: 400,
+      onComplete: () => flame.destroy(),
+    });
+  }
+
+  /**
+   * Sinking animation: the hull settles, slews as it goes, and leaves a ring of
+   * disturbed water. Played once per ship — `sinkingSprites` keeps the tick loop
+   * from restarting it every frame while the result banner is up.
+   */
+  private playSinking(sprite: Phaser.GameObjects.Sprite, key: string): void {
+    if (this.sinkingSprites.has(key)) return;
+    this.sinkingSprites.add(key);
+
+    const ring = this.add.circle(sprite.x, sprite.y, 10, 0xffffff, 0);
+    ring.setStrokeStyle(2, 0xcce6ff, 0.8).setDepth(60);
+    this.tweens.add({
+      targets: ring,
+      radius: 46,
+      alpha: 0,
+      duration: SINK_DURATION_MS,
+      onComplete: () => ring.destroy(),
+    });
+
+    this.tweens.add({
+      targets: sprite,
+      scale: sprite.scale * 0.45,
+      alpha: 0,
+      angle: sprite.angle + (Math.random() > 0.5 ? 28 : -28),
+      duration: SINK_DURATION_MS,
+      ease: "Quad.easeIn",
     });
   }
 
@@ -934,10 +1021,17 @@ export class SeaBattleScene extends Phaser.Scene {
           txt(16, { bold: true, color: event.captured ? "#ffee88" : "#ff8888" }))
           .setOrigin(0.5, 0).setDepth(10000);
         break;
-      case "BattleEnded":
+      case "BattleEnded": {
         this.battleOver = true;
-        this.showBattleResult(event.outcome);
+        // Let a hull finish going under before the banner covers the screen.
+        const sinking = event.outcome === "win" || event.outcome === "lose";
+        if (sinking) {
+          this.time.delayedCall(SINK_DURATION_MS, () => this.showBattleResult(event.outcome));
+        } else {
+          this.showBattleResult(event.outcome);
+        }
         break;
+      }
     }
   }
 
@@ -1110,7 +1204,26 @@ export class SeaBattleScene extends Phaser.Scene {
         w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: this.pendingLoot });
       }
     } else if (outcome === "lose") {
-      // Phase A: just log it; full game-over handling in later phase
+      // The hold goes down with the ship (v0.9.9). A crew that still has hands
+      // to work the boats saves a little more than one that has been shot to
+      // pieces — see `cargoSurvivingSinking`.
+      const sunkShip = w.entities[playerId]?.ship;
+      if (sunkShip) {
+        const crewFrac = sunkShip.crew.max > 0 ? sunkShip.crew.current / sunkShip.crew.max : 0;
+        const kept = cargoSurvivingSinking(crewFrac);
+        const salvaged: Record<string, number> = {};
+        for (const [item, qty] of Object.entries(sunkShip.cargo ?? {})) {
+          const left = Math.floor(qty * kept);
+          if (left > 0) salvaged[item] = left;
+        }
+        w = {
+          ...w,
+          entities: {
+            ...w.entities,
+            [playerId]: { ...w.entities[playerId], ship: { ...sunkShip, cargo: salvaged } },
+          },
+        };
+      }
       w = addLogEntry(w, "battle.log_lost", {});
     } else {
       w = addLogEntry(w, "battle.log_fled", {});
