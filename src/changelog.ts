@@ -6,6 +6,32 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.12.0.0",
+    date: "2026-09-02",
+    changes: [
+      "QUESTS — the FSM the placeholder promised since v0.5.6",
+      "  QuestSystem.ts: stages, data triggers, effects, a validator",
+      "  Triggers: reach_port, dig_at (point + radius), flag_set, days_passed",
+      "  Rewards reuse DialogueEffect instead of a second effect vocabulary",
+      "  One transition per event, so nothing skips two stages on one dig",
+      "  A completed quest stops responding entirely — a dig cannot pay twice",
+      "  validateQuest() catches dead ends, missing stages, terminal stages",
+      "  that still list transitions",
+      "TREASURE MAPS — the first reason to go ashore",
+      "  Walking on foot has existed since v0.9.3 and had nothing to do",
+      "  Buy a map in the tavern: crude 300g (220 radius), fair 800g (110),",
+      "  surveyor's 2000g (45). A richer port deals in better charts",
+      "  The chest is buried near a named city; press X ashore to dig",
+      "  A miss reports warm or cold plus a bearing, so a crude map is still",
+      "  usable — land, dig, walk toward the hint, dig again",
+      "  A quarter of maps are bait: digging one starts a duel at the hole",
+      "  Win and the chest is yours; lose and they take a quarter of your gold",
+      "  Rewards 400-2500g, scaled up for a better chart",
+      "HELP — L and X added to the controls list",
+      "TESTS — 448 -> 489 across 13 files",
+    ],
+  },
+  {
     version: "0.11.0.0",
     date: "2026-09-02",
     changes: [

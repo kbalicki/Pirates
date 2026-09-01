@@ -1,12 +1,12 @@
-import type { QuestId, FactionId } from "../model/ids.ts";
+import type { QuestDef } from "../systems/QuestSystem.ts";
 
-export type QuestDef = {
-  id: QuestId;
-  title: string;
-  description: string;
-  factionId?: FactionId;
-  type: "transport" | "bounty" | "explore" | "escort";
-};
-
-// No quests defined yet. First batch lands with treasure maps — see TODO.md v0.12.0.
+/**
+ * Static quest definitions.
+ *
+ * Treasure hunts are *not* here: every map is a one-off instance built by
+ * `TreasureSystem.treasureQuest()` around the spot it happens to name, and the
+ * definition is rebuilt from the map stored in the quest's own `data` whenever
+ * the registry is needed. This map holds hand-authored quests — the story
+ * threads in later modules — of which there are none yet.
+ */
 export const QUESTS: Record<string, QuestDef> = {};

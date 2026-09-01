@@ -46,6 +46,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.9.9.1 | Fix HMR: hot reload nie nakłada drugiej instancji gry na pierwszą | ✅ |
 | 0.10.0.0 | **Pojedynki kapitanów** przy abordażu; naprawa na morzu; ratowanie rozbitków | ✅ |
 | 0.11.0.0 | **System dialogów**, podział łupów, starzenie kapitana, emerytura z punktacją | ✅ |
+| 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -91,16 +92,16 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ **Emerytura i punktacja** — gubernator proponuje ziemię po roku na morzu; `RetirementScene` z księgą wyniku i tytułem
 - Przy okazji: umiejętność `fencing` kapitana **w ogóle** nie docierała do abordażu — `setSwordsmanship()` nigdy nie było wołane
 
-### Moduł D — Mapy skarbów *(v0.12.0)*
-**Priorytet:** ŚREDNI | **Złożoność:** Średnia
+### Moduł D — Mapy skarbów *(v0.12.0)* — ✅
+**Domyka:** tryb pieszy, tawerny, system questów
 
-Pierwszy realny cel eksploracji. Wykorzystuje istniejący tryb pieszy i tawerny.
-
-- **Zdobywanie:** plotki w tawernie (`getRumorKey()` już działa), łupy z piratów, nagrody za misje
-- **System map:** fragment mapy świata + X; poziomy precyzji od dokładnych po mgliste
-- **Poszukiwanie:** dopłynięcie → desant → chodzenie po wyspie → wykopanie; część map to zasadzki
-- **Skarby:** złoto, artefakty z bonusami, wskazówki do kolejnych, legendarny skarb Kapitana Kidda
-- **Wymaga:** systemu questów — `QUESTS` jest dziś pustą mapą, `QuestSystem` ma tylko prymitywy logu zadań
+- ✅ **System questów** — `QuestSystem.ts`: etapy, wyzwalacze jako dane, nagrody przez `DialogueEffect`, walidator
+- ✅ **Zdobywanie map** — kupno w tawernie, jedna oferta na port na dzień, jakość zależna od zamożności portu
+- ✅ **Poziomy precyzji** — promień 220 / 110 / 45; przy chybieniu podpowiedź „ciepło/zimno" plus kierunek
+- ✅ **Desant → chodzenie → kopanie** — klawisz X na lądzie
+- ✅ **Zasadzki** — 25% map to przynęta, rozstrzygana pojedynkiem w `DuelScene`
+- ⬜ Mapy jako łup z pirackich statków (dziś tylko kupno w tawernie)
+- ⬜ Fragmenty map składane w całość
 
 ### Moduł E — Bitwy lądowe *(v0.13.0)*
 **Priorytet:** ŚREDNI | **Złożoność:** Duża
@@ -154,7 +155,7 @@ Moduł B ─── Pojedynki ─────────────────
   │
 Moduł C ─── Podział łupów, starzenie, punktacja  [GOTOWY]
   │
-Moduł D ─── Mapy skarbów (+ system questów)
+Moduł D ─── Mapy skarbów (+ system questów)  [GOTOWY]
   │
 Moduł E ─── Bitwy lądowe
   │

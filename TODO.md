@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.11.0.0 · **Branch:** `main`
-**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **448 przechodzi, 0 failuje, 0 `todo`** w 12 plikach
+**Stan na:** 2026-09-01 · **Wersja:** v0.12.0.0 · **Branch:** `main`
+**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **489 przechodzi, 0 failuje, 0 `todo`** w 13 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -32,8 +32,7 @@ Bitwy lądowe / szturm na miasto · pojedynki szermiercze · córki gubernatoró
 
 | Plik | Po co zostaje |
 |---|---|
-| `src/core/systems/QuestSystem.ts` | Prymitywy logu zadań — działają, brakuje FSM. Pierwszy konsument: mapy skarbów |
-| `src/core/data/quests.ts` | Pusta mapa `QUESTS` czekająca na pierwsze zadania |
+| `src/core/data/quests.ts` | Pusta mapa `QUESTS` — miejsce na questy pisane ręcznie. Skarby są instancjami budowanymi w locie, więc tu ich nie ma |
 | `src/core/services/Pathfinding.ts` | Hak pod A\*; NPC sterują dziś reaktywnie |
 
 W v0.9.8.1 usunięto trzy pliki, do których nic nie prowadziło: `SaveLoadScene`, `DialogueScene`, `PalmRenderer.backup.ts`.
@@ -143,13 +142,25 @@ Trzy rzeczy, które razem dają grze łuk: coś zabiera, coś się zużywa, coś
 
 **Migracja v10** — `player.lastPlunderDay`. W starych zapisach zegar liczy się od dnia wczytania, nie od dnia 1: inaczej każdy długi zapis otwierałby się wściekłą załogą, której gracz nie miał szans zobaczyć.
 
-### v0.12.0 — Mapy skarbów
-*Pierwszy realny cel eksploracji; wykorzystuje tryb pieszy (`isOnFoot`) i tawerny.*
+### ~~v0.12.0 — Mapy skarbów~~ ✅ (v0.12.0.0)
 
-- Zdobywanie: plotki w tawernie (`getRumorKey()` już istnieje), łupy z piratów, nagrody
-- Mapa = fragment świata + X; poziomy precyzji wskazówek
-- Desant → chodzenie po wyspie → wykopanie; część map to zasadzki
-- **Wymaga systemu questów** — dziś `QUESTS = {}`
+**System questów** (`QuestSystem.ts`) — to, co placeholder obiecywał od v0.5.6. Zadanie to zbiór etapów; etap mówi, co robić, i wylicza wyzwalacze (`reach_port`, `dig_at`, `flag_set`, `days_passed`) prowadzące do kolejnych etapów. Nagrody używają `DialogueEffect` — żadnego drugiego słownika efektów. Dwie reguły pilnowane testami: **jedno przejście na zdarzenie** (inaczej jedno kopnięcie przeskoczyłoby dwa etapy) i **zakończone zadanie nie reaguje już na nic** (kopanie w tym samym dole nie zapłaci drugi raz). `validateQuest()` łapie ślepe zaułki i etapy końcowe z przejściami.
+
+**Mapy skarbów** (`TreasureSystem.ts`) — pierwszy powód, żeby zejść na ląd; chodzenie pieszo istnieje od v0.9.3 i nie miało do tej pory żadnego celu.
+
+| Jakość | Promień | Cena |
+|---|---|---|
+| koślawy szkic | 220 | 300 |
+| przyzwoita mapa | 110 | 800 |
+| mapa z pomiarami | 45 | 2000 |
+
+Tawerna oferuje jedną mapę na port na dzień, zamożniejszy port częściej ma prawdziwą. Skrzynia leży 40-150 od wskazanego miasta; pozycja bierze się z `CityDef.pos`, a nie z siatki lądu (tę zna wyłącznie `MainMapScene`), a promień wyszukiwania jest znacznie większy od przesunięcia, więc obszar zawsze pokrywa ląd. Kopanie: **X** na lądzie, wynik `found` / `warm` (do 3× promienia) / `cold`, przy chybieniu z kierunkiem — dlatego koślawa mapa dalej działa, tylko wolniej.
+
+**25% map to przynęta** — kopanie odpala pojedynek w `DuelScene`. Wygrana daje skrzynię, przegrana kosztuje ćwiartkę złota.
+
+**Zostało z tego modułu:**
+- Mapy jako **łup z pirackich statków** (dziś tylko kupno w tawernie)
+- **Fragmenty map** składane w całość, zwiększające precyzję
 
 ### v0.13.0 — Bitwy lądowe
 *Największa nowa mechanika; `defense` per port już jest w `PortRuntimeState` i spada po najazdach.*

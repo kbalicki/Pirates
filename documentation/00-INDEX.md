@@ -39,3 +39,4 @@
 ## Notatki z sesji
 
 - [SESSION-2026-09-01.md](SESSION-2026-09-01.md) — v0.9.8.1 → v0.10.0.0: wiatr, testy, uszkodzenia, pojedynki
+- [SESSION-2026-09-02.md](SESSION-2026-09-02.md) — v0.9.9.1 → v0.12.0.0: dialogi, łupy, starzenie, emerytura, questy, skarby

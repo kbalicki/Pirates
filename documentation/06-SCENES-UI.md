@@ -18,6 +18,7 @@ MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompa
     ├── [ESC]   ──→ PauseMenuScene
     ├── [H]     ──→ HelpScene (Sterowanie / Statki / Żeglowanie / Świat / Ekonomia)
     ├── [I na mieście] ──→ CityInfoScene
+    ├── [X na lądzie] ──→ kopanie skarbu ──→ DuelScene (jeśli zasadzka)
     │
     ├── [E w zasięgu portu] ──→ PortApproachScene
     │                              ├── Wejdź ──→ PortScene

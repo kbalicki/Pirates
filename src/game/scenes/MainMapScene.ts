@@ -21,6 +21,15 @@ import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { MountainRenderer } from "../render/MountainRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { SailSystem } from "../../core/systems/SailSystem.ts";
+import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import {
+  activeTreasureMaps,
+  treasureQuest,
+  digOutcome,
+  digHintKey,
+} from "../../core/systems/TreasureSystem.ts";
+import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
+import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { isInIrons } from "../../core/systems/WeatherSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
@@ -217,6 +226,10 @@ export class MainMapScene extends Phaser.Scene {
 
       this.input.keyboard.on("keydown-L", () => {
         this.toggleLandMode();
+      });
+
+      this.input.keyboard.on("keydown-X", () => {
+        this.digForTreasure();
       });
 
       this.input.keyboard.on("keydown-SPACE", () => {
@@ -475,6 +488,84 @@ export class MainMapScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /** Short on-screen note through the renderer's toast channel. */
+  private toast(message: string): void {
+    this.worldRenderer.applyEvents(this, [{ type: "Toast", message }]);
+  }
+
+  /**
+   * Dig where you stand (X, on foot only).
+   *
+   * Every map the player carries is checked; the best outcome wins, so
+   * carrying several hunts never makes one of them harder. A miss reports warm
+   * or cold plus a bearing, which is what makes a crude map usable at all:
+   * land, dig, walk toward the hint, dig again.
+   */
+  private digForTreasure(): void {
+    const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
+    if (playerEntity?.mode !== "landed") {
+      this.toast(t("treasure.must_be_ashore"));
+      return;
+    }
+
+    const maps = activeTreasureMaps(this.worldState);
+    if (maps.length === 0) {
+      this.toast(t("treasure.no_maps"));
+      return;
+    }
+
+    const pos = playerEntity.pos;
+    const hit = maps.find(m => digOutcome(m, pos) === "found");
+
+    if (!hit) {
+      const nearest = maps
+        .map(m => ({ m, outcome: digOutcome(m, pos) }))
+        .sort((a, b) => (a.outcome === "warm" ? -1 : 1) - (b.outcome === "warm" ? -1 : 1))[0];
+      const key = nearest.outcome === "warm" ? "treasure.dig_warm" : "treasure.dig_cold";
+      this.toast(t(key) + " " + t(digHintKey(nearest.m, pos)));
+      return;
+    }
+
+    const registry = Object.fromEntries(maps.map(m => [m.questId, treasureQuest(m)]));
+    const result = advanceQuests(this.worldState, { type: "dig_at", x: pos.x, y: pos.y, radius: 0 }, registry);
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+
+    if (hit.ambush) {
+      this.startTreasureAmbush(hit.reward);
+      return;
+    }
+    this.toast(t("treasure.dig_found", { gold: hit.reward }));
+  }
+
+  /**
+   * A map that was bait. The men waiting by the hole are settled the way every
+   * other personal fight in this game is settled — with steel, in `DuelScene`.
+   * Win and the chest is yours; lose and they take what you were carrying.
+   */
+  private startTreasureAmbush(reward: number): void {
+    const captain = this.worldState.captain;
+    this.scene.pause();
+    this.scene.launch("DuelScene", {
+      playerFencing: effectiveSkill(this.worldState, "fencing"),
+      enemyFencing: enemyFencingFor(20, 30, this.worldState.player.notoriety ?? 0),
+      seed: this.worldState.time.day * 31 + (captain?.startAge ?? 20),
+      onFinish: (playerWon: boolean) => {
+        this.scene.resume();
+        const gold = this.worldState.player.gold;
+        const delta = playerWon ? reward : -Math.floor(gold * 0.25);
+        this.worldState = {
+          ...this.worldState,
+          player: { ...this.worldState.player, gold: Math.max(0, gold + delta) },
+        };
+        this.registry.set("worldState", this.worldState);
+        this.toast(playerWon
+          ? t("treasure.ambush_won", { gold: reward })
+          : t("treasure.ambush_lost", { gold: Math.abs(delta) }));
+      },
+    });
   }
 
   private toggleLandMode(): void {

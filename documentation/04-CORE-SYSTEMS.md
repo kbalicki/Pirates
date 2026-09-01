@@ -21,6 +21,8 @@
 | Plunder | `PlunderSystem.ts` | Zegar podziału łupów, morale niezapłaconej załogi |
 | Aging | `AgingSystem.ts` | Wpływ wieku kapitana na umiejętności |
 | Retirement | `RetirementSystem.ts` | Punktacja końcowa i zakończenie kariery |
+| Quest | `QuestSystem.ts` | Maszyna stanów zadań: etapy, wyzwalacze, nagrody |
+| Treasure | `TreasureSystem.ts` | Mapy skarbów, kopanie, zasadzki |
 | Boarding | `BoardingSystem.ts` | Rozstrzygnięcie abordażu |
 | Fleet | `FleetSystem.ts` | Flota gracza (max 3 statki) |
 | NpcSpawn | `NpcSpawnSystem.ts` | Pula statków NPC, spawn/despawn |
@@ -156,6 +158,37 @@ Krzywe są ciągłe na granicach — nic nie zmienia się z dnia na dzień w uro
 ### Emerytura i punktacja (`RetirementSystem.ts`, v0.11.0)
 
 Gubernator proponuje ziemię i tytuł po roku na morzu. Punkty: złoto ÷10, wartość floty ÷20, rangi ×300, dodatnia reputacja ×4, sława ×12 oraz lata na morzu ×40 **minus** 70 za każdy rok po pięćdziesiątce. Dlatego wynik ma szczyt dokładnie tam, gdzie zaczyna się schyłek — za wczesne odejście oznacza brak kariery, za późne oddaje to, co się zbudowało.
+
+### System questów (`QuestSystem.ts`, v0.12.0)
+
+Zadanie to zbiór **etapów**. Etap mówi, co gracz ma teraz robić (`objectiveKey`), i wylicza, co go ruszy dalej: wyzwalacz plus etap docelowy, opcjonalnie z efektami. Wyzwalacze są danymi, tak jak warunki dialogów:
+
+| Wyzwalacz | Znaczenie |
+|---|---|
+| `reach_port` | gracz wchodzi do konkretnego portu |
+| `dig_at` | gracz kopie w promieniu `radius` od punktu |
+| `flag_set` | flaga świata została ustawiona |
+| `days_passed` | minęło N dni od wejścia w ten etap |
+
+Nagrody używają `DialogueEffect` — złoto, reputacja, flagi i wpisy do logu to te same rzeczy, które rozdaje rozmowa, a `applyEffect` już wie, jak je zastosować. Żadnego drugiego słownika efektów.
+
+Dwie reguły w testach: **jedno przejście na zdarzenie** (inaczej pojedyncze kopnięcie łopatą przeskoczyłoby dwa etapy) oraz **zakończone zadanie nie reaguje już na nic** (kopanie w tym samym miejscu nie zapłaci drugi raz). `validateQuest()` łapie ślepe zaułki, nieistniejące etapy i etapy końcowe, które wciąż mają przejścia.
+
+Postęp siedzi w `player.questLog` (`QuestRuntimeState`, istniało od dawna), a `data` niesie to, co zadanie musi pamiętać — dla skarbu jest to sama mapa. Żadnych nowych pól w zapisie.
+
+### Mapy skarbów (`TreasureSystem.ts`, v0.12.0)
+
+| Jakość | Promień | Cena |
+|---|---|---|
+| koślawy szkic | 220 | 300 |
+| przyzwoita mapa | 110 | 800 |
+| mapa z pomiarami | 45 | 2000 |
+
+Tawerna oferuje jedną mapę na port na dzień; zamożniejszy port częściej ma prawdziwą mapę. Skrzynia leży w promieniu 40-150 od wskazanego miasta — pozycja bierze się z `CityDef.pos`, a nie z siatki lądu (tę zna tylko `MainMapScene`), i promień wyszukiwania jest znacznie większy od tego przesunięcia, więc obszar zawsze pokrywa ląd, po którym da się chodzić.
+
+Kopanie: klawisz **X** na lądzie. Wynik to `found` / `warm` (do 3× promienia) / `cold`, a przy chybieniu dochodzi kierunek — dzięki temu koślawa mapa nadal jest użyteczna, tylko wolniejsza.
+
+**25% map to przynęta.** Kopanie takiej mapy odpala pojedynek w `DuelScene` — grę stać na to, bo mechanika już istnieje od v0.10.0. Wygrana daje skrzynię, przegrana kosztuje ćwiartkę złota.
 
 ### Sztormy
 

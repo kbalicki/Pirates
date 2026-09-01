@@ -100,6 +100,8 @@ export class HelpScene extends Phaser.Scene {
       ["A / ←", "Skręć w lewo (przytrzymaj)"],
       ["D / →", "Skręć w prawo (przytrzymaj)"],
       ["E", "Wejdź do portu / Wsiądź na statek"],
+      ["L", "Zejdź na ląd / wróć na statek"],
+      ["X", "Kop w poszukiwaniu skarbu (na lądzie)"],
       ["SPACE", "Menu opcji"],
       ["H", "Pomoc (ten ekran)"],
       ["G", "Pokaż/ukryj siatkę"],

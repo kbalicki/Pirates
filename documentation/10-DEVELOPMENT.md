@@ -124,7 +124,7 @@ npm run test:watch
 npx vitest run src/core/systems/__tests__/NavigationSystem.test.ts
 ```
 
-Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **448 testów w 12 plikach**.
+Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **489 testów w 13 plikach**.
 
 | Plik | Co pokrywa |
 |---|---|
@@ -140,6 +140,7 @@ Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **448 testów w 12
 | `core/systems/__tests__/DuelSystem.test.ts` | pojedynki: riposty, kondycja, AI, determinizm |
 | `core/systems/__tests__/DialogueSystem.test.ts` | warunki, efekty, walidacja drzew, drzewo gubernatora |
 | `core/systems/__tests__/PlunderSystem.test.ts` | podział łupów, wiek kapitana, punktacja końcowa |
+| `core/systems/__tests__/QuestSystem.test.ts` | maszyna questów, mapy skarbów, kopanie, zasadzki |
 | `persistence/__tests__/Migrations.test.ts` | łańcuch migracji v1 → v9 |
 
 Testowane są **wyłącznie moduły z `src/core/` i `src/persistence/`** — czysta logika, zero Phasera. Sceny i renderery weryfikuje się w działającej grze.

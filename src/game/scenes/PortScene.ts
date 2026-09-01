@@ -33,6 +33,17 @@ import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE } from "../../core/dat
 import { captainAge } from "../../core/systems/AgingSystem.ts";
 import { computeScore, retire, hasRetired } from "../../core/systems/RetirementSystem.ts";
 import { dividePlunder, plunderStatus } from "../../core/systems/PlunderSystem.ts";
+import { startQuest } from "../../core/systems/QuestSystem.ts";
+import {
+  createTreasureMap,
+  pickBurialSpot,
+  tavernMapQuality,
+  treasureQuest,
+  qualityDef,
+  activeTreasureMaps,
+} from "../../core/systems/TreasureSystem.ts";
+import { CITIES } from "../../core/data/cities.ts";
+import { rngNextInt } from "../../core/services/RNG.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
@@ -494,6 +505,16 @@ export class PortScene extends Phaser.Scene {
       ? t("tavern.divide_plunder_overdue", { days: status.daysOverdue })
       : t("tavern.divide_plunder", { days: status.daysUntilDue });
 
+    // One map on offer per port per day; a wealthier port deals in better charts.
+    const port = this.worldState.ports[this.currentPortId as string];
+    const offerSeed = { seed: 0, state: this.worldState.time.day * 7919 + (this.currentPortId as string).length * 31 };
+    const offered = tavernMapQuality(offerSeed, port?.wealth ?? 0).quality;
+    const offeredDef = qualityDef(offered);
+    const mapLabel = t("tavern.buy_map", {
+      quality: t(offeredDef.nameKey),
+      price: offeredDef.price,
+    });
+
     const actions = [
       {
         label: t("tavern.recruit_crew")
@@ -502,6 +523,7 @@ export class PortScene extends Phaser.Scene {
       },
       { label: t("tavern.hear_rumors"), key: "rumors" },
       { label: t("tavern.buy_drinks", { cost: 10 }), key: "drinks" },
+      { label: mapLabel, key: "buy_map" },
       { label: plunderLabel, key: "divide" },
       { label: t("tavern.back"), key: "back" },
     ];
@@ -511,6 +533,7 @@ export class PortScene extends Phaser.Scene {
         case "recruit": this.handleRecruit(); break;
         case "rumors": this.handleRumors(); break;
         case "drinks": this.handleDrinks(); break;
+        case "buy_map": this.handleBuyTreasureMap(); break;
         case "divide": this.handleDividePlunder(); break;
         case "back": this.switchView("menu"); break;
       }
@@ -595,6 +618,53 @@ export class PortScene extends Phaser.Scene {
 
     this.bindKey("keydown-ESC", () => this.switchView("tavern"));
     this.bindKey("keydown-ENTER", () => this.switchView("tavern"));
+  }
+
+  /**
+   * Buy the map the tavern is offering today.
+   *
+   * The chest is buried near a city chosen from the world rng, so the same save
+   * always sells the same hunt. The spot comes from the city's own position
+   * rather than the terrain grid — only `MainMapScene` has that — and the
+   * search radius is far wider than the offset, so the area always covers
+   * ground the player can stand on.
+   */
+  private handleBuyTreasureMap(): void {
+    const port = this.worldState.ports[this.currentPortId as string];
+    const offerSeed = { seed: 0, state: this.worldState.time.day * 7919 + (this.currentPortId as string).length * 31 };
+    const quality = tavernMapQuality(offerSeed, port?.wealth ?? 0).quality;
+    const price = qualityDef(quality).price;
+
+    if (this.worldState.player.gold < price) {
+      this.tavernMessage = t("tavern.map_too_expensive", { price });
+      this.switchView("tavern");
+      return;
+    }
+    if (activeTreasureMaps(this.worldState).length >= 3) {
+      this.tavernMessage = t("tavern.map_too_many");
+      this.switchView("tavern");
+      return;
+    }
+
+    const cityKeys = Object.keys(CITIES);
+    const pick = rngNextInt(this.worldState.rng, 0, cityKeys.length - 1);
+    const cityKey = cityKeys[pick.value];
+    const burial = pickBurialSpot(pick.state, CITIES[cityKey].pos);
+    const created = createTreasureMap(
+      burial.rng, burial.spot, quality, this.currentPortId as string, CITIES[cityKey].name,
+    );
+
+    let world = {
+      ...this.worldState,
+      rng: created.rng,
+      player: { ...this.worldState.player, gold: this.worldState.player.gold - price },
+    };
+    world = startQuest(world, treasureQuest(created.map), { map: created.map });
+
+    this.worldState = world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("tavern.map_bought", { city: CITIES[cityKey].name });
+    this.switchView("tavern");
   }
 
   /**
