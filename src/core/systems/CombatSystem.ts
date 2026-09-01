@@ -1,5 +1,8 @@
-// Placeholder for Phase 6 combat system
-// CombatEngine will use this module for combat mechanics
+/**
+ * Combat constants and formulas shared by CombatEngine and SeaBattleScene.
+ * Reload cadence, cannon range and per-cannon damage all live here so the
+ * numbers can be tuned in one place.
+ */
 
 export const CANNON_COOLDOWN_TICKS = 180; // 9 seconds at 20 ticks/sec — best-case broadside cadence
 

@@ -1,5 +1,5 @@
-// Placeholder for Phase 8 quest system
-// Quest FSM/graph will be implemented here
+// Quest log primitives. The quest FSM/graph itself is not built yet —
+// see TODO.md (v0.12.0, treasure maps) for the first real consumer.
 
 import type { QuestRuntimeState } from "../model/WorldState.ts";
 import type { QuestId } from "../model/ids.ts";

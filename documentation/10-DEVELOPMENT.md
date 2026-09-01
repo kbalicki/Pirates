@@ -89,6 +89,22 @@ src/persistence/ → IndexedDB. Importuje z core/model/.
 2. Zarejestruj w `src/game/GameApp.ts`
 3. Dodaj transitions w odpowiednich scenach
 
+Nie rejestruj scen „na zapas". Scena bez wejścia to martwy kod — dwie takie atrapy (`SaveLoadScene`, `DialogueScene`) przeleżały w repo pół roku, myląc dokumentację.
+
+### Zmiana `WorldState`
+
+Każde nowe pole w `WorldState` **wymaga migracji** w `src/persistence/Migrations.ts`:
+
+1. Podnieś `CURRENT_WORLD_VERSION`
+2. Dodaj wpis w mapie `MIGRATIONS` pod nowym numerem
+3. Uzupełnij pole wartością domyślną — nigdy nie nadpisuj istniejących danych
+
+Pętla migracji rzuca wyjątkiem przy brakującym kroku, więc pominięcie tego psuje wszystkie stare zapisy.
+
+### Nowy tekst w UI
+
+Klucze i18n dodaje się **równolegle** do `src/core/i18n/locales/en.ts` i `pl.ts`. Brakujący klucz polski cicho spada na angielski.
+
 ### Nowy asset pack
 
 1. Utwórz katalog `public/assets/packs/nazwa/`
@@ -166,3 +182,46 @@ node scripts/screenshot.mjs http://localhost:3000 screenshot.png 5000
 Opcje:
 - URL, ścieżka wyjściowa, czas oczekiwania (ms)
 - Akcje: `--action=start` (start gry), `--action=options` (menu opcji)
+
+## Konwencje wydań
+
+### Wersjonowanie
+
+Format **czteroczłonowy** `0.x.y.z` — nie semver.
+
+| Człon | Znaczenie |
+|-------|-----------|
+| `0` | Przed premierą |
+| `x` | Duży moduł (bitwy morskie, ekonomia) |
+| `y` | Funkcjonalność w ramach modułu |
+| `z` | Poprawki i drobne uzupełnienia |
+
+Każde wydanie wymaga trzech zmian naraz:
+1. `package.json` → `version`
+2. `src/version.ts` → `APP_VERSION`
+3. `src/changelog.ts` → nowy wpis **na górze** tablicy `CHANGELOG`
+
+### Assety
+
+Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały nieskompresowanych sprite'ów miast leżą w `public/assets/sprites/originals/`.
+
+### Parametry debugowania w URL
+
+| Parametr | Efekt |
+|----------|-------|
+| `?skip` | Pomija tworzenie postaci |
+| `?zoom=N` | Startowy poziom zoomu |
+| `?debug=1` | Tryb debug (wyłącza mgłę wojny) |
+| `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
+| `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |
+
+## Deploy produkcyjny
+
+Cel: **pirates.k4.pl** (hosting statyczny).
+
+```bash
+npm run build
+# ⚠ NAJPIERW wyczyść stare bundle na serwerze — Vite hashuje nazwy plików,
+#   więc bez czyszczenia katalog puchnie i można trafić na nieaktualny index.html
+scp -r dist/* user@server:/path/to/webroot/
+```

@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.8.1",
+    date: "2026-09-01",
+    changes: [
+      "PORZĄDKI — housekeeping release, no gameplay changes",
+      "TESTS — NavigationSystem suite green again (115 passing, was 7 failing)",
+      "  Wind expectations still encoded the pre-v0.9.4 cosine model",
+      "  Rewritten against the polar diagram: no-go zone, 1.5x beam reach, 0.9x running",
+      "  Added coverage: rig-specific no-go width, port/starboard symmetry, strength scaling",
+      "DEAD CODE — removed three files that were never reachable",
+      "  SaveLoadScene: 'coming in Phase 7' stub — save/load lives in OptionsMenuScene",
+      "  DialogueScene: rendered the text 'Dialogue Scene (TODO)'",
+      "  PalmRenderer.backup.ts",
+      "DOCS — full documentation refresh (was stuck at v0.8.4, March)",
+      "  Ship table: 5 outdated classes -> all 9 with real stats",
+      "  Systems: 11 documented -> 21, including every system added since v0.9.4",
+      "  Combat doc rewritten (reload/damage formulas, boarding, surrender)",
+      "  Roadmap rewritten — phases 6, 7, 10.1-10.2 and 14 were done but listed as pending",
+      "  Persistence: migrations documented through v8",
+      "TODO.md — new handoff file: project state, tech debt, ordered release plan",
+      "KNOWN BUG documented — wind polar curve is discontinuous at 120 deg",
+      "  Heading 119 sails at 0.4x, heading 121 at 1.1x. Fix scheduled for v0.9.9",
+    ],
+  },
+  {
     version: "0.9.8.0",
     date: "2026-05-31",
     changes: [

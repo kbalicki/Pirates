@@ -24,10 +24,11 @@ src/
 │   ├── services/           # Narzędzia: RNG, geometria, pathfinding
 │   └── i18n/               # Tłumaczenia (en, pl)
 ├── game/                    # Warstwa Phaser — rendering, input, UI
-│   ├── scenes/             # 11 scen gry
-│   ├── render/             # Renderery: świat, kamera, chmury, minimap
+│   ├── scenes/             # 14 scen gry
+│   ├── render/             # Renderery: świat, kamera, woda, chmury, góry, palmy
 │   ├── input/              # InputMapper, CommandQueue
-│   ├── settings/           # Ustawienia: asset pack, zoom
+│   ├── settings/           # Ustawienia: asset pack, zoom, dźwięk
+│   ├── audio/              # MusicManager
 │   └── ui/                 # Style tekstu, helpery UI
 ├── persistence/             # Zapis/odczyt: IndexedDB, migracje
 ├── main.ts                  # Bootstrap
@@ -79,8 +80,10 @@ public/
     ├── advanceTime()       ← postęp czasu
     ├── updateWeather()     ← model pogodowy
     ├── updateNavigation()  ← ruch, kolizje, auto-desant
+    ├── updateNpcs()        ← spawn, AI, wymiana newsów
     ├── checkEncounters()   ← spotkania losowe
-    └── consumeResources()  ← jedzenie, woda, morale
+    ├── consumeResources()  ← jedzenie, woda, morale
+    └── [zmiana doby]       ← WorldEventSystem + EconomyTickSystem
          │
          ├── WorldState (nowy, immutable)
          ├── WorldEvent[] (dźwięki, toasty, notyfikacje)
@@ -119,13 +122,19 @@ Wszystkie akcje gracza są komendami (`Commands.ts`):
 
 ```typescript
 {
-  width: 800,
-  height: 600,
+  type: Phaser.AUTO,
+  width: window.innerWidth,    // pełne okno przeglądarki
+  height: window.innerHeight,
   pixelArt: true,              // nearest-neighbor scaling
-  physics: { arcade: { gravity: { y: 0 } } },  // top-down
-  scale: { mode: Phaser.Scale.FIT, autoCenter: CENTER_BOTH }
+  roundPixels: false,          // patrz uwaga niżej
+  antialias: false,
+  backgroundColor: "#0c2340",
+  physics: { arcade: { gravity: { x: 0, y: 0 } } },  // top-down
+  scale: { mode: Phaser.Scale.RESIZE }
 }
 ```
+
+**Pułapka:** `pixelArt: true` wymusza `roundPixels: true` na kamerach niezależnie od configu. Bez `camera.setRoundPixels(false)` w `MainMapScene.create()` statek drga przy ruchu subpikselowym — to była przyczyna jittera naprawionego w v0.9.3.
 
 ## Internacjonalizacja (i18n)
 
@@ -133,4 +142,4 @@ Wszystkie akcje gracza są komendami (`Commands.ts`):
 - System: `I18n.t(key, vars?)` z interpolacją `{{zmienna}}`
 - Fallback na angielski przy brakujących kluczach
 - Wybór języka w localStorage (`pc_lang`)
-- 150+ kluczy tłumaczeń
+- 400+ kluczy tłumaczeń

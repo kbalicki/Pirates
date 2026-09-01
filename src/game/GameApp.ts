@@ -17,9 +17,7 @@ import { CharacterCreationScene } from "./scenes/CharacterCreationScene.ts";
 import { MainMapScene } from "./scenes/MainMapScene.ts";
 import { PortScene } from "./scenes/PortScene.ts";
 import { SeaBattleScene } from "./scenes/SeaBattleScene.ts";
-import { DialogueScene } from "./scenes/DialogueScene.ts";
 import { PauseMenuScene } from "./scenes/PauseMenuScene.ts";
-import { SaveLoadScene } from "./scenes/SaveLoadScene.ts";
 import { PortApproachScene } from "./scenes/PortApproachScene.ts";
 import { ShipEncounterScene } from "./scenes/ShipEncounterScene.ts";
 import { OptionsMenuScene } from "./scenes/OptionsMenuScene.ts";
@@ -174,9 +172,7 @@ export function launchGame(containerId: string): Phaser.Game {
       PortApproachScene,
       ShipEncounterScene,
       SeaBattleScene,
-      DialogueScene,
       PauseMenuScene,
-      SaveLoadScene,
       OptionsMenuScene,
       UIOverlayScene,
       CityInfoScene,

@@ -204,19 +204,68 @@ describe("fallback landmass interior points", () => {
 // 5) windSpeedModifier
 // ===========================================================================
 
+/**
+ * Polar diagram introduced in v0.9.4 (`WeatherSystem.windSpeedModifier`).
+ *
+ * Convention: `windDirRad` is the direction the wind blows **from**, so the
+ * angle used by the model is `|heading - windDir|` folded to 0..180°:
+ *   0°   = bow straight into the wind  → no-go zone
+ *   180° = running before the wind
+ *
+ * Curve at full strength, with the default `minWindAngle` of 30°:
+ *   0-30°    → 0     (no-go zone, ship makes no way)
+ *   30-60°   → 0→0.4 (close hauled, linear)
+ *   60-120°  → 0.4 → 1.5 → 0.4 (half sine, peak at 90° beam reach)
+ *   120-180° → 1.1 → 0.9 (running)
+ *
+ * The result is scaled by wind strength: `1 + (factor - 1) * strength`,
+ * so strength 0 always yields 1.0 regardless of heading.
+ */
 describe("windSpeedModifier", () => {
-  it("headwind ≥ 0.29", () => {
-    expect(windSpeedModifier(0, 0, 1.0)).toBeGreaterThanOrEqual(0.29);
+  it("no-go zone: sailing straight into the wind gives zero way", () => {
+    expect(windSpeedModifier(0, 0, 1.0)).toBe(0);
   });
 
-  it("tailwind > 1.0", () => {
-    expect(windSpeedModifier(0, Math.PI, 1.0)).toBeGreaterThan(1.0);
+  it("no-go zone spans minWindAngle degrees", () => {
+    const justInside = (29 * Math.PI) / 180;
+    const justOutside = (31 * Math.PI) / 180;
+    expect(windSpeedModifier(justInside, 0, 1.0, 30)).toBe(0);
+    expect(windSpeedModifier(justOutside, 0, 1.0, 30)).toBeGreaterThan(0);
   });
 
-  it("crosswind ≈ 0.7..1.3", () => {
-    const mod = windSpeedModifier(0, Math.PI / 2, 1.0);
-    expect(mod).toBeGreaterThanOrEqual(0.7);
-    expect(mod).toBeLessThanOrEqual(1.3);
+  it("square rig (wider minWindAngle) has a wider no-go zone", () => {
+    const at40deg = (40 * Math.PI) / 180;
+    expect(windSpeedModifier(at40deg, 0, 1.0, 30)).toBeGreaterThan(0);
+    expect(windSpeedModifier(at40deg, 0, 1.0, 60)).toBe(0);
+  });
+
+  it("close hauled (60°) = 0.4", () => {
+    expect(windSpeedModifier(Math.PI / 3, 0, 1.0)).toBeCloseTo(0.4, 5);
+  });
+
+  it("beam reach (90°) is the fastest point of sail = 1.5", () => {
+    expect(windSpeedModifier(Math.PI / 2, 0, 1.0)).toBeCloseTo(1.5, 5);
+  });
+
+  it("running (180°) = 0.9 — good but not the peak", () => {
+    expect(windSpeedModifier(Math.PI, 0, 1.0)).toBeCloseTo(0.9, 5);
+  });
+
+  it("beam reach beats running beats close hauled", () => {
+    const beam = windSpeedModifier(Math.PI / 2, 0, 1.0);
+    const running = windSpeedModifier(Math.PI, 0, 1.0);
+    const closeHauled = windSpeedModifier(Math.PI / 3, 0, 1.0);
+    expect(beam).toBeGreaterThan(running);
+    expect(running).toBeGreaterThan(closeHauled);
+  });
+
+  it("symmetric: port and starboard tack are equally fast", () => {
+    for (let deg = 0; deg <= 180; deg += 15) {
+      const rad = (deg * Math.PI) / 180;
+      expect(windSpeedModifier(rad, 0, 1.0)).toBeCloseTo(
+        windSpeedModifier(-rad, 0, 1.0), 10,
+      );
+    }
   });
 
   it("zero wind → modifier = 1.0", () => {
@@ -224,12 +273,11 @@ describe("windSpeedModifier", () => {
     expect(windSpeedModifier(0, Math.PI, 0)).toBeCloseTo(1.0, 5);
   });
 
-  it("never zero for any heading/wind at full strength (3969 combos)", () => {
-    for (let h = 0; h < Math.PI * 2; h += 0.1) {
-      for (let w = 0; w < Math.PI * 2; w += 0.1) {
-        expect(windSpeedModifier(h, w, 1.0)).toBeGreaterThan(0);
-      }
-    }
+  it("wind strength scales the deviation from 1.0", () => {
+    // No-go zone at half strength is halfway between 0 and 1.
+    expect(windSpeedModifier(0, 0, 0.5)).toBeCloseTo(0.5, 5);
+    // Beam reach at half strength is halfway between 1.0 and 1.5.
+    expect(windSpeedModifier(Math.PI / 2, 0, 0.5)).toBeCloseTo(1.25, 5);
   });
 
   it("never negative for any heading/wind/strength combo", () => {
@@ -242,11 +290,18 @@ describe("windSpeedModifier", () => {
     }
   });
 
-  it("minimum at worst headwind is ≈ 0.3", () => {
-    const mod = windSpeedModifier(0, 0, 1.0);
-    expect(mod).toBeGreaterThanOrEqual(0.28);
-    expect(mod).toBeLessThanOrEqual(0.35);
+  it("only the no-go zone yields zero — every other heading makes way", () => {
+    for (let deg = 31; deg <= 180; deg += 1) {
+      const rad = (deg * Math.PI) / 180;
+      expect(windSpeedModifier(rad, 0, 1.0, 30)).toBeGreaterThan(0);
+    }
   });
+
+  // KNOWN BUG (see TODO.md P0-2): the reach branch is a half sine that falls
+  // back to 0.4 at 120°, where the running branch picks up at 1.1. A ship at
+  // 119° therefore sails at 0.4 and at 121° at 1.1 — a 2.75× jump across two
+  // degrees of heading. Enable this test once the curve is made continuous.
+  it.todo("broad reach is continuous across the 120° branch boundary");
 });
 
 // ===========================================================================
@@ -255,17 +310,32 @@ describe("windSpeedModifier", () => {
 
 describe("updateNavigation — sailing mechanics", () => {
   it("moves with favorable wind", () => {
-    const ship = makeShip({ pos: { x: 1600, y: 1800 }, heading: Math.PI });
+    // Wind from the south (TAILWIND), ship heading north → running before it.
+    const ship = makeShip({ pos: { x: 1600, y: 1800 }, heading: 0 });
     const r = updateNavigation(ship, TAILWIND, realTerrainAt, 1);
-    expect(r.pos.y).toBeGreaterThan(1800);
+    expect(r.pos.y).toBeLessThan(1800);
     expect(r.mode).toBe("sailing");
   });
 
-  it("moves with headwind (slowly)", () => {
+  it("makes no way when pointed straight into the wind", () => {
+    // HEADWIND blows from the north at full strength; heading 0 is the no-go zone.
     const ship = makeShip({ pos: { x: 1600, y: 1800 }, heading: 0 });
     const r = updateNavigation(ship, HEADWIND, realTerrainAt, 1);
-    expect(r.pos.y).toBeLessThan(1800);
+    expect(r.pos).toEqual({ x: 1600, y: 1800 });
     expect(r.mode).toBe("sailing");
+  });
+
+  it("close hauled beats the no-go zone but trails a beam reach", () => {
+    const at = (heading: number) => {
+      const r = updateNavigation(
+        makeShip({ pos: { x: 1600, y: 1800 }, heading }), HEADWIND, realTerrainAt, 1,
+      );
+      return ptDist(r.pos, { x: 1600, y: 1800 });
+    };
+    const closeHauled = at((60 * Math.PI) / 180);
+    const beamReach = at(Math.PI / 2);
+    expect(closeHauled).toBeGreaterThan(0);
+    expect(beamReach).toBeGreaterThan(closeHauled);
   });
 
   it("moves with crosswind", () => {
@@ -312,7 +382,9 @@ describe("updateNavigation — sailing mechanics", () => {
 
   it("disembark into land box", () => {
     const terrain = boxTerrain({ x: 0, y: 0, w: 200, h: 100 });
-    const ship = makeShip({ pos: { x: 100, y: 102 }, heading: 0 });
+    // A sloop running before the wind covers ~0.19 px per tick, so the ship
+    // has to start within that distance of the shore to strike it this tick.
+    const ship = makeShip({ pos: { x: 100, y: 100.1 }, heading: 0 });
     const r = updateNavigation(ship, TAILWIND, terrain, 1);
     expect(r.mode).toBe("landed");
     expect(r.anchorPos).toBeDefined();

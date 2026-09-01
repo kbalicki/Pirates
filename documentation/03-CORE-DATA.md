@@ -2,22 +2,41 @@
 
 ## Statki (`src/core/data/ships.ts`)
 
-5 klas statków wzorowanych na oryginale Sid Meier's Pirates!:
+9 klas statków wzorowanych na oryginale Sid Meier's Pirates!. Pełny opis w [12-SHIP-CLASSES.md](12-SHIP-CLASSES.md).
 
-| Klasa | speedBase | turnRate | hullHP | sailsHP | cannons | cargoMax | crewMax | price |
-|-------|-----------|----------|--------|---------|---------|----------|---------|-------|
-| Sloop | 2.5 | 0.06 | 60 | 50 | 8 | 40 | 30 | 500 |
-| Brigantine | 2.2 | 0.05 | 80 | 70 | 16 | 60 | 50 | 800 |
-| Merchantman | 1.8 | 0.04 | 100 | 90 | 12 | 100 | 60 | 1000 |
-| Frigate | 2.3 | 0.06 | 110 | 100 | 24 | 70 | 80 | 1500 |
-| Galleon | 1.5 | 0.03 | 150 | 120 | 32 | 120 | 120 | 2500 |
+`speedBase` to jednostki świata na tick przy pełnych żaglach i bez modyfikatora wiatru; komentarz w kodzie podaje odpowiadającą prędkość w węzłach. Fregata (12 kn) jest benchmarkiem, do którego wyskalowane są pozostałe klasy.
+
+| Klasa | speedBase | kn | turnRate | hullMax | sailsMax | cannons | cargoCap | crewMax | buyPrice |
+|-------|-----------|----|----------|---------|----------|---------|----------|---------|----------|
+| Pinnace | 0.167 | 8 | 0.84 | 30 | 30 | 4 | 20 | 15 | 200 |
+| Sloop | 0.208 | 10 | 0.72 | 60 | 50 | 8 | 40 | 30 | 500 |
+| Barque | 0.188 | 9 | 0.54 | 70 | 60 | 12 | 80 | 40 | 800 |
+| Brigantine | 0.229 | 11 | 0.60 | 80 | 70 | 16 | 60 | 50 | 1200 |
+| Fluyt | 0.125 | 6 | 0.42 | 90 | 70 | 12 | 180 | 40 | 1500 |
+| Frigate | 0.250 | 12 | 0.48 | 120 | 90 | 28 | 80 | 80 | 3000 |
+| Fast Galleon | 0.188 | 9 | 0.36 | 150 | 100 | 24 | 100 | 100 | 4500 |
+| Galleon | 0.167 | 8 | 0.30 | 180 | 120 | 36 | 150 | 120 | 6000 |
+| Merchantman | 0.104 | 5 | 0.24 | 100 | 80 | 12 | 250 | 60 | 2000 |
+
+### Parametry żeglarskie
+
+Poza statystykami bojowymi każda klasa niesie parametry używane przez model wiatru i system lunety:
+
+| Pole | Znaczenie |
+|------|-----------|
+| `minWindAngle` | Kąt martwej strefy w stopniach — poniżej niego statek nie robi drogi. Takielunek skośny (fore-and-aft) 30-35°, rejowy (square) do 60°. |
+| `mastHeight` | Wysokość masztu — wyznacza zasięg obserwacji (luneta). Najwyższy maszt we flocie decyduje o zasięgu gracza. |
+| `rigType` | "Fore-and-aft" / "Square" / "Mixed" — opisowe, pokazywane w UI. |
+| `tonnage`, `draft` | Wyporność i zanurzenie — opisowe, planowane do mechaniki mielizn. |
+| `armor` | Redukcja obrażeń od kul 0.10-0.50; galeon pochłania połowę. |
 
 **Charakterystyka:**
-- **Sloop** — szybki, zwinny, mało armat. Idealny na początek i ataki z zaskoczenia.
-- **Brigantine** — balans prędkości i siły ognia. Dobry korsarz.
-- **Merchantman** — duży ładunek, wolny. Statki handlowe AI.
-- **Frigate** — najlepsza bojowa. Szybka, ciężko uzbrojona.
-- **Galleon** — kolos. Dużo armat i ładunku, ale ociężały.
+- **Pinnace** — najtańszy, najzwrotniejszy, praktycznie bezbronny. Statek startowy.
+- **Sloop** — szybki i zwinny, świetnie idzie pod wiatr. Klasyczny statek piracki.
+- **Barque / Brigantine** — balans prędkości i siły ognia; brygantyna to najszybszy korsarz.
+- **Fluyt / Merchantman** — ogromna ładownia, ślamazarne. Cel dla piratów, nie narzędzie.
+- **Frigate** — najlepszy okręt bojowy: 12 kn i 28 dział.
+- **Fast Galleon / Galleon** — ciężkie, wolno skręcają, ale pancerz i 24-36 dział wygrywają wymianę burtową.
 
 ## Porty (`src/core/data/cities.ts`)
 
@@ -140,3 +159,25 @@ MONTHLY_WIND[0-11] = {
 - 100+ poligonów lądowych
 - Projekcja: Mercator → 3200×2400 px
 - Klasyfikacja terenu per kafelek: morze, płycizna, rafa, ląd
+
+## Amunicja (`src/core/data/ammo.ts`)
+
+Trzy typy pocisków przełączane w bitwie klawiszami 1/2/3. Każdy ma własne mnożniki obrażeń i zasięgu; zmiana typu resetuje przeładowanie obu burt.
+
+| Typ | Kadłub | Żagle | Załoga | Zasięg | Zastosowanie |
+|-----|--------|-------|--------|--------|--------------|
+| Kula (round) | pełne | niskie | niskie | pełny | zatapianie |
+| Łańcuchówka (chain) | niskie | pełne | niskie | skrócony | unieruchomienie |
+| Kartacz (grape) | minimalne | niskie | pełne | najkrótszy | zmiękczenie przed abordażem |
+
+## Ekonomia bazowa (`src/core/data/economyBaselines.ts`)
+
+Punkty odniesienia dla żywej ekonomii: docelowa populacja, zamożność (0-1000) i siła garnizonu (0-100) każdego portu. `EconomyTickSystem` codziennie ściąga bieżące wartości w stronę tych baseline'ów, a `EventEffectsSystem` je od nich odpycha.
+
+## Pozostałe pliki danych
+
+| Plik | Zawartość |
+|------|-----------|
+| `geography.ts` | Wielokąty lądów (`LANDMASSES`) wczytywane z `caribbean_geo.json` + fallback |
+| `prices.ts` | Inicjalizacja cen i zapasów portowych |
+| `quests.ts` | Definicje zadań — obecnie puste, patrz [TODO.md](../TODO.md) |

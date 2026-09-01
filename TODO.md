@@ -1,135 +1,144 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.0 · **Branch:** `main` (czysty, commit `9ee4d90`)
-**Kod:** 116 plików `.ts`, ~22 000 LOC · `tsc --noEmit` przechodzi · **`npm test` — 7/109 testów FAILUJE** (patrz P0-1)
+**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.1 · **Branch:** `main`
+**Kod:** 113 plików `.ts`, ~21 500 LOC · `tsc --noEmit` czysty · `npm test` — **115 przechodzi, 0 failuje**, 1 `todo`
 
-Ten plik zastępuje nieaktualną sekcję statusu w `documentation/11-ROADMAP.md`.
-Roadmapa nadal jest źródłem prawdy dla **wizji** faz 8–15; ten plik dla **kolejności prac**.
+Ten plik jest źródłem prawdy dla **kolejności prac**.
+[documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
 ---
 
 ## 1. Gdzie stoimy
 
-### Gotowe (poza tym, co roadmapa twierdzi)
+### Gotowe
 
-| Faza wg roadmapy | Stan | Realizacja w kodzie |
+| Moduł | Stan | Realizacja w kodzie |
 |---|---|---|
-| 6 — Statki NPC na mapie | ✅ pełna | `NpcSpawnSystem` (324 l.), `NpcAiSystem` (293 l.), `PortWaterPositions`, fog-of-war, zasięg wzroku = f(maszt), flagi frakcji |
-| 7 — Bitwy morskie | ✅ ~80% | `SeaBattleScene` (1127 l.) + `CombatEngine` (~600 l.): 3 typy amunicji, łuki ostrzału ±60°, reload = f(załoga × morale × wyszkolenie), abordaż, kapitulacja, przejęcie statku do floty |
-| 10.1 — Wydarzenia historyczne | ✅ | `WorldEventSystem` (538 l.): 10 wojen 1568–1697 + 15 typów eventów |
-| 10.2 — Dynamika miast | ✅ | `EconomyTickSystem` + `EventEffectsSystem` (301 l.): populacja / wealth / defense, dzienny tick, ceny reagują na podaż |
-| 14 — Flota gracza | ✅ | `FleetSystem`: max 3 statki, kupno/sprzedaż/porzucenie, prędkość = najwolniejszy, wzrok = najwyższy maszt |
-| 5.5 — Zapis/odczyt | ✅ | `SaveRepository` + `Migrations` (v8), 5 slotów IndexedDB — UI w `OptionsMenuScene`, **nie** w `SaveLoadScene` |
-| — Świat NPC-newsów | ✅ | `NpcNewsSystem`: NPC zbierają newsy w portach i przekazują graczowi w `ShipEncounterScene` |
+| Statki NPC na mapie | ✅ | `NpcSpawnSystem` (324 l.), `NpcAiSystem` (293 l.), `PortWaterPositions`, mgła wojny, zasięg wzroku = f(maszt), flagi frakcji |
+| Bitwy morskie | ✅ ~80% | `SeaBattleScene` (1127 l.) + `CombatEngine`: 3 typy amunicji, łuki ostrzału ±60°, reload = f(załoga × morale × wyszkolenie), abordaż, kapitulacja, przejęcie statku |
+| Wydarzenia świata | ✅ | `WorldEventSystem` (538 l.): 10 wojen 1568-1697 + 15 typów wydarzeń |
+| Żywa ekonomia | ✅ | `EconomyTickSystem` + `EventEffectsSystem` (301 l.): populacja / wealth / defense, dzienny tick, ceny reagują na podaż |
+| Flota gracza | ✅ | `FleetSystem`: max 3 statki, kupno/sprzedaż/porzucenie, prędkość = najwolniejszy, wzrok = najwyższy maszt |
+| Zapis/odczyt | ✅ | `SaveRepository` + `Migrations` (v8), 5 slotów IndexedDB — UI w `OptionsMenuScene`, nie w osobnej scenie |
+| Obieg newsów | ✅ | `NpcNewsSystem`: NPC zbierają newsy w portach i przekazują graczowi w `ShipEncounterScene` |
 
-### Martwy kod / atrapy (do usunięcia albo dokończenia)
+### Nietknięte
 
-| Plik | Stan |
+Bitwy lądowe / szturm na miasto · pojedynki szermiercze · córki gubernatorów · poszukiwanie rodziny · mapy skarbów · starzenie kapitana (`calculateAge()` tylko **wyświetla** wiek w `OptionsMenuScene:390`, zero efektów) · podział łupów · system questów (`QUESTS` = pusta mapa)
+
+### Świadome placeholdery (zostawione celowo)
+
+| Plik | Po co zostaje |
 |---|---|
-| `src/game/scenes/SaveLoadScene.ts` (37 l.) | atrapa „coming in Phase 7"; zarejestrowana w `GameApp.ts:179`, ale **nigdy nie startowana** → usunąć |
-| `src/core/systems/CombatSystem.ts` (63 l.) | atrapa „Phase 6"; prawdziwa walka żyje w `src/core/engine/CombatEngine.ts` → usunąć |
-| `src/core/systems/QuestSystem.ts` (19 l.) + `src/core/data/quests.ts` | puste `QUESTS = {}` |
-| `src/game/scenes/DialogueScene.ts` (15 l.) | rysuje napis „Dialogue Scene (TODO)" |
-| `src/core/services/Pathfinding.ts` | pusty placeholder; NPC AI używa sterowania bezpośredniego + unikania brzegu |
-| `src/game/render/PalmRenderer.backup.ts` | plik `.backup` w repo → usunąć |
+| `src/core/systems/QuestSystem.ts` | Prymitywy logu zadań — działają, brakuje FSM. Pierwszy konsument: mapy skarbów |
+| `src/core/data/quests.ts` | Pusta mapa `QUESTS` czekająca na pierwsze zadania |
+| `src/core/services/Pathfinding.ts` | Hak pod A\*; NPC sterują dziś reaktywnie |
 
-### Nietknięte fazy
+W v0.9.8.1 usunięto trzy pliki, do których nic nie prowadziło: `SaveLoadScene`, `DialogueScene`, `PalmRenderer.backup.ts`.
 
-8 (bitwy lądowe / szturm na miasto) · 9 (pojedynki szermiercze) · 11 (córki gubernatorów) · 12 (rodzina) · 13 (mapy skarbów) · 10.3 (starzenie — `calculateAge()` tylko **wyświetla** wiek w `OptionsMenuScene:390`, zero efektów) · 10.4 (podział łupów) · 15 (moduły dodatkowe)
+> **Uwaga:** `src/core/systems/CombatSystem.ts` **nie** jest atrapą, mimo dawnego nagłówka „Placeholder for Phase 6". To żywy moduł stałych walki (`effectiveReloadTicks`, `CANNON_RANGE`, obrażenia), importowany przez `CombatEngine`. Nagłówek poprawiono.
 
 ---
 
-## 2. P0 — dług techniczny (zrobić PRZED nowymi fazami)
+## 2. P0 — dług techniczny
 
-### P0-1. Naprawić 7 failujących testów `NavigationSystem.test.ts`
-Testy pochodzą sprzed modelu polarnego wiatru z v0.9.4 i sprawdzają nieaktualny kontrakt.
-Obecny model (`WeatherSystem.ts:104-134`):
-- `deg < minWindAngle` → **0** (martwa strefa; testy zakładają ≥ 0.29)
-- baksztag `120–180°` → 1.1 → 0.9 (test „tailwind > 1.0")
-- półwiatr ~90° → **1.5** (test „crosswind ≤ 1.3")
+### ~~P0-1. Naprawić failujące testy `NavigationSystem.test.ts`~~ ✅ v0.9.8.1
+Testy sprawdzały model wiatru sprzed v0.9.4 (kosinusoidę zamiast diagramu polarnego). Przepisane pod aktualną krzywą, doszło pokrycie martwej strefy per takielunek, symetrii halsów i skalowania siłą wiatru. Test `disembark into land box` **nie był regresem** detekcji lądu — slup pokonuje ~0.19 px na tick, a fixture stawiał go 2 px od brzegu, więc nigdy nie mógł tam dopłynąć w jednym ticku.
 
-**Zadanie:** przepisać oczekiwania testów pod aktualną krzywą polarną; osobno **zdiagnozować** `disembark into land box` (`NavigationSystem.test.ts:313`) — tam ship dostaje `mode: "sailing"` zamiast `"landed"`, co może być realnym regresem detekcji lądu, a nie tylko przestarzałym testem. Ustalić to najpierw.
+### P0-2. Nieciągłość krzywej polarnej wiatru — BŁĄD ROZGRYWKI
+`src/core/systems/WeatherSystem.ts:121-130`
 
-### P0-2. Rozszerzyć pokrycie testami
-Jeden plik testowy na 22 kLOC. Kandydaci o wysokiej wartości (czysta logika, zero Phasera):
-`WeatherSystem` · `EconomyTickSystem` · `EventEffectsSystem` · `BoardingSystem` · `FleetSystem` · `SailSystem` · `CombatEngine` (reload/damage/surrender) · `Migrations` (v1→v8 na sztucznych save'ach).
+Gałąź półwiatru to pół sinusoidy `0.4 → 1.5 → 0.4` na przedziale 60-120°, a gałąź fordewindu startuje od `1.1` przy 120°. Efekt: **statek na kursie 119° płynie 0.4×, a na 121° już 1.1×** — 2.75× skok prędkości na dwóch stopniach kursu. Komentarz w kodzie deklaruje `0.4→1.5→1.1`, więc to rozjazd implementacji z intencją, nie zamierzona mechanika.
 
-### P0-3. Sprzątanie
-Usunąć `SaveLoadScene`, `CombatSystem`, `PalmRenderer.backup.ts`; wypiąć `SaveLoadScene` z `GameApp.ts`.
+Sugerowana poprawka — zamiast pełnej sinusoidy zejść do 1.1 na końcu przedziału:
+```ts
+// deg 60..120: 0.4 → 1.5 → 1.1
+const t = (deg - reachStart) / (120 - reachStart);
+const peak = 0.4 + 1.1 * Math.sin(t * Math.PI);   // 0.4 → 1.5 → 0.4
+const tail = 0.4 + 0.7 * t;                        // 0.4 → 1.1 (domknięcie)
+factor = Math.max(peak, tail);
+```
+Po poprawce włączyć test `it.todo("broad reach is continuous across the 120° branch boundary")` w `NavigationSystem.test.ts`. **Zmienia odczucie żeglowania — wymaga playtestu**, dlatego nie wchodzi w release porządkowy.
 
-### P0-4. Odświeżyć `documentation/11-ROADMAP.md`
-Tabela statusu kończy się na v0.9.0 i twierdzi, że „Faza 6 — NASTĘPNA", choć fazy 6, 7, 10.1–10.2 i 14 są zrobione.
+### P0-3. Rozszerzyć pokrycie testami
+Jeden plik testowy na ~21 500 LOC. Kandydaci o wysokiej wartości (czysta logika, zero Phasera):
+`WeatherSystem` · `EconomyTickSystem` · `EventEffectsSystem` · `BoardingSystem` · `FleetSystem` · `SailSystem` · `CombatEngine` (reload/obrażenia/kapitulacja) · `Migrations` (v1→v8 na sztucznych zapisach).
+
+Priorytet dla `Migrations` — jedyny moduł, którego błąd niszczy dane gracza bezpowrotnie.
 
 ---
 
 ## 3. Plan rozwoju — kolejność
 
-Zasada porządkująca: **najpierw domknąć pętle, które już istnieją**, dopiero potem otwierać nowe moduły.
+Zasada: **najpierw domknąć pętle, które już istnieją**, dopiero potem otwierać nowe moduły.
 Gracz ma dziś świat, ekonomię, NPC i bitwy morskie — ale nie ma **po co** walczyć (brak celów) ani **czym** przegrywać (brak konsekwencji).
 
-### v0.9.9 — Domknięcie bitwy morskiej (faza 7.1)
-*Największy zwrot z inwestycji: system jest gotowy w 80%, brakuje sprzężenia zwrotnego.*
+### v0.9.9 — Domknięcie bitwy morskiej
+*Największy zwrot z inwestycji: system gotowy w 80%, brakuje sprzężenia zwrotnego.*
 
 - **Stopnie uszkodzeń kadłuba** — 100→75 sprawny, 75→50 przeciek (wolniej), 50→25 ciężkie, <25 tonie
 - **Wizualizacja** — dym, ogień, przechył; animacja zatonięcia + utrata ładunku
-- **Uszkodzenia ożaglowania** — łańcuchówki mają już obrażenia w danych (`ammo.ts`), brakuje wizualnej + mechanicznej progresji (podarte żagle → zerwany maszt → dryf)
+- **Uszkodzenia ożaglowania** — łańcuchówki mają już mnożniki w `ammo.ts`, brakuje progresji (podarte żagle → zerwany maszt → dryf)
 - **Naprawa prowizoryczna na morzu** — powolna, limitowana; `repairShip()` w `PortInteractionSystem:241` obsługuje tylko port
-- Pliki: `SeaBattleScene.ts`, `CombatEngine.ts`, `EntityState.ts` (`hullHp`/`sailsHp` już są — potrzebny próg stanu + FX)
+- Przy okazji: **poprawka P0-2** (nieciągłość wiatru) — i tak wymaga playtestu żeglowania
+- Pliki: `SeaBattleScene.ts`, `CombatEngine.ts`, `EntityState.ts` (`hullHp`/`sailsHp` są — potrzebny próg stanu + FX)
 
-### v0.10.0 — Pojedynki szermiercze (faza 9)
-*Umiejętność `fencing` istnieje w `CaptainState`, ale wpływa wyłącznie na auto-rozstrzygnięcie abordażu (`BoardingSystem.ts:53`).*
+### v0.10.0 — Pojedynki szermiercze
+*Umiejętność `fencing` istnieje, ale wpływa wyłącznie na jeden mnożnik w `BoardingSystem.ts:53`.*
 
-- Osobna scena `DuelScene`: atak wysoki/średni/niski, parada, riposta
+- Nowa scena `DuelScene`: atak wysoki/średni/niski, parada, riposta
 - Wejście: abordaż (zamiast obecnego rzutu kośćmi), wyzwanie w porcie, wątek fabularny
 - Wyjście: przejęcie statku / awans / rana kapitana / więzienie
-- Zastąpić `DialogueScene`-atrapę realnym systemem dialogów — będzie potrzebny w fazach 11–13
+- **Zbudować system dialogów od zera** — będzie potrzebny w v0.12.0 i v0.14.0
 
-### v0.11.0 — Cele i konsekwencje (faza 10.3 + 10.4)
-*Bez tego gra nie ma łuku — można żeglować w nieskończoność bez presji.*
+### v0.11.0 — Cele i konsekwencje
+*Bez tego gra nie ma łuku — można żeglować w nieskończoność bez presji i bez zakończenia.*
 
-- **Podział łupów** — załoga domaga się co N dni; brak podziału → spadek morale (morale już wpływa na reload w v0.9.8); po podziale załoga się rozchodzi
-- **Starzenie kapitana** — 20–35 pełna sprawność, 35–50 spadek szermierki / wzrost dyplomacji, 50+ wyraźny spadek fizyczny
+- **Podział łupów** — załoga domaga się co N dni; zwłoka obniża morale (morale wpływa już na reload); po podziale załoga się rozprasza
+- **Starzenie kapitana** — 20-35 pełna sprawność, 35-50 spadek szermierki / wzrost dyplomacji, 50+ wyraźny spadek fizyczny
 - **Emerytura + punktacja końcowa** — bogactwo + rangi + rodzina + skarby; ekran wyniku
 - Pliki: `CaptainState.ts`, `TimeSystem.ts`, `CrewConsumptionSystem.ts`, nowy `PlunderSystem.ts`
 
-### v0.12.0 — Mapy skarbów (faza 13)
-*Pierwszy realny cel eksploracji; wykorzystuje istniejący tryb pieszy (`isOnFoot`) i tawerny.*
+### v0.12.0 — Mapy skarbów
+*Pierwszy realny cel eksploracji; wykorzystuje tryb pieszy (`isOnFoot`) i tawerny.*
 
 - Zdobywanie: plotki w tawernie (`getRumorKey()` już istnieje), łupy z piratów, nagrody
 - Mapa = fragment świata + X; poziomy precyzji wskazówek
 - Desant → chodzenie po wyspie → wykopanie; część map to zasadzki
-- Wymaga: systemu questów (dziś `QUESTS = {}`)
+- **Wymaga systemu questów** — dziś `QUESTS = {}`
 
-### v0.13.0 — Bitwy lądowe (faza 8)
+### v0.13.0 — Bitwy lądowe
 *Największa nowa mechanika; `defense` per port już jest w `PortRuntimeState` i spada po najazdach.*
 
 - Ostrzał fortów z morza ↔ odpowiedź fortów
 - Desant po osłabieniu; siła obrony = garnizon + fortyfikacje + wielkość miasta
 - Auto-resolve z modyfikatorami (nie pełna gra taktyczna)
-- Przejęcie miasta → zmiana `factionId` portu, kaskada w ekonomii i spawn NPC
+- Przejęcie miasta → zmiana `factionId` portu, kaskada w ekonomii i spawnie NPC
 
-### v0.14.0+ — Warstwa fabularna (fazy 11 + 12)
-Córki gubernatorów, poszukiwanie rodziny. Zostawić na koniec — wymaga działającego systemu dialogów (v0.10.0) i questów (v0.12.0).
+### v0.14.0+ — Warstwa fabularna
+Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.10.0) i questów (v0.12.0).
 
 ---
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
 
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
-- **Pathfinding A\*** — `Pathfinding.ts` pusty; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale to duża zmiana w `NpcAiSystem`.
-- **Assety AI** — pipeline `ai-assets/` + `sd-pipeline/` opisany, sprite'y statków dalej z jednego arkusza `sailship.png` (8 kierunków, brak wariantów klas i frakcji).
+- **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
+- **Assety AI** — pipeline `ai-assets/` + `sd-pipeline/` opisany, sprite'y statków dalej z jednego arkusza `sailship.png` (8 kierunków, brak wariantów klas i frakcji). Moduł uszkodzeń (v0.9.9) będzie potrzebował klatek zniszczeń.
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
 
 ---
 
 ## 5. Zasady projektu (dla agenta przejmującego)
 
-- Wersjonowanie **4-członowe** `0.x.y.z`, nie semver. Każdy release = wpis w `src/changelog.ts` (najnowszy na górze) + bump w `package.json`.
+- Wersjonowanie **czteroczłonowe** `0.x.y.z`, nie semver. Release = bump w `package.json` **i** `src/version.ts` **i** wpis na górze `src/changelog.ts`.
 - Dev server **wyłącznie na porcie 3000**; najpierw `taskkill //F //IM node.exe`, potem `npm run dev`. Nigdy dwie instancje.
 - Font: zawsze `UI_FONT` / `txt()` z `src/game/ui/textStyle.ts` — nigdy hardkodowany.
 - `pixelArt: true` wymusza `roundPixels: true` → w `MainMapScene.create()` musi zostać `camera.setRoundPixels(false)` (inaczej wraca jitter statku).
 - Assety **zawsze kompresować przed commitem** (`sharp` dla PNG, ffmpeg dla JPEG).
-- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie v8).
+- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie v8) — pętla rzuca wyjątkiem przy brakującym kroku i psuje wszystkie stare zapisy.
 - Nowe teksty → `src/core/i18n/locales/en.ts` **i** `pl.ts`.
-- Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli (patrz pamięć projektu).
+- Nie rejestruj scen „na zapas" — scena bez wejścia to martwy kod.
+- `src/core/` nie importuje Phasera. Nigdy.
+- Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`.

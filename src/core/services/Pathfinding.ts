@@ -1,5 +1,5 @@
-// Placeholder for future A* / flow-field pathfinding
-// Will be used by AI fleets in Phase 9
+// Placeholder for A* / flow-field pathfinding over the sea grid.
+// NPCs currently steer reactively in NpcAiSystem; see TODO.md section 4.
 
 export function findPath(): null {
   return null;

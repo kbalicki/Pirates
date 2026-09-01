@@ -5,7 +5,7 @@ Wszystkie pliki w `src/persistence/`.
 ## Architektura
 
 ```
-SaveLoadScene (UI)
+OptionsMenuScene / CharacterCreationScene (UI — 5 slotów)
     │
 SaveRepository (API)
     │
@@ -65,7 +65,7 @@ type SavePayload = {
 
 ## Migracje (`src/persistence/Migrations.ts`)
 
-Aktualna wersja stanu: **6**
+Aktualna wersja stanu: **8** (`CURRENT_WORLD_VERSION` w `Migrations.ts`)
 
 | Wersja | Zmiany |
 |--------|--------|
@@ -73,7 +73,9 @@ Aktualna wersja stanu: **6**
 | v3 | Dodanie playerName, eraId, startYear |
 | v4 | Rozszerzenie z 27 do 45 miast |
 | v5 | Dodanie profilu kapitana (defaults dla starych zapisów) |
-| v6 | (pending) |
+| v6 | Dodanie pola `mode` ("sailing"/"landed") do wszystkich encji |
+| v7 | Żywa ekonomia: `population`, `wealth`, `defense`, `bonusProduces` w każdym porcie — uzupełniane z baseline'ów |
+| v8 | Dodanie `captain.training` (mechanika przeładowania), domyślnie 0.30 |
 
 ### Mechanika migracji
 
@@ -85,11 +87,15 @@ function migrate(state: any): WorldState {
   if (version < 4) state = migrateV4(state);
   if (version < 5) state = migrateV5(state);
   if (version < 6) state = migrateV6(state);
+  if (version < 7) state = migrateV7(state);
+  if (version < 8) state = migrateV8(state);
   return state;
 }
 ```
 
-- Migracje sekwencyjne: v1 → v2 → v3 → ... → v6
+W kodzie realizuje to pętla `while (version < CURRENT_WORLD_VERSION)` na mapie `MIGRATIONS`, która rzuca wyjątkiem przy brakującym kroku — dlatego **każda zmiana `WorldState` wymaga dopisania migracji**.
+
+- Migracje sekwencyjne: v1 → v2 → v3 → ... → v8
 - Każda migracja uzupełnia brakujące pola wartościami domyślnymi
 - Bezpieczne: nie nadpisuje istniejących danych
 
@@ -109,10 +115,10 @@ function migrate(state: any): WorldState {
     "createdAt": "2026-02-20T15:30:00Z",
     "updatedAt": "2026-02-20T16:45:00Z",
     "playtime": 4500,
-    "worldVersion": 6
+    "worldVersion": 8
   },
   "world": {
-    "version": 6,
+    "version": 8,
     "time": { "day": 127, "hour": 14, "minute": 30, "tick": 183600 },
     "player": { "gold": 2500, "reputation": { ... } },
     "entities": { ... },
@@ -130,6 +136,12 @@ Nie są częścią zapisów gry — przechowywane osobno:
 | Klucz | Typ | Wartości | Default |
 |-------|-----|----------|---------|
 | `pc_asset_pack` | string | "basic", "buccaneer", "corsair" | "basic" |
-| `pc_zoom_level` | string | "far", "normal", "close" | "normal" |
+| `pc_zoom_level` | string | "z1".."z14" (1.5x–12x) | "z8" |
 | `pc_lang` | string | "en", "pl" | "en" |
+| `pc_debug` | string | "1" / "0" (null = włączone) | włączone |
+| `pc_fog` | string | "1" / "0" — mgła wojny / zasięg lunety | włączone |
+| `pc_vol_wind` | number | 0-10 | 5 |
+| `pc_vol_seagulls` | number | 0-10 | 5 |
+| `pc_vol_music` | number | 0-10 | 5 |
 | `pc_user_id` | string | UUID | auto-generated |
+| `pc_legacy_saves_migrated` | string | flaga jednorazowej migracji starej bazy | — |

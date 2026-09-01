@@ -1,14 +1,18 @@
 # 11 — Roadmapa rozwoju
 
+**Aktualizacja:** 2026-09-01 | **Wersja kodu:** 0.9.8.1
+
 ## Wizja
 
 Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesnej formie przeglądarkowej z retro pixel art. Następnie rozbudowa o nowe moduły wykraczające poza oryginał.
 
+> **Bieżąca kolejność prac, dług techniczny i konkretne zadania:** [TODO.md](../TODO.md) w katalogu głównym repozytorium. Ten dokument opisuje **wizję i zakres** modułów; TODO.md opisuje **co robimy teraz**.
+
 ---
 
-## Status aktualny (v0.9.0)
+## Status ukończonych prac
 
-### Ukończone fazy
+### Fundament (v0.1 – v0.8)
 
 | Faza | Opis | Status |
 |------|------|--------|
@@ -16,341 +20,141 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 2 | Sterowanie statkiem (WSAD), kamera, HUD | ✅ |
 | 3 | Porty z handlem, dialog zbliżania | ✅ |
 | 4 | System reputacji i frakcji (5 frakcji) | ✅ |
-| 5 | Bitwy morskie (podstawowe) | ✅ |
-| 5.5 | Zapis/odczyt (IndexedDB, 5 slotów) | ✅ |
+| 5.5 | Zapis/odczyt (IndexedDB, 5 slotów, migracje) | ✅ |
 | 5.6 | Tworzenie postaci, umiejętności, ery | ✅ |
 | 5.7 | 45 miast, geografia, i18n (en/pl) | ✅ |
 | 5.8 | Asset packi, zoom, font Dancing Script | ✅ |
-| 5.9 | Dokumentacja, AI assets subprojekt, roadmapa | ✅ |
-| 6.0 | Statki NPC na mapie (spawn, AI, widoczność, fog-of-war) | ✅ |
-| 6.1 | Fix embarku w zatokach (prostopadłe odpłynięcie) | ✅ |
-| 6.2 | Czysty UI: minimap usunięta, HUD przeniesiony do SPACE | ✅ |
-| 6.3 | UIOverlayScene: kompas wiatru + wersja (zoom-niezależne) | ✅ |
-| 6.4 | Start ze zwiniętymi żaglami | ✅ |
-| 6.5 | 10 poziomów zoom (0.5x–8.0x), domyślny z8 | ✅ |
-| 6.6 | Chmury: mniejsze, więcej, fade-in, 3 profile wysokości | ✅ |
-| 6.7 | Mewy: 2 rozmiary, soft steering, tylko nad wodą | ✅ |
-| 6.8 | Mniejsze sprite'y statków (-30%), data w UIOverlay | ✅ |
-| 6.9 | Fix odpływania z portu (perpendicular push) | ✅ |
-| 7.0 | 14 zoom levels (0.5x–20.0x), poprawki pozycji portów | ✅ |
-| 7.1 | Ikony miast: pixel art (kolonialne, wioski), 3 rozmiary | ✅ |
-| 7.2 | Etykiety miast: czytelne, skalowane sqrt(zoom), shadow | ✅ |
-| 7.3 | Tortuga fix: sub-sampling gridu 4×4, korekta 11 portów | ✅ |
+| 5.9 | Dokumentacja, AI assets subprojekt | ✅ |
+
+### Beta 1 — żywy świat (v0.9.x)
+
+| Wersja | Opis | Status |
+|--------|------|--------|
+| 0.9.0-0.9.2 | 14 poziomów zoom, ikony i etykiety miast, czysty UI, `UIOverlayScene` | ✅ |
+| 0.9.3 | Płynny ruch, sprite'y statków, system żagli (4 poziomy), wizyty pieszo w portach | ✅ |
+| 0.9.3.1 | Fix jittera — `camera.setRoundPixels(false)` | ✅ |
+| 0.9.4 | **Fizyka wiatru** — realistyczny diagram polarny, parametry takielunku, ekran pomocy | ✅ |
+| 0.9.5 | **Flota gracza** (3 statki), 9 klas statków, wydarzenia świata, newsy NPC | ✅ |
+| 0.9.5.1 | Spotkania ze statkami (`ShipEncounterScene`), dźwięk mew, OG image | ✅ |
+| 0.9.6 | **Bitwy morskie** — arena, 3 typy amunicji, abordaż, przejmowanie statków | ✅ |
+| 0.9.7 | **Żywa ekonomia** — populacja/zamożność/obrona, dzienny tick, 6 nowych wydarzeń | ✅ |
+| 0.9.8 | Przeładowanie = f(załoga, morale, wyszkolenie); wyszkolenie załogi jako statystyka | ✅ |
+| 0.9.8.1 | Sprzątanie: usunięcie martwych scen, naprawa testów, aktualizacja dokumentacji | ✅ |
+
+**Zrealizowane moduły w ujęciu tematycznym:**
+
+- **Statki NPC na mapie** — spawn z portów i despawn w portach, 5 typów zachowań, limit 30 jednostek, mgła wojny, zasięg obserwacji zależny od najwyższego masztu floty
+- **Bitwy morskie** — arena 3× viewport, łuki ostrzału ±60°, kule / łańcuchówki / kartacze, przeładowanie zależne od stanu załogi, kapitulacja, abordaż z przejęciem statku
+- **Wydarzenia i ekonomia** — 10 wojen historycznych 1568-1697, 15 typów wydarzeń, dzienna symulacja produkcji, konsumpcji i cen w 45 portach, wojna zmienia ruch morski
+- **Obieg informacji** — wydarzenie → news w porcie → NPC jako kurier → gracz
+- **Flota gracza** — do 3 własnych statków, prędkość eskadry = najwolniejsza jednostka
 
 ---
 
-## Planowane fazy
+## Planowane moduły
 
-### Faza 6 — Statki AI na mapie
-**Priorytet:** WYSOKI | **Złożoność:** Duża
+Kolejność wynika z zasady: **najpierw domykamy pętle, które już istnieją**, potem otwieramy nowe moduły. Gracz ma dziś świat, ekonomię, NPC i bitwy — ale brakuje mu powodu, żeby walczyć, i ceny za przegraną.
 
-Statki NPC żeglujące po mapie świata — handlarze, patrole marynarki, piraci.
+### Moduł A — Uszkodzenia i tonięcie *(v0.9.9)*
+**Priorytet:** WYSOKI | **Złożoność:** Średnia | **Domyka:** bitwy morskie
 
-**6.1 — System spawn i zarządzania statkami AI**
-- Pula statków per frakcja (limit na mapie)
-- Spawn w okolicy portów macierzystych
-- Despawn gdy daleko od gracza (oszczędność zasobów)
-- Różne typy: handlarz, patrol, pirat, konwój
+Bitwa działa, ale nie daje sprzężenia zwrotnego — statek albo pływa, albo znika.
 
-**6.2 — AI nawigacyjne**
-- Pathfinding A* między portami (szlaki handlowe)
-- Omijanie lądu i raf
-- Patrole marynarki: trasy wokół portów frakcji
-- Piraci: strefy polowania, pościg za handlarzami
+- **Kadłub:** 100→75 sprawny, 75→50 przeciek (wolniejszy), 50→25 ciężkie uszkodzenia, <25 tonięcie
+- **Ożaglowanie:** podarte żagle (wolniej) → zerwany maszt (dryf) → brak żagli (dryfowanie z wiatrem)
+- **Wizualne:** dym, ogień, przechył, animacja zatonięcia, utrata ładunku, ratowanie załogi
+- **Naprawa:** w stoczni (jest) lub prowizoryczna na morzu — powolna, ograniczona (brak)
 
-**6.3 — System widoczności**
-- Statki widoczne tylko w zasięgu wzroku gracza
-- Płynne pojawianie się (fade-in) przy zbliżaniu
-- Płynne znikanie (fade-out) przy oddalaniu
-- Zasięg zależny od pogody (sztorm = mniejszy) i umiejętności nawigacji
-- Luneta (spyglass) zwiększa zasięg
+Łańcuchówki mają już mnożniki obrażeń żagli w `ammo.ts` — brakuje progresji stanu i warstwy wizualnej.
 
-**6.4 — Interakcje AI**
-- Handlarze: neutralni, uciekają od piratów
-- Patrole: kontrolują okolicę, atakują wrogów frakcji
-- Piraci: agresywni, pościg za słabszymi
-- Floty: grupy statków podróżujących razem
-
----
-
-### Faza 7 — Rozbudowa bitew morskich
+### Moduł B — Pojedynki szermiercze *(v0.10.0)*
 **Priorytet:** WYSOKI | **Złożoność:** Średnia
 
-**7.1 — Uszkodzenia statków**
-- **Kadłub:** drobne uszkodzenia → poważne przecieki → tonięcie
-  - Etapy: 100%→75% (sprawny), 75%→50% (przecieka, powolny), 50%→25% (ciężkie uszkodzenia), <25% (tonięcie)
-  - Wizualne: dym, ogień, przechył
-- **Ożaglowanie:** lekkie → poważne → zerwane
-  - Etapy: uszkodzone żagle (wolniej), zerwany maszt (drift), brak żagli (dryfowanie z wiatrem)
-  - Wizualne: podarte żagle, brak masztu
-- Naprawa: w porcie (stocznia) lub prowizoryczna na morzu (wolna, ograniczona)
-- Tonięcie: animacja, utrata ładunku, ratowanie załogi
+Umiejętność `fencing` istnieje od v0.5.6, ale wpływa dziś wyłącznie na jeden mnożnik w auto-rozstrzygnięciu abordażu.
 
-**7.2 — Typy amunicji**
-- Kule (hull damage)
-- Łańcuchówki (sail damage)
-- Kartacze (crew damage)
-- Wybór amunicji przed strzałem
+- Osobna scena `DuelScene`: atak wysoki / średni / niski, parada, riposta
+- Konteksty: abordaż (zamiast rzutu kośćmi), wyzwanie w porcie, wątek fabularny
+- Efekty: przejęcie statku / awans / rana kapitana / więzienie
+- **Wymaga:** odbudowy systemu dialogów (stara `DialogueScene` była atrapą i została usunięta) — potrzebny też przez moduły E i F
 
-**7.3 — Abordaż**
-- Warunek: statki blisko siebie + niski sail level
-- Porównanie załóg + modyfikator szermierki kapitana
-- Mini-gra lub auto-resolve
-- Zdobycie statku wroga (dodanie do floty)
+### Moduł C — Cele i konsekwencje *(v0.11.0)*
+**Priorytet:** WYSOKI | **Złożoność:** Średnia
 
----
+Bez tego rozgrywka nie ma łuku — można żeglować w nieskończoność bez presji i bez zakończenia.
 
-### Faza 8 — Bitwy lądowe
+- **Podział łupów** — załoga domaga się go co pewien czas; zwłoka obniża morale (a morale wpływa już na przeładowanie); po podziale załoga się rozprasza i trzeba rekrutować od nowa
+- **Starzenie kapitana** — 20-35 pełna sprawność, 35-50 spadek szermierki i wzrost dyplomacji, 50+ wyraźny spadek fizyczny. `calculateAge()` istnieje, ale wiek jest dziś tylko wyświetlany
+- **Emerytura i punktacja końcowa** — bogactwo + rangi + rodzina + skarby, ekran wyniku
+
+### Moduł D — Mapy skarbów *(v0.12.0)*
+**Priorytet:** ŚREDNI | **Złożoność:** Średnia
+
+Pierwszy realny cel eksploracji. Wykorzystuje istniejący tryb pieszy i tawerny.
+
+- **Zdobywanie:** plotki w tawernie (`getRumorKey()` już działa), łupy z piratów, nagrody za misje
+- **System map:** fragment mapy świata + X; poziomy precyzji od dokładnych po mgliste
+- **Poszukiwanie:** dopłynięcie → desant → chodzenie po wyspie → wykopanie; część map to zasadzki
+- **Skarby:** złoto, artefakty z bonusami, wskazówki do kolejnych, legendarny skarb Kapitana Kidda
+- **Wymaga:** systemu questów — `QUESTS` jest dziś pustą mapą, `QuestSystem` ma tylko prymitywy logu zadań
+
+### Moduł E — Bitwy lądowe *(v0.13.0)*
 **Priorytet:** ŚREDNI | **Złożoność:** Duża
 
-**8.1 — Atak na miasto z morza**
-- Ostrzał armatni fortów
-- Forty strzelają w odpowiedzi (damage)
-- Siła obrony = garnison + fortyfikacje + wielkość miasta
-- Desant na plażę po osłabieniu fortów
+Największa nowa mechanika. Fundament już jest: `defense` per port istnieje i spada po najazdach.
 
-**8.2 — Atak lądowy**
-- Desant → formacja piechoty
-- Oblężenie: podkopy, drabiny, taran
-- Uproszczona mechanika (auto-resolve z modyfikatorami)
-- Sukces = przejęcie miasta (tymczasowe lub trwałe)
+- **Atak z morza:** ostrzał fortów, odpowiedź fortów, siła obrony = garnizon + fortyfikacje + wielkość miasta
+- **Desant:** po osłabieniu fortów; oblężenie w uproszczonym auto-resolve z modyfikatorami
+- **Przejęcie miasta:** zmiana `factionId` portu z kaskadą w ekonomii i spawnie NPC
+- **Obrona:** AI atakuje miasta, gracz może bronić sojuszników (reputacja + złoto)
 
-**8.3 — Obrona miast**
-- AI atakuje miasta (inne frakcje, piraci)
-- Gracz może bronić sojuszniczych miast
-- Nagroda: reputacja + złoto
+### Moduł F — Warstwa fabularna *(v0.14.0+)*
+**Priorytet:** ŚREDNI | **Złożoność:** Średnia | **Wymaga:** modułów B i D
 
----
+**Córki gubernatorów** — losowe w dużych portach, atrybuty (uroda, charakter, posag), zaloty przez wizyty u gubernatora, mini-gra taneczna lub dialog z modyfikatorem uroku, prezenty. Małżeństwo daje posag, bazę w porcie żony, bonus reputacji i punkty na koniec.
 
-### Faza 9 — Moduł pojedynków
-**Priorytet:** ŚREDNI | **Złożoność:** Średnia
+**Poszukiwanie rodziny** — 4 osoby (brat, siostra, ciotka, wujek), każda w innym regionie. Tropy z tawern i od kupców tworzą łańcuch wskazówek. Misje ratunkowe wymagają różnych umiejętności: bitwy, dyplomacji, nawigacji, mapy. Nagroda: +1 do umiejętności i unikalny bonus (brat jako pierwszy oficer, mapa wielkiego skarbu od wujka).
 
-**9.1 — Pojedynki szermierskie**
-- Osobna scena (jak w oryginale)
-- Ruchy: atak wysoki/średni/niski, obrona, riposte
-- System oparty na umiejętności szermierki kapitana
-- Kontekst: abordaż, wyzwanie gubernatora, obrona honoru
+### Moduł G — Rozszerzenia poza oryginał *(bez terminu)*
+**Priorytet:** NISKI
 
-**9.2 — Typy pojedynków**
-- Abordażowy (po wejściu na statek wroga)
-- Honorowy (w portach, z NPC)
-- Fabularny (z antagonistami)
-
-**9.3 — Efekty pojedynku**
-- Wygrana: zdobycie statku / awans / fabuła
-- Przegrana: raniony kapitan, utrata statku, więzienie
-
----
-
-### Faza 10 — Upływ czasu i wydarzenia historyczne
-**Priorytet:** ŚREDNI | **Złożoność:** Duża
-
-**10.1 — System wydarzeń historycznych**
-- Kalendarz wydarzeń na podstawie realnej historii Karaibów
-- Typy: wojny między frakcjami, epidemie, trzęsienia ziemi, nowi gubernatorzy
-- Wpływ na: układ sił, ceny, dostępność portów
-
-**10.2 — Dynamika miast**
-- Miasta bogacą się / ubożeją w zależności od handlu
-- Populacja rośnie/maleje
-- Fortyfikacje budowane/niszczone
-- Garnizony wzmacniane/osłabiane
-- Przejmowanie miast przez frakcje (wojny)
-
-**10.3 — Starzenie się kapitana**
-- Kapitan starzeje się z upływem czasu gry
-- Wiek wpływa na umiejętności:
-  - 20-35: pełna sprawność
-  - 35-50: lekki spadek szermierki, wzrost dyplomacji
-  - 50+: znaczny spadek fizyczny, mądrość
-- Emerytura: wymuszony koniec kariery w starszym wieku
-- Punktacja końcowa: bogactwo + rangi + rodzina + skarby
-
-**10.4 — Podział łupów**
-- Co pewien czas załoga żąda podziału
-- Im dłużej bez podziału → niższe morale
-- Podział: % dla kapitana vs % dla załogi
-- Po podziale: załoga się rozprasza, trzeba rekrutować nową
-
----
-
-### Faza 11 — Córki gubernatorów
-**Priorytet:** ŚREDNI | **Złożoność:** Mała
-
-**11.1 — System romansów**
-- Losowe córki gubernatorów w dużych portach
-- Atrybuty: uroda, charakter, posag
-- Wymóg: odpowiednia reputacja u frakcji + ranga
-
-**11.2 — Zaloty**
-- Wizyty u gubernatora → spotkania z córką
-- Mini-gra taneczna lub dialog
-- Modyfikator: umiejętność uroku kapitana
-- Prezenty: biżuteria, egzotyczne towary
-
-**11.3 — Małżeństwo**
-- Bonus: posag (złoto), informacje o skarbach
-- Efekt stały: baza w porcie żony, bonus reputacji
-- Wpływ na punktację końcową
-
----
-
-### Faza 12 — Poszukiwanie rodziny
-**Priorytet:** ŚREDNI | **Złożoność:** Średnia
-
-**12.1 — Zaginiona rodzina**
-- Backstory: kapitan stracił rodzinę (piraci, wojna, porwanie)
-- 4 członkowie do odnalezienia: brat, siostra, ciotka, wujek
-- Każdy w innym regionie Karaibów
-
-**12.2 — Tropy**
-- Plotki w tawernach → ogólna lokalizacja
-- Kupcy i marynarze → bardziej precyzyjne tropy
-- Łańcuch wskazówek prowadzi do następnego kroku
-
-**12.3 — Misje ratunkowe**
-- Brat: więzień w twierdzy (wymaga bitwy)
-- Siostra: w porcie dalekiej frakcji (wymaga dyplomacji)
-- Ciotka: u Indian (wymaga nawigacji i handlu)
-- Wujek: na bezludnej wyspie (wymaga mapy)
-
-**12.4 — Nagrody**
-- Każdy członek: punkty doświadczenia + bonus
-- Brat: +1 szermierka, dołącza jako pierwszy oficer
-- Siostra: +1 medycyna, informacje o skarbie
-- Ciotka: +1 urok, kontakty handlowe
-- Wujek: +1 nawigacja, mapa do wielkiego skarbu
-
----
-
-### Faza 13 — Mapy skarbów
-**Priorytet:** ŚREDNI | **Złożoność:** Średnia
-
-**13.1 — Zdobywanie map**
-- Plotki w tawernach (za złoto)
-- Łupy z pokonanych piratów
-- Nagrody za misje
-- Wskazówki od rodziny
-
-**13.2 — System map**
-- Mapa skarbu = fragment mapy świata + X marks the spot
-- Różne poziomy trudności (precyzyjne → mgliste wskazówki)
-- Wyświetlanie: overlay na minimapie lub osobna scena
-
-**13.3 — Poszukiwanie**
-- Dopłynięcie do obszaru → desant na ląd
-- Chodzenie po wyspie → szukanie miejsca
-- Wykopywanie: mini-gra lub auto-resolve
-- Pułapki: niektóre mapy to zasadzki
-
-**13.4 — Skarby**
-- Złoto (duże ilości)
-- Artefakty (unikalne itemy z bonusami)
-- Wskazówki do kolejnych skarbów
-- Legendarny skarb Kapitana Kidda (quest końcowy?)
-
----
-
-### Faza 14 — Flota gracza
-**Priorytet:** NISKI | **Złożoność:** Średnia
-
-**14.1 — Zarządzanie flotą**
-- Gracz może posiadać więcej niż 1 statek
-- Zdobyte statki: abordaż, kupno
-- Max 4 statki w flocie
-- Przesiadanie się między statkami
-
-**14.2 — AI floty**
-- Statki floty podążają za flagowcem
-- Formacje: linia, klin, luźna
-- W bitwie: wsparcie ogniowe
-
-**14.3 — Podział zasobów**
-- Załoga / ładunek / armaty rozdzielane między statki
-- Stocznia: naprawa całej floty
-
----
-
-### Faza 15 — Moduły dodatkowe (poza oryginałem)
-**Priorytet:** NISKI | **Złożoność:** Różna
-
-**15.1 — Wioski Indian**
-- Lokacje na mapie (nie-portowe)
-- Handel egzotycznymi towarami
-- Wskazówki do skarbów i rodziny
-- Misje pomocnicze
-
-**15.2 — Misje jezuickie**
-- Leczenie załogi (medycyna)
-- Informacje o regionie
-- Konwersja piratów (reputacja)
-
-**15.3 — System pogodowy rozszerzony**
-- Huragany: sezonowe, niszczycielskie
-- Mgła: zmniejszony zasięg widzenia
-- Prądy morskie: wpływ na dryf
-- Wizualne efekty: deszcz, pioruny
-
-**15.4 — System specjalizacji statków**
-- Ulepszenia: szybsze żagle, mocniejszy kadłub, dodatkowe armaty
-- Figurehead (galion): bonusy moralne
-- Balas: stabilność vs prędkość
+- **Wioski Indian** — lokacje nie-portowe, handel egzotyką, wskazówki do skarbów i rodziny
+- **Misje jezuickie** — leczenie załogi, informacje o regionie, konwersja piratów
+- **Pogoda rozszerzona** — huragany sezonowe, mgła (mniejszy zasięg), prądy morskie, deszcz i pioruny
+- **Specjalizacje statków** — ulepszenia żagli, kadłuba i uzbrojenia, galion (bonus morale), balast (stabilność vs prędkość)
+- **Pathfinding A\*** — prawdziwe szlaki handlowe zamiast reaktywnego sterowania NPC
+- **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden; brakuje ścieżek dla żeglugi, portu, tawerny i bitwy
 
 ---
 
 ## Faza AI — Generowanie assetów
 **Priorytet:** WYSOKI (równolegle z rozwojem mechanik)
 
-### AI-1 — Pipeline graficzny
-- Poprawienie modelu LoRA (trening na danych z Amiga/C64)
-- Workflow ComfyUI dla każdego typu assetu
-- Automatyczna konwersja do formatu gry (32×32 tiles, 64×64 sprites)
+Stan: pipeline opisany w [13-3D-ASSET-PIPELINE.md](13-3D-ASSET-PIPELINE.md) i `sd-pipeline/`. W grze działają ikony miast (6 sprite'ów PNG) i jeden arkusz statku (`sailship.png`, 8 kierunków) współdzielony przez wszystkie klasy.
 
-### AI-2 — Sprite'y statków
-- 5 klas × 8 kierunków × 5 frakcji (kolorystyka) = 200 sprite'ów
-- Animacje: żegluga, uszkodzenia, tonięcie
-
-### AI-3 — Sprite'y miast i budynków
-- Porty: 4 rozmiary × style architektoniczne per frakcja
-- Budynki: tawerna, stocznia, fort, gubernator, kościół
-- Animacje: dym, flagi
-
-### AI-4 — Sprite'y postaci
-- Portrety NPC (8-bit style)
-- Animacje walki (pojedynki)
-- Córki gubernatorów (warianty)
-- Rodzina kapitana
-
-### AI-5 — Efekty i otoczenie
-- Efekty pogodowe (deszcz, mgła, pioruny)
-- Eksplozje, ogień, dym
-- Fauna: mewy, delfiny, rekiny
-- Flora: palmy, lasy, kwiaty
+- **AI-1** — dopracowanie LoRA, workflow ComfyUI per typ assetu, automatyczna konwersja do formatu gry
+- **AI-2** — sprite'y statków: 9 klas × 8 kierunków × warianty frakcji; animacje uszkodzeń i tonięcia (potrzebne przez moduł A)
+- **AI-3** — sprite'y miast i budynków: tawerna, stocznia, fort, rezydencja gubernatora, kościół
+- **AI-4** — portrety NPC, animacje walki (potrzebne przez moduł B), córki gubernatorów, rodzina kapitana
+- **AI-5** — efekty: pogoda, eksplozje, ogień, dym; fauna i flora
 
 ---
 
-## Kolejność implementacji (sugerowana)
+## Kolejność implementacji
 
 ```
-Faza 6  ─── Statki AI na mapie ──────────── [NASTĘPNA]
+Moduł A ─── Uszkodzenia i tonięcie ─────── [NASTĘPNY]
   │
-Faza 7  ─── Rozbudowa bitew morskich
+Moduł B ─── Pojedynki + system dialogów
   │
-Faza 9  ─── Pojedynki szermierskie
+Moduł C ─── Podział łupów, starzenie, punktacja
   │
-Faza 8  ─── Bitwy lądowe
+Moduł D ─── Mapy skarbów (+ system questów)
   │
-Faza 10 ─── Upływ czasu + wydarzenia
+Moduł E ─── Bitwy lądowe
   │
-Faza 13 ─── Mapy skarbów
+Moduł F ─── Córki gubernatorów, rodzina
   │
-Faza 12 ─── Poszukiwanie rodziny
-  │
-Faza 11 ─── Córki gubernatorów
-  │
-Faza 14 ─── Flota gracza
-  │
-Faza 15 ─── Moduły dodatkowe
+Moduł G ─── Rozszerzenia poza oryginał
 
 ║ Równolegle: Faza AI (generowanie assetów) ║
 ```
@@ -359,12 +163,18 @@ Faza 15 ─── Moduły dodatkowe
 
 ## Kamienie milowe
 
-| Milestone | Fazy | Wersja docelowa |
-|-----------|------|-----------------|
-| **Alpha** (obecny) | 0-5 | v0.8.x |
-| **Beta 1** — żywy świat | 6-7 | v0.9.x |
-| **Beta 2** — pełna walka | 8-9 | v1.0.x |
-| **Beta 3** — historia i czas | 10-11 | v1.1.x |
-| **Beta 4** — questy i skarby | 12-13 | v1.2.x |
-| **Release Candidate** | 14-15 | v1.5.x |
-| **v2.0** — pełna gra | wszystkie | v2.0 |
+| Milestone | Zakres | Wersja |
+|-----------|--------|--------|
+| Alpha | Fundament, handel, reputacja | v0.8.x ✅ |
+| **Beta 1 — żywy świat** | NPC, wydarzenia, ekonomia, bitwy morskie, flota | v0.9.x ✅ |
+| Beta 2 — pełna walka | Moduły A + B (uszkodzenia, pojedynki) | v1.0.x |
+| Beta 3 — kariera kapitana | Moduł C (łupy, starzenie, punktacja) | v1.1.x |
+| Beta 4 — questy i skarby | Moduły D + E (skarby, bitwy lądowe) | v1.2.x |
+| Release Candidate | Moduł F (fabuła) | v1.5.x |
+| v2.0 — pełna gra | Moduł G + kompletne assety AI | v2.0 |
+
+---
+
+## Etap 3 — port na Godot
+
+Długoterminowo rozważany przepis silnika na Godot 4 + GDScript z eksportem do WASM. Decyzja niepodjęta; Phaser 3 pozostaje platformą docelową do co najmniej v1.0.

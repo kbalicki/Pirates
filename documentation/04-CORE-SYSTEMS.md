@@ -4,17 +4,27 @@
 
 | System | Plik | Odpowiedzialność |
 |--------|------|------------------|
-| Navigation | `NavigationSystem.ts` | Ruch, kolizje, auto-desant |
-| Weather | `WeatherSystem.ts` | Wiatr, sztormy, sezonowość |
-| Economy | `EconomySystem.ts` | Handel, ceny, transakcje |
+| Navigation | `NavigationSystem.ts` | Ruch, kolizje, auto-desant, chodzenie po lądzie |
+| Weather | `WeatherSystem.ts` | Wiatr (model polarny), sztormy, sezonowość |
+| Sail | `SailSystem.ts` | 4 poziomy ożaglowania, płynne przejścia |
 | Time | `TimeSystem.ts` | Kalendarz, cykl dnia/nocy |
+| Economy | `EconomySystem.ts` | Handel, transakcje kupna/sprzedaży |
+| EconomyTick | `EconomyTickSystem.ts` | Dzienny tick żywej ekonomii miast |
+| EventEffects | `EventEffectsSystem.ts` | Przełożenie wydarzeń świata na dzienne delty |
+| WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
-| Combat | `CombatSystem.ts` + `CombatEngine.ts` | Bitwy morskie |
-| CrewConsumption | `CrewConsumptionSystem.ts` | Jedzenie, woda, morale |
-| PortInteraction | `PortInteractionSystem.ts` | NPC w portach |
+| Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
+| Boarding | `BoardingSystem.ts` | Rozstrzygnięcie abordażu |
+| Fleet | `FleetSystem.ts` | Flota gracza (max 3 statki) |
+| NpcSpawn | `NpcSpawnSystem.ts` | Pula statków NPC, spawn/despawn |
+| NpcAi | `NpcAiSystem.ts` | Zachowania NPC, unikanie brzegu |
+| NpcNews | `NpcNewsSystem.ts` | NPC roznoszą newsy między portami |
+| CrewConsumption | `CrewConsumptionSystem.ts` | Jedzenie, woda, morale, śmiertelność |
+| PortInteraction | `PortInteractionSystem.ts` | Gubernator, tawerna, kupiec, stocznia |
+| PortWaterPositions | `PortWaterPositions.ts` | Punkty kotwiczenia na wodzie przy portach |
 | Encounter | `EncounterSystem.ts` | Losowe spotkania |
 | EventLog | `EventLogSystem.ts` | Historia zdarzeń |
-| Quest | `QuestSystem.ts` | Zadania (placeholder) |
+| Quest | `QuestSystem.ts` | Log zadań (FSM jeszcze nie zbudowany) |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -27,15 +37,22 @@ Wszystkie systemy znajdują się w `src/core/systems/`.
 ### Obliczanie prędkości
 
 ```
-effectiveSpeed = shipClass.speedBase × sailLevel × windSpeedModifier × sailDamageRatio
-
-windSpeedModifier = 0.7 + 0.8 × cos(heading - windDirection)
-  → pod wiatr:  min ~0.3 (kara)
-  → z wiatrem:  max ~1.5 (bonus)
-
-sailDamageRatio = currentSailsHP / maxSailsHP
-  → uszkodzone żagle = wolniejszy statek
+effectiveSpeed = shipClass.speedBase
+               × sailLevel
+               × windSpeedModifier(heading, windDir, windStrength, minWindAngle)
+               × (currentSailsHP / maxSailsHP)
+               × fleetSpeedMul
 ```
+
+- `sailLevel` — 0..1 z `SailSystem` (Złożone / Refowane / Połowa / Pełne)
+- `fleetSpeedMul` — < 1 gdy najwolniejszy statek floty ogranicza eskadrę
+- Uszkodzone żagle proporcjonalnie spowalniają statek
+
+Model wiatru opisany niżej, w sekcji WeatherSystem.
+
+### Anti-tunneling
+
+Ruch jest próbkowany co 2 px wzdłuż wektora przemieszczenia, żeby wąski pas lądu nie został „przeskoczony" w jednym ticku przy dużej prędkości.
 
 ### Typy terenu
 
@@ -73,6 +90,27 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 - `STRENGTH_REVERSION_RATE = 0.006`
 - Kierunek: radiany (0=N, π/2=E, π=S, 3π/2=W)
 - Siła: 0.0 (cisza) do 1.0 (sztorm)
+
+### Model polarny prędkości (v0.9.4)
+
+`windSpeedModifier(shipHeading, windDirRad, windStrength, minWindAngle)`
+
+`windDirRad` to kierunek, **z którego** wieje wiatr. Kąt liczony jest jako `|heading − windDir|` złożony do 0-180°: 0° = dziób prosto w wiatr, 180° = z wiatrem (fordewind).
+
+| Kąt do wiatru | Współczynnik przy pełnej sile | Nazwa |
+|---------------|-------------------------------|-------|
+| 0° – minWindAngle | 0 | martwa strefa — statek nie robi drogi |
+| minWindAngle – +30° | 0 → 0.4 (liniowo) | ostro na wiatr (close hauled) |
+| 60° – 120° | 0.4 → **1.5** → 0.4 (pół sinusoidy) | półwiatr, szczyt przy 90° |
+| 120° – 180° | 1.1 → 0.9 | baksztag i fordewind |
+
+Wynik jest skalowany siłą wiatru: `1 + (factor − 1) × windStrength`, więc przy ciszy (`strength = 0`) każdy kurs daje dokładnie 1.0.
+
+`minWindAngle` jest cechą klasy statku: takielunek skośny 30-35°, rejowy do 60° — slup wyostrzy tam, gdzie galeon stanie w miejscu.
+
+**Konsekwencja dla gracza:** najszybszy kurs to półwiatr (1.5×), nie fordewind (0.9×), a płynięcie prosto pod wiatr jest niemożliwe — trzeba halsować.
+
+> **Znany błąd:** krzywa jest nieciągła na granicy 120°. Gałąź półwiatru schodzi sinusoidą do 0.4, a gałąź fordewindu startuje od 1.1 — statek na kursie 119° płynie 0.4×, a na 121° już 1.1×. Szczegóły i sugerowana poprawka w [TODO.md](../TODO.md), P0-2.
 
 ### Sztormy
 
@@ -144,35 +182,70 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 
 ---
 
-## CombatEngine
+## CombatEngine + CombatSystem
+
+`CombatSystem.ts` trzyma stałe i wzory; `engine/CombatEngine.ts` prowadzi symulację. Warstwa wizualna to `SeaBattleScene`.
 
 ### Arena bitewna
 
-- Osobna scena 800×600 px
-- Gracz vs 1 wróg (rozszerzenie na wielu wrogów planowane)
-- Komendy: `SetSailLevel`, `Turn`, `FireCannons`, `AttemptDisengage`
+- Arena 3× viewport; kamera zawsze wyśrodkowana na graczu (świat się przesuwa)
+- Gracz vs 1 wróg
+- Komendy: `SetSailLevel`, `Turn`, `FireCannons`, `SetAmmo`, `AttemptBoarding`, `AttemptDisengage`
+- Testowanie bez rozgrywki: `?battle=1|trader|navy|pirate|hunter`
 
-### Parametry walki
+### Przeładowanie — funkcja stanu załogi (v0.9.8)
 
-| Parametr | Wartość |
-|----------|---------|
-| Cannon cooldown | 60 ticków (3s) |
-| Cannon range | 160 jednostek |
-| Hull damage | 8 HP / trafienie |
-| Sail damage | 5 HP / trafienie |
+```
+crewFrac    = clamp((crew/max − 0.2) / 0.8, 0, 1)
+crewMul     = 0.70 + 0.30 × crewFrac
+moraleMul   = 0.80 + 0.20 × morale
+trainingMul = 0.75 + 0.25 × training
+ticks       = CANNON_COOLDOWN_TICKS / (crewMul × moraleMul × trainingMul)
+```
+
+`CANNON_COOLDOWN_TICKS = 180` (9 s przy 20 tickach/s). Każda burta przeładowuje się niezależnie; zmiana amunicji resetuje obie. Najlepszy przypadek to 9 s, najgorszy ok. 26 s.
+
+**Wyszkolenie załogi** (`captain.training`, 0..1) rośnie o 0.0005 dziennie na morzu i 0.02 za wygraną bitwę, a rozcieńcza się średnią ważoną przy zaciągu świeżych rekrutów.
+
+### Obrażenia
+
+```
+shots      = floor(shooter.cannons / 2)          // jedna burta
+distFactor = (1 − dRatio)^1.5                     // spadek z dystansem
+             × 1.6 gdy dRatio < 0.15              // premia z bliska
+accuracy   = max(0.15, 1 − 0.7 × dRatio)          // szansa chybienia
+
+hullDelta  = −3.5 × shots × ammo.hullMul  × distFactor × (1 − target.armor)
+sailsDelta = −3.0 × shots × ammo.sailsMul × distFactor × (1 − target.armor)
+crewDelta  = −4.5 × shots × ammo.crewMul  × distFactor × (1 − target.armor × 0.3)
+```
+
+Zasięg = `arena.width / 2` (fallback `CANNON_RANGE = 480`). Łuki ostrzału: ±60° od trawersu obu burt — dziób i rufa to martwe pole.
 
 ### AI wroga
 
-- Pościg gdy ma przewagę
-- Ucieczka gdy kadłub < 30%
-- Strzelanie w zasięgu
-- Prosta logika (do rozbudowy)
+- Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
+- Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
+- Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Abordaż (`BoardingSystem.ts`)
+
+Warunek: dystans ≤ 30 px **oraz** wróg osłabiony (kadłub < 35% lub załoga < 50%).
+
+```
+playerStrength = crew × morale × (1 + szermierka/10)
+enemyStrength  = crew × morale
+```
+
+Wygrany traci 10-30% ludzi, przegrany 50-90%. Przejęcie daje statek do floty (jeśli jest wolny slot) i 80% łupu.
 
 ### Zakończenie bitwy
 
 - Kadłub ≤ 0: zatopienie (łupy: złoto + losowy cargo)
-- Gracz ucieka: `AttemptDisengage` (wymaga dystansu)
-- Abordaż: planowany (porównanie załóg)
+- Kapitulacja: natychmiastowe zwycięstwo + łup
+- Abordaż wygrany: przejęcie statku
+- `AttemptDisengage`: ucieczka (wymaga dystansu)
+- Atak na handlarza lub marynarkę psuje reputację u tej frakcji i podnosi ją u piratów
 
 ---
 
@@ -249,3 +322,118 @@ probability = zone.risk × 0.001 × dtTicks
 - Max 200 wpisów (FIFO)
 - Każdy wpis: `{ type, message, timestamp, data? }`
 - Wyświetlane w HUD i dostępne z poziomu menu
+
+---
+
+## SailSystem
+
+Cztery nazwane poziomy ożaglowania zamiast płynnego suwaka. Przejście między sąsiednimi poziomami trwa 2 s (interpolacja `currentValue`), więc rozkładanie pełnych żagli ze zwiniętych zajmuje 6 s.
+
+| Index | value | PL | EN |
+|-------|-------|----|----|
+| 0 | 0.00 | Zwinięte | Furled |
+| 1 | 0.33 | Zrefowane | Reefed |
+| 2 | 0.50 | Połowa żagli | Half Sail |
+| 3 | 1.00 | Pełne żagle | Full Sail |
+
+Mniej żagli = wolniej, ale zwrotniej — dotyczy zarówno gracza, jak i NPC.
+
+---
+
+## FleetSystem
+
+Gracz prowadzi do `MAX_FLEET_SIZE = 3` statków: okręt flagowy (`entity.ship`) plus 0-2 dodatkowe w `player.fleet`. To są **własne statki gracza**, nie eskorta NPC.
+
+| Funkcja | Efekt |
+|---------|-------|
+| `fleetSpeedMultiplier()` | Eskadra płynie z prędkością najwolniejszej jednostki |
+| `fleetMaxMastHeight()` | Zasięg obserwacji wyznacza najwyższy maszt we flocie |
+| `fleetMinCrew()` | Minimalna załoga potrzebna do obsadzenia wszystkich statków |
+| `fleetTotalCannons()` | Łączna siła ognia eskadry |
+| `addToFleet()` / `removeFromFleet()` | Kupno/przejęcie i sprzedaż/porzucenie |
+
+Statki dokupuje się i sprzedaje w stoczni; można też porzucić jednostkę na morzu.
+
+---
+
+## Systemy NPC
+
+### NpcSpawnSystem
+
+Statki **wypływają z portów** i **znikają w portach** — nie pojawiają się w losowych punktach morza.
+
+| Stała | Wartość | Znaczenie |
+|-------|---------|-----------|
+| `MAX_NPC_SHIPS` | 30 | Limit jednocześnie żyjących NPC |
+| `SPAWN_INTERVAL_TICKS` | 60 | Próba spawnu co 3 s |
+| `DESPAWN_DISTANCE` | 900 | Usunięcie NPC oddalonego od gracza |
+| `DOCK_RADIUS` | 55 | Dystans, na którym NPC „dobija" do portu i znika |
+
+Ruch skaluje się wielkością miasta (`capital` 5 statków, `large` 3, `medium` 2, `small` 1). Zachowania: `trader`, `pirate`, `navy`, `escort`, `pirate_hunter` — każde z własną pulą klas statków, poziomem żagli, agresją i promieniem czujności.
+
+**Wpływ wojny:** frakcje w stanie wojny spawnują 2× więcej statków, a udział marynarki rośnie z 45% do 70% kosztem handlarzy (`warSpawnMultipliers()` z `EventEffectsSystem`).
+
+### NpcAiSystem
+
+Sterowanie reaktywne — bez pathfindingu. NPC obiera kurs na port docelowy, a po kontakcie z linią brzegową wchodzi w cooldown (`coastAvoidTick`), w którym AI nie nadpisuje kursu, żeby statek zdążył odbić od lądu. Wrogie frakcje nie kursują między portami przeciwnika.
+
+### NpcNewsSystem
+
+Czterowarstwowy obieg informacji: **wydarzenie → news w porcie → NPC jako kurier → gracz**.
+
+- NPC zbiera newsy przy porcie (w `DOCK_RADIUS`), max 5 pozycji
+- Gracz odbiera je automatycznie w promieniu `NEWS_RANGE = 30` albo w `ShipEncounterScene`
+- Dzielą się tylko `trader`, `navy`, `escort` — pirat nie powie nic
+- Ten sam NPC nie powtórzy newsa, dopóki nie odwiedzi kolejnego portu
+
+---
+
+## WorldEventSystem
+
+Odpalany raz na dobę gry. Dwa źródła zdarzeń:
+
+**Wojny historyczne** — 10 konfliktów z lat 1568-1697 (wojna osiemdziesięcioletnia, wojny angielsko-hiszpańskie, wojna dziewięcioletnia...), wybuchają na konkretne daty kalendarzowe.
+
+**Wydarzenia losowe** — 15 typów z wagami prawdopodobieństwa:
+
+`epidemic` · `pirate_raid` · `trade_boom` · `slave_revolt` · `hurricane` · `treasure_fleet` · `new_governor` · `gold_discovery` · `native_raid` · `famine` · `harvest` · `royal_decree` · `treaty_signed` (+ `war_start` / `war_end`)
+
+Każde zdarzenie ma `severity` 1-3, listę dotkniętych portów i frakcji, okno `startDay`-`endDay` oraz nagłówek jako klucz i18n.
+
+`seedInitialEvents()` odpala się raz przy tworzeniu świata, żeby NPC już pierwszego dnia mieli 1-5 newsów do przekazania.
+
+---
+
+## EconomyTickSystem
+
+Jeden dzień symulacji ekonomicznej dla wszystkich portów, w stałej kolejności:
+
+1. Jednorazowe efekty zdarzeń (najazd piratów, odkrycie złota, huragan)
+2. Agregacja dziennych mnożników z aktywnych zdarzeń
+3. **Produkcja** — produkowane towary trafiają do inventarza (z limitem)
+4. **Konsumpcja** — poszukiwane towary drenują inventarz
+5. **Przeliczenie cen** ze stosunku podaży do popytu × modyfikator rynku × mnożnik zdarzeń
+6. Płaskie dzienne delty populacji / zamożności / obrony
+7. **Powrót do baseline'u** — powolny dryf: zamożność 1%/dzień, populacja 0.5%/dzień, obrona 2%/dzień
+
+Funkcja czysta: `economyDailyTick(world) → WorldState`.
+
+---
+
+## EventEffectsSystem
+
+Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
+
+| Zdarzenie | Efekt |
+|-----------|-------|
+| Epidemia | spadek populacji, rekrutacja o połowę słabsza, ceny w górę |
+| Najazd piratów (jednorazowy) | zamożność −80, inventarz −30%, obrona się sypie |
+| Huragan | port zamknięty, straty w towarze, uszkodzenia statków |
+| Boom handlowy | produkcja ×1.5, ceny −20% |
+| Bunt niewolników | produkcja ×0.3, zamożność drenowana |
+| Nowy gubernator | jednorazowy zastrzyk zamożności +50 |
+| Odkrycie złota | miasto zaczyna produkować złoto, populacja +0.5%/dzień przez rok |
+| Głód | ceny jedzenia i wody ×2-4, populacja spada |
+| Żniwa (jesień) | ceny jedzenia i cukru ×0.6, zastrzyk do inventarza |
+| Dekret królewski | zmiana ceł w całej frakcji, do roku |
+| Wojna | produkcja −15%, ceny +10% w walczących nacjach |

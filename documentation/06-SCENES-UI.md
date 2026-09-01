@@ -9,34 +9,28 @@ BootScene
     │
 PreloadScene (ładowanie assetów)
     │
-    ├── [Nowa gra] ──→ CharacterCreationScene
-    │                       │
-    │                       └──→ MainMapScene
-    │
-    └── [Wczytaj] ──→ SaveLoadScene
-                         │
-                         └──→ MainMapScene
+CharacterCreationScene ── [Nowa gra] ──→ MainMapScene
+    └──────────────────── [Wczytaj slot] ──→ MainMapScene
 
-MainMapScene (główna pętla)
+MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompas, data, zoom)
     │
-    ├── [ESC] ──→ PauseMenuScene
-    │               ├── Resume ──→ MainMapScene
-    │               ├── Options ──→ OptionsMenuScene
-    │               ├── Save ──→ SaveLoadScene
-    │               └── Quit ──→ BootScene
+    ├── [SPACE] ──→ OptionsMenuScene (kabina, flota, ustawienia, zapis/odczyt)
+    ├── [ESC]   ──→ PauseMenuScene
+    ├── [H]     ──→ HelpScene (Sterowanie / Statki / Żeglowanie / Świat / Ekonomia)
+    ├── [I na mieście] ──→ CityInfoScene
     │
     ├── [E w zasięgu portu] ──→ PortApproachScene
     │                              ├── Wejdź ──→ PortScene
     │                              ├── Atakuj ──→ SeaBattleScene
     │                              └── Odpłyń ──→ MainMapScene
     │
-    ├── [Spotkanie] ──→ SeaBattleScene
-    │                      ├── Wygrana ──→ MainMapScene (łupy)
-    │                      ├── Przegrana ──→ MainMapScene (kary)
-    │                      └── Ucieczka ──→ MainMapScene
-    │
-    └── [Wydarzenie fabularne] ──→ DialogueScene ──→ MainMapScene
+    └── [Zbliżenie do NPC] ──→ ShipEncounterScene
+                                  ├── Informacje + newsy
+                                  ├── Atakuj ──→ SeaBattleScene ── [H] ──→ BattleHelpScene
+                                  └── Odpłyń ──→ MainMapScene
 ```
+
+**Uwaga:** zapis i odczyt gry mieszkają w `OptionsMenuScene` i `CharacterCreationScene`, nie w osobnej scenie. Dawne `SaveLoadScene` i `DialogueScene` były atrapami i zostały usunięte w v0.9.8.1 — system dialogów powstanie od nowa razem z pojedynkami (patrz [TODO.md](../TODO.md), v0.10.0).
 
 ## Sceny — szczegóły
 
@@ -86,36 +80,47 @@ update(delta):
   // Co klatkę (nie co tick):
   CameraController.update()
   CloudRenderer.update()
-  WindCompassRenderer.update()
   SeagullRenderer.update()
-  MinimapRenderer.update()
+  WaterRenderer.update()
 ```
 
-**Elementy HUD:**
-- Złoto (lewy górny)
-- Data/czas (kalendarz)
-- Załoga: current/max + pasek morale
-- Kompas wiatru (prawy górny): róża wiatrów + igła
-- Minimapa (lewy dolny)
-- Wersja gry (prawy dolny, 12px)
+`camera.setRoundPixels(false)` w `create()` jest **obowiązkowe** — `pixelArt: true` wymusza `roundPixels: true`, co powoduje drgania statku przy ruchu subpikselowym.
+
+**Stałe UI (`UIOverlayScene` — osobna scena, niezależna od zoomu):**
+- Kompas wiatru (`WindCompassWidget`, proceduralny canvas)
+- Data i czas gry
+- Poziom ożaglowania (pod kompasem)
+- Wersja gry
+- Wskaźnik zoomu (lewy dolny róg, skala 0→10)
+
+**Statystyki kapitana** (złoto, załoga, morale, wyszkolenie, ładownia) są w menu SPACE, zakładka Kabina — nie na stałym HUD-zie. Minimapa została usunięta w v0.9.2.
 
 ### PortScene
 
 Menu port:
 1. **Gubernator** — listy kaperskie, rangi, misje
-2. **Tawerna** — rekrutacja, drink (+morale), plotki
+2. **Tawerna** — rekrutacja, drink (+morale), plotki i lokalne newsy ze świata
 3. **Kupiec** — kupno/sprzedaż 6 towarów
-4. **Stocznia** — naprawa (kadłub/żagle), kupno statku
+4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do floty
+5. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
 
 Nawigacja: klawisze lub klik na opcje. ESC = wyjście z portu.
 
 ### SeaBattleScene
 
-- Arena 800×600 px, oddzielna od mapy
-- Statek gracza vs 1 wróg
-- Sterowanie: WSAD (żagle + obrót), Q/E (armaty lewa/prawa burta)
-- ESC = próba ucieczki
-- HUD bitwy: HP kadłuba, HP żagli, cooldown armat
+- Arena 3× viewport, kamera wyśrodkowana na graczu
+- W/S — cykl żagli (Złożone / Bojowe / Pełne), A/D — ster
+- Q / E — burta lewa / prawa; łuki ±60° od trawersu
+- 1 / 2 / 3 — kula / łańcuchówka / kartacz (zmiana resetuje przeładowanie)
+- B — abordaż, ESC — próba ucieczki, H — `BattleHelpScene`
+- HUD prawy górny: amunicja, żagle, prędkość, działa, wyszkolenie; morale przy obu statkach
+
+### ShipEncounterScene
+
+Menu spotkania z NPC w stylu Sid Meier's Pirates!:
+- Informacje o statku (klasa, frakcja, załoga, działa) + newsy, które niesie
+- Atakuj → `SeaBattleScene`
+- Odpłyń → powrót na mapę
 
 ### PortApproachScene
 
@@ -124,32 +129,28 @@ Dialog zbliżania do portu:
 - **Port wrogi:** Zakradnij się / Atakuj / Odpłyń
 - Sukces zakradania = f(morale, notoriety)
 
-### DialogueScene
+### CityInfoScene
 
-- Generyczny framework dialogowy
-- Tekst narracyjny + opcje odpowiedzi
-- Używany do: plotek, questów, wydarzeń fabularnych
+Podgląd miasta bez wchodzenia do portu: populacja, zamożność i obrona z trendem (↑/↓ względem baseline'u) oraz lista aktywnych wydarzeń dotykających ten port.
 
 ### PauseMenuScene
 
 - Overlay na MainMapScene
-- Opcje: Resume, Options, Save, Load, Quit
 - ESC = resume
 
 ### OptionsMenuScene
 
-- Asset pack: basic / buccaneer / corsair
-- Zoom: far / normal / close
-- Język: English / Polski
-- Podgląd statystyk kapitana
-- Zmiany zapisywane do localStorage
+Główne menu gry pod klawiszem SPACE — zakładki:
+- **Kabina** — statystyki kapitana, wiek, umiejętności, wyszkolenie załogi
+- **Flota** — lista statków, sprzedaż i porzucanie
+- **Ustawienia** — asset pack, zoom, język, mgła wojny, tryb debug
+- **Dźwięk** — 3 kanały (wiatr / mewy / muzyka), skala 0-10, aktualizacja na żywo
+- **Zapis / Odczyt** — 5 slotów IndexedDB z auto-migracją
 
-### SaveLoadScene
+### HelpScene / BattleHelpScene
 
-- 5 slotów zapisu
-- Każdy slot: tytuł, data, czas gry, wersja świata
-- Quick save / Quick load
-- Auto-migracja starych zapisów
+`HelpScene` (klawisz H na mapie) — 5 zakładek: Sterowanie, Statki, Żeglowanie, Świat, Ekonomia.
+`BattleHelpScene` (H w bitwie) — sterowanie, wzory obrażeń i przeładowania, warunki abordażu i kapitulacji.
 
 ## System UI
 

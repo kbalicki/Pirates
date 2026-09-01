@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.8.4 | **Ostatnia aktualizacja:** 2026-03-18
+**Wersja:** 0.9.8.1 | **Ostatnia aktualizacja:** 2026-09-01
 
 ---
 
@@ -19,12 +19,15 @@
 | 09 | [Zasoby gry](09-ASSETS.md) | Sprite'y, audio, fonty, ikony, asset packi |
 | 10 | [Poradnik deweloperski](10-DEVELOPMENT.md) | Uruchomienie, build, testy, konwencje kodu |
 | 11 | [Roadmapa rozwoju](11-ROADMAP.md) | Plan rozwoju gry, moduły, fazy implementacji |
+| 12 | [Klasy statków](12-SHIP-CLASSES.md) | 9 klas statków — parametry, takielunek, zastosowanie |
+| 13 | [Pipeline 3D assets](13-3D-ASSET-PIPELINE.md) | Meshy.ai → spritesheet |
 
 ## Powiązane zasoby
 
 - [AI Asset Generation](../ai-assets/README.md) — Subprojekt generowania assetów AI
 - [SD Pipeline](../sd-pipeline/README.md) — Workflow ComfyUI + Tiled Diffusion
 - [Changelog](../src/changelog.ts) — Historia zmian w kodzie
+- [TODO / handoff](../TODO.md) — Bieżący stan prac, dług techniczny, kolejność releasów
 
 ## Konwencje
 

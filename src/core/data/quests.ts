@@ -8,5 +8,5 @@ export type QuestDef = {
   type: "transport" | "bounty" | "explore" | "escort";
 };
 
-// Placeholder - quests will be expanded in Phase 8
+// No quests defined yet. First batch lands with treasure maps — see TODO.md v0.12.0.
 export const QUESTS: Record<string, QuestDef> = {};
