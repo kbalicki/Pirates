@@ -1,6 +1,6 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.9.0 · **Branch:** `main`
+**Stan na:** 2026-09-01 · **Wersja:** v0.9.9.1 · **Branch:** `main`
 **Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **295 przechodzi, 0 failuje, 0 `todo`** w 8 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.

@@ -6,6 +6,18 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.9.1",
+    date: "2026-09-01",
+    changes: [
+      "DEV FIX — a hot reload no longer stacks a second game on top of the first",
+      "  Every save under src/ re-ran main.ts and booted another Phaser.Game",
+      "  Two scene trees, two sets of key listeners; the visible canvas was not",
+      "  the one your keys reached, so the controls looked dead until a hard reload",
+      "  main.ts now tears the old game down in import.meta.hot.dispose",
+      "  Production is unaffected — this only ever happened on the dev server",
+    ],
+  },
+  {
     version: "0.9.9.0",
     date: "2026-09-01",
     changes: [
