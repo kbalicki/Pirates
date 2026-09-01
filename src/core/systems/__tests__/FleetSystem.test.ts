@@ -39,6 +39,7 @@ function player(fleet: FleetShip[] = []): PlayerState {
     location: { type: "sea", pos: { x: 0, y: 0 } },
     questLog: [],
     fleet,
+    lastPlunderDay: 1,
   };
 }
 

@@ -5,7 +5,7 @@ import { TRAINING_DEFAULT } from "../../core/model/CaptainState.ts";
 import type { PortRuntimeState } from "../../core/model/WorldState.ts";
 
 // ===========================================================================
-// Migrations — v1 → v8
+// Migrations — v1 → v10
 // ===========================================================================
 
 /**
@@ -267,6 +267,31 @@ describe("v7 — living-world economy numerics", () => {
     save.ports.port_royal = { ...save.ports.port_royal, population: 0, wealth: 0, defense: 0 };
     const migrated = migrateWorldState(save) as any;
     expect(migrated.ports.port_royal.wealth).toBe(0);
+  });
+});
+
+describe("v10 — the plunder clock", () => {
+  it("starts an old save's clock from the day it is loaded, not day one", () => {
+    const save = makeV1Save();
+    save.time.day = 900;
+    const migrated = migrateWorldState(save) as any;
+    // Counting from day 1 would open a 900-day-old save with a furious crew
+    // that the player never had a chance to see coming.
+    expect(migrated.player.lastPlunderDay).toBe(900);
+  });
+
+  it("keeps a division the save already recorded", () => {
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 9;
+    save.player.lastPlunderDay = 42;
+    expect((migrateWorldState(save) as any).player.lastPlunderDay).toBe(42);
+  });
+
+  it("falls back to day one when the save has no clock at all", () => {
+    const save = makeV1Save();
+    delete save.time;
+    const migrated = migrateWorldState({ ...save, time: undefined }) as any;
+    expect(migrated.player.lastPlunderDay).toBe(1);
   });
 });
 

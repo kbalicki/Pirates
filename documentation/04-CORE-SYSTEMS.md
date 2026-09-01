@@ -17,6 +17,10 @@
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
 | Duel | `DuelSystem.ts` | Pojedynki szermiercze kapitanów |
+| Dialogue | `DialogueSystem.ts` + `data/dialogues.ts` | Rozmowy jako dane: węzły, warunki, efekty |
+| Plunder | `PlunderSystem.ts` | Zegar podziału łupów, morale niezapłaconej załogi |
+| Aging | `AgingSystem.ts` | Wpływ wieku kapitana na umiejętności |
+| Retirement | `RetirementSystem.ts` | Punktacja końcowa i zakończenie kariery |
 | Boarding | `BoardingSystem.ts` | Rozstrzygnięcie abordażu |
 | Fleet | `FleetSystem.ts` | Flota gracza (max 3 statki) |
 | NpcSpawn | `NpcSpawnSystem.ts` | Pula statków NPC, spawn/despawn |
@@ -118,6 +122,40 @@ Szczyt (1.5×) leży w **połowie** przedziału półwiatru, więc zależy od ta
 Krzywa dla martwej strefy 30°: `60°=0.40 · 90°=1.50 · 110°=1.30 · 120°=1.10 · 150°=1.00 · 180°=0.90`.
 
 > **Naprawione w v0.9.8.2 (TODO P0-2):** wcześniej gałąź półwiatru była pełną sinusoidą schodzącą z powrotem do 0.4 na 120°, gdzie fordewind startował od 1.1 — statek na kursie 119° płynął 0.4×, a na 121° już 1.1×. Teraz gałąź kończy się dokładnie na 1.1 i przejście jest ciągłe.
+
+### System dialogów (`DialogueSystem.ts`, v0.11.0)
+
+Rozmowa to **dane**, nie gałęzie w kodzie sceny. `DialogueTree` to mapa węzłów; węzeł to jedna kwestia rozmówcy plus odpowiedzi gracza. Odpowiedź może być zablokowana warunkiem (`when`), może zmienić świat (`effects`) i wskazuje następny węzeł albo kończy rozmowę.
+
+Warunki też są danymi: `flag`, `reputation` (po wartości albo po nazwanym poziomie), `gold`, `skill`, `day` oraz złożenia `not` / `all` / `any`. Efekty: `set_flag`, `gold`, `reputation`, `log` i furtka `custom`, którą rozwiązuje wywołujący — dzięki temu gubernator wręcza list kaperski, a moduł dialogów nie musi wiedzieć, czym jest list kaperski.
+
+Dwie reguły warte pilnowania (obie w testach):
+- odpowiedź niewidoczna w danym momencie **nie zadziała**, nawet jeśli wywołujący narysował nieaktualną listę,
+- odpowiedź wskazująca nieistniejący węzeł **kończy rozmowę**, zamiast zostawiać gracza w oknie bez żadnego przycisku.
+
+`validateTree()` sprawdza drzewo na etapie autorskim: istnienie węzła startowego, rozwiązywalność wszystkich `next`, unikalność identyfikatorów, brak węzłów bez odpowiedzi i brak węzłów, w których **każda** odpowiedź jest warunkowa.
+
+Świadomie **nie jest sceną**: to samo drzewo rysuje się dziś w oknie portu, jutro w osobnej scenie, a w teście sprawdza się bez Phasera. Pierwszy konsument to gubernator (`renderGovernor` w `PortScene`).
+
+### Podział łupów (`PlunderSystem.ts`, v0.11.0)
+
+Co `PLUNDER_INTERVAL_DAYS` = 60 dni załoga oczekuje podziału. Po tym terminie morale spada o 0.4% dziennie do podłogi 15%. Morale steruje już przeładowaniem dział, siłą abordażu i tempem napraw, więc zaniedbana załoga jest **mierzalnie gorsza** we wszystkim, zanim dojdzie do buntu.
+
+Podział odbywa się w tawernie: kapitan zatrzymuje 35-60% (zależnie od rang i sławy), reszta idzie do załogi, 65% ludzi schodzi na ląd wydać swoje, a ci co zostają mają morale 1.0. Zegar rusza od nowa.
+
+### Wiek kapitana (`AgingSystem.ts`, v0.11.0)
+
+| Wiek | Etap | Fizyczne (`fencing`, `gunnery`) | Nabyte (`navigation`, `charm`, `medicine`) |
+|---|---|---|---|
+| 20-35 | prime | ×1.00 | ×1.00 |
+| 35-50 | seasoned | ×1.00 → ×0.85 | ×1.00 → ×1.20 |
+| 50+ | declining | ×0.85 → ×0.55 (podłoga) | → ×1.30 (sufit) |
+
+Krzywe są ciągłe na granicach — nic nie zmienia się z dnia na dzień w urodziny. Mnożniki działają na **efektywną** umiejętność w miejscu użycia (`effectiveSkill()`), a nie na zapisany profil: karta kapitana dalej pokazuje, czego się nauczył, świat stosuje to, co jeszcze potrafi.
+
+### Emerytura i punktacja (`RetirementSystem.ts`, v0.11.0)
+
+Gubernator proponuje ziemię i tytuł po roku na morzu. Punkty: złoto ÷10, wartość floty ÷20, rangi ×300, dodatnia reputacja ×4, sława ×12 oraz lata na morzu ×40 **minus** 70 za każdy rok po pięćdziesiątce. Dlatego wynik ma szczyt dokładnie tam, gdzie zaczyna się schyłek — za wczesne odejście oznacza brak kariery, za późne oddaje to, co się zbudowało.
 
 ### Sztormy
 

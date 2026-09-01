@@ -53,18 +53,6 @@ export function requestLetterOfMarque(
   return { world: newWorld, granted: true };
 }
 
-/**
- * Get governor dialogue i18n key based on reputation level.
- */
-export function getGovernorDialogueKey(
-  world: WorldState,
-  factionId: FactionId,
-): string {
-  const rep = world.player.reputation[factionId as string] ?? 0;
-  const level = getReputationLevel(rep);
-  return `governor.dialogue_${level}`;
-}
-
 // ── Crew Recruitment Pool ─────────────────────────────────
 
 const CREW_RANGE: Record<CitySize, [number, number]> = {

@@ -47,6 +47,7 @@ function makeWorld(over: {
       location: { type: location, pos: { x: 0, y: 0 } },
       questLog: [],
       fleet: [],
+      lastPlunderDay: 1,
     },
     entities: {
       player_ship: {

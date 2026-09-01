@@ -65,7 +65,7 @@ type SavePayload = {
 
 ## Migracje (`src/persistence/Migrations.ts`)
 
-Aktualna wersja stanu: **9** (`CURRENT_WORLD_VERSION` w `Migrations.ts`)
+Aktualna wersja stanu: **10** (`CURRENT_WORLD_VERSION` w `Migrations.ts`)
 
 | Wersja | Zmiany |
 |--------|--------|
@@ -77,6 +77,7 @@ Aktualna wersja stanu: **9** (`CURRENT_WORLD_VERSION` w `Migrations.ts`)
 | v7 | Żywa ekonomia: `population`, `wealth`, `defense`, `bonusProduces` w każdym porcie — uzupełniane z baseline'ów |
 | v8 | Dodanie `captain.training` (mechanika przeładowania), domyślnie 0.30 |
 | v9 | Naprawa kształtu portów: `shipyardQueue` i `availableCrew` uzupełniane w portach przeniesionych z zapisów sprzed v2 |
+| v10 | `player.lastPlunderDay` — zegar podziału łupów; w starych zapisach liczony od dnia wczytania, nie od dnia 1 |
 
 ### Mechanika migracji
 
@@ -91,13 +92,14 @@ function migrate(state: any): WorldState {
   if (version < 7) state = migrateV7(state);
   if (version < 8) state = migrateV8(state);
   if (version < 9) state = migrateV9(state);
+  if (version < 10) state = migrateV10(state);
   return state;
 }
 ```
 
 W kodzie realizuje to pętla `while (version < CURRENT_WORLD_VERSION)` na mapie `MIGRATIONS`, która rzuca wyjątkiem przy brakującym kroku — dlatego **każda zmiana `WorldState` wymaga dopisania migracji**.
 
-- Migracje sekwencyjne: v1 → v2 → v3 → ... → v9
+- Migracje sekwencyjne: v1 → v2 → v3 → ... → v10
 - Każda migracja uzupełnia brakujące pola wartościami domyślnymi
 - Bezpieczne: nie nadpisuje istniejących danych
 

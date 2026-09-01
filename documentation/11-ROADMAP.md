@@ -45,6 +45,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.9.9.0 | **Stopnie uszkodzeń** — stany kadłuba i ożaglowania, tonięcie, animacja zatonięcia, utrata ładunku | ✅ |
 | 0.9.9.1 | Fix HMR: hot reload nie nakłada drugiej instancji gry na pierwszą | ✅ |
 | 0.10.0.0 | **Pojedynki kapitanów** przy abordażu; naprawa na morzu; ratowanie rozbitków | ✅ |
+| 0.11.0.0 | **System dialogów**, podział łupów, starzenie kapitana, emerytura z punktacją | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -80,16 +81,15 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ Efekt: przejęcie statku albo przegrany abordaż ze stratami w załodze
 - ⬜ Wyzwanie w porcie i wątek fabularny jako kolejne konteksty wejścia
 - ⬜ Awans / rana kapitana / więzienie jako dodatkowe wyjścia
-- ⬜ **System dialogów** — wciąż nie istnieje. `DuelScene` go nie potrzebowała, ale moduły D i F tak
+- ✅ **System dialogów** — `DialogueSystem.ts` + `data/dialogues.ts`, pierwszy konsument: gubernator (v0.11.0)
 
-### Moduł C — Cele i konsekwencje *(v0.11.0)*
-**Priorytet:** WYSOKI | **Złożoność:** Średnia
+### Moduł C — Cele i konsekwencje *(v0.11.0)* — ✅
+**Domyka:** łuk kariery
 
-Bez tego rozgrywka nie ma łuku — można żeglować w nieskończoność bez presji i bez zakończenia.
-
-- **Podział łupów** — załoga domaga się go co pewien czas; zwłoka obniża morale (a morale wpływa już na przeładowanie); po podziale załoga się rozprasza i trzeba rekrutować od nowa
-- **Starzenie kapitana** — 20-35 pełna sprawność, 35-50 spadek szermierki i wzrost dyplomacji, 50+ wyraźny spadek fizyczny. `calculateAge()` istnieje, ale wiek jest dziś tylko wyświetlany
-- **Emerytura i punktacja końcowa** — bogactwo + rangi + rodzina + skarby, ekran wyniku
+- ✅ **Podział łupów** — załoga upomina się co 60 dni; zwłoka zjada morale do podłogi 15%; podział w tawernie zabiera złoto i 65% ludzi
+- ✅ **Starzenie kapitana** — 20-35 pełnia, 35-50 szermierka słabnie a doświadczenie rośnie, 50+ wyraźny schyłek; działa na efektywną umiejętność w miejscu użycia
+- ✅ **Emerytura i punktacja** — gubernator proponuje ziemię po roku na morzu; `RetirementScene` z księgą wyniku i tytułem
+- Przy okazji: umiejętność `fencing` kapitana **w ogóle** nie docierała do abordażu — `setSwordsmanship()` nigdy nie było wołane
 
 ### Moduł D — Mapy skarbów *(v0.12.0)*
 **Priorytet:** ŚREDNI | **Złożoność:** Średnia
@@ -152,7 +152,7 @@ Moduł A ─── Uszkodzenia i tonięcie ─────── [GOTOWY]
 Moduł B ─── Pojedynki ──────────────────── [MECHANIKA GOTOWA]
   │          (zostaje system dialogów + konteksty wejścia)
   │
-Moduł C ─── Podział łupów, starzenie, punktacja
+Moduł C ─── Podział łupów, starzenie, punktacja  [GOTOWY]
   │
 Moduł D ─── Mapy skarbów (+ system questów)
   │

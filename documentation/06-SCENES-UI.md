@@ -21,6 +21,7 @@ MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompa
     │
     ├── [E w zasięgu portu] ──→ PortApproachScene
     │                              ├── Wejdź ──→ PortScene
+    │                              │              └── Gubernator: emerytura ──→ RetirementScene
     │                              ├── Atakuj ──→ SeaBattleScene
     │                              └── Odpłyń ──→ MainMapScene
     │
@@ -32,6 +33,12 @@ MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompa
 ```
 
 **Uwaga:** zapis i odczyt gry mieszkają w `OptionsMenuScene` i `CharacterCreationScene`, nie w osobnej scenie. Dawne `SaveLoadScene` i `DialogueScene` były atrapami i zostały usunięte w v0.9.8.1. System dialogów wciąż nie istnieje — `DuelScene` (v0.10.0) go nie potrzebowała, ale moduły fabularne będą (patrz [TODO.md](../TODO.md)).
+
+### RetirementScene (v0.11.0)
+
+Księga na koniec kariery: po jednej linii na źródło punktów, suma, tytuł i propozycja nowej gry. Wynik liczy `core/systems/RetirementSystem.ts` i przekazuje w całości — scena nie robi żadnej arytmetyki poza układem.
+
+Wejście: rozmowa z gubernatorem → „Napomknij o odejściu od morza" → potwierdzenie.
 
 ### DuelScene (v0.10.0)
 

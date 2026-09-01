@@ -10,7 +10,6 @@ import { getRankNameKey } from "../../core/data/ranks.ts";
 import { executeBuy, executeSell } from "../../core/systems/EconomySystem.ts";
 import {
   requestLetterOfMarque,
-  getGovernorDialogueKey,
   recruitCrew,
   buyRoundOfDrinks,
   getRumorKey,
@@ -22,6 +21,18 @@ import {
 import { canAddToFleet, fleetSize } from "../../core/systems/FleetSystem.ts";
 import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
+import {
+  startDialogue,
+  currentNode,
+  visibleOptions,
+  chooseOption,
+  type DialogueRuntime,
+  type DialogueTree,
+} from "../../core/systems/DialogueSystem.ts";
+import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE } from "../../core/data/dialogues.ts";
+import { captainAge } from "../../core/systems/AgingSystem.ts";
+import { computeScore, retire, hasRetired } from "../../core/systems/RetirementSystem.ts";
+import { dividePlunder, plunderStatus } from "../../core/systems/PlunderSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
@@ -56,6 +67,12 @@ export class PortScene extends Phaser.Scene {
   // Swappable content area
   private contentContainer!: Phaser.GameObjects.Container;
   private contentStartY = 0;
+
+  /** One-shot line under the tavern actions, e.g. "nothing to divide". */
+  private tavernMessage: string | null = null;
+
+  /** Governor conversation in progress; rebuilt whenever the view is entered. */
+  private governorDialogue: { tree: DialogueTree; runtime: DialogueRuntime } | null = null;
 
   // Keyboard cleanup
   private keyboardCleanup: (() => void)[] = [];
@@ -296,6 +313,16 @@ export class PortScene extends Phaser.Scene {
       }
     });
 
+    if (this.tavernMessage) {
+      const msg = this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 46,
+        this.tavernMessage,
+        { ...txt(12, { color: "#8a3a3a" }), wordWrap: { width: DLG_W - PAD * 2 } },
+      );
+      this.contentContainer.add(msg);
+      this.tavernMessage = null;
+    }
+
     // Hint
     const hint = this.add.text(
       this.cx, this.dlgY + DLG_H - PAD - 4,
@@ -310,113 +337,137 @@ export class PortScene extends Phaser.Scene {
 
   // ===== VIEW: Governor =====
 
+  /**
+   * The governor is the first consumer of `DialogueSystem` (v0.10.1). What he
+   * says and what you may say back is a tree in `core/data/dialogues.ts`; this
+   * method only draws the current node and turns clicks into `chooseOption`.
+   *
+   * The tree is rebuilt on entry rather than cached, because its lines quote
+   * live state — standing, rank, today's rumour — and the conversation itself
+   * can change that state mid-way.
+   */
   private renderGovernor(): void {
     const portDef = PORTS[this.currentPortId as string];
     const factionKey = portDef.factionId as string;
     const rep = this.worldState.player.reputation[factionKey] ?? 0;
     const level = getReputationLevel(rep);
+    const rankIndex = this.worldState.player.ranks?.[factionKey] ?? 0;
+
+    const tree = governorTree({
+      factionKey,
+      level,
+      playerName: this.worldState.playerName,
+      factionName: t("faction." + factionKey + ".name"),
+      levelName: t("rep." + level),
+      reputation: rep,
+      rankName: t(getRankNameKey(factionKey, rankIndex)),
+      rumorKey: getRumorKey(this.worldState),
+      age: captainAge(this.worldState),
+      scorePreview: computeScore(this.worldState).total,
+    });
+
+    // Keep the place in the conversation across re-renders, but start fresh
+    // whenever the view is entered from the port menu.
+    if (!this.governorDialogue || this.governorDialogue.tree.id !== tree.id || this.governorDialogue.runtime.ended) {
+      this.governorDialogue = { tree, runtime: startDialogue(tree) };
+    } else {
+      this.governorDialogue = { tree, runtime: this.governorDialogue.runtime };
+    }
+
+    this.drawGovernorNode();
+  }
+
+  private drawGovernorNode(): void {
+    const dialogue = this.governorDialogue;
+    if (!dialogue) return;
+
+    this.contentContainer.removeAll(true);
+    this.clearKeyboard();
+
+    const node = currentNode(dialogue.tree, dialogue.runtime);
+    if (!node) { this.leaveGovernor(); return; }
+
     let y = this.contentStartY;
 
-    // Title
     const title = this.add.text(this.cx, y, t("governor.title"), txt(16, { bold: true }));
     title.setOrigin(0.5, 0);
     this.contentContainer.add(title);
     y += 28;
 
-    // Dialogue
-    const dialogueKey = getGovernorDialogueKey(this.worldState, portDef.factionId);
-    const dialogue = this.add.text(
+    const said = this.add.text(
       this.infoX, y,
-      t(dialogueKey, { name: this.worldState.playerName }),
+      t(node.textKey, node.vars),
       { ...txt(12, { color: "#333333" }), wordWrap: { width: DLG_W - PAD * 2 }, fontStyle: "italic" },
     );
-    this.contentContainer.add(dialogue);
-    y += dialogue.height + 16;
+    this.contentContainer.add(said);
+    y += said.height + 18;
 
-    // Reputation
-    const repText = this.add.text(
-      this.infoX, y,
-      t("governor.reputation_label", {
-        faction: t("faction." + factionKey + ".name"),
-        level: t("rep." + level),
-        value: rep,
-      }),
-      txt(12),
-    );
-    this.contentContainer.add(repText);
-    y += 20;
-
-    // Rank
-    const rankIndex = this.worldState.player.ranks?.[factionKey] ?? 0;
-    const rankNameKey = getRankNameKey(factionKey, rankIndex);
-    const rankText = this.add.text(
-      this.infoX, y,
-      t("rank.label", { rank: t(rankNameKey) }),
-      txt(12),
-    );
-    this.contentContainer.add(rankText);
-    y += 24;
-
-    // Letter of marque
-    const flagKey = `letter_of_marque_${factionKey}`;
-    const hasLetter = this.worldState.worldFlags[flagKey] === true;
-
-    if (hasLetter) {
-      const alreadyText = this.add.text(
+    const options = visibleOptions(dialogue.tree, dialogue.runtime, this.worldState);
+    options.forEach((option, i) => {
+      const label = this.add.text(
         this.infoX, y,
-        t("governor.letter_already", { faction: t("faction." + factionKey + ".name") }),
-        txt(12, { color: "#2a7a2a" }),
+        `${i + 1}. ${t(option.textKey, option.vars)}`,
+        { ...txt(13), wordWrap: { width: DLG_W - PAD * 2 } },
       );
-      this.contentContainer.add(alreadyText);
-    } else if (level === "friendly" || level === "allied") {
-      const offerText = this.add.text(this.infoX, y, t("governor.letter_available"), txt(12, { bold: true }));
-      this.contentContainer.add(offerText);
-      y += 22;
+      label.setInteractive({ useHandCursor: true });
+      label.on("pointerover", () => label.setColor("#8a5a1a"));
+      label.on("pointerout", () => label.setColor("#1a1a1a"));
+      label.on("pointerdown", () => this.pickGovernorOption(option.id));
+      this.contentContainer.add(label);
 
-      const acceptLetter = () => {
-        const result = requestLetterOfMarque(this.worldState, portDef.factionId);
-        if (result.granted) {
-          this.worldState = result.world;
-          this.registry.set("worldState", this.worldState);
-          this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "governor" as PortView });
+      const digit = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"][i];
+      if (digit) this.bindKey("keydown-" + digit, () => this.pickGovernorOption(option.id));
+
+      y += label.height + 8;
+    });
+
+    this.bindKey("keydown-ESC", () => this.leaveGovernor());
+  }
+
+  private pickGovernorOption(optionId: string): void {
+    const dialogue = this.governorDialogue;
+    if (!dialogue) return;
+
+    const step = chooseOption(
+      dialogue.tree,
+      dialogue.runtime,
+      this.worldState,
+      optionId,
+      // The dialogue system has no business knowing what a letter of marque is;
+      // it fires a named custom effect and the port resolves it.
+      (world, id) => {
+        if (id === EFFECT_GRANT_LETTER) {
+          return requestLetterOfMarque(world, PORTS[this.currentPortId as string].factionId).world;
         }
-      };
+        if (id === EFFECT_RETIRE) return retire(world).world;
+        return world;
+      },
+    );
+    if (!step.taken) return;
 
-      const acceptBtn = this.add.text(
-        this.infoX, y,
-        "\u25B6 " + t("governor.letter_accept"),
-        txt(13, { bold: true, color: "#2a7a2a" }),
-      );
-      acceptBtn.setInteractive({ useHandCursor: true });
-      acceptBtn.on("pointerover", () => acceptBtn.setColor("#44bb44"));
-      acceptBtn.on("pointerout", () => acceptBtn.setColor("#2a7a2a"));
-      acceptBtn.on("pointerdown", () => acceptLetter());
-      this.contentContainer.add(acceptBtn);
+    this.worldState = step.world;
+    this.registry.set("worldState", this.worldState);
+    this.governorDialogue = { tree: dialogue.tree, runtime: step.runtime };
 
-      this.bindKey("keydown-ENTER", () => acceptLetter());
-      this.bindKey("keydown-E", () => acceptLetter());
-    } else {
-      const deniedText = this.add.text(
-        this.infoX, y,
-        t("governor.letter_denied"),
-        txt(12, { color: "#888888" }),
-      );
-      this.contentContainer.add(deniedText);
+    // Retiring ends the game rather than the conversation.
+    if (hasRetired(this.worldState)) {
+      this.governorDialogue = null;
+      this.scene.start("RetirementScene", {
+        score: computeScore(this.worldState),
+        captainName: this.worldState.playerName,
+      });
+      return;
     }
 
-    // Back button
-    const backBtn = this.add.text(
-      this.infoX, this.dlgY + DLG_H - PAD - 30,
-      t("governor.back"),
-      txt(13, { bold: true }),
-    );
-    backBtn.setInteractive({ useHandCursor: true });
-    backBtn.on("pointerover", () => backBtn.setColor("#555555"));
-    backBtn.on("pointerout", () => backBtn.setColor("#1a1a1a"));
-    backBtn.on("pointerdown", () => this.switchView("menu"));
-    this.contentContainer.add(backBtn);
+    if (step.runtime.ended) { this.leaveGovernor(); return; }
+    // Rebuild from scratch: an answer may have changed standing or a flag, and
+    // the greeting node's replies are gated on exactly those.
+    this.renderGovernor();
+  }
 
-    this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  private leaveGovernor(): void {
+    this.governorDialogue = null;
+    this.switchView("menu");
   }
 
   // ===== VIEW: Tavern =====
@@ -437,6 +488,12 @@ export class PortScene extends Phaser.Scene {
     const portState = this.worldState.ports[this.currentPortId as string];
     const availableCrew = portState?.availableCrew ?? 0;
 
+    // The crew's patience is a running clock; say where it stands on the button.
+    const status = plunderStatus(this.worldState);
+    const plunderLabel = status.overdue
+      ? t("tavern.divide_plunder_overdue", { days: status.daysOverdue })
+      : t("tavern.divide_plunder", { days: status.daysUntilDue });
+
     const actions = [
       {
         label: t("tavern.recruit_crew")
@@ -445,6 +502,7 @@ export class PortScene extends Phaser.Scene {
       },
       { label: t("tavern.hear_rumors"), key: "rumors" },
       { label: t("tavern.buy_drinks", { cost: 10 }), key: "drinks" },
+      { label: plunderLabel, key: "divide" },
       { label: t("tavern.back"), key: "back" },
     ];
 
@@ -453,6 +511,7 @@ export class PortScene extends Phaser.Scene {
         case "recruit": this.handleRecruit(); break;
         case "rumors": this.handleRumors(); break;
         case "drinks": this.handleDrinks(); break;
+        case "divide": this.handleDividePlunder(); break;
         case "back": this.switchView("menu"); break;
       }
     });
@@ -536,6 +595,27 @@ export class PortScene extends Phaser.Scene {
 
     this.bindKey("keydown-ESC", () => this.switchView("tavern"));
     this.bindKey("keydown-ENTER", () => this.switchView("tavern"));
+  }
+
+  /**
+   * Divide the plunder. Costs most of the gold and most of the crew — paid men
+   * go ashore to spend it — and resets the clock the crew grumbles against.
+   * The scene is restarted so every view redraws against the new world.
+   */
+  private handleDividePlunder(): void {
+    const result = dividePlunder(this.worldState);
+    if (result.error) {
+      this.tavernMessage = t("tavern.divide_failed_" + result.error);
+      this.switchView("tavern");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.scene.restart({
+      worldState: this.worldState,
+      portId: this.currentPortId,
+      returnToView: "tavern" as PortView,
+    });
   }
 
   private handleDrinks(): void {

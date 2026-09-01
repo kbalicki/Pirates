@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.10.0.0 · **Branch:** `main`
-**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **359 przechodzi, 0 failuje, 0 `todo`** w 10 plikach
+**Stan na:** 2026-09-01 · **Wersja:** v0.11.0.0 · **Branch:** `main`
+**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **448 przechodzi, 0 failuje, 0 `todo`** w 12 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -124,17 +124,24 @@ Wartość ciosu `1 + fencing/10`, przy kondycji < 3 przez 0.5. Atak kosztuje 2 k
 Sterowanie: **Q/W/E** cios wysoki/średni/niski, **A/S/D** zasłona. Wejście: klawisz **B** w bitwie — `SeaBattleScene` sprawdza `canBoard()`, pauzuje bitwę, uruchamia `DuelScene`; wynik idzie do `CombatEngine.setDuelResult()`, a `resolveBoarding(..., forcedCapture)` rozstrzyga abordaż z tym wynikiem. Straty załóg liczone jak dotąd, z siły obu stron — pojedynek decyduje **kto**, nie **jakim kosztem**.
 
 **Zostało z tego modułu:**
-- **System dialogów** — wciąż od zera. `DuelScene` go nie potrzebowała, ale v0.12.0 (mapy skarbów) i v0.14.0 (fabuła) tak
 - **Wyzwanie w porcie** i **wątek fabularny** jako kolejne konteksty wejścia w pojedynek
 - **Awans / rana kapitana / więzienie** jako dodatkowe wyjścia (dziś tylko przejęcie statku albo przegrany abordaż)
 
-### v0.11.0 — Cele i konsekwencje
-*Bez tego gra nie ma łuku — można żeglować w nieskończoność bez presji i bez zakończenia.*
+### ~~v0.11.0 — Cele i konsekwencje~~ ✅ (v0.11.0.0)
 
-- **Podział łupów** — załoga domaga się co N dni; zwłoka obniża morale (morale wpływa już na reload); po podziale załoga się rozprasza
-- **Starzenie kapitana** — 20-35 pełna sprawność, 35-50 spadek szermierki / wzrost dyplomacji, 50+ wyraźny spadek fizyczny
-- **Emerytura + punktacja końcowa** — bogactwo + rangi + rodzina + skarby; ekran wyniku
-- Pliki: `CaptainState.ts`, `TimeSystem.ts`, `CrewConsumptionSystem.ts`, nowy `PlunderSystem.ts`
+Trzy rzeczy, które razem dają grze łuk: coś zabiera, coś się zużywa, coś się kończy.
+
+**System dialogów** (`DialogueSystem.ts` + `data/dialogues.ts`) — rozmowa to dane: węzły, odpowiedzi z warunkami (`flag` / `reputation` / `gold` / `skill` / `day`, plus `not` / `all` / `any`) i efektami (`set_flag`, `gold`, `reputation`, `log` oraz furtka `custom` dla wywołującego). `validateTree()` pilnuje spójności drzewa na etapie autorskim. Świadomie **nie jest sceną** — to samo drzewo rysuje się w oknie portu, w osobnej scenie i w teście bez Phasera. Pierwszy konsument: gubernator, który zastąpił poprzedni sztywny panel (list kaperski, plotki, notowania, emerytura). Przy okazji usunięty `getGovernorDialogueKey()`, do którego nic już nie prowadziło.
+
+**Podział łupów** (`PlunderSystem.ts`) — załoga upomina się co 60 dni; po terminie morale spada 0.4%/dzień do podłogi 15%. Morale steruje już przeładowaniem, abordażem i naprawami, więc zaniedbana załoga jest mierzalnie gorsza we wszystkim, zanim dojdzie do buntu. Podział w tawernie: kapitan zatrzymuje 35-60% (rangi + sława), 65% ludzi schodzi na ląd, reszta ma morale 1.0, zegar rusza od nowa.
+
+**Starzenie kapitana** (`AgingSystem.ts`) — 20-35 pełnia, 35-50 szermierka i artyleria słabną (do ×0.85) a nawigacja/urok/medycyna rosną, 50+ wyraźny schyłek (podłoga ×0.55, sufit ×1.30). Krzywe ciągłe na granicach. Mnożniki działają na **efektywną** umiejętność w miejscu użycia, nie na zapisany profil. `calculateAge()` istniało od v0.5.6 i do tej pory wyłącznie wyświetlało liczbę.
+
+**Emerytura i punktacja** (`RetirementSystem.ts` + `RetirementScene.ts`) — gubernator proponuje ziemię i tytuł po roku na morzu. Punkty: złoto ÷10, flota ÷20, rangi ×300, dodatnia reputacja ×4, sława ×12, lata na morzu ×40 minus 70 za każdy rok po pięćdziesiątce. Wynik ma szczyt dokładnie w momencie schyłku — i za wczesne, i za późne odejście kosztuje.
+
+**Znaleziony przy okazji błąd:** `CombatEngine.setSwordsmanship()` **nigdy** nie było wołane, więc szermierka kapitana w ogóle nie docierała do abordażu — każdy kapitan bił się jak przeciętniak (5). Teraz przekazywana jest wartość efektywna, po korekcie wiekowej.
+
+**Migracja v10** — `player.lastPlunderDay`. W starych zapisach zegar liczy się od dnia wczytania, nie od dnia 1: inaczej każdy długi zapis otwierałby się wściekłą załogą, której gracz nie miał szans zobaczyć.
 
 ### v0.12.0 — Mapy skarbów
 *Pierwszy realny cel eksploracji; wykorzystuje tryb pieszy (`isOnFoot`) i tawerny.*

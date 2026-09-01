@@ -21,6 +21,7 @@ import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
+import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import {
   hullCondition,
   rigCondition,
@@ -269,6 +270,11 @@ export class SeaBattleScene extends Phaser.Scene {
     this.combatEngine.setPlayerTraining(playerTraining);
     this.combatEngine.setEnemyTraining(0.5);
 
+    // Boarding casualties scale with the captain's swordsmanship. Nothing ever
+    // set this before v0.11.0, so the engine's default of 5 was used for every
+    // captain regardless of skill or age.
+    this.combatEngine.setSwordsmanship(effectiveSkill(this.worldState, "fencing"));
+
     const cam = this.cameras.main;
     // Arena coordinates ARE world coordinates; camera will follow the player.
     this.arenaOriginX = 0;
@@ -439,7 +445,8 @@ export class SeaBattleScene extends Phaser.Scene {
       return;
     }
 
-    const playerFencing = this.worldState.captain?.skills.fencing ?? 5;
+    // Effective, not stored: an older captain is worth less with a blade.
+    const playerFencing = effectiveSkill(this.worldState, "fencing");
     const enemyFencing = enemyFencingFor(
       enemy.ship.crew.current, enemy.ship.crew.max, this.worldState.player.notoriety ?? 0,
     );

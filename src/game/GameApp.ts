@@ -18,6 +18,7 @@ import { MainMapScene } from "./scenes/MainMapScene.ts";
 import { PortScene } from "./scenes/PortScene.ts";
 import { SeaBattleScene } from "./scenes/SeaBattleScene.ts";
 import { DuelScene } from "./scenes/DuelScene.ts";
+import { RetirementScene } from "./scenes/RetirementScene.ts";
 import { PauseMenuScene } from "./scenes/PauseMenuScene.ts";
 import { PortApproachScene } from "./scenes/PortApproachScene.ts";
 import { ShipEncounterScene } from "./scenes/ShipEncounterScene.ts";
@@ -100,6 +101,7 @@ export function createNewWorldState(
       location: { type: "sea", pos: startPos },
       questLog: [],
       fleet: [],
+      lastPlunderDay: 1,
     },
     entities: {
       [playerShipId as string]: {
@@ -174,6 +176,7 @@ export function launchGame(containerId: string): Phaser.Game {
       ShipEncounterScene,
       SeaBattleScene,
       DuelScene,
+      RetirementScene,
       PauseMenuScene,
       OptionsMenuScene,
       UIOverlayScene,

@@ -52,6 +52,10 @@ export type PlayerState = {
   questLog: QuestRuntimeState[];
   /** Escort ships (0-2). Flagship = entity's ship. Total fleet max 3. */
   fleet: FleetShip[];
+  /** Game day of the last division of plunder. The crew counts from here. */
+  lastPlunderDay: number;
+  /** Final score, written once the captain retires. Absent while still at sea. */
+  retirementScore?: number;
 };
 
 export type WeatherState = {

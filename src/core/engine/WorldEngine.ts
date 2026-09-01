@@ -15,6 +15,7 @@ import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
+import { applyOverdueMorale } from "../systems/PlunderSystem.ts";
 
 export class WorldEngine {
   private terrainQuery: TerrainQuery;
@@ -84,6 +85,9 @@ export class WorldEngine {
       world = updateWorldEvents(world);
       // Daily economy simulation (production, consumption, price update, recovery)
       world = economyDailyTick(world);
+      // An unpaid crew grumbles. Morale already drives reload speed, boarding
+      // strength and repair pace, so this is felt long before anyone mutinies.
+      world = applyOverdueMorale(world);
       // Jury repairs: the carpenter's crew patches what it can while under way,
       // up to a hard cap well short of seaworthy. Proper work needs a shipyard.
       world = repairAtSea(world).world;

@@ -64,6 +64,7 @@ function makeWorld(over: Partial<WorldState> = {}): WorldState {
       location: { type: "sea", pos: { x: 0, y: 0 } },
       questLog: [],
       fleet: [],
+      lastPlunderDay: 1,
     },
     entities: {},
     ports,

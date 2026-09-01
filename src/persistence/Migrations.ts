@@ -5,7 +5,7 @@ import { portId } from "../core/model/ids.ts";
 import { createDefaultCaptainProfile, TRAINING_DEFAULT } from "../core/model/CaptainState.ts";
 import { getPortBaseline } from "../core/data/economyBaselines.ts";
 
-export const CURRENT_WORLD_VERSION = 9;
+export const CURRENT_WORLD_VERSION = 10;
 
 type Migration = (world: unknown) => unknown;
 
@@ -174,6 +174,21 @@ const migrations: Record<number, Migration> = {
       };
     }
     return { ...world, version: 9, ports };
+  },
+  10: (world: any) => {
+    // v0.11.0 plunder clock. Old saves have no record of a division, so the
+    // crew's patience starts counting from the day the save is loaded rather
+    // than from day 1 — otherwise every long-running save would open with a
+    // furious crew and no way to have seen it coming.
+    const day = world.time?.day ?? 1;
+    return {
+      ...world,
+      version: 10,
+      player: {
+        ...world.player,
+        lastPlunderDay: typeof world.player?.lastPlunderDay === "number" ? world.player.lastPlunderDay : day,
+      },
+    };
   },
 };
 
