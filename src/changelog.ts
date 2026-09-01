@@ -6,6 +6,29 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.8.3",
+    date: "2026-09-01",
+    changes: [
+      "TESTS — 119 -> 257, one test file -> seven (TODO P0-3)",
+      "  Migrations: v1 -> v9 chain, every version as an entry point, idempotence",
+      "  CombatSystem: reload cadence vs crew / morale / training, clamps, monotonicity",
+      "  BoardingSystem: grapple preconditions, melee resolution, casualties, loot",
+      "  FleetSystem: roster limits, slowest-hull speed, tallest-mast vision, summary",
+      "  SailSystem: level table, transition timing, reversal, setImmediate clamps",
+      "  EconomyTickSystem + EventEffectsSystem: production, prices, recovery, events",
+      "SAVE FIX — migration v9 repairs ports that predate shipyardQueue / availableCrew",
+      "  Ports carried from a pre-v2 save were only ever extended, never normalised",
+      "  They reached v8 missing two fields; the tavern pool read as undefined",
+      "  v9 normalises every port to the full shape; complete ports pass through",
+      "SAIL FIX — tapping W repeatedly no longer sets canvas for free",
+      "  Transition length was measured from the previous ORDER, not the actual canvas",
+      "  Furled -> full took one 2 s step when tapped fast, instead of three",
+      "  Now counted from where the canvas is; a reversal only costs what was set",
+      "  Sail level drives turn rate in battle, so the shortcut was worth money",
+      "DOCS — sail level 2 is 0.50, not the 0.66 the header claimed",
+    ],
+  },
+  {
     version: "0.9.8.2",
     date: "2026-09-01",
     changes: [

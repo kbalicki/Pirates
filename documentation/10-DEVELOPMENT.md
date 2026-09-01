@@ -124,7 +124,20 @@ npm run test:watch
 npx vitest run src/core/systems/__tests__/NavigationSystem.test.ts
 ```
 
-Framework: **Vitest 4.0.18** (kompatybilny z Jest API).
+Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **257 testów w 7 plikach**.
+
+| Plik | Co pokrywa |
+|---|---|
+| `core/systems/__tests__/NavigationSystem.test.ts` | nawigacja, wiatr, diagram polarny |
+| `core/systems/__tests__/WeatherSystem` (w powyższym) | martwa strefa, ciągłość krzywej, skalowanie siłą |
+| `core/systems/__tests__/CombatSystem.test.ts` | kadencja przeładowania |
+| `core/systems/__tests__/BoardingSystem.test.ts` | abordaż i straty |
+| `core/systems/__tests__/FleetSystem.test.ts` | flota, prędkość, wzrok, UI |
+| `core/systems/__tests__/SailSystem.test.ts` | poziomy żagli i przejścia |
+| `core/systems/__tests__/EconomyTickSystem.test.ts` | ekonomia dzienna i efekty wydarzeń |
+| `persistence/__tests__/Migrations.test.ts` | łańcuch migracji v1 → v9 |
+
+Testowane są **wyłącznie moduły z `src/core/` i `src/persistence/`** — czysta logika, zero Phasera. Sceny i renderery weryfikuje się w działającej grze.
 
 ## Build produkcyjny
 

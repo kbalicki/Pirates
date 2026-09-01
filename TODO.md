@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.2 · **Branch:** `main`
-**Kod:** 113 plików `.ts`, ~21 500 LOC · `tsc --noEmit` czysty · `npm test` — **119 przechodzi, 0 failuje, 0 `todo`**
+**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.3 · **Branch:** `main`
+**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **257 przechodzi, 0 failuje, 0 `todo`** w 7 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -60,13 +60,26 @@ Krzywa dla martwej strefy 30°: `60°=0.40 · 90°=1.50 · 110°=1.30 · 120°=1
 
 Testy: `it.todo` zamieniony na cztery realne testy (ciągłość na szwie dla każdego takielunku, skan ciągłości całej krzywej, monotoniczny spadek za szczytem, przekazanie na 1.1× w 120°).
 
-### P0-3. Rozszerzyć pokrycie testami
-Jeden plik testowy na ~21 500 LOC. Kandydaci o wysokiej wartości (czysta logika, zero Phasera):
-`WeatherSystem` · `EconomyTickSystem` · `EventEffectsSystem` · `BoardingSystem` · `FleetSystem` · `SailSystem` · `CombatEngine` (reload/obrażenia/kapitulacja) · `Migrations` (v1→v8 na sztucznych zapisach).
+### ~~P0-3. Rozszerzyć pokrycie testami~~ ✅ v0.9.8.3
+Z jednego pliku testowego zrobiło się siedem, ze 119 testów — 257.
 
-Priorytet dla `Migrations` — jedyny moduł, którego błąd niszczy dane gracza bezpowrotnie.
+| Plik | Testów | Co pokrywa |
+|---|---|---|
+| `persistence/__tests__/Migrations.test.ts` | 25 | łańcuch v1→v9, każda wersja jako punkt wejścia, idempotencja, brak mutacji wejścia |
+| `systems/__tests__/CombatSystem.test.ts` | 11 | kadencja przeładowania = f(załoga, morale, wyszkolenie), clampy, monotoniczność |
+| `systems/__tests__/BoardingSystem.test.ts` | 18 | warunki abordażu, rozstrzygnięcie walki, straty, łup |
+| `systems/__tests__/FleetSystem.test.ts` | 29 | limit 3 kadłubów, prędkość najwolniejszego, wzrok najwyższego masztu, podsumowanie UI |
+| `systems/__tests__/SailSystem.test.ts` | 22 | tabela poziomów, czas przejścia, odwrócenie rozkazu, `setImmediate` |
+| `systems/__tests__/EconomyTickSystem.test.ts` | 33 | produkcja, konsumpcja, ceny, powrót do baseline, efekty wydarzeń, wojny |
+| `systems/__tests__/NavigationSystem.test.ts` | 119 | nawigacja, wiatr (`WeatherSystem`), diagram polarny |
 
----
+**Dwa błędy wyszły przy pisaniu testów i zostały naprawione w tym samym release:**
+
+1. **Migracja v9** — porty przeniesione z zapisu sprzed v2 były wyłącznie *rozszerzane* (v2 dodało ceny i inwentarz, v7 numerykę ekonomii), więc te sprzed `shipyardQueue` / `availableCrew` nigdy ich nie dostały i docierały do v8 z dziurami. Nic nie wybuchało (oba miejsca czytają przez `?? 0`), ale kształt nie zgadzał się z `PortRuntimeState`, a pula załogi w tawernie była `undefined` do pierwszego odświeżenia. v9 normalizuje każdy port; kompletne przechodzą bez zmian.
+
+2. **`SailSystem` — spam klawiszem W dawał żagle za darmo.** Czas przejścia liczył się od poprzedniego *rozkazu*, nie od faktycznego stanu ożaglowania, więc trzykrotne szybkie naciśnięcie W przenosiło statek ze zwiniętych na pełne w jednym kroku 2 s zamiast trzech. Poziom żagli moduluje szybkość skrętu w bitwie, więc to była realna przewaga. Teraz pozycja jest ułamkowym indeksem poziomu, a czas liczy się od niej — odwrócenie rozkazu w połowie kosztuje tylko to, co już postawiono.
+
+Pozostaje nietknięte: `WorldEventSystem`, `NpcAiSystem`, `NpcNewsSystem`, `CombatEngine` (pełna pętla bitwy — wymaga fixture'a `CombatState`), `PortInteractionSystem`.
 
 ## 3. Plan rozwoju — kolejność
 
