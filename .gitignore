@@ -26,6 +26,12 @@ sd-pipeline/tools/_*.ps1
 ai-assets/output/*.png
 ai-assets/output/*.jpg
 ai-assets/output/*.gif
+# ...and in subdirectories: a generation batch is ~20 MB and is reproducible
+# from ai-assets/scripts/ plus the manifest, which stays tracked.
+ai-assets/output/**/*.png
+ai-assets/output/**/*.jpg
+ai-assets/output/**/*.gif
+!ai-assets/output/**/manifest.json
 
 # Claude settings — local only, EXCEPT the shared project skills
 .claude/*

@@ -14,6 +14,8 @@ Stworzenie kompletnego zestawu sprite'ów, kafelków, ikon i efektów w stylu **
 >
 > **Prawdziwa naprawa:** retrening LoRA na wyciętych pojedynczych sprite'ach z przezroczystym tłem — zadanie w [TODO.md](../TODO.md).
 
+> ✅ **Zrobione (2026-09-02): `amigapxl_pirates_v2`.** Nowy zbiór (82 wycięte obiekty na płaskim tle), 820 kroków, 1 h na GTX 1060. **51/51 wygenerowanych assetów to pojedynczy obiekt na płaskim tle — zero ekranów gry i HUD-u.** Zalecana siła 0,7. Pełny opis, porównanie v1/v2/bez-LoRA i rekomendacje: [docs/LORA_V2_RETRAIN.md](docs/LORA_V2_RETRAIN.md). Wyniki: `ai-assets/output/lora_v2/`.
+
 ### Dane treningowe
 - Lokalizacja: `C:\GIT\PiratesChronicles\temp\Pirates Amiga assets`
 - Źródło: Ręcznie posegregowane screenshoty z Amiga i C64 Pirates!
