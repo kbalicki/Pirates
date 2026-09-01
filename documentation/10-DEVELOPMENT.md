@@ -124,7 +124,7 @@ npm run test:watch
 npx vitest run src/core/systems/__tests__/NavigationSystem.test.ts
 ```
 
-Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **295 testów w 8 plikach**.
+Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **359 testów w 10 plikach**.
 
 | Plik | Co pokrywa |
 |---|---|
@@ -136,6 +136,8 @@ Framework: **Vitest 4.0.18** (kompatybilny z Jest API). Stan: **295 testów w 8 
 | `core/systems/__tests__/SailSystem.test.ts` | poziomy żagli i przejścia |
 | `core/systems/__tests__/EconomyTickSystem.test.ts` | ekonomia dzienna i efekty wydarzeń |
 | `core/systems/__tests__/DamageSystem.test.ts` | stopnie uszkodzeń, tonięcie, brak zakleszczenia na mapie |
+| `core/systems/__tests__/ShipRepairSystem.test.ts` | naprawa na morzu, sufity, ratowanie rozbitków |
+| `core/systems/__tests__/DuelSystem.test.ts` | pojedynki: riposty, kondycja, AI, determinizm |
 | `persistence/__tests__/Migrations.test.ts` | łańcuch migracji v1 → v9 |
 
 Testowane są **wyłącznie moduły z `src/core/` i `src/persistence/`** — czysta logika, zero Phasera. Sceny i renderery weryfikuje się w działającej grze.

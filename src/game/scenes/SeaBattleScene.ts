@@ -5,7 +5,7 @@ import type { CombatCommand } from "../../core/model/Commands.ts";
 import type { EntityId } from "../../core/model/ids.ts";
 import { CombatEngine } from "../../core/engine/CombatEngine.ts";
 import { FxManager } from "../render/FxManager.ts";
-import { headingToDir8 } from "../../core/services/Geometry.ts";
+import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -18,6 +18,9 @@ import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
 import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
+import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
+import { canBoard } from "../../core/systems/BoardingSystem.ts";
+import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import {
   hullCondition,
   rigCondition,
@@ -403,10 +406,7 @@ export class SeaBattleScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-ONE", () => this.setAmmo("round"));
       this.input.keyboard.on("keydown-TWO", () => this.setAmmo("chain"));
       this.input.keyboard.on("keydown-THREE", () => this.setAmmo("grape"));
-      this.input.keyboard.on("keydown-B", () => {
-        // Phase C: actual boarding logic; here we just queue the command
-        this.commandBuffer.push({ type: "AttemptBoarding" });
-      });
+      this.input.keyboard.on("keydown-B", () => this.attemptBoarding());
       this.input.keyboard.on("keydown-H", () => {
         if (this.scene.isActive("BattleHelpScene")) return;
         this.scene.pause();
@@ -416,6 +416,45 @@ export class SeaBattleScene extends Phaser.Scene {
         this.commandBuffer.push({ type: "AttemptDisengage" });
       });
     }
+  }
+
+  /**
+   * Grapple and go across. Since v0.10.0 the captains settle it in `DuelScene`
+   * instead of a single strength roll: the duel decides who wins, the engine
+   * still works out what the melee around them cost both crews.
+   *
+   * A boarding the precheck rejects is handed straight to the engine, so the
+   * "too far" / "too strong" message keeps coming from one place.
+   */
+  private attemptBoarding(): void {
+    if (this.battleOver || this.scene.isPaused()) return;
+
+    const player = this.combatState.entities[this.combatState.playerShipId as string];
+    const enemy = this.combatState.entities[this.combatState.enemyShipId as string];
+    if (!player?.ship || !enemy?.ship) return;
+
+    const precheck = canBoard(player.ship, enemy.ship, vec2Dist(player.pos, enemy.pos));
+    if (!precheck.ok) {
+      this.commandBuffer.push({ type: "AttemptBoarding" });
+      return;
+    }
+
+    const playerFencing = this.worldState.captain?.skills.fencing ?? 5;
+    const enemyFencing = enemyFencingFor(
+      enemy.ship.crew.current, enemy.ship.crew.max, this.worldState.player.notoriety ?? 0,
+    );
+
+    this.scene.pause();
+    this.scene.launch("DuelScene", {
+      playerFencing,
+      enemyFencing,
+      seed: this.combatState.time.tick + enemy.ship.crew.current,
+      onFinish: (playerWon: boolean) => {
+        this.scene.resume();
+        this.combatEngine.setDuelResult(playerWon);
+        this.commandBuffer.push({ type: "AttemptBoarding" });
+      },
+    });
   }
 
   private setAmmo(a: AmmoType): void {
@@ -1188,6 +1227,12 @@ export class SeaBattleScene extends Phaser.Scene {
         player: { ...w.player, gold: w.player.gold + this.pendingLoot },
       };
       w = addLogEntry(w, "battle.log_won", { gold: this.pendingLoot });
+      // A sunk ship leaves men in the water. Boats are scarce right after a
+      // fight, so only a fraction come aboard — and only as far as berths go.
+      const enemyCombat = this.combatState.entities[enemyId];
+      if (outcome === "win" && enemyCombat?.ship) {
+        w = rescueSurvivors(w, enemyCombat.ship.crew.current).world;
+      }
     } else if (outcome === "captured") {
       // Loot + add ship to fleet if slot available
       const { [enemyId]: _captured, ...remaining } = w.entities;

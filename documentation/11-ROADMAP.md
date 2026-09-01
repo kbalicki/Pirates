@@ -43,6 +43,8 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.9.8.2 | Naprawa nieciągłości krzywej polarnej wiatru na granicy 120° | ✅ |
 | 0.9.8.3 | Pokrycie testami 119 → 257; migracja v9 i fix czasu zmiany żagli | ✅ |
 | 0.9.9.0 | **Stopnie uszkodzeń** — stany kadłuba i ożaglowania, tonięcie, animacja zatonięcia, utrata ładunku | ✅ |
+| 0.9.9.1 | Fix HMR: hot reload nie nakłada drugiej instancji gry na pierwszą | ✅ |
+| 0.10.0.0 | **Pojedynki kapitanów** przy abordażu; naprawa na morzu; ratowanie rozbitków | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -58,27 +60,27 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 
 Kolejność wynika z zasady: **najpierw domykamy pętle, które już istnieją**, potem otwieramy nowe moduły. Gracz ma dziś świat, ekonomię, NPC i bitwy — ale brakuje mu powodu, żeby walczyć, i ceny za przegraną.
 
-### Moduł A — Uszkodzenia i tonięcie *(v0.9.9)* — ✅ w większości
-**Priorytet:** WYSOKI | **Złożoność:** Średnia | **Domyka:** bitwy morskie
+### Moduł A — Uszkodzenia i tonięcie *(v0.9.9)* — ✅ zamknięty w v0.10.0.0
+**Domyka:** bitwy morskie
 
 - ✅ **Kadłub:** ≥75% sprawny, ≥50% przeciek, ≥25% ciężko uszkodzony, poniżej — tonie
 - ✅ **Ożaglowanie:** podarte → w strzępach → zerwany maszt (dryf w bitwie, pełzanie ×0.15 na mapie)
-- ✅ **Wizualne:** dym od stanu „ciężko uszkodzony", ogień przy tonięciu, animacja zatonięcia, utrata ładunku
-- ⬜ **Naprawa prowizoryczna na morzu** — powolna, ograniczona. `repairShip()` w `PortInteractionSystem:241` obsługuje wyłącznie port
-- ⬜ **Przechył** — pominięty świadomie: widok z góry, przechył byłby niewidoczny. Zamiast tego statek osiada, obraca się i zostawia pierścień na wodzie
-- ⬜ **Ratowanie załogi** po zatonięciu
+- ✅ **Wizualne:** dym, ogień przy tonięciu, animacja zatonięcia, utrata ładunku
+- ✅ **Naprawa prowizoryczna na morzu** — dzienna, sufit 50% kadłuba / 60% takielunku
+- ✅ **Ratowanie załogi** — 40% żywej załogi zatopionego wroga, w miarę wolnych koi
+- ⬜ **Przechył** — pominięty świadomie: widok z góry, przechył byłby niewidoczny
 
-Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcja „Stopnie uszkodzeń".
+Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkodzeń" i „Naprawa na morzu".
 
-### Moduł B — Pojedynki szermiercze *(v0.10.0)*
+### Moduł B — Pojedynki szermiercze *(v0.10.0)* — ✅ mechanika, ⬜ konteksty
 **Priorytet:** WYSOKI | **Złożoność:** Średnia
 
-Umiejętność `fencing` istnieje od v0.5.6, ale wpływa dziś wyłącznie na jeden mnożnik w auto-rozstrzygnięciu abordażu.
-
-- Osobna scena `DuelScene`: atak wysoki / średni / niski, parada, riposta
-- Konteksty: abordaż (zamiast rzutu kośćmi), wyzwanie w porcie, wątek fabularny
-- Efekty: przejęcie statku / awans / rana kapitana / więzienie
-- **Wymaga:** odbudowy systemu dialogów (stara `DialogueScene` była atrapą i została usunięta) — potrzebny też przez moduły E i F
+- ✅ Osobna scena `DuelScene`: cios wysoki / średni / niski, zasłona, riposta, kondycja
+- ✅ Wejście przez abordaż — pojedynek zastąpił rzut kośćmi w `resolveBoarding()`
+- ✅ Efekt: przejęcie statku albo przegrany abordaż ze stratami w załodze
+- ⬜ Wyzwanie w porcie i wątek fabularny jako kolejne konteksty wejścia
+- ⬜ Awans / rana kapitana / więzienie jako dodatkowe wyjścia
+- ⬜ **System dialogów** — wciąż nie istnieje. `DuelScene` go nie potrzebowała, ale moduły D i F tak
 
 ### Moduł C — Cele i konsekwencje *(v0.11.0)*
 **Priorytet:** WYSOKI | **Złożoność:** Średnia
@@ -145,9 +147,10 @@ Stan: pipeline opisany w [13-3D-ASSET-PIPELINE.md](13-3D-ASSET-PIPELINE.md) i `s
 ## Kolejność implementacji
 
 ```
-Moduł A ─── Uszkodzenia i tonięcie ─────── [NASTĘPNY]
+Moduł A ─── Uszkodzenia i tonięcie ─────── [GOTOWY]
   │
-Moduł B ─── Pojedynki + system dialogów
+Moduł B ─── Pojedynki ──────────────────── [MECHANIKA GOTOWA]
+  │          (zostaje system dialogów + konteksty wejścia)
   │
 Moduł C ─── Podział łupów, starzenie, punktacja
   │

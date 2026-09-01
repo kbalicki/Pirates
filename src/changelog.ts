@@ -6,6 +6,32 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.10.0.0",
+    date: "2026-09-01",
+    changes: [
+      "DUELS — captains settle a boarding with steel instead of one dice roll",
+      "  New DuelScene over the paused battle; all rules in core/systems/DuelSystem.ts",
+      "  Q/W/E strike high/middle/low, A/S/D guard high/middle/low",
+      "  Guard the line he strikes and the riposte wins you ground — that is the core",
+      "  Attack into an open line and the blow lands; both attacking, the better hand wins",
+      "  Fencing (0-10) scales what a blow is worth; stamina drains on attacks, returns on guards",
+      "  Swing every round and you tire, and a tired blade loses exchanges it would win",
+      "  The enemy reads you: the better his fencing, the more he guards the line you just used",
+      "  He presses when ahead, guards when winded. Seeded, so a duel replays identically",
+      "  Duel decides who wins the boarding; the melee's crew losses are costed as before",
+      "  fencing used to touch exactly one multiplier in BoardingSystem — now it is played",
+      "REPAIR AT SEA — the carpenter's crew patches what it can under way",
+      "  Runs once per game day; hull capped at 50% of max, rigging at 60%",
+      "  Rate scales with hands left times morale — a full, willing crew mends a few % a day",
+      "  Enough to climb off the foundering stage and limp home, never enough to fight fresh",
+      "  Nothing happens in port, below 20% crew, or on a hull already gone down",
+      "SURVIVORS — a sunk enemy leaves men in the water",
+      "  40% of the crew still alive can be found; only as many come aboard as there are berths",
+      "  Pressed men dilute crew training, the same as tavern recruits",
+      "TESTS — 295 -> 359 across 10 files (DuelSystem 35, ShipRepairSystem 29)",
+    ],
+  },
+  {
     version: "0.9.9.1",
     date: "2026-09-01",
     changes: [

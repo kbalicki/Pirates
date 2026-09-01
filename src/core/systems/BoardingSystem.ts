@@ -45,17 +45,26 @@ export function canBoard(
   return { ok: true };
 }
 
-/** Resolve the boarding combat. swordsmanship 0..10 captain skill. */
+/**
+ * Resolve the boarding combat. swordsmanship 0..10 captain skill.
+ *
+ * `forcedCapture` overrides who wins without touching how the casualties are
+ * worked out: since v0.10.0 the captains settle it with steel in `DuelScene`,
+ * and the melee around them is still costed from the two crews' strength. Left
+ * undefined, the old single-roll comparison decides it — which is what NPC-on-
+ * NPC boardings and any headless caller still use.
+ */
 export function resolveBoarding(
   playerShip: CombatShipData,
   enemyShip: CombatShipData,
   swordsmanship: number,
+  forcedCapture?: boolean,
 ): BoardingResult {
   const skillBonus = 1 + Math.max(0, swordsmanship) / 10;
   const playerStrength = playerShip.crew.current * Math.max(0.1, playerShip.crew.morale) * skillBonus;
   const enemyStrength = enemyShip.crew.current * Math.max(0.1, enemyShip.crew.morale);
 
-  const captured = playerStrength >= enemyStrength;
+  const captured = forcedCapture ?? playerStrength >= enemyStrength;
   const ratio = captured
     ? Math.min(2, playerStrength / Math.max(1, enemyStrength))
     : Math.min(2, enemyStrength / Math.max(1, playerStrength));

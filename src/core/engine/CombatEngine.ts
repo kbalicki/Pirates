@@ -29,9 +29,20 @@ export class CombatEngine {
   private playerTraining = 0.5;
   /** Enemy crew training 0..1 — kept separate so AI ships reload at their own pace. */
   private enemyTraining = 0.5;
+  /**
+   * Result of the captains' duel, set by `SeaBattleScene` just before it queues
+   * the boarding command. Consumed once, then cleared: a boarding that arrives
+   * without a duel behind it falls back to the old strength comparison.
+   */
+  private pendingDuelWin: boolean | null = null;
 
   setArchetype(a: AiArchetype): void {
     this.archetype = a;
+  }
+
+  /** Hand the engine the outcome of the captains' duel for the next boarding. */
+  setDuelResult(playerWon: boolean): void {
+    this.pendingDuelWin = playerWon;
   }
 
   setSwordsmanship(v: number): void {
@@ -372,7 +383,9 @@ export class CombatEngine {
       return { state, events };
     }
 
-    const result = resolveBoarding(player.ship, enemy.ship, this.swordsmanship);
+    const duelWin = this.pendingDuelWin;
+    this.pendingDuelWin = null;
+    const result = resolveBoarding(player.ship, enemy.ship, this.swordsmanship, duelWin ?? undefined);
     events.push({
       type: "BoardingResolved",
       captured: result.captured,

@@ -14,6 +14,7 @@ import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
+import { repairAtSea } from "../systems/ShipRepairSystem.ts";
 
 export class WorldEngine {
   private terrainQuery: TerrainQuery;
@@ -83,6 +84,9 @@ export class WorldEngine {
       world = updateWorldEvents(world);
       // Daily economy simulation (production, consumption, price update, recovery)
       world = economyDailyTick(world);
+      // Jury repairs: the carpenter's crew patches what it can while under way,
+      // up to a hard cap well short of seaworthy. Proper work needs a shipyard.
+      world = repairAtSea(world).world;
       // Crew gains experience every day spent at sea (not in port)
       if (world.player.location.type === "sea" && world.captain) {
         const prev = world.captain.training ?? 0.3;

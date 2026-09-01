@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.9.1 · **Branch:** `main`
-**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **295 przechodzi, 0 failuje, 0 `todo`** w 8 plikach
+**Stan na:** 2026-09-01 · **Wersja:** v0.10.0.0 · **Branch:** `main`
+**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **359 przechodzi, 0 failuje, 0 `todo`** w 10 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -99,18 +99,34 @@ Zrobione — `src/core/systems/DamageSystem.ts` + wpięcie w `CombatEngine`, `Na
 
 Przy okazji: HUD bitwy pokazuje stan kadłuba i takielunku, a odczyt prędkości przestał liczyć wiatr z ręcznie skopiowanej krzywej — ta kopia wciąż miała nieciągłość naprawioną w v0.9.8.2, więc HUD kłamał względem statku.
 
-**Zostało w tym module:**
-- **Naprawa prowizoryczna na morzu** — powolna, limitowana; `repairShip()` w `PortInteractionSystem:241` obsługuje tylko port
-- **Ratowanie załogi** po zatonięciu
+**Domknięte w v0.10.0.0:**
+- **Naprawa prowizoryczna na morzu** — `ShipRepairSystem.repairAtSea()`, raz na dobę, tylko na morzu. Sufit 50% kadłuba i 60% takielunku, tempo = `ręce × morale` (najlepszy przypadek 2.5% / 3.5% dziennie), poniżej 20% obsady nikt nie pracuje. Wystarczy, żeby zejść ze stanu „tonie" i dopłynąć do portu — nigdy, żeby odbudować się do walki
+- **Ratowanie rozbitków** — `rescueSurvivors()`, 40% żywej załogi zatopionego wroga, w miarę wolnych koi; wcieleni rozcieńczają wyszkolenie
 - Przechył pominięty świadomie — widok z góry, nie byłoby go widać
 
-### v0.10.0 — Pojedynki szermiercze
-*Umiejętność `fencing` istnieje, ale wpływa wyłącznie na jeden mnożnik w `BoardingSystem.ts:53`.*
+### ~~v0.10.0 — Pojedynki szermiercze~~ ✅ mechanika (v0.10.0.0)
 
-- Nowa scena `DuelScene`: atak wysoki/średni/niski, parada, riposta
-- Wejście: abordaż (zamiast obecnego rzutu kośćmi), wyzwanie w porcie, wątek fabularny
-- Wyjście: przejęcie statku / awans / rana kapitana / więzienie
-- **Zbudować system dialogów od zera** — będzie potrzebny w v0.12.0 i v0.14.0
+`src/core/systems/DuelSystem.ts` + `src/game/scenes/DuelScene.ts`. Do tej pory `fencing` dotykało dokładnie **jednego** mnożnika w `BoardingSystem.ts:53` — teraz kapitanowie biją się na pokładzie.
+
+Pojedynek to jedna liczba: `advantage`, dystans na pokładzie. `±6` kończy sprawę. W każdym starciu obie strony wybierają akcję na jednej z trzech linii:
+
+| Ty | Przeciwnik | Kto zyskuje |
+|---|---|---|
+| atak | zasłona **tej samej** linii | on — sparowane, riposta |
+| atak | zasłona **innej** linii | ty — cios trafia |
+| zasłona | atak w **tę samą** linię | ty — chwytasz klingę i odpowiadasz |
+| zasłona | atak w **inną** linię | on |
+| atak | atak | lepsza ręka |
+| zasłona | zasłona | nikt, obaj łapią oddech |
+
+Wartość ciosu `1 + fencing/10`, przy kondycji < 3 przez 0.5. Atak kosztuje 2 kondycji, zasłona zwraca 3. Stąd taktyka: atakuj, żeby zyskać dystans, zasłaniaj się, żeby wywołać ripostę i złapać oddech. AI przy niskiej kondycji zawsze się zasłania, z szansą `fencing/20` zasłania linię, której właśnie użyłeś, i atakuje częściej, gdy prowadzi. Deterministyczne z ziarna.
+
+Sterowanie: **Q/W/E** cios wysoki/średni/niski, **A/S/D** zasłona. Wejście: klawisz **B** w bitwie — `SeaBattleScene` sprawdza `canBoard()`, pauzuje bitwę, uruchamia `DuelScene`; wynik idzie do `CombatEngine.setDuelResult()`, a `resolveBoarding(..., forcedCapture)` rozstrzyga abordaż z tym wynikiem. Straty załóg liczone jak dotąd, z siły obu stron — pojedynek decyduje **kto**, nie **jakim kosztem**.
+
+**Zostało z tego modułu:**
+- **System dialogów** — wciąż od zera. `DuelScene` go nie potrzebowała, ale v0.12.0 (mapy skarbów) i v0.14.0 (fabuła) tak
+- **Wyzwanie w porcie** i **wątek fabularny** jako kolejne konteksty wejścia w pojedynek
+- **Awans / rana kapitana / więzienie** jako dodatkowe wyjścia (dziś tylko przejęcie statku albo przegrany abordaż)
 
 ### v0.11.0 — Cele i konsekwencje
 *Bez tego gra nie ma łuku — można żeglować w nieskończoność bez presji i bez zakończenia.*

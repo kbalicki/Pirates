@@ -14,6 +14,9 @@
 | WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
+| Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
+| Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
+| Duel | `DuelSystem.ts` | Pojedynki szermiercze kapitanów |
 | Boarding | `BoardingSystem.ts` | Rozstrzygnięcie abordażu |
 | Fleet | `FleetSystem.ts` | Flota gracza (max 3 statki) |
 | NpcSpawn | `NpcSpawnSystem.ts` | Pula statków NPC, spawn/despawn |
@@ -258,6 +261,44 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
 
+### Naprawa na morzu i rozbitkowie (`ShipRepairSystem.ts`, v0.10.0)
+
+Raz na dobę gry, tylko na morzu, `repairAtSea()` łata to, co da się załatać bez stoczni:
+
+| Ogranicznik | Wartość |
+|---|---|
+| Sufit kadłuba | 50% `hullMax` |
+| Sufit ożaglowania | 60% `sailsMax` |
+| Tempo (najlepszy przypadek) | 2.5% kadłuba i 3.5% takielunku dziennie |
+| Próg załogi | poniżej 20% obsady nikt nie pracuje |
+
+Tempo = `ręce × morale` — połowa załogi przy połowie morale robi ćwiartkę dniówki, nie trzy czwarte. Sufit jest po to, żeby stocznia dalej miała sens: naprawa na morzu pozwala zejść ze stanu „tonie" i dopłynąć do portu, nigdy odbudować się do walki. W porcie funkcja nic nie robi — tam jest `repairShip()` za złoto.
+
+`rescueSurvivors()` wyławia 40% żywej załogi zatopionego przeciwnika, ale tylko tylu, ile jest wolnych koi. Wcieleni rozbitkowie rozcieńczają wyszkolenie tak samo jak rekruci z tawerny.
+
+### Pojedynki (`DuelSystem.ts`, v0.10.0)
+
+Do v0.10.0 `fencing` wpływało na dokładnie jeden mnożnik w `resolveBoarding()`. Teraz kapitanowie biją się na pokładzie, a walka jest grywalna.
+
+Pojedynek to **jedna liczba** — `advantage`, dystans na pokładzie między kapitanami. Dodatnia = spychasz go do relingu, ujemna = ciebie spychają. `±DUEL_WIN_ADVANTAGE` (6) kończy sprawę.
+
+W każdym starciu obie strony wybierają akcję na jednej z trzech linii (wysoka / średnia / niska):
+
+| Ty | Przeciwnik | Wynik |
+|---|---|---|
+| atak | zasłona **tej samej** linii | sparowane, riposta — **on** zyskuje |
+| atak | zasłona **innej** linii | cios trafia — **ty** zyskujesz |
+| zasłona | atak w **tę samą** linię | chwytasz klingę i odpowiadasz — **ty** zyskujesz |
+| zasłona | atak w **inną** linię | trafia cię — **on** zyskuje |
+| atak | atak | obie klingi trafiają, lepsza ręka wychodzi na swoje |
+| zasłona | zasłona | nic, obaj łapią oddech |
+
+Wartość ciosu = `(1 + fencing/10)`, przy kondycji poniżej 3 mnożone przez 0.5. Atak kosztuje 2 kondycji, zasłona zwraca 3 (max 10). Stąd cała taktyka: atakujesz, żeby zyskać dystans, zasłaniasz się, żeby wywołać ripostę i złapać oddech.
+
+**AI przeciwnika** nie losuje na oślep: przy kondycji poniżej kosztu ataku zawsze się zasłania, z szansą `fencing/20` zasłania linię, której właśnie użyłeś (dobry szermierz cię czyta), i atakuje częściej, gdy prowadzi. Wszystko jest deterministyczne z ziarna `RngState`.
+
+**Wejście:** `SeaBattleScene` przechwytuje klawisz B, sprawdza `canBoard()`, pauzuje bitwę i uruchamia `DuelScene`. Wynik pojedynku trafia do `CombatEngine.setDuelResult()`, a `resolveBoarding(..., forcedCapture)` rozstrzyga abordaż z tym wynikiem — straty załóg liczone są jak dotąd, z siły obu stron.
+
 ### Abordaż (`BoardingSystem.ts`)
 
 Warunek: dystans ≤ 30 px **oraz** wróg osłabiony (kadłub < 35% lub załoga < 50%).
@@ -268,6 +309,8 @@ enemyStrength  = crew × morale
 ```
 
 Wygrany traci 10-30% ludzi, przegrany 50-90%. Przejęcie daje statek do floty (jeśli jest wolny slot) i 80% łupu.
+
+Od v0.10.0 o tym, **kto** wygrywa, decyduje pojedynek kapitanów (`forcedCapture`); porównanie sił zostało wyłącznie do liczenia strat i do abordaży bez udziału gracza.
 
 ### Zakończenie bitwy
 

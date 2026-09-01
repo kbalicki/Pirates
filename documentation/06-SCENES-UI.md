@@ -27,10 +27,20 @@ MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompa
     └── [Zbliżenie do NPC] ──→ ShipEncounterScene
                                   ├── Informacje + newsy
                                   ├── Atakuj ──→ SeaBattleScene ── [H] ──→ BattleHelpScene
+                                  │                    └── [B] abordaż ──→ DuelScene
                                   └── Odpłyń ──→ MainMapScene
 ```
 
-**Uwaga:** zapis i odczyt gry mieszkają w `OptionsMenuScene` i `CharacterCreationScene`, nie w osobnej scenie. Dawne `SaveLoadScene` i `DialogueScene` były atrapami i zostały usunięte w v0.9.8.1 — system dialogów powstanie od nowa razem z pojedynkami (patrz [TODO.md](../TODO.md), v0.10.0).
+**Uwaga:** zapis i odczyt gry mieszkają w `OptionsMenuScene` i `CharacterCreationScene`, nie w osobnej scenie. Dawne `SaveLoadScene` i `DialogueScene` były atrapami i zostały usunięte w v0.9.8.1. System dialogów wciąż nie istnieje — `DuelScene` (v0.10.0) go nie potrzebowała, ale moduły fabularne będą (patrz [TODO.md](../TODO.md)).
+
+### DuelScene (v0.10.0)
+
+Pojedynek kapitanów, uruchamiany nad **zapauzowaną** `SeaBattleScene` po naciśnięciu **B**, gdy `canBoard()` przepuści abordaż. Cała mechanika siedzi w `core/systems/DuelSystem.ts` — scena tylko rysuje stan i zamienia klawisze na akcje.
+
+- **Q / W / E** — cios wysoki / średni / niski
+- **A / S / D** — zasłona wysoka / średnia / niska
+- Pasek pośrodku to dystans na pokładzie; dopchnięcie do końca kończy pojedynek
+- Po rozstrzygnięciu scena oddaje wynik przez `onFinish`, wznawia bitwę i kolejkuje abordaż z narzuconym rezultatem
 
 ## Sceny — szczegóły
 
