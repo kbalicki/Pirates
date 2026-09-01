@@ -215,7 +215,7 @@ describe("fallback landmass interior points", () => {
  * Curve at full strength, with the default `minWindAngle` of 30°:
  *   0-30°    → 0     (no-go zone, ship makes no way)
  *   30-60°   → 0→0.4 (close hauled, linear)
- *   60-120°  → 0.4 → 1.5 → 0.4 (half sine, peak at 90° beam reach)
+ *   60-120°  → 0.4 → 1.5 → 1.1 (two quarter sines, peak at 90° beam reach)
  *   120-180° → 1.1 → 0.9 (running)
  *
  * The result is scaled by wind strength: `1 + (factor - 1) * strength`,
@@ -297,11 +297,45 @@ describe("windSpeedModifier", () => {
     }
   });
 
-  // KNOWN BUG (see TODO.md P0-2): the reach branch is a half sine that falls
-  // back to 0.4 at 120°, where the running branch picks up at 1.1. A ship at
-  // 119° therefore sails at 0.4 and at 121° at 1.1 — a 2.75× jump across two
-  // degrees of heading. Enable this test once the curve is made continuous.
-  it.todo("broad reach is continuous across the 120° branch boundary");
+  // Regression for TODO.md P0-2: the reach branch used to be a half sine that
+  // fell back to 0.4 at 120° while the running branch picked up at 1.1, so a
+  // ship at 119° sailed 0.4× and at 121° already 1.1×.
+  it("broad reach is continuous across the 120° branch boundary", () => {
+    for (const minWindAngle of [30, 35, 40, 45, 50, 55, 60]) {
+      const before = windSpeedModifier((119.5 * Math.PI) / 180, 0, 1.0, minWindAngle);
+      const after = windSpeedModifier((120.5 * Math.PI) / 180, 0, 1.0, minWindAngle);
+      // The old branch seam jumped 0.7 here; a smooth handover moves ~0.04.
+      expect(Math.abs(after - before)).toBeLessThan(0.1);
+    }
+  });
+
+  it("the whole curve is continuous — no step bigger than 0.15 per degree", () => {
+    for (const minWindAngle of [30, 45, 60]) {
+      let prev = windSpeedModifier((minWindAngle * Math.PI) / 180, 0, 1.0, minWindAngle);
+      for (let deg = minWindAngle + 1; deg <= 180; deg += 1) {
+        const cur = windSpeedModifier((deg * Math.PI) / 180, 0, 1.0, minWindAngle);
+        expect(Math.abs(cur - prev)).toBeLessThan(0.15);
+        prev = cur;
+      }
+    }
+  });
+
+  it("speed falls off monotonically from the peak down to running", () => {
+    // Peak sits halfway across the reach band; past it the curve only drops.
+    const peakDeg = (30 + 30 + 120) / 2; // minWindAngle 30 → 90°
+    let prev = windSpeedModifier((peakDeg * Math.PI) / 180, 0, 1.0, 30);
+    for (let deg = peakDeg + 1; deg <= 180; deg += 1) {
+      const cur = windSpeedModifier((deg * Math.PI) / 180, 0, 1.0, 30);
+      expect(cur).toBeLessThanOrEqual(prev + 1e-9);
+      prev = cur;
+    }
+  });
+
+  it("broad reach at 120° hands over at 1.1 for every rig", () => {
+    for (const minWindAngle of [30, 45, 60]) {
+      expect(windSpeedModifier((120 * Math.PI) / 180, 0, 1.0, minWindAngle)).toBeCloseTo(1.1, 5);
+    }
+  });
 });
 
 // ===========================================================================

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.1 · **Branch:** `main`
-**Kod:** 113 plików `.ts`, ~21 500 LOC · `tsc --noEmit` czysty · `npm test` — **115 przechodzi, 0 failuje**, 1 `todo`
+**Stan na:** 2026-09-01 · **Wersja:** v0.9.8.2 · **Branch:** `main`
+**Kod:** 113 plików `.ts`, ~21 500 LOC · `tsc --noEmit` czysty · `npm test` — **119 przechodzi, 0 failuje, 0 `todo`**
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
@@ -47,20 +47,18 @@ W v0.9.8.1 usunięto trzy pliki, do których nic nie prowadziło: `SaveLoadScene
 ### ~~P0-1. Naprawić failujące testy `NavigationSystem.test.ts`~~ ✅ v0.9.8.1
 Testy sprawdzały model wiatru sprzed v0.9.4 (kosinusoidę zamiast diagramu polarnego). Przepisane pod aktualną krzywą, doszło pokrycie martwej strefy per takielunek, symetrii halsów i skalowania siłą wiatru. Test `disembark into land box` **nie był regresem** detekcji lądu — slup pokonuje ~0.19 px na tick, a fixture stawiał go 2 px od brzegu, więc nigdy nie mógł tam dopłynąć w jednym ticku.
 
-### P0-2. Nieciągłość krzywej polarnej wiatru — BŁĄD ROZGRYWKI
-`src/core/systems/WeatherSystem.ts:121-130`
+### ~~P0-2. Nieciągłość krzywej polarnej wiatru~~ ✅ v0.9.8.2
+`src/core/systems/WeatherSystem.ts:118-140`
 
-Gałąź półwiatru to pół sinusoidy `0.4 → 1.5 → 0.4` na przedziale 60-120°, a gałąź fordewindu startuje od `1.1` przy 120°. Efekt: **statek na kursie 119° płynie 0.4×, a na 121° już 1.1×** — 2.75× skok prędkości na dwóch stopniach kursu. Komentarz w kodzie deklaruje `0.4→1.5→1.1`, więc to rozjazd implementacji z intencją, nie zamierzona mechanika.
+Gałąź półwiatru była pełną sinusoidą wracającą do 0.4 na 120°, gdzie fordewind startował od 1.1 — kurs 119° dawał 0.4×, a 121° już 1.1×.
 
-Sugerowana poprawka — zamiast pełnej sinusoidy zejść do 1.1 na końcu przedziału:
-```ts
-// deg 60..120: 0.4 → 1.5 → 1.1
-const t = (deg - reachStart) / (120 - reachStart);
-const peak = 0.4 + 1.1 * Math.sin(t * Math.PI);   // 0.4 → 1.5 → 0.4
-const tail = 0.4 + 0.7 * t;                        // 0.4 → 1.1 (domknięcie)
-factor = Math.max(peak, tail);
-```
-Po poprawce włączyć test `it.todo("broad reach is continuous across the 120° branch boundary")` w `NavigationSystem.test.ts`. **Zmienia odczucie żeglowania — wymaga playtestu**, dlatego nie wchodzi w release porządkowy.
+Poprawka rozbija przedział na **dwie ćwiartki sinusoidy**: wznoszącą 0.4 → 1.5 do szczytu w połowie przedziału i opadającą 1.5 → 1.1 do granicy 120°. Wybrano to zamiast `Math.max(peak, tail)` sugerowanego wcześniej w tym pliku, bo `max` robił lokalne wgłębienie ok. 110° (spadek do ~0.99 i ponowny wzrost do 1.1) — krzywa dwułukowa jest ciągła **i** monotoniczna za szczytem.
+
+Efekt uboczny, zamierzony: szczyt zależy od takielunku — slup (martwa strefa 30°) osiąga 1.5× przy 90°, galeon (60°) przy 105°.
+
+Krzywa dla martwej strefy 30°: `60°=0.40 · 90°=1.50 · 110°=1.30 · 120°=1.10 · 150°=1.00 · 180°=0.90`.
+
+Testy: `it.todo` zamieniony na cztery realne testy (ciągłość na szwie dla każdego takielunku, skan ciągłości całej krzywej, monotoniczny spadek za szczytem, przekazanie na 1.1× w 120°).
 
 ### P0-3. Rozszerzyć pokrycie testami
 Jeden plik testowy na ~21 500 LOC. Kandydaci o wysokiej wartości (czysta logika, zero Phasera):
@@ -82,7 +80,6 @@ Gracz ma dziś świat, ekonomię, NPC i bitwy morskie — ale nie ma **po co** w
 - **Wizualizacja** — dym, ogień, przechył; animacja zatonięcia + utrata ładunku
 - **Uszkodzenia ożaglowania** — łańcuchówki mają już mnożniki w `ammo.ts`, brakuje progresji (podarte żagle → zerwany maszt → dryf)
 - **Naprawa prowizoryczna na morzu** — powolna, limitowana; `repairShip()` w `PortInteractionSystem:241` obsługuje tylko port
-- Przy okazji: **poprawka P0-2** (nieciągłość wiatru) — i tak wymaga playtestu żeglowania
 - Pliki: `SeaBattleScene.ts`, `CombatEngine.ts`, `EntityState.ts` (`hullHp`/`sailsHp` są — potrzebny próg stanu + FX)
 
 ### v0.10.0 — Pojedynki szermiercze

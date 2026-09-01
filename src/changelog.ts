@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.9.8.2",
+    date: "2026-09-01",
+    changes: [
+      "WIND FIX — the polar curve no longer jumps at 120 deg (TODO P0-2)",
+      "  Was: reach branch fell back to 0.4x at 120 deg while running picked up at 1.1x",
+      "  A ship at heading 119 sailed 0.4x and at 121 already 1.1x — 2.75x over two degrees",
+      "  Now: two quarter sines — rise 0.4 -> 1.5 at the peak, fall 1.5 -> 1.1 at 120 deg",
+      "  Peak sits halfway across the reach band, so square rigs peak further off the wind",
+      "  Speed now falls off monotonically from the peak all the way down to running",
+      "  Full curve (30 deg no-go): 60=0.40 90=1.50 110=1.30 120=1.10 150=1.00 180=0.90",
+      "TESTS — 115 -> 119 passing, no todo left",
+      "  Continuity across the 120 deg seam for every rig (30-60 deg no-go)",
+      "  Whole-curve continuity scan, monotone falloff past the peak, 1.1x handover",
+    ],
+  },
+  {
     version: "0.9.8.1",
     date: "2026-09-01",
     changes: [

@@ -91,7 +91,7 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 - Kierunek: radiany (0=N, π/2=E, π=S, 3π/2=W)
 - Siła: 0.0 (cisza) do 1.0 (sztorm)
 
-### Model polarny prędkości (v0.9.4)
+### Model polarny prędkości (v0.9.4, poprawiony w v0.9.8.2)
 
 `windSpeedModifier(shipHeading, windDirRad, windStrength, minWindAngle)`
 
@@ -101,7 +101,7 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 |---------------|-------------------------------|-------|
 | 0° – minWindAngle | 0 | martwa strefa — statek nie robi drogi |
 | minWindAngle – +30° | 0 → 0.4 (liniowo) | ostro na wiatr (close hauled) |
-| 60° – 120° | 0.4 → **1.5** → 0.4 (pół sinusoidy) | półwiatr, szczyt przy 90° |
+| minWindAngle+30° – 120° | 0.4 → **1.5** → 1.1 (dwie ćwiartki sinusoidy) | półwiatr i baksztag, szczyt w połowie przedziału |
 | 120° – 180° | 1.1 → 0.9 | baksztag i fordewind |
 
 Wynik jest skalowany siłą wiatru: `1 + (factor − 1) × windStrength`, więc przy ciszy (`strength = 0`) każdy kurs daje dokładnie 1.0.
@@ -110,7 +110,11 @@ Wynik jest skalowany siłą wiatru: `1 + (factor − 1) × windStrength`, więc 
 
 **Konsekwencja dla gracza:** najszybszy kurs to półwiatr (1.5×), nie fordewind (0.9×), a płynięcie prosto pod wiatr jest niemożliwe — trzeba halsować.
 
-> **Znany błąd:** krzywa jest nieciągła na granicy 120°. Gałąź półwiatru schodzi sinusoidą do 0.4, a gałąź fordewindu startuje od 1.1 — statek na kursie 119° płynie 0.4×, a na 121° już 1.1×. Szczegóły i sugerowana poprawka w [TODO.md](../TODO.md), P0-2.
+Szczyt (1.5×) leży w **połowie** przedziału półwiatru, więc zależy od takielunku: slup (`minWindAngle` 30°) osiąga go przy 90°, galeon (60°) dopiero przy 105°. Za szczytem prędkość spada monotonicznie aż do fordewindu.
+
+Krzywa dla martwej strefy 30°: `60°=0.40 · 90°=1.50 · 110°=1.30 · 120°=1.10 · 150°=1.00 · 180°=0.90`.
+
+> **Naprawione w v0.9.8.2 (TODO P0-2):** wcześniej gałąź półwiatru była pełną sinusoidą schodzącą z powrotem do 0.4 na 120°, gdzie fordewind startował od 1.1 — statek na kursie 119° płynął 0.4×, a na 121° już 1.1×. Teraz gałąź kończy się dokładnie na 1.1 i przejście jest ciągłe.
 
 ### Sztormy
 

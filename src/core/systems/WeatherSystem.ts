@@ -93,11 +93,14 @@ export function updateWeather(
 /**
  * Realistic wind speed modifier based on sailing polar diagram.
  *
- * Wind angle (degrees from wind):
- *   0-30°   DEAD ZONE ("in irons") — speed = 0, can't sail into wind
- *   30-60°  Close hauled (beating)  — 0.2–0.5× slow upwind work
- *   60-120° Beam reach / broad reach — 0.9–1.2× fastest point of sail
- *   120-180° Running (downwind)      — 0.9–1.1× good but not best
+ * Wind angle (degrees from wind), for the default 30° dead zone:
+ *   0-30°    DEAD ZONE ("in irons")   — 0, can't sail into wind
+ *   30-60°   Close hauled (beating)   — 0 → 0.4, slow upwind work
+ *   60-120°  Beam / broad reach       — 0.4 → 1.5 → 1.1, fastest point of sail
+ *   120-180° Running (downwind)       — 1.1 → 0.9, good but not best
+ *
+ * The reach branch hands over to the running branch at exactly 1.1, so the
+ * curve is continuous over the whole 0-180° range (see TODO.md P0-2).
  *
  * Returns 0..~1.5 multiplied by windStrength. No wind = base speed (1.0).
  */
@@ -119,10 +122,20 @@ export function windSpeedModifier(
     // Close hauled: 0→0.4 slow transition from dead zone edge
     factor = ((deg - minWindAngle) / 30) * 0.4;
   } else if (deg < 120) {
-    // Beam reach to broad reach: 0.4→1.5→1.1 (peak at ~90°)
+    // Beam reach to broad reach: 0.4 → 1.5 → 1.1, peak halfway across the band.
+    // Two quarter-sine arcs: the first rises to the peak, the second falls to
+    // 1.1 so the branch ends exactly where the running branch starts. A single
+    // half sine returned to 0.4 at 120° and made the ship jump 2.75× over two
+    // degrees of heading.
     const reachStart = minWindAngle + 30;
-    const t = (deg - reachStart) / (120 - reachStart);
-    factor = 0.4 + 1.1 * Math.sin(t * Math.PI);
+    const peakDeg = (reachStart + 120) / 2;
+    if (deg <= peakDeg) {
+      const t = (deg - reachStart) / (peakDeg - reachStart); // 0→1
+      factor = 0.4 + 1.1 * Math.sin((t * Math.PI) / 2); // 0.4→1.5
+    } else {
+      const t = (deg - peakDeg) / (120 - peakDeg); // 0→1
+      factor = 1.1 + 0.4 * Math.cos((t * Math.PI) / 2); // 1.5→1.1
+    }
   } else {
     // Running: 1.1→0.9 (good but not peak)
     const t = (deg - 120) / 60; // 0→1
