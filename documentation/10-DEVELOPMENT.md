@@ -281,6 +281,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?intercept=cartagena` | Wyprawa w połowie przeprawy, gracz stoi dokładnie na niej — do przechwycenia na morzu |
 | `&soldiers=N` | Wielkość wyprawy (domyślnie 200) — razem z `?intercept=` |
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
+| `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
 
 ## Deploy produkcyjny
 

@@ -69,6 +69,24 @@ export type PlayerState = {
   citiesCaptured: number;
   /** Standing with each governor's daughter, keyed by port id (0..100). */
   courtship: Record<string, number>;
+  /**
+   * Goods left in the family storehouse at the home port (v0.18.0).
+   *
+   * Optional and read through `warehouseOf()`, which answers `{}` when it is
+   * absent — an old save has nothing ashore because there was nowhere to put
+   * it, so there is nothing for a migration step to invent.
+   */
+  warehouse?: Record<string, number>;
+  /**
+   * The crown his wife's father served, recorded at the wedding (v0.18.0).
+   *
+   * `daughterFor` derives a governor's daughter from whoever holds the town
+   * *today*, so it cannot answer this: a captured colony grows a new governor
+   * with a new daughter. Optional, and `homePortActive` falls back to the
+   * town's founding crown when it is absent, which is right for every save
+   * written before the field existed.
+   */
+  homeCrown?: string;
   /** Final score, written once the captain retires. Absent while still at sea. */
   retirementScore?: number;
 };

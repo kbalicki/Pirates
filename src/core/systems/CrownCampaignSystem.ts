@@ -242,6 +242,9 @@ export function launchCampaign(
   let w: WorldState = {
     ...world,
     worldEvents: [...world.worldEvents, event],
+    // Same reasoning as `launchExpedition`: the toast tells the player, so the
+    // chart is allowed to know. See `ExpeditionCourseRenderer`.
+    knownEventIds: [...(world.knownEventIds ?? []), event.id],
     ports: {
       ...world.ports,
       [portKey]: { ...world.ports[portKey], nextCampaignDay: world.time.day + CAMPAIGN_COOLDOWN_DAYS },

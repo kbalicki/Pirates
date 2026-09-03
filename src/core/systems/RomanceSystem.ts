@@ -40,6 +40,7 @@
 
 import type { WorldState, RngState } from "../model/WorldState.ts";
 import { CITIES } from "../data/cities.ts";
+import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext } from "../services/RNG.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
 import { changeReputation } from "./ReputationSystem.ts";
@@ -77,6 +78,13 @@ export const REPUTATION_TO_BE_RECEIVED = 20;
 
 /** What a gift costs, and what it is worth. */
 export const GIFT_COST = 500;
+
+/** Flat part of the dowry, before the town and the captain's rank are counted. */
+export const DOWRY_BASE = 400;
+/** Gold per point of the town's wealth (0..1000). */
+export const DOWRY_PER_WEALTH = 3;
+/** Gold per step of rank the captain holds with her crown. */
+export const DOWRY_PER_RANK = 600;
 
 const NAMES: Record<string, string[]> = {
   spain: ["Isabella", "Catalina", "Mercedes", "Beatriz", "Elena", "Inés"],
@@ -275,6 +283,8 @@ export type ProposalResult = {
   world: WorldState;
   accepted: boolean;
   reason?: "no_daughter" | "already_married" | "too_soon" | "no_rank";
+  /** Gold her father settled on the couple. Absent when she said no. */
+  dowry?: number;
 };
 
 /**
@@ -309,11 +319,43 @@ export function propose(world: WorldState, portKey: string): ProposalResult {
       // single voyage: the captain is now family, not a useful stranger.
       reputation: changeReputation(world.player.reputation, daughter.factionKey, 20),
       courtship: { ...(world.player.courtship ?? {}), [portKey]: 100 },
+      // Whose daughter this is, as of today. See `homeCrown`.
+      homeCrown: daughter.factionKey,
     },
   };
   w = addLogEntry(w, "romance.log_married", { name: daughter.name, port: CITIES[portKey]?.name ?? portKey });
+  const settled = payDowry(w, portKey);
 
-  return { world: w, accepted: true };
+  return { world: settled.world, accepted: true, dowry: settled.gold };
+}
+
+/**
+ * What her father settles on the couple.
+ *
+ * Read off the town's own wealth rather than a flat figure, so the governor of
+ * Havana's daughter is a different proposition from the governor of Tortuga's —
+ * and off rank, because a rank is what her father is really buying. Falls back
+ * to the baseline for a town with no runtime entry, the same convention
+ * `targetWeight` uses.
+ */
+export function dowryFor(world: WorldState, portKey: string): number {
+  const daughter = daughterFor(world, portKey);
+  if (!daughter) return 0;
+  const wealth = world.ports[portKey]?.wealth ?? getPortBaseline(portKey).wealth;
+  const rank = world.player.ranks?.[daughter.factionKey] ?? 0;
+  return Math.round(DOWRY_BASE + wealth * DOWRY_PER_WEALTH + rank * DOWRY_PER_RANK);
+}
+
+/** Hand over the dowry and write it in the log. Called once, at the wedding. */
+export function payDowry(world: WorldState, portKey: string): { world: WorldState; gold: number } {
+  const gold = dowryFor(world, portKey);
+  if (gold <= 0) return { world, gold: 0 };
+  const w = addLogEntry(
+    { ...world, player: { ...world.player, gold: world.player.gold + gold } },
+    "home.log_dowry",
+    { gold, port: CITIES[portKey]?.name ?? portKey },
+  );
+  return { world: w, gold };
 }
 
 /** Retirement points a marriage is worth, by how well the captain married. */

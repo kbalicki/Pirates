@@ -38,6 +38,7 @@
 | CrownCampaign | `CrownCampaignSystem.ts` | Wojny koron przesuwające flagi |
 | ExpeditionFleet | `ExpeditionFleetSystem.ts` | Wyprawa jako eskadra na mapie, do przechwycenia |
 | DefenseContract | `DefenseContractSystem.ts` | Zlecenie obrony u gubernatora |
+| HomePort | `HomePortSystem.ts` | Port macierzysty po ślubie: klarowanie i magazyn |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -1273,3 +1274,85 @@ Porównanie, w którym kubełku o rozmiarze interwału leży każdy koniec klatk
 na to odporne, odpala dokładnie raz na granicę niezależnie od długości klatki
 (także gdy klatka przeskoczy cały interwał) i zachowuje się po staremu dla zegara
 całkowitego. `offset` rozsuwa fazę per encja, nie zmieniając okresu.
+
+
+---
+
+## HomePortSystem (v0.18.0)
+
+`src/core/systems/HomePortSystem.ts`, czysty.
+
+v0.14.0 pozwoliło zalecać się do córki gubernatora i ożenić. Ślub płacił
+reputacją i punktami na emeryturze — obie to liczby, na które gracz patrzy dwa
+razy w karierze. **Dzień po ślubie niczym się nie różnił od dnia przed nim.**
+Małżeństwo powinno dawać miejsce, **z którego się jest**.
+
+| Co | Gdzie żyje | Uwaga |
+|---|---|---|
+| **Posag** | `RomanceSystem.payDowry` | `DOWRY_BASE + wealth×3 + ranga×600`, raz, przy ślubie |
+| **Klarowanie** | `careen()` | kadłub **i** takielunek, flagowy **i** konsorty, za darmo |
+| **Magazyn** | `storeGoods` / `withdrawGoods` | `WAREHOUSE_CAP = 300` ton na brzegu |
+
+**Posag siedzi w `RomanceSystem`, nie tutaj**, i to nie jest przypadek: ten moduł
+potrzebuje `marriedTo` stamtąd, więc zależność biegnie w jedną stronę, a płacenie
+z `propose()` zamknęłoby cykl. Posag jest zresztą wydarzeniem ślubu; miasto
+dziedziczy tylko to, co potem.
+
+**Dlaczego darmowa stocznia jest w jednym porcie.** Darmowa wszędzie znaczyłaby
+po prostu „naprawy są darmowe". Darmowa w jednym nazwanym porcie to powód, żeby
+wytyczyć kurs do domu — i o to w posiadaniu domu chodzi. Magazyn to ten sam
+argument w ładunku.
+
+**`homeCrown`, nie `daughterFor().factionKey`.** `daughterFor` wyprowadza koronę
+ojca z **dzisiejszego** właściciela miasta, więc porównanie byłoby tautologią, a
+zdobyta kolonia po cichu wyhodowałaby nową córkę gubernatora. Korona, której
+służył ojciec, to fakt o ślubie — stempluje ją `propose`. Pole jest opcjonalne,
+z fallbackiem na koronę założycielską, więc migracji nie potrzebuje.
+
+**I da się to stracić.** `homePortActive` wymaga, żeby miasto wciąż powiewało
+flagą jej ojca. Kolonia, która zmieniła ręce — na inną koronę, na bractwo albo na
+samego kapitana — ma innego gubernatora w rezydencji i innego właściciela
+stoczni. Złupienie rodzinnego miasta żony jest dozwolone i kosztuje magazyn;
+towary zostają w nim, nieosiągalne, dopóki ktoś nie wywiesi z powrotem flagi jej
+ojca. To jedyne miejsce w grze, w którym gracz może zniszczyć coś własnego,
+**wygrywając** bitwę.
+
+### Naprawa w stoczni była wąska (naprawione przy okazji)
+
+`repairShip` naprawiał kadłub okrętu flagowego i **nic więcej** — nie takielunek,
+nie konsorty. Podarte żagle dało się łatać wyłącznie prowizorką na morzu
+(`ShipRepairSystem`), która ma sufit świadomie daleki od pełnej sprawności. Statek
+mógł więc stać w stoczni trwale niedotakielowany. Teraz `repairableDamage` liczy
+całą flotę, a naprawa idzie **od najgorszego**, żeby kapitana bez pełnej kwoty
+stać było na to, co najprędzej go zatopi.
+
+---
+
+## ExpeditionCourseRenderer (v0.18.0)
+
+`src/game/render/ExpeditionCourseRenderer.ts` — warstwa gry, nie `core/`.
+
+v0.17.0 dało desantowi kadłuby i zostawiło gracza z zadaniem domowym: news mówi,
+że czterystu Hiszpanów jest dwanaście dni od Kartageny, a eskadra istnieje na
+mapie dopiero w promieniu 620. Kurs trzeba było **wydedukować** — z tego, która
+korona wysyła, który z jej portów jest najbliżej celu i ile dni minęło. To nie
+jest problem nawigacyjny, tylko rachunkowy, i żadna jego ilość nie czyni
+przechwycenia ciekawszym.
+
+Rysowane jest: kreskowany kurs port → cel, pierścień na mieście docelowym,
+grot w miejscu, gdzie wypada zliczenie na dziś, oraz siła i dni obok.
+
+**Tylko to, co gracz usłyszał** (`world.knownEventIds`). Dlatego wyprawa jest
+teraz oznaczana jako znana **w chwili wypłynięcia** (`launchExpedition` /
+`launchCampaign`): wywołujący i tak pokazuje wtedy toast, a mapa udająca
+niewiedzę o tym, co ekran właśnie ogłosił, czytałaby się jak błąd, nie jak mgła.
+Sieć newsów dalej zarabia na siebie wszystkim innym, co niesie.
+
+**Nie podlega mgle wojny.** Mgła dotyczy tego, co widzi bocianie gniazdo; to
+dotyczy tego, co kapitanowi powiedziano.
+
+**Rozmiary są w pikselach ekranu, dzielone przez zoom.** Wszystko na tej mapie
+rysuje się w jednostkach świata, więc adnotacja o stałych wymiarach świata rośnie
+z przybliżeniem — przy z2 grot zakrywał półwysep. Notatka ołówkiem na mapie ma
+szerokość ołówka niezależnie od skali mapy. Przerysowanie następuje przy zmianie
+dnia, zmianie zestawu znanych wypraw albo zmianie zoomu.

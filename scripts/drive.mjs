@@ -101,6 +101,12 @@ const state = await page.evaluate(() => {
   return {
     scenes: g.scene.scenes.filter(s => s.scene.isActive()).map(s => s.scene.key),
     day: w.time.day,
+    tick: Math.round(w.time.tick),
+    // NPC hulls actually on the map. Zero here after a few hundred frames
+    // is the signature of a periodic gate that never fires (see
+    // `tickBoundaryCrossed`) — it read as 'the world is empty' for a
+    // whole release before anyone counted.
+    npcShips: Object.values(w.entities).filter(e => e.ai).length,
     gold: w.player.gold,
     citiesCaptured: w.player.citiesCaptured,
     courtship: w.player.courtship,

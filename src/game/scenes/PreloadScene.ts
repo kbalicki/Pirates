@@ -180,6 +180,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?defend=cartagena — the same landing, fought in person (&ally=1 for someone else's town)
     //   ?intercept=cartagena — the same expedition, met at sea half a passage out
     //   ?commission=port_royal — the governor there with a colony under threat
+    //   ?home=port_royal — married into that town, with a battered fleet and a full hold
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -262,6 +263,13 @@ export class PreloadScene extends Phaser.Scene {
     if (params.has("commission")) {
       const portKey = params.get("commission") || "port_royal";
       const world = this.createCommissionWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("home")) {
+      const portKey = params.get("home") || "port_royal";
+      const world = this.createHomePortWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("PortScene", { worldState: world, portId: portKey });
       return;
@@ -467,6 +475,8 @@ export class PreloadScene extends Phaser.Scene {
         },
       } : base.ports,
       worldEvents: [...base.worldEvents, event],
+      // The chart only pencils in a course the captain has been told about.
+      knownEventIds: [...base.knownEventIds, event.id],
     };
 
     // Where the squadron is today, straight out of the same function the
@@ -541,6 +551,54 @@ export class PreloadScene extends Phaser.Scene {
           },
         },
       ],
+    };
+  }
+
+  /**
+   * A married captain standing in his wife's home town, for `?home=`.
+   *
+   * Reaching this in an ordinary game means courting a governor's daughter to
+   * 85 with a rank behind it, which is a career. What the screen has to show is
+   * the day *after* the wedding: the storehouse in the port menu, and a yard
+   * that careens the whole fleet without sending a bill. So the fleet arrives
+   * battered and the hold arrives full.
+   */
+  private createHomePortWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const crown = def.factionId as unknown as string;
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity?.ship) return base;
+
+    return {
+      ...base,
+      worldFlags: {
+        ...base.worldFlags,
+        captain_married: true,
+        ["married_to_" + portKey]: true,
+      },
+      player: {
+        ...base.player,
+        location: { type: "port", portId: def.id, pos: { ...def.pos } },
+        homeCrown: crown,
+        ranks: { ...base.player.ranks, [crown]: 2 },
+        courtship: { ...base.player.courtship, [portKey]: 100 },
+        fleet: base.player.fleet.map(c => ({ ...c, hullHp: c.hullMax * 0.4, sailsHp: c.sailsMax * 0.3 })),
+      },
+      entities: {
+        ...base.entities,
+        [shipId]: {
+          ...entity,
+          ship: {
+            ...entity.ship,
+            hullHp: entity.ship.hullMax * 0.55,
+            sailsHp: entity.ship.sailsMax * 0.45,
+            cargo: { sugar_cane: 20, rum: 15, tobacco: 5 },
+          },
+        },
+      },
     };
   }
 

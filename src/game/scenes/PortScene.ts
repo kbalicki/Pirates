@@ -26,6 +26,7 @@ import {
   buyRoundOfDrinks,
   getRumorKey,
   repairShip,
+  repairableDamage,
   buyShip,
   buyShipToFleet,
   sellFleetShip,
@@ -66,6 +67,17 @@ import {
 } from "../../core/systems/FamilyQuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import {
+  isHomePort,
+  careen,
+  warehouseOf,
+  warehouseUsed,
+  warehouseFree,
+  holdFree,
+  storeGoods,
+  withdrawGoods,
+  WAREHOUSE_CAP,
+} from "../../core/systems/HomePortSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { captainAge } from "../../core/systems/AgingSystem.ts";
@@ -91,7 +103,7 @@ const DLG_H = 420;
 const BORDER = 3;
 const PAD = 16;
 
-type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison";
+type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison" | "warehouse";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
@@ -267,6 +279,7 @@ export class PortScene extends Phaser.Scene {
       case "shipyard": this.renderShipyard(); break;
       case "daughter": this.renderDaughter(); break;
       case "garrison": this.renderGarrison(); break;
+      case "warehouse": this.renderWarehouse(); break;
     }
   }
 
@@ -378,6 +391,13 @@ export class PortScene extends Phaser.Scene {
       actions.push({ label: t("port.garrison"), key: "garrison" });
     }
 
+    // The family storehouse, and only in the town he married into while her
+    // father still holds it. `isHomePort` is the whole gate: a colony that has
+    // changed hands has a different owner in the warehouse.
+    if (isHomePort(this.worldState, this.currentPortId as string)) {
+      actions.push({ label: t("port.warehouse"), key: "warehouse" });
+    }
+
     actions.push({
       label: this.isOnFoot ? t("port.leave_on_foot") ?? "ODEJDŹ" : t("port.set_sail"),
       key: "sail",
@@ -390,6 +410,7 @@ export class PortScene extends Phaser.Scene {
         case "merchant": this.switchView("merchant"); break;
         case "shipyard": this.switchView("shipyard"); break;
         case "garrison": this.switchView("garrison"); break;
+        case "warehouse": this.selectedIndex = 0; this.switchView("warehouse"); break;
         case "sail": this.leavePort(); break;
       }
     });
@@ -1174,6 +1195,127 @@ export class PortScene extends Phaser.Scene {
 
   // ===== VIEW: Merchant =====
 
+  // ===== VIEW: The family storehouse =====
+
+  /**
+   * Goods left ashore at the town the captain married into.
+   *
+   * A separate view rather than a column in the merchant's table, because the
+   * two are different transactions: the merchant turns cargo into money at a
+   * price that moves, and this turns cargo into cargo-that-is-somewhere-else.
+   * Sharing a screen would invite reading the storehouse as a second market.
+   *
+   * Ten tons a keystroke, both ways, clamped by whichever side runs out first.
+   */
+  private renderWarehouse(): void {
+    const portKey = this.currentPortId as string;
+    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
+    let y = this.contentStartY;
+
+    const title = this.add.text(this.infoX, y,
+      t("warehouse.title", { port: t("port." + portKey + ".name") }), txt(13, { bold: true }));
+    this.contentContainer.add(title);
+    y += 20;
+
+    const used = warehouseUsed(this.worldState);
+    this.contentContainer.add(this.add.text(this.infoX, y,
+      t("warehouse.capacity", { used, cap: WAREHOUSE_CAP, hold: holdFree(this.worldState) }),
+      txt(11, { color: "#555555" })));
+    y += 22;
+
+    const colName = this.infoX;
+    const colAboard = this.infoX + 150;
+    const colAshore = this.infoX + 230;
+    const colStore = this.infoX + 300;
+    const colTake = this.infoX + 372;
+
+    this.contentContainer.add(this.add.text(colName, y, t("warehouse.col_item"), txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colAboard, y, t("warehouse.col_aboard"), txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colAshore, y, t("warehouse.col_ashore"), txt(10, { bold: true, color: "#666666" })));
+    y += 16;
+
+    const store = warehouseOf(this.worldState);
+    const rows = Object.keys(ITEMS).filter(
+      key => (ship?.cargo?.[key] ?? 0) > 0 || (store[key] ?? 0) > 0,
+    );
+
+    if (rows.length === 0) {
+      this.contentContainer.add(this.add.text(this.infoX, y, t("warehouse.empty"), txt(12, { color: "#888888" })));
+      y += 22;
+    }
+
+    // Keep the cursor on a row that still exists: moving the last of a good
+    // one way or the other takes its row off the list.
+    if (this.selectedIndex >= rows.length) this.selectedIndex = Math.max(0, rows.length - 1);
+
+    for (let ri = 0; ri < rows.length; ri++) {
+      const key = rows[ri];
+      const aboard = ship?.cargo?.[key] ?? 0;
+      const ashore = store[key] ?? 0;
+
+      if (ri === this.selectedIndex) {
+        this.contentContainer.add(
+          this.add.rectangle(this.cx, y + 8, DLG_W - PAD * 2, 20, 0x222244, 0.15));
+        this.contentContainer.add(this.add.text(colName - 14, y, "\u25B6", txt(10, { bold: true })));
+      }
+
+      this.contentContainer.add(this.add.text(colName, y, t("item." + key + ".name"), txt(11)));
+      this.contentContainer.add(this.add.text(colAboard, y, String(aboard), txt(11, { color: "#555555" })));
+      this.contentContainer.add(this.add.text(colAshore, y, String(ashore), txt(11, { color: "#555555" })));
+
+      if (aboard > 0 && warehouseFree(this.worldState) > 0) {
+        const btn = this.add.text(colStore, y, t("warehouse.store"), txt(10, { bold: true, color: "#2266aa" }));
+        btn.setInteractive({ useHandCursor: true });
+        btn.on("pointerdown", () => this.moveGoods(key, 10, true));
+        this.contentContainer.add(btn);
+      }
+      if (ashore > 0 && holdFree(this.worldState) > 0) {
+        const btn = this.add.text(colTake, y, t("warehouse.take"), txt(10, { bold: true, color: "#2266aa" }));
+        btn.setInteractive({ useHandCursor: true });
+        btn.on("pointerdown", () => this.moveGoods(key, 10, false));
+        this.contentContainer.add(btn);
+      }
+      y += 20;
+    }
+
+    const hint = this.add.text(
+      this.cx, this.dlgY + DLG_H - PAD - 4, t("warehouse.hint"), txt(10, { color: "#888888" }));
+    hint.setOrigin(0.5, 1);
+    this.contentContainer.add(hint);
+
+    const backBtn = this.add.text(
+      this.infoX, this.dlgY + DLG_H - PAD - 48, t("governor.back"), txt(13, { bold: true }));
+    backBtn.setInteractive({ useHandCursor: true });
+    backBtn.on("pointerdown", () => this.switchView("menu"));
+    this.contentContainer.add(backBtn);
+
+    // The same keys the merchant uses, so the two screens do not need learning
+    // separately: W/S to pick a row, Q to send it ashore, E to bring it back.
+    const move = (delta: number) => {
+      const next = this.selectedIndex + delta;
+      if (next < 0 || next >= rows.length) return;
+      this.selectedIndex = next;
+      this.switchView("warehouse");
+    };
+    this.bindKey("keydown-UP", () => move(-1));
+    this.bindKey("keydown-W", () => move(-1));
+    this.bindKey("keydown-DOWN", () => move(1));
+    this.bindKey("keydown-S", () => move(1));
+    this.bindKey("keydown-Q", () => { const k = rows[this.selectedIndex]; if (k) this.moveGoods(k, 10, true); });
+    this.bindKey("keydown-E", () => { const k = rows[this.selectedIndex]; if (k) this.moveGoods(k, 10, false); });
+    this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  }
+
+  private moveGoods(itemId: string, qty: number, ashore: boolean): void {
+    const result = ashore
+      ? storeGoods(this.worldState, itemId, qty)
+      : withdrawGoods(this.worldState, itemId, qty);
+    if (result.moved <= 0) return;
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.switchView("warehouse");
+  }
+
   private renderMerchant(): void {
     const portKey = this.currentPortId as string;
     const portState = this.worldState.ports[portKey];
@@ -1324,10 +1466,13 @@ export class PortScene extends Phaser.Scene {
       : false;
 
     if (playerShip?.ship) {
-      const damage = playerShip.ship.hullMax - playerShip.ship.hullHp;
+      const home = isHomePort(this.worldState, this.currentPortId as string);
+      const damage = repairableDamage(this.worldState);
       if (damage > 0) {
-        const repairCost = damage * 2;
-        const repairLabel = t("shipyard.repair", { damage, cost: repairCost });
+        const repairCost = home ? 0 : damage * 2;
+        const repairLabel = home
+          ? t("shipyard.careen", { damage })
+          : t("shipyard.repair", { damage, cost: repairCost });
         const repairBtn = this.add.text(this.infoX, y, repairLabel,
           txt(13, { bold: true, color: "#2266aa" }));
         repairBtn.setInteractive({ useHandCursor: true });
@@ -1514,7 +1659,15 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleShipyardRepair(): void {
-    const result = repairShip(this.worldState);
+    // In the family's yard the work is done on her father's account, and it
+    // covers the rig and the consorts as well as the flagship.
+    let result: { world: WorldState; repaired: number };
+    if (isHomePort(this.worldState, this.currentPortId as string)) {
+      const careened = careen(this.worldState);
+      result = { world: careened.world, repaired: careened.restored };
+    } else {
+      result = repairShip(this.worldState);
+    }
     if (result.repaired > 0) {
       this.worldState = result.world;
       this.registry.set("worldState", this.worldState);

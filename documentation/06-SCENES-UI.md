@@ -185,6 +185,17 @@ Główne menu gry pod klawiszem SPACE — zakładki:
 - **Dźwięk** — 3 kanały (wiatr / mewy / muzyka), skala 0-10, aktualizacja na żywo
 - **Zapis / Odczyt** — 5 slotów IndexedDB z auto-migracją
 
+### PortScene — widok magazynu (v0.18.0)
+
+Widok „Magazyn rodzinny" pojawia się w menu portu **wyłącznie** w mieście, w
+które kapitan się ożenił, i tylko dopóki miasto trzyma korona jej ojca
+(`isHomePort`). Osobny ekran, a nie kolumna w tabeli kupca, bo to inna
+transakcja: kupiec zamienia ładunek na pieniądze po ruchomej cenie, a magazyn
+zamienia ładunek na ładunek-który-jest-gdzie-indziej. Wspólny ekran zapraszałby
+do czytania magazynu jako drugiego rynku.
+
+Te same klawisze co u kupca — W/S wybór, Q na brzeg, E na statek, po 10 ton.
+
 ### HelpScene / BattleHelpScene
 
 `HelpScene` (klawisz H na mapie) — 5 zakładek: Sterowanie, Statki, Żeglowanie, Świat, Ekonomia.

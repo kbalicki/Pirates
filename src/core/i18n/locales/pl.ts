@@ -688,6 +688,22 @@ export const PL: LocaleData = {
   "campaign.toast_sailing": "Wyprawa ({{faction}}) wypłynęła na {{port}}. {{days}} dni.",
 
   // ── Wyprawa dostaje kadłuby (v0.17.0) ──────────────────
+  // -- Port macierzysty (v0.18.0) --
+  "port.warehouse": "Magazyn rodzinny",
+  "warehouse.title": "Magazyn w {{port}}",
+  "warehouse.capacity": "Na brzegu: {{used}} / {{cap}} ton   \u00b7   Miejsce w ładowni: {{hold}}",
+  "warehouse.col_item": "Towar",
+  "warehouse.col_aboard": "Na statku",
+  "warehouse.col_ashore": "Na brzegu",
+  "warehouse.store": "Na brzeg \u25b8",
+  "warehouse.take": "\u25c2 Na statek",
+  "warehouse.hint": "\u2191\u2193 \u2014 Wybór   Q \u2014 Na brzeg   E \u2014 Na statek   Esc \u2014 Powrót",
+  "warehouse.empty": "Nic na statku i nic tutaj.",
+  "shipyard.careen": "Wyklaruj flotę ({{damage}}) \u2014 na rachunek teścia",
+  "home.log_dowry": "Jej ojciec zapisuje ci {{gold}} złota. {{port}} jest teraz twoim portem macierzystym.",
+  "home.log_careened": "Rodzinna stocznia naprawia {{points}} kadłuba i takielunku i nie wystawia rachunku.",
+
+  "expedition.course_label": "{{soldiers}} ludzi · {{days}} dni",
   "expedition.log_scattered": "Wyprawa ({{faction}}) na {{port}} rozbita. Nikt nie zejdzie na brzeg.",
   "expedition.toast_scattered": "Desant na {{port}} nie dotrze.",
   "expedition.log_transport": "Transportowiec idzie na dno z {{men}} żołnierzami w ładowni.",

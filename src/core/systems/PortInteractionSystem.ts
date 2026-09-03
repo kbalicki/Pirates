@@ -235,7 +235,33 @@ export type RepairResult = {
 };
 
 /**
- * Repair ship hull. Repairs all damage, deducts gold (2g/HP).
+ * What a yard would have to put right across the whole fleet.
+ *
+ * Hull and rig, flagship and consorts. Until v0.18.0 this counted the
+ * flagship's hull and nothing else, so a shredded suit of sails and a consort
+ * shot to pieces were both repaired only by the jury work `ShipRepairSystem`
+ * does at sea — which is capped well short of seaworthy on purpose. A ship
+ * could be permanently half-rigged with a shipyard in front of it.
+ */
+export function repairableDamage(world: WorldState): number {
+  const ship = world.entities[world.player.shipId as string]?.ship;
+  let damage = 0;
+  if (ship) {
+    damage += Math.max(0, ship.hullMax - ship.hullHp);
+    damage += Math.max(0, ship.sailsMax - ship.sailsHp);
+  }
+  for (const consort of world.player.fleet ?? []) {
+    damage += Math.max(0, consort.hullMax - consort.hullHp);
+    damage += Math.max(0, consort.sailsMax - consort.sailsHp);
+  }
+  return Math.round(damage);
+}
+
+/**
+ * Repair the fleet at 2g per point, as far as the gold goes.
+ *
+ * Worst first, so a captain who cannot afford the whole bill buys the thing
+ * most likely to sink him rather than whatever happens to be first in an array.
  */
 export function repairShip(world: WorldState): RepairResult {
   const playerEntity = world.entities[world.player.shipId as string];
@@ -243,27 +269,58 @@ export function repairShip(world: WorldState): RepairResult {
     return { world, repaired: 0, cost: 0, error: "no_ship" };
   }
 
-  const damage = playerEntity.ship.hullMax - playerEntity.ship.hullHp;
+  const damage = repairableDamage(world);
   if (damage <= 0) {
     return { world, repaired: 0, cost: 0, error: "no_damage" };
   }
 
-  const repairAmount = Math.min(damage, Math.floor(world.player.gold / REPAIR_COST_PER_HP));
-  if (repairAmount <= 0) {
+  let budget = Math.min(damage, Math.floor(world.player.gold / REPAIR_COST_PER_HP));
+  if (budget <= 0) {
     return { world, repaired: 0, cost: 0, error: "not_enough_gold" };
   }
+  const cost = budget * REPAIR_COST_PER_HP;
 
-  const cost = repairAmount * REPAIR_COST_PER_HP;
+  // Every damaged part of the fleet as one list, worst first.
+  type Part = { get: () => number; put: (v: number) => void; missing: number };
+  let hullHp = playerEntity.ship.hullHp;
+  let sailsHp = playerEntity.ship.sailsHp;
+  const fleet = (world.player.fleet ?? []).map(c => ({ ...c }));
+
+  const parts: Part[] = [
+    { get: () => hullHp, put: v => { hullHp = v; }, missing: playerEntity.ship.hullMax - hullHp },
+    { get: () => sailsHp, put: v => { sailsHp = v; }, missing: playerEntity.ship.sailsMax - sailsHp },
+  ];
+  for (const consort of fleet) {
+    parts.push({
+      get: () => consort.hullHp,
+      put: v => { consort.hullHp = v; },
+      missing: consort.hullMax - consort.hullHp,
+    });
+    parts.push({
+      get: () => consort.sailsHp,
+      put: v => { consort.sailsHp = v; },
+      missing: consort.sailsMax - consort.sailsHp,
+    });
+  }
+  parts.sort((a, b) => b.missing - a.missing);
+
+  for (const part of parts) {
+    if (budget <= 0) break;
+    const take = Math.min(budget, Math.max(0, part.missing));
+    if (take <= 0) continue;
+    part.put(part.get() + take);
+    budget -= take;
+  }
 
   const newWorld = addLogEntry(
     {
       ...world,
-      player: { ...world.player, gold: world.player.gold - cost },
+      player: { ...world.player, gold: world.player.gold - cost, fleet },
       entities: {
         ...world.entities,
         [world.player.shipId as string]: {
           ...playerEntity,
-          ship: { ...playerEntity.ship, hullHp: playerEntity.ship.hullHp + repairAmount },
+          ship: { ...playerEntity.ship, hullHp, sailsHp },
         },
       },
     },
@@ -271,7 +328,7 @@ export function repairShip(world: WorldState): RepairResult {
     { gold: cost },
   );
 
-  return { world: newWorld, repaired: repairAmount, cost };
+  return { world: newWorld, repaired: cost / REPAIR_COST_PER_HP, cost };
 }
 
 export type BuyShipResult = {

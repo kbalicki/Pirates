@@ -13,6 +13,12 @@ import type { UIOverlayScene } from "./UIOverlayScene.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
 import { PortMarkerRenderer, refreshPortFlags, type PortMarkerResult } from "../render/PortMarkerRenderer.ts";
+import {
+  drawExpeditionCourses,
+  coursesStale,
+  clearExpeditionCourses,
+  type ExpeditionCourseResult,
+} from "../render/ExpeditionCourseRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
@@ -106,6 +112,8 @@ export class MainMapScene extends Phaser.Scene {
   private portMarkers: PortMarkerResult | null = null;
   /** Day the flags on the map were last painted. */
   private ownersDrawnDay = -1;
+  /** The invasion courses pencilled on the chart, redrawn when they go stale. */
+  private expeditionCourses: ExpeditionCourseResult | null = null;
   private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
 
   constructor() {
@@ -339,6 +347,7 @@ export class MainMapScene extends Phaser.Scene {
     this.coordLabels = portMarkers.coordLabels;
     this.cityGraphics = portMarkers.cityGraphics;
     this.flagImages = portMarkers.flagImages;
+    this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
@@ -803,6 +812,13 @@ export class MainMapScene extends Phaser.Scene {
         owners[key] = port.factionId as string;
       }
       refreshPortFlags(this, this.portMarkers, owners);
+    }
+
+    // The marker on a landing's course moves every day, and a landing the
+    // player has just been told about has to appear the moment he is told.
+    if (coursesStale(this.expeditionCourses, this.worldState, this.cameras.main.zoom)) {
+      clearExpeditionCourses(this.expeditionCourses);
+      this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
     }
 
     if (result.transitions) {

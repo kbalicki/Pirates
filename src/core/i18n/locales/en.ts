@@ -688,6 +688,22 @@ export const EN: LocaleData = {
   "campaign.toast_sailing": "A {{faction}} expedition has sailed for {{port}}. {{days}} days.",
 
   // ── The invasion gets hulls (v0.17.0) ──────────────────
+  // -- The home port (v0.18.0) --
+  "port.warehouse": "The family storehouse",
+  "warehouse.title": "The storehouse at {{port}}",
+  "warehouse.capacity": "Ashore: {{used}} / {{cap}} tons   ·   Room in the hold: {{hold}}",
+  "warehouse.col_item": "Goods",
+  "warehouse.col_aboard": "Aboard",
+  "warehouse.col_ashore": "Ashore",
+  "warehouse.store": "Put ashore \u25b8",
+  "warehouse.take": "\u25c2 Take aboard",
+  "warehouse.hint": "\u2191\u2193 \u2014 Select   Q \u2014 Put ashore   E \u2014 Take aboard   Esc \u2014 Back",
+  "warehouse.empty": "Nothing aboard, and nothing left here.",
+  "shipyard.careen": "Careen the whole fleet ({{damage}}) \u2014 on your wife's father",
+  "home.log_dowry": "Her father settles {{gold}} Gold on you. {{port}} is your home port now.",
+  "home.log_careened": "The family yard makes good {{points}} of hull and rig, and sends no bill.",
+
+  "expedition.course_label": "{{soldiers}} men · {{days}}d",
   "expedition.log_scattered": "The {{faction}} expedition for {{port}} is scattered. Nobody is coming ashore.",
   "expedition.toast_scattered": "The landing for {{port}} will not arrive.",
   "expedition.log_transport": "A transport goes down with {{men}} soldiers still in her hold.",

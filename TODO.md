@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.17.0.0 · **Branch:** `main`
-**Kod:** 156 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **932 przechodzi, 0 failuje, 0 `todo`** w 22 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.18.0.0 · **Branch:** `main`
+**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **963 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.17.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 932/932 zielone; wyprawy koron da się przechwycić na morzu, gubernator zleca obronę kolonii, konsorty mają własną załogę, a przy okazji naprawiono bramkę `tick % N`, przez którą **NPC nie spawnowały się w ogóle** — następne w kolejce jest **muzyka** albo zadania równoległe z sekcji 4.
+> **Start sesji w jednym zdaniu:** v0.18.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 963/963 zielone; mapa rysuje kurs wyprawy, o której gracz słyszał, a małżeństwo daje port macierzysty (posag, darmowe klarowanie floty, magazyn na 300 ton) — następne w kolejce są zadania równoległe z sekcji 4, bo muzyka to brak plików audio, nie brak kodu.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -34,10 +34,12 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Wyprawa jako eskadra na mapie | ✅ | `ExpeditionFleetSystem` (~470 l.): desant dostaje kadłuby, transportowce wiozą ludzi, ledger przeliczany co tick |
 | Zlecenie obrony u gubernatora | ✅ | `DefenseContractSystem` (~250 l.): pierwszy ręcznie pisany łańcuch questowy, pierwszy odpalacz `reach_port` |
 | Załoga konsorty | ✅ | `FleetShip.crew?` + `consortCrew()`/`manConsorts()`: straty w ludziach wreszcie zostają |
+| Kurs wyprawy na mapie | ✅ | `ExpeditionCourseRenderer`: kreskowany kurs, pierścień celu, grot zliczenia — tylko dla znanych wypraw |
+| Port macierzysty | ✅ | `HomePortSystem`: posag, darmowe klarowanie całej floty, magazyn 300 ton; wygasa, gdy miasto zmieni ręce |
 
 ### Nietknięte
 
-Posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
+Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
 
 ### Świadome placeholdery (zostawione celowo)
 
@@ -462,17 +464,90 @@ wracać do kompletu.
   albo list gończy na tablicy dałyby drugie źródło
 - **Konsorty nie mają morale ani wyszkolenia** — dzielą wartości flagowego
 
-### v0.18.0 — co dalej
+### ~~v0.18.0 — Kurs na mapie i port macierzysty~~ ✅ (v0.18.0.0)
+
+Dwa zadania z listy kandydatów i jeden błąd, który wyszedł przy drugim z nich.
+
+**Kurs wyprawy na mapie** (`ExpeditionCourseRenderer.ts`) — v0.17.0 dało
+desantowi kadłuby i zostawiło gracza z zadaniem domowym. News mówi, że
+czterystu Hiszpanów jest dwanaście dni od Kartageny; eskadra istnieje na mapie
+dopiero w promieniu 620. Kurs trzeba było **wydedukować** z tego, która korona
+wysyła, który z jej portów leży najbliżej celu i ile dni minęło. To nie problem
+nawigacyjny, tylko rachunkowy, i żadna jego ilość nie czyni przechwycenia
+ciekawszym.
+
+Teraz mapa rysuje kreskowany kurs, pierścień na mieście docelowym, grot tam,
+gdzie wypada zliczenie na dziś, i „200 ludzi · 10 dni" obok. **Tylko dla wypraw,
+o których gracz słyszał** (`knownEventIds`) — wyprawa, o której nikt nie
+wspomniał, nie jest na jego mapie, i to jest to, co dalej opłaca zawijanie do
+portów.
+
+Przy okazji ujednolicone: wyprawa jest oznaczana jako znana **w chwili
+wypłynięcia**, bo wywołujący i tak pokazuje wtedy toast. Mapa udająca niewiedzę o
+czymś, co ekran właśnie ogłosił, czytałaby się jak błąd, nie jak mgła.
+
+**Rozmiary adnotacji są w pikselach ekranu, dzielone przez zoom.** Wszystko na
+tej mapie rysuje się w jednostkach świata, więc pierwsza wersja przy z2 miała
+grot zakrywający półwysep i etykietę wychodzącą poza ekran. Notatka ołówkiem na
+mapie ma szerokość ołówka niezależnie od skali mapy.
+
+**Port macierzysty** (`HomePortSystem.ts`) — do tej pory ślub płacił reputacją i
+punktami na emeryturze, a **dzień po ślubie niczym się nie różnił od dnia przed
+nim**. Trzy rzeczy, wszystkie przywiązane do jednego miasta: **posag** (raz, wg
+zamożności miasta i rangi kapitana), **klarowanie** całej floty za darmo — kadłub
+i takielunek, flagowy i konsorty — oraz **magazyn** na 300 ton na brzegu.
+
+Darmowa stocznia wszędzie znaczyłaby po prostu „naprawy są darmowe". Darmowa w
+jednym nazwanym porcie to powód, żeby wytyczyć kurs do domu, i o to w posiadaniu
+domu chodzi. Magazyn to ten sam argument w ładunku: ładownia ma 40 ton, a dobry
+rejs więcej.
+
+**Wszystko to da się stracić.** `homePortActive` wymaga, żeby miasto wciąż
+powiewało flagą jej ojca. Złupienie rodzinnego miasta żony jest dozwolone i
+kosztuje magazyn — towary zostają w nim, nieosiągalne, dopóki ktoś nie wywiesi z
+powrotem tamtej flagi. To **jedyne miejsce w grze, w którym gracz może zniszczyć
+coś własnego, wygrywając bitwę**.
+
+**Pułapka:** `daughterFor` wyprowadza koronę ojca z **dzisiejszego** właściciela
+miasta, więc pierwsza wersja `homePortActive` porównywała liczbę z samą sobą i
+zawsze zwracała `true` — zdobyta kolonia po cichu hodowała nową córkę
+gubernatora. Korona, której służył ojciec, to fakt o ślubie: stempluje ją
+`propose` w `player.homeCrown` (opcjonalne, fallback na koronę założycielską,
+bez migracji).
+
+**Błąd znaleziony przy okazji:** `repairShip` naprawiał kadłub okrętu flagowego i
+**nic więcej** — nie takielunek, nie konsorty. Podarte żagle dało się łatać
+wyłącznie prowizorką na morzu, która ma sufit świadomie daleki od pełnej
+sprawności, więc statek mógł stać w stoczni trwale niedotakielowany. Naprawa
+obejmuje teraz całą flotę i idzie **od najgorszego**, żeby kapitana bez pełnej
+kwoty stać było na to, co najprędzej go zatopi. Bez tego darmowe klarowanie w
+porcie żony byłoby korzyścią wyłącznie dlatego, że wersja płatna jest zepsuta —
+a to nie korzyść, tylko błąd z kokardką.
+
+**Weryfikacja w grze:** `?intercept=cartagena&zoom=z2` — kurs, pierścień, grot i
+etykieta w skali. `?home=port_royal` — „Magazyn rodzinny" w menu portu, 20 ton
+cukru na brzeg i z powrotem, stocznia klaruje flotę z 48 do 120 kadłuba bez
+rachunku.
+
+**Zostało z tego modułu:**
+- **Magazyn jest jeden i tylko w porcie żony** — wynajęty skład w dowolnym
+  mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla
+  ekonomii (gracz mógłby magazynować pod każdą górkę cenową)
+- **Kurs jest prostą** — pokazuje zliczenie, nie trasę omijającą ląd, więc bywa
+  narysowany przez półwysep. Grot jest dosuwany do wody, linia nie
+- **Konsorty nie mają morale ani wyszkolenia** — od v0.17.0 mają własną załogę,
+  ale morale i drill dalej biorą z okrętu flagowego
+
+### v0.19.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
 
-1. **Kurs wyprawy na mapie świata** — domknięcie v0.17.0. Gracz wie z tawerny, że
-   eskadra płynie, ale kurs musi wydedukować sam z tego, skąd i dokąd. Linia albo
-   znacznik celu na mapie dla zdarzenia, o którym słyszał, zamienia przechwycenie
-   z zagadki geograficznej w decyzję. Mało pracy, dużo czytelności.
-2. **Posag i baza w porcie żony** — domknięcie v0.14.0. Ślub daje dziś reputację
-   i punkty, nic więcej. Własny port macierzysty z darmową naprawą i magazynem
-   byłby pierwszą rzeczą, którą małżeństwo *robi*.
+1. **Morale i wyszkolenie konsorty** — od v0.17.0 konsorta ma własną załogę, ale
+   morale i drill bierze z okrętu flagowego. Widać to w bitwie: konsorta z
+   dziesięcioma ludźmi przeładowuje tak, jakby miała morale kapitana. Mała
+   zmiana, duża spójność z tym, co już jest.
+2. **Flaga frakcji jako sprite przy statku NPC** (`WorldRenderer.ts:239`) — dziś
+   tint. Jedyny TODO zostawiony wprost w kodzie renderera.
 3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu. Dopóki nie ma
    ścieżek, agent nie ma tu czego zrobić poza podpięciem gotowych plików.
@@ -490,8 +565,10 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
 - **Konsorty nie mają morale ani wyszkolenia.** `FleetShip` ma od v0.17.0 własną załogę, ale morale i drill nadal biorą się z okrętu flagowego. Widać to w bitwie morskiej: konsorta z dziesięcioma ludźmi przeładowuje tak, jakby miała morale kapitana.
+- **Magazyn jest jeden, tylko w porcie żony.** Wynajęty skład w dowolnym mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla ekonomii: gracz mógłby magazynować pod każdą górkę cenową.
+- **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Prawdziwa trasa wymaga `Pathfinding.ts`, który wciąż jest pustym hakiem.
 - **Zlecenie obrony jest jedno na raz i tylko od gubernatora.** Informator w tawernie albo tablica w porcie dałyby drugie źródło i drugi typ zlecenia.
-- **`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.** Eskadra istnieje dopiero w promieniu 620; do tego czasu gracz zna tylko port docelowy z newsa.
+- ~~**`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.**~~ ✅ v0.18.0.0 — `ExpeditionCourseRenderer` rysuje kreskowany kurs każdej wyprawy, o której gracz słyszał; sama eskadra dalej materializuje się dopiero w promieniu 620.
 - **Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.** `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
 - ~~**Wyprawy koron nie mają kadłubów na mapie.**~~ ✅ v0.17.0.0 — `ExpeditionFleetSystem` materializuje eskadrę w promieniu 620 od gracza, a jej rozbicie kasuje zdarzenie i daje celowi karencję.
 
@@ -513,5 +590,5 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - **`time.tick` jest ułamkowy.** Nigdy nie bramkuj niczego na `tick % N === 0` — używaj `tickBoundaryCrossed(tick - dtTicks, tick, N)` z `TimeSystem`. Ten jeden wzorzec zabił w v0.16.0 spawn NPC, AI NPC i wymianę newsów naraz, a testy jednostkowe na całkowitych tickach tego nie widziały.
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

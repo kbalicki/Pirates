@@ -395,7 +395,16 @@ export function launchExpedition(
     vars,
   };
 
-  let w: WorldState = { ...world, worldEvents: [...world.worldEvents, event] };
+  // Marked heard the moment it sails, because the caller shows the player a
+  // toast saying so on the same tick. `knownEventIds` means "has been told",
+  // and a chart that pretended not to know what the screen had just announced
+  // would read as a bug rather than as fog. The news network still earns its
+  // keep on everything else it carries — and on the detail in the tavern.
+  let w: WorldState = {
+    ...world,
+    worldEvents: [...world.worldEvents, event],
+    knownEventIds: [...(world.knownEventIds ?? []), event.id],
+  };
   w = addLogEntry(w, "news.reconquest", vars);
   return { world: w, event, rng: next };
 }
