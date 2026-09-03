@@ -58,6 +58,16 @@ export type FleetShip = {
    * every consort. An old save keeps answering exactly what it did.
    */
   morale?: number;
+  /**
+   * How well the men on this consort are drilled, 0..1 (v0.21.0).
+   *
+   * Optional, read through `consortTraining()`, which falls back to the
+   * flagship's own drill — exactly what every consort used before the field
+   * existed, so an old save fights the same. A hull that *joins* the fleet is
+   * seeded a notch below the captain's own crew, because a prize crew or a
+   * yard's delivery crew is not the crew he has spent years drilling.
+   */
+  training?: number;
 };
 
 export type PlayerState = {

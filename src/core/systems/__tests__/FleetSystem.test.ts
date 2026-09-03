@@ -14,6 +14,11 @@ import {
   FLEET_DEFAULT_MORALE,
   consortMorale,
   fleetMorale,
+  consortTraining,
+  fleetTraining,
+  greenCrewTraining,
+  GREEN_CREW_PENALTY,
+  GREEN_CREW_FLOOR,
   consortCrew,
   consortCrewMax,
   consortBerthsFree,
@@ -385,5 +390,48 @@ describe("consortMorale / fleetMorale", () => {
 
   it("falls back to the flagship rather than dividing by zero in an empty fleet", () => {
     expect(fleetMorale(0.7, 0, [])).toBeCloseTo(0.7, 6);
+  });
+});
+
+// ===========================================================================
+// Consort training (v0.21.0)
+// ===========================================================================
+
+describe("consortTraining / fleetTraining / greenCrewTraining", () => {
+  it("falls back to the flagship's drill when the ship has none of its own", () => {
+    const { training: _dropped, ...legacy } = { ...escort("sloop"), training: 0.9 };
+    expect(consortTraining(legacy, 0.62)).toBeCloseTo(0.62, 6);
+  });
+
+  it("reads the ship's own drill once it has one", () => {
+    expect(consortTraining({ ...escort("sloop"), training: 0.21 }, 0.9)).toBeCloseTo(0.21, 6);
+  });
+
+  it("seeds a joining hull a notch below the captain's own crew", () => {
+    expect(greenCrewTraining(0.6)).toBeCloseTo(0.6 - GREEN_CREW_PENALTY, 6);
+  });
+
+  it("never seeds below the floor, however green the captain is", () => {
+    expect(greenCrewTraining(0.05)).toBe(GREEN_CREW_FLOOR);
+  });
+
+  it("gives a bought or captured hull its own green crew", () => {
+    const fleet = addToFleet([], "barque", 0.7)!;
+    expect(fleet[0].training).toBeCloseTo(greenCrewTraining(0.7), 6);
+  });
+
+  it("leaves the field off when the caller does not say — the old two-arg call", () => {
+    expect(addToFleet([], "barque")![0].training).toBeUndefined();
+  });
+
+  it("drags the fleet's drill down in proportion to the men aboard", () => {
+    const green = { ...escort("galleon"), crew: 200, training: 0.2 };
+    const pooled = fleetTraining(0.9, 20, [green]);
+    expect(pooled).toBeLessThan(0.35);
+    expect(pooled).toBeGreaterThan(0.2);
+  });
+
+  it("is the flagship's own drill for a one-ship fleet", () => {
+    expect(fleetTraining(0.44, 60, [])).toBeCloseTo(0.44, 6);
   });
 });

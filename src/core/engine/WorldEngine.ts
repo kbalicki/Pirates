@@ -156,12 +156,25 @@ export class WorldEngine {
           if (stage) allEvents.push({ type: "Toast", message: t(stage.objectiveKey, stage.vars) });
         }
       }
-      // Crew gains experience every day spent at sea (not in port)
+      // Crew gains experience every day spent at sea (not in port). The
+      // consorts drill with the flagship — a green prize crew catches up
+      // because it is sailing in company, which is the whole point of the
+      // penalty being temporary rather than permanent (v0.21.0).
       if (world.player.location.type === "sea" && world.captain) {
         const prev = world.captain.training ?? 0.3;
         const next = Math.min(1, prev + 0.0005);
-        if (next !== prev) {
-          world = { ...world, captain: { ...world.captain, training: next } };
+        const fleet = (world.player.fleet ?? []).map(consort =>
+          consort.training === undefined
+            ? consort
+            : { ...consort, training: Math.min(1, consort.training + 0.0005) },
+        );
+        const fleetMoved = fleet.some((c, i) => c !== (world.player.fleet ?? [])[i]);
+        if (next !== prev || fleetMoved) {
+          world = {
+            ...world,
+            captain: { ...world.captain, training: next },
+            player: { ...world.player, fleet },
+          };
         }
       }
     }

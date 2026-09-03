@@ -313,6 +313,45 @@ describe("a town under the black flag (v0.19.0)", () => {
   });
 });
 
+describe("war strangles the shipping (v0.21.0)", () => {
+  /** A world where England — Port Royale's crown — is at war with Spain. */
+  function atWar() {
+    const world = makeWorld();
+    world.worldEvents = [makeEvent("war_start", {
+      factions: ["england", "spain"],
+      ports: [],
+      startDay: 1,
+      endDay: 9999,
+    })];
+    return world;
+  }
+
+  it("costs a colony wealth it would otherwise have kept", () => {
+    const peace = runDays(makeWorld(), 600).ports.port_royal.wealth;
+    const war = runDays(atWar(), 600).ports.port_royal.wealth;
+    expect(war).toBeLessThan(peace);
+    // Felt, not fatal: a war should hurt a port, not empty it.
+    expect(war).toBeGreaterThan(peace * 0.5);
+  });
+
+  it("leaves a port of a crown that is not in it alone", () => {
+    // Havana is Spanish here, so pick a port belonging to neither side.
+    const neutral = Object.keys(CITIES).find(
+      k => !["england", "spain"].includes(CITIES[k].factionId as unknown as string),
+    )!;
+    const peace = runDays(makeWorld(), 400).ports[neutral].wealth;
+    const war = runDays(atWar(), 400).ports[neutral].wealth;
+    expect(war).toBe(peace);
+  });
+
+  it("lets the port recover once the war is over", () => {
+    const fought = runDays(atWar(), 400);
+    const during = fought.ports.port_royal.wealth;
+    const after = runDays({ ...fought, worldEvents: [] }, 400).ports.port_royal.wealth;
+    expect(after).toBeGreaterThan(during);
+  });
+});
+
 describe("getAggregatedEffects", () => {
   it("an undisturbed port gets neutral effects", () => {
     const e = getAggregatedEffects(makeWorld(), "port_royal");

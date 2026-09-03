@@ -1489,3 +1489,58 @@ wtedy fregata zdążyła już wyrobić sobie zdanie.
 
 Czerwona wstęga nad banderą dla `navy`, `pirate` i `pirate_hunter`; kupcy jej nie
 mają. Idzie za alfą i skalą bandery, więc pod mgłą znika razem ze statkiem.
+
+
+---
+
+## Wojna dusi żeglugę (v0.21.0)
+
+`EventDailyEffects.importMul`.
+
+Dziesięć historycznych wojen wisiało na tablicy newsów od v0.9.7. Podwajały
+patrole, ruszały ceny i — od v0.16.0 — przesuwały flagi. Czego nigdy nie robiły,
+to nie docierały **na nabrzeże**.
+
+`importMul` jest osobny od `productionMul`, bo huragan, wojna i najazd robią
+zupełnie różne rzeczy zbiorom i konwojom. Wojna ledwo tyka to, co rosną pola, i
+zabiera **jedną trzecią** tego, co dopływa do portu; najazd Indian pali pola i
+zostawia szlaki w spokoju.
+
+| Zdarzenie | `productionMul` | `importMul` |
+|---|---|---|
+| `war_start` | 0.85 | **0.70** |
+| `pirate_raid` | 0.70 | **0.75** |
+| `trade_boom` | 1.50 | **1.20** |
+| `treaty_signed` | 1.15 | **1.15** |
+| `hurricane` | 0 | (port zamknięty) |
+
+Kolonia, która spędza lata na wojnie, jest o to mierzalnie biedniejsza i wraca do
+siebie, kiedy wojna się kończy. Odczuwalne, nie zabójcze — testy pilnują obu
+stron tego zdania.
+
+---
+
+## Zielona załoga konsorty (v0.21.0)
+
+`FleetShip.training?` + `consortTraining()` / `fleetTraining()` /
+`greenCrewTraining()`.
+
+Domknięcie trójki, którą v0.17.0 i v0.19.0 zaczęły: konsorta ma własnych ludzi,
+własne morale i teraz własny **drill**. Kadłub, który dołącza do floty, jest
+obsadzony załogą pryzową albo dostawczą ze stoczni — nie ludźmi, których kapitan
+szkolił latami. Startuje `GREEN_CREW_PENALTY = 0.15` poniżej własnej załogi
+kapitana (podłoga `0.2`) i nadrabia, płynąc w zespole (+0.0005/dzień na morzu,
+to samo tempo co flagowy).
+
+| Gdzie | Skutek |
+|---|---|
+| `CombatEngine.setAllyTraining` | konsorta przeładowuje **własnym** drillem, nie kapitana |
+| `SiegeSystem.attackForceFor` | `training` to `fleetTraining(...)` — średnia ważona ludźmi |
+| Zakładka Kabina | każda konsorta pokazuje załogę, morale i wyszkolenie |
+
+Sens: **drugi statek staje się decyzją, nie darmowymi działami.** Kupno galeonu
+we wtorek pogarsza szturm na fort w środę i poprawia go do wiosny.
+
+Pole jest opcjonalne z fallbackiem na drill flagowego — czyli dokładnie tym, co
+konsorty miały wcześniej. Bez migracji. Stary dwuargumentowy `addToFleet(fleet,
+classId)` nadal znaczy to, co znaczył, i **nie** zapisuje pola.

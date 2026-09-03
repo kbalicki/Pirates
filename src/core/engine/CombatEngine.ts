@@ -57,9 +57,25 @@ export class CombatEngine {
     this.enemyTraining = Math.max(0, Math.min(1, v));
   }
 
+  /**
+   * Drill for one consort, when it has its own (v0.21.0).
+   *
+   * A hull that joined the fleet last month is manned by people the captain has
+   * never drilled, and it should reload like it. Absent an entry the ally falls
+   * back to the player's drill, which is what every consort used before.
+   */
+  private allyTraining: Map<string, number> = new Map();
+
+  setAllyTraining(allyId: string, v: number): void {
+    this.allyTraining.set(allyId, Math.max(0, Math.min(1, v)));
+  }
+
   /** Pick the right training value depending on which ship is firing. */
   private trainingFor(shipId: string, state: CombatState): number {
-    return shipId === (state.playerShipId as string) ? this.playerTraining : this.enemyTraining;
+    if (shipId === (state.playerShipId as string)) return this.playerTraining;
+    const ally = this.allyTraining.get(shipId);
+    if (ally !== undefined) return ally;
+    return this.enemyTraining;
   }
 
   /** Wind angle modulates how easily the ship turns.
@@ -232,10 +248,10 @@ export class CombatEngine {
             };
           }
         }
-        // Set cooldown regardless of hit/miss — allies share the player's training level.
+        // Set cooldown regardless of hit or miss, at this consort's own drill.
         const allyReload = effectiveReloadTicks(
           ally.ship.crew.current, ally.ship.crew.max,
-          ally.ship.crew.morale, this.playerTraining,
+          ally.ship.crew.morale, this.trainingFor(id, state),
         );
         updatedEntities[id] = {
           ...ally,

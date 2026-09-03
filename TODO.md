@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.20.0.0 · **Branch:** `main`
-**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **979 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.21.0.0 · **Branch:** `main`
+**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **990 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.20.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 979/979 zielone; naprawiony został model, w którym **każdy port po cichu głodował** (towary, których miasto nie produkuje, nigdy do niego nie docierały), a statki NPC wywieszają banderę i proporzec wojenny — lista kandydatów na v0.21.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.21.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 990/990 zielone; wojna wreszcie dociera na nabrzeże (osobny człon żeglugowy zdarzeń), a konsorta ma własne wyszkolenie, więc drugi statek jest decyzją, nie darmowymi działami — lista kandydatów na v0.22.0 jest niżej.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -40,6 +40,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Ekonomia miast pirackich | ✅ | `heldEconomyCeiling`: ludzie i pieniądze przestają dryfować ku liczbom kolonii |
 | Morale konsorty | ✅ | `FleetShip.morale?` + `fleetMorale()`: własne morale, ważone ludźmi w oblężeniu |
 | Import do portów | ✅ | `EconomyTickSystem` krok 3.5: kolonia dostaje, czego nie produkuje; czarna bandera tylko przemytników |
+| Wojna na nabrzeżu | ✅ | `EventDailyEffects.importMul`: wojna zabiera 30% dostaw, pokój oddaje |
+| Wyszkolenie konsorty | ✅ | `FleetShip.training?` + `fleetTraining()`: zielona załoga pryzowa, ważona ludźmi |
 
 ### Nietknięte
 
@@ -651,25 +653,66 @@ proporczyków, kupcy bez. `?siege=cartagena` — łup dalej 3200.
 - **`IMPORT_SHARE` nie reaguje na wojnę** poza `productionMul`. Wojna dwóch koron
   powinna dusić żeglugę mocniej niż zbiory
 
-### v0.21.0 — co dalej
+### ~~v0.21.0 — Wojna na nabrzeżu, zielona załoga~~ ✅ (v0.21.0.0)
+
+Dwa domknięcia, oba wyszły wprost z v0.20.0.
+
+**Wojna dusi żeglugę** (`EventDailyEffects.importMul`) — dziesięć historycznych
+wojen wisiało na tablicy newsów od v0.9.7: podwajały patrole, ruszały ceny i od
+v0.16.0 przesuwały flagi. Czego nigdy nie robiły, to nie docierały **na
+nabrzeże**. Teraz zdarzenia mają własny człon żeglugowy, osobny od tego, co robią
+zbiorom, bo huragan, wojna i najazd robią zupełnie różne rzeczy polom i konwojom.
+
+| Zdarzenie | `productionMul` | `importMul` |
+|---|---|---|
+| `war_start` | 0.85 | **0.70** |
+| `pirate_raid` | 0.70 | **0.75** |
+| `trade_boom` | 1.50 | **1.20** |
+| `treaty_signed` | 1.15 | **1.15** |
+
+Kolonia, która spędza lata na wojnie, jest o to mierzalnie biedniejsza i wraca do
+siebie po pokoju. Testy pilnują obu połówek: „mniej niż w pokoju" **i** „więcej
+niż połowa tego, co w pokoju" — wojna ma boleć, nie wyludniać.
+
+**Zielona załoga konsorty** (`FleetShip.training?`) — domknięcie trójki, którą
+zaczęły v0.17.0 (załoga) i v0.19.0 (morale). Kadłub dołączający do floty jest
+obsadzony załogą pryzową albo dostawczą ze stoczni, nie ludźmi, których kapitan
+szkolił latami: startuje 0.15 poniżej własnej załogi kapitana (podłoga 0.2) i
+nadrabia, płynąc w zespole.
+
+Konsorta przeładowuje teraz **własnym** drillem (`CombatEngine.setAllyTraining`),
+a oblężenie uśrednia drill **ważąc ludźmi** — tak samo jak morale. Sens: drugi
+statek staje się **decyzją, a nie darmowymi działami**. Kupno galeonu we wtorek
+pogarsza szturm na fort w środę i poprawia go do wiosny.
+
+Zakładka Kabina pokazuje dla każdej konsorty załogę, morale i wyszkolenie —
+inaczej trzy pola, których gracz nie widzi, byłyby trzema polami, którym nie
+ufa.
+
+**Zostało z tego modułu:**
+- **`importMul` nie zna geografii** — wojna obcina dostawy każdemu portowi
+  wojującej korony jednakowo, niezależnie od tego, gdzie leży i czy ktoś
+  faktycznie blokuje jego redę. To ta sama granica, co przy samym imporcie:
+  bez szlaków nie ma czego przeciąć
+- **Drill konsorty rośnie tylko na morzu** — tak samo jak kapitana, więc flota
+  stojąca miesiącami w porcie nie nadrabia. Zgodne z resztą, ale warto wiedzieć
+
+### v0.22.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
 
-1. **Wyszkolenie konsorty** — morale ma już własne (v0.19.0), `training` wciąż
-   bierze z kapitana. Domknięcie tej samej myśli, ale wymaga decyzji, czym drill
-   konsorty w ogóle jest: załoga pryzowa uczy się osobno czy razem z flotą?
-2. **Wojna powinna dusić żeglugę** — `IMPORT_SHARE` nie reaguje dziś na wojnę
-   poza `productionMul`. Wojna dwóch koron albo blokada powinna obcinać dostawy
-   mocniej niż zbiory; to najtańszy sposób, żeby wojna była czuć w każdym
-   porcie, a nie tylko na tablicy newsów.
-3. **Prawdziwe szlaki handlowe** — import jest abstrakcją; nic nie płynie między
+1. **Prawdziwe szlaki handlowe** — import jest abstrakcją; nic nie płynie między
    portami, więc nie da się przerwać dostaw blokadą konkretnej trasy ani na tym
    zarobić jako przewoźnik. To `Pathfinding.ts` (wciąż pusty hak) plus
    przebudowa `NpcAiSystem`. Duża praca, ale to jedyna droga do handlu, który
    jest czymś więcej niż różnicą cen.
-4. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
+2. **Blokada portu jako czyn gracza** — `importMul` istnieje, `portClosed`
+   istnieje, a gracz nie ma jak żadnego z nich wywołać. Krążenie pod obcym
+   portem powinno dusić jego dostawy; to pierwsza rzecz, jaką pirat robił
+   naprawdę, i cała maszyneria już czeka.
+3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu.
-5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
+4. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
    praca, mały dług.
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
@@ -682,8 +725,9 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - ~~**Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.**~~ ✅ v0.17.0.0 — `PortScene.create()` (tylko przy wejściu przez bramę) i zmiana dnia w `WorldEngine`; pierwszym konsumentem obu jest zlecenie obrony. Zwłoka była celowa: martwy hak jest tym samym błędem co martwa scena, więc czekały na pierwszy quest, który naprawdę ich potrzebuje.
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
-- ~~**Konsorty nie mają morale.**~~ ✅ v0.19.0.0 — `FleetShip.morale?` + `fleetMorale()`. **`training` wciąż jest wspólne** i bierze się z kapitana; domknięcie wymaga decyzji, czym drill załogi pryzowej w ogóle jest.
-- **Import nie reaguje na wojnę.** `IMPORT_SHARE` jest stały poza `productionMul`; wojna dwóch koron powinna dusić żeglugę mocniej niż zbiory.
+- ~~**Konsorty nie mają morale ani wyszkolenia.**~~ ✅ v0.19.0.0 (morale) i v0.21.0.0 (drill) — `FleetShip.morale?` / `.training?`, obie ważone ludźmi przez `fleetMorale()` / `fleetTraining()`. Drill konsorty rośnie **tylko na morzu**, tak jak kapitana.
+- ~~**Import nie reaguje na wojnę.**~~ ✅ v0.21.0.0 — `EventDailyEffects.importMul`. Został brak geografii: wojna obcina dostawy każdemu portowi wojującej korony jednakowo, bo bez szlaków nie ma czego przeciąć.
+- **Gracz nie może zablokować portu.** `importMul` i `portClosed` istnieją, a nic w rękach gracza ich nie wywołuje. Krążenie pod obcym portem powinno dusić jego dostawy — pierwsza rzecz, jaką pirat robił naprawdę, i cała maszyneria już czeka.
 - **Import jest abstrakcją, nie handlem.** Nic nie płynie między portami, więc blokada konkretnej trasy nic nie znaczy, a gracz nie może zarobić jako przewoźnik. Prawdziwe szlaki to `Pathfinding.ts` + przebudowa `NpcAiSystem`.
 - **Magazyn jest jeden, tylko w porcie żony.** Wynajęty skład w dowolnym mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla ekonomii: gracz mógłby magazynować pod każdą górkę cenową.
 - **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Prawdziwa trasa wymaga `Pathfinding.ts`, który wciąż jest pustym hakiem.

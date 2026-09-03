@@ -14,7 +14,14 @@ import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
 import type { AiArchetype } from "../../core/engine/CombatEngine.ts";
 import { changeReputation } from "../../core/systems/ReputationSystem.ts";
-import { addToFleet, canAddToFleet, consortCrew, consortCrewMax, consortMorale } from "../../core/systems/FleetSystem.ts";
+import {
+  addToFleet,
+  canAddToFleet,
+  consortCrew,
+  consortCrewMax,
+  consortMorale,
+  consortTraining,
+} from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
@@ -274,6 +281,11 @@ export class SeaBattleScene extends Phaser.Scene {
     const playerTraining = this.worldState.captain?.training ?? 0.5;
     this.combatEngine.setPlayerTraining(playerTraining);
     this.combatEngine.setEnemyTraining(0.5);
+    // Each consort reloads at its own drill (v0.21.0). A prize taken last month
+    // is manned by people the captain has never drilled, and it shows.
+    (this.worldState.player.fleet ?? []).forEach((fs, i) => {
+      this.combatEngine.setAllyTraining("ally_" + i, consortTraining(fs, playerTraining));
+    });
 
     // Boarding casualties scale with the captain's swordsmanship. Nothing ever
     // set this before v0.11.0, so the engine's default of 5 was used for every
@@ -1292,7 +1304,11 @@ export class SeaBattleScene extends Phaser.Scene {
       const { [enemyId]: _captured, ...remaining } = w.entities;
       let player = { ...w.player, gold: w.player.gold + this.pendingLoot };
       if (enemyWorldEntity?.ship && canAddToFleet(player)) {
-        const newFleet = addToFleet(player.fleet ?? [], enemyWorldEntity.ship.classId as string);
+        const newFleet = addToFleet(
+          player.fleet ?? [],
+          enemyWorldEntity.ship.classId as string,
+          w.captain?.training ?? 0.3,
+        );
         if (newFleet) {
           player = { ...player, fleet: newFleet };
           w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_captured", { gold: this.pendingLoot });

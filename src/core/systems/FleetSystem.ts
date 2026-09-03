@@ -116,6 +116,43 @@ export function fleetMorale(flagshipMorale: number, flagshipCrew: number, fleet:
   return men > 0 ? Math.max(0, Math.min(1, sum / men)) : flagshipMorale;
 }
 
+/** How far below the captain's own crew a newly joined hull starts. */
+export const GREEN_CREW_PENALTY = 0.15;
+/** Drill no crew falls below, however green. */
+export const GREEN_CREW_FLOOR = 0.2;
+
+/** How well a consort's people are drilled. */
+export function consortTraining(consort: FleetShip, flagshipTraining: number): number {
+  return Math.max(0, Math.min(1, consort.training ?? flagshipTraining));
+}
+
+/**
+ * Drill across the fleet, weighted by men — the same shape as `fleetMorale`.
+ *
+ * This is what makes a second ship a real decision rather than free guns: a
+ * hull that joins today is manned by people the captain has never drilled, and
+ * a siege bombardment is measurably worse for it until they catch up.
+ */
+export function fleetTraining(
+  flagshipTraining: number,
+  flagshipCrew: number,
+  fleet: FleetShip[],
+): number {
+  let men = Math.max(0, flagshipCrew);
+  let sum = Math.max(0, flagshipCrew) * flagshipTraining;
+  for (const consort of fleet) {
+    const crew = consortCrew(consort);
+    men += crew;
+    sum += crew * consortTraining(consort, flagshipTraining);
+  }
+  return men > 0 ? Math.max(0, Math.min(1, sum / men)) : flagshipTraining;
+}
+
+/** What a hull joining the fleet today knows. */
+export function greenCrewTraining(captainTraining: number): number {
+  return Math.max(GREEN_CREW_FLOOR, Math.min(1, captainTraining - GREEN_CREW_PENALTY));
+}
+
 /** Berths standing empty across the consorts. */
 export function consortBerthsFree(fleet: FleetShip[]): number {
   return fleet.reduce((sum, c) => sum + Math.max(0, consortCrewMax(c) - consortCrew(c)), 0);
@@ -177,8 +214,17 @@ export function fleetTotalCannons(flagshipShip: ShipData, fleet: FleetShip[]): n
   return total;
 }
 
-/** Add a ship to the fleet. Returns updated fleet array or null if full. */
-export function addToFleet(fleet: FleetShip[], classId: string): FleetShip[] | null {
+/**
+ * Add a ship to the fleet. Returns updated fleet array or null if full.
+ *
+ * `captainTraining` seeds the new hull's drill a notch below the captain's own
+ * crew. It is optional so the older two-argument call still means what it did.
+ */
+export function addToFleet(
+  fleet: FleetShip[],
+  classId: string,
+  captainTraining?: number,
+): FleetShip[] | null {
   if (fleet.length >= MAX_FLEET_SIZE - 1) return null; // -1 because flagship not in array
 
   const cls = SHIP_CLASSES[classId];
@@ -198,6 +244,7 @@ export function addToFleet(fleet: FleetShip[], classId: string): FleetShip[] | n
       // buying and capturing behave the way they did before the field existed.
       crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
       morale: FLEET_DEFAULT_MORALE,
+      ...(captainTraining === undefined ? {} : { training: greenCrewTraining(captainTraining) }),
     },
   ];
 }

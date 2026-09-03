@@ -115,7 +115,7 @@ export function economyDailyTick(world: WorldState): WorldState {
         if (allProduces.includes(item)) continue;
         const need = baselineConsumptionRate(portKey, item, port.population);
         const cap = inventoryCap(portKey, item);
-        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + need * importShare * effects.productionMul);
+        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + need * importShare * effects.importMul);
       }
 
       // 4. Consumption

@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.21.0.0",
+    date: "2026-09-04",
+    changes: [
+      "A WAR IS NOW SOMETHING EVERY PORT FEELS",
+      "  Ten historical wars have been on the news board since v0.9.7. They",
+      "  doubled patrols, moved prices a little and — since v0.16.0 — moved",
+      "  flags. What they never did was reach the quay",
+      "  Events now carry a shipping term of their own, separate from what they",
+      "  do to the harvest: a war takes a third off what reaches a port of either",
+      "  crown, a pirate raid a quarter, and a treaty gives it back",
+      "  A colony that spends years at war is measurably poorer for it, and it",
+      "  recovers when the war ends. Felt, not fatal",
+      "CONSORT CREWS ARE GREEN — a second ship is a decision, not free guns",
+      "  A hull that joins your fleet is manned by a prize crew or a yard's",
+      "  delivery crew, not by people you have spent years drilling. It starts a",
+      "  notch below your own and catches up while it sails in company",
+      "  It reloads at its own drill in a sea battle, and a siege bombardment",
+      "  pools drill across the fleet weighted by men — so buying a galleon on",
+      "  Tuesday makes you worse at storming a fort on Wednesday, and better at",
+      "  it by the spring",
+      "  The Cabin tab shows each consort's crew, morale and drill",
+    ],
+  },
+  {
     version: "0.20.0.0",
     date: "2026-09-04",
     changes: [

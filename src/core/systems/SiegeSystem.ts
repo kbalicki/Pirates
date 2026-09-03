@@ -46,7 +46,7 @@ import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
-import { consortCrew, consortCrewMax, fleetMorale, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
+import { consortCrew, consortCrewMax, fleetMorale, fleetTraining, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
 // ── Who owns a port right now ─────────────────────────────
 
@@ -193,7 +193,13 @@ export function attackForceFor(world: WorldState): AttackForce {
     ),
     gunnery: effectiveSkill(world, "gunnery"),
     fencing: effectiveSkill(world, "fencing"),
-    training: world.captain?.training ?? 0.5,
+    // Weighted across the fleet (v0.21.0), like morale: a hull that joined last
+    // month is manned by people the captain has never drilled.
+    training: fleetTraining(
+      world.captain?.training ?? 0.5,
+      flagship?.crew.current ?? 0,
+      world.player.fleet ?? [],
+    ),
   };
 }
 

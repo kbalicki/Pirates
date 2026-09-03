@@ -25,7 +25,7 @@ import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
-import { consortCrew, consortCrewMax } from "../../core/systems/FleetSystem.ts";
+import { consortCrew, consortCrewMax, consortMorale, consortTraining } from "../../core/systems/FleetSystem.ts";
 import { activeQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
@@ -366,6 +366,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Fleet ships — show with abandon button (at-sea action; sell is in shipyard)
     const fleet = player.fleet ?? [];
+    const captainTraining = this.worldState.captain?.training ?? 0.3;
     if (fleet.length > 0) {
       for (let i = 0; i < fleet.length; i++) {
         const fs = fleet[i];
@@ -375,7 +376,9 @@ export class OptionsMenuScene extends Phaser.Scene {
           `   ${t("hud.hull", { current: Math.round(fs.hullHp), max: fs.hullMax })}` +
           `  |  ${t("hud.sails", { current: Math.round(fs.sailsHp), max: fs.sailsMax })}` +
           `  |  ${t("cabin.cannons", { count: fs.cannons })}` +
-          `  |  ${t("hud.crew", { current: consortCrew(fs), max: consortCrewMax(fs) })}`,
+          `  |  ${t("hud.crew", { current: consortCrew(fs), max: consortCrewMax(fs) })}` +
+          `  |  ${t("hud.morale", { pct: Math.round(consortMorale(fs) * 100) })}` +
+          `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}`,
           { ...txt(11), lineSpacing: 4 });
         this.contentContainer.add(fsInfo);
 

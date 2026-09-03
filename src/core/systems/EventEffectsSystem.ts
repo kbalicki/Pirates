@@ -19,6 +19,17 @@ export type EventDailyEffects = {
   productionMul: number;
   /** Multiplied with consumption rate per demanded item. Default 1. */
   consumptionMul: number;
+  /**
+   * Multiplied with the licensed trade that supplies a port (v0.21.0).
+   *
+   * Separate from `productionMul` because a hurricane, a war and a raid do very
+   * different things to a harvest and to a convoy. A war barely dents what the
+   * fields grow and takes a third off what reaches the quay; a native raid burns
+   * the fields and leaves the sea lanes alone. Folding both into one number made
+   * the wars on the news board something the player read about rather than
+   * something every port felt.
+   */
+  importMul: number;
   /** Multiplied with the demand/supply-derived price. Default 1. */
   priceMul: number;
   /** Flat add to population each day (can be negative). */
@@ -38,6 +49,7 @@ export type EventDailyEffects = {
 const NEUTRAL: EventDailyEffects = {
   productionMul: 1,
   consumptionMul: 1,
+  importMul: 1,
   priceMul: 1,
   popDelta: 0,
   wealthDelta: 0,
@@ -63,10 +75,13 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
       return { ...NEUTRAL,
         defenseDelta: -1,
         productionMul: 0.7,
+        // Masters will not call at a coast that is being worked over.
+        importMul: 0.75,
       };
     case "trade_boom":
       return { ...NEUTRAL,
         productionMul: 1.5,
+        importMul: 1.2,
         priceMul: 0.8,
         wealthDelta: +5,
       };
@@ -91,7 +106,12 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
       };
     case "war_start":
       return { ...NEUTRAL,
-        productionMul: 0.85,  // trade disruption
+        productionMul: 0.85,
+        // Convoys are diverted, hulls are requisitioned and the other side's
+        // privateers are on every route. The fields are barely touched; the
+        // quay is another matter, and this is what makes a war on the news
+        // board something the whole map can feel.
+        importMul: 0.7,
         priceMul: 1.1,
       };
     // ── v0.9.7 economy expansion ────────────────────────────
@@ -129,6 +149,8 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     case "treaty_signed":
       return { ...NEUTRAL,
         productionMul: 1.15,
+        // Peace reopens the routes before it changes anything ashore.
+        importMul: 1.15,
         wealthDelta: +2,
       };
     // A relief squadron is a fleet at sea, not a condition in a town, and its
@@ -165,6 +187,7 @@ export function getAggregatedEffects(world: WorldState, portKey: string): EventD
     agg = {
       productionMul: agg.productionMul * e.productionMul,
       consumptionMul: agg.consumptionMul * e.consumptionMul,
+      importMul: agg.importMul * e.importMul,
       priceMul: agg.priceMul * e.priceMul,
       popDelta: agg.popDelta + e.popDelta,
       wealthDelta: agg.wealthDelta + e.wealthDelta,

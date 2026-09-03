@@ -435,7 +435,11 @@ export function buyShipToFleet(
   // Check if player has enough crew to man the new ship
   const playerEntity = world.entities[world.player.shipId as string];
   const currentCrew = playerEntity?.ship?.crew.current ?? 0;
-  const newFleet = addToFleet(world.player.fleet ?? [], newShipClassId as string);
+  const newFleet = addToFleet(
+    world.player.fleet ?? [],
+    newShipClassId as string,
+    world.captain?.training ?? 0.3,
+  );
   if (!newFleet) return { world, bought: false, error: "fleet_full" };
 
   const flagshipClassId = playerEntity?.ship?.classId as string;
