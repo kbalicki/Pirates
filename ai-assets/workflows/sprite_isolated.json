@@ -1,0 +1,102 @@
+{
+  "1": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": {
+      "ckpt_name": "pixel-art-diffusion-v1.safetensors"
+    }
+  },
+  "9": {
+    "class_type": "LoraLoader",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "clip": [
+        "1",
+        1
+      ],
+      "lora_name": "amigapxl_pirates_v2.safetensors",
+      "strength_model": 0.7,
+      "strength_clip": 0.7
+    }
+  },
+  "2": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "9",
+        1
+      ],
+      "text": "amigapxl, {prompt}, single object, centered, small in frame with wide empty margin, game asset sprite, pixel art icon, plain dark brown background, flat uniform background, even lighting, no shadow on background"
+    }
+  },
+  "3": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "9",
+        1
+      ],
+      "text": "full game screen, user interface, hud, minimap, map, multiple objects, collection, sprite sheet, grid of items, scene, landscape, sea, ocean water, sky, ground, floor, table, background scenery, gradient background, vignette, drop shadow, text, letters, watermark, signature, frame, border, blurry, out of frame, cropped, photo, 3d render, jpeg artifacts"
+    }
+  },
+  "4": {
+    "class_type": "EmptyLatentImage",
+    "inputs": {
+      "width": 512,
+      "height": 512,
+      "batch_size": 1
+    }
+  },
+  "5": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "9",
+        0
+      ],
+      "positive": [
+        "2",
+        0
+      ],
+      "negative": [
+        "3",
+        0
+      ],
+      "latent_image": [
+        "4",
+        0
+      ],
+      "seed": 31337,
+      "steps": 28,
+      "cfg": 7.0,
+      "sampler_name": "dpmpp_2m",
+      "scheduler": "karras",
+      "denoise": 1.0
+    }
+  },
+  "6": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "vae": [
+        "1",
+        2
+      ],
+      "samples": [
+        "5",
+        0
+      ]
+    }
+  },
+  "7": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "6",
+        0
+      ],
+      "filename_prefix": "sprite"
+    }
+  }
+}

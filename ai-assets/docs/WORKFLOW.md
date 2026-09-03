@@ -131,3 +131,51 @@ img.save("sprite_indexed.png")
 - Anti-aliasing na krawędziach — wymaga post-processingu
 - Spójność stylu między różnymi assetami — trudna do utrzymania
 - Dotychczasowy LoRA (amigapxl_pirates_v1) — niesatysfakcjonujące wyniki
+
+---
+
+## Pipeline obowiązujący (2026-09-03) — supersedes powyższe
+
+> Fragmenty „usuwanie tła" i „ograniczenie palety" powyżej są **przestarzałe**.
+> Globalny chroma-key (`r>240 and g>240 and b>240`) zjada białe żagle w środku
+> statku i zostawia szarą obwódkę. Nie używać.
+
+### 1. Generowanie — `ai-assets/workflows/sprite_isolated.json`
+
+```bash
+node sd-pipeline/tools/comfy.mjs gen \
+  --workflow ai-assets/workflows/sprite_isolated.json \
+  --prompt "wooden treasure chest with gold trim, closed lid" \
+  --seed 31337 --name chest --out temp/gen
+```
+
+Trzy różnice wobec `sd-pipeline/workflows/*` — każda naprawia realny błąd:
+
+| Co | Dlaczego |
+|---|---|
+| LoRA jawna w grafie (`amigapxl_pirates_v2` @ 0.7) | `pirate_lora.json` miał zaszyty **v1 @ 0.8**; `comfy.mjs` nadpisuje `LoraLoader` tylko gdy podasz `--lora`, więc bez tej flagi LoRA działała po cichu. Tak powstał mylący `temp/comfy-test/lora_ship_12345.png` opisany w JSON-ie jako `"lora": null`. Generacja **bez** LoRA: `--set 9.strength_model=0 --set 9.strength_clip=0`. |
+| Ogon promptu = captiony zbioru v2 + `small in frame with wide empty margin` | `transparent background` nic nie daje (SD nie generuje alfy) a psuje kompozycję. Margines w prompcie usuwa najczęstszą wadę: obiekt obcięty krawędzią kadru. |
+| **Brak `ImageScale` w grafie** | Skalowanie 512→64 *przed* wycięciem tła miesza kolor tła z krawędzią obiektu — stąd 1972 kolory w `icon_chest_777.png`. Downscale robi dopiero post-processing, już na obrazie z alfą. |
+
+### 2. Post-processing — `ai-assets/scripts/postprocess_asset.py`
+
+```bash
+python ai-assets/scripts/postprocess_asset.py temp/gen -o temp/out \
+  --size 64 --hard --palette 24 --tol 45
+```
+
+Kolejność: wykrycie tła z ramki → **flood fill od krawędzi** (nie globalny key,
+więc białe żagle w środku zostają) → łatanie dziur i kasowanie odprysków →
+miękka alfa + dekontaminacja koloru krawędzi → trim do bboxa → skalowanie do
+`--content` canvasu → kwantyzacja palety (`--palette 24` / `amiga`) → wyśrodkowanie
+na canvasie `--size` → PNG-32 + `postprocess_report.json`.
+
+Wymaga tylko Pillow + numpy + scipy (są w systemowym Pythonie i w venv ComfyUI).
+
+### 3. Kryteria akceptacji (liczbowe, w raporcie)
+
+Skrypt odrzuca asset, gdy: tło ramki nie jest jednolite (to scena, nie obiekt) ·
+obiekt dotyka krawędzi kadru · `alpha_min != 0` (nic nie wycięto) ·
+`alpha_max < 255` · krycie canvasu poza `--min-coverage`/`--max-coverage` ·
+po odcięciu tła zostało >92 % kadru · liczba kolorów > `--max-colors`.
+`--strict` daje kod wyjścia 1 — nadaje się do bramki w skrypcie wsadowym.
