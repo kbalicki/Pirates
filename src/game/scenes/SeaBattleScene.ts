@@ -7,6 +7,7 @@ import { CombatEngine } from "../../core/engine/CombatEngine.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
+import { ShipDamageOverlay } from "../render/ShipDamageOverlay.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
@@ -67,6 +68,8 @@ export class SeaBattleScene extends Phaser.Scene {
   private allySprites: Record<string, Phaser.GameObjects.Sprite> = {};
   /** Ships whose sinking animation has already been started, by entity id. */
   private sinkingSprites = new Set<string>();
+  /** Procedural shot holes / torn canvas per ship, keyed by entity id. */
+  private damageOverlays: Record<string, ShipDamageOverlay> = {};
   private allyBars: Record<string, { hull: Phaser.GameObjects.Graphics; sail: Phaser.GameObjects.Graphics }> = {};
   /** True when launched via ?battle URL param — uses random corner spawns. */
   private testMode = false;
@@ -307,6 +310,14 @@ export class SeaBattleScene extends Phaser.Scene {
     this.playerSprite.setDepth(50);
     this.enemySprite.setDepth(50);
 
+    // Damage is drawn on top of the sprite rather than baked into frames — see
+    // ShipDamageOverlay for why generated damage frames were abandoned.
+    this.damageOverlays[this.combatState.playerShipId as string] =
+      new ShipDamageOverlay(this, this.combatState.playerShipId as string, 55);
+    this.damageOverlays[this.combatState.enemyShipId as string] =
+      new ShipDamageOverlay(this, this.combatState.enemyShipId as string, 55);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.releaseDamageOverlays());
+
     // Camera follows player so they appear fixed at screen center
     cam.startFollow(this.playerSprite, true, 1, 1);
 
@@ -344,6 +355,7 @@ export class SeaBattleScene extends Phaser.Scene {
       sprite.setDepth(45);
       sprite.setTint(0x99ddff); // tint allies blueish
       this.allySprites[id] = sprite;
+      this.damageOverlays[id] = new ShipDamageOverlay(this, id, 55);
       this.allyBars[id] = {
         hull: this.add.graphics().setDepth(60),
         sail: this.add.graphics().setDepth(60),
@@ -530,6 +542,7 @@ export class SeaBattleScene extends Phaser.Scene {
       } else {
         this.playerSprite.setPosition(sx, sy);
         this.playerSprite.setFrame(DIR8_TO_FRAME[headingToDir8(playerEntity.heading)]);
+        this.drawDamage(this.combatState.playerShipId as string, sx, sy, playerEntity, this.playerSprite);
       }
       this.playerLabel.setPosition(sx, sy - 26);
       this.drawBars(this.playerHullBar, this.playerSailBar, sx, sy + 22, playerEntity.ship);
@@ -559,6 +572,7 @@ export class SeaBattleScene extends Phaser.Scene {
       } else {
         this.enemySprite.setPosition(sx, sy);
         this.enemySprite.setFrame(DIR8_TO_FRAME[headingToDir8(enemyEntity.heading)]);
+        this.drawDamage(this.combatState.enemyShipId as string, sx, sy, enemyEntity, this.enemySprite);
       }
       this.enemyLabel.setPosition(sx, sy - 26);
       this.drawBars(this.enemyHullBar, this.enemySailBar, sx, sy + 22, enemyEntity.ship);
@@ -587,6 +601,7 @@ export class SeaBattleScene extends Phaser.Scene {
       } else {
         sprite.setPosition(sx, sy);
         sprite.setFrame(DIR8_TO_FRAME[headingToDir8(ent.heading)]);
+        this.drawDamage(id, sx, sy, ent, sprite);
       }
       const bars = this.allyBars[id];
       if (bars) this.drawBars(bars.hull, bars.sail, sx, sy + 18, ent.ship);
@@ -756,6 +771,34 @@ export class SeaBattleScene extends Phaser.Scene {
     g.fillStyle(0x222222, 0.75).fillRect(rx, topY, W, H);
     g.fillStyle(rProg >= 1 ? 0xffee44 : 0x44aa44, 1).fillRect(rx, topY, W * rProg, H);
     g.lineStyle(1, 0x77dd77, 0.9).strokeRect(rx, topY, W, H);
+  }
+
+  /**
+   * Refresh one ship's damage overlay. The radius is derived from the sprite's
+   * own display size, so the marks track whatever scale the sprite is at.
+   */
+  private drawDamage(
+    id: string,
+    sx: number, sy: number,
+    entity: CombatEntityState,
+    sprite: Phaser.GameObjects.Sprite,
+  ): void {
+    const overlay = this.damageOverlays[id];
+    if (!overlay) return;
+    // The sprite cell is square and largely padding; the ship fills about a
+    // third of it, which is the scale the marks are sized against.
+    overlay.draw(sx, sy, entity.ship, sprite.displayWidth * 0.33);
+  }
+
+  /**
+   * Drop the overlay graphics on the way out.
+   *
+   * Registered on the SHUTDOWN event, not named `shutdown` and left to chance:
+   * Phaser emits that event but does not call a same-named method on the scene.
+   */
+  private releaseDamageOverlays(): void {
+    for (const overlay of Object.values(this.damageOverlays)) overlay.destroy();
+    this.damageOverlays = {};
   }
 
   /**

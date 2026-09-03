@@ -6,6 +6,33 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.12.1.0",
+    date: "2026-09-03",
+    changes: [
+      "DAMAGE, VISIBLE — shot holes and torn canvas drawn onto the ship sprite",
+      "  v0.9.9 named the hull and rig stages but the ship looked the same at",
+      "  90% and at 20%: two bars, and a smoke puff below 25%",
+      "  leaking 2 holes, crippled 4 + torn canvas, foundering 6 + waterline stain",
+      "  dismasted adds a spar over the side with slack canvas trailing off it",
+      "  Marks are jittered from a hash of the ship id, so they stay put across",
+      "  frames and two ships in the same battle are marked differently",
+      "  Drawn in screen space, not rotated by heading: sailship.png is a 3/4",
+      "  view whose hull always sits low in the cell, so rotating put holes in",
+      "  the rigging on half the headings and in empty padding on the rest",
+      "  Applies to the player, the enemy and every fleet consort",
+      "AI ASSETS — the generated damage frames were abandoned, and why",
+      "  Every torn-sails / broken-mast prompt came back as an untouched ship:",
+      "  the model has no notion of a damaged version of something it only saw",
+      "  intact. Four generated frames, four clean ships. Drawing beats prompting",
+      "  here because the marks derive from the numbers the engine already steers by",
+      "  LoRA v3 dataset builder added: 8 ship frames mirrored onto two grounds",
+      "  give 32 top-down samples instead of 8, icons cut from 48 to 28 entries",
+      "  Top-down share rises from 10% to 32% of the set, with double the repeats",
+      "  It fixes the 3/4-view bias; it cannot fix nine ship classes looking alike,",
+      "  because the project contains exactly one ship sprite",
+    ],
+  },
+  {
     version: "0.12.0.0",
     date: "2026-09-02",
     changes: [

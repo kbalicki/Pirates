@@ -1,10 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-01 · **Wersja:** v0.12.0.0 · **Branch:** `main`
-**Kod:** 118 plików `.ts`, ~23 000 LOC · `tsc --noEmit` czysty · `npm test` — **489 przechodzi, 0 failuje, 0 `todo`** w 13 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.12.1.0 · **Branch:** `main`
+**Kod:** 137 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **489 przechodzi, 0 failuje, 0 `todo`** w 13 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
+
+> **Start sesji w jednym zdaniu:** wersja v0.12.1.0 jest na `main` i wdrożona na pirates.k4.pl, testy 489/489 zielone, moduły A-D (uszkodzenia, pojedynki, cele i konsekwencje, mapy skarbów) domknięte — następne w kolejce są **bitwy lądowe (v0.13.0)**, opisane w sekcji 3 poniżej.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -179,8 +181,8 @@ Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.1
 
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
-- **Retrening LoRA `amigapxl_pirates_v1`** — obecna wersja była trenowana na **pełnych zrzutach ekranu** z Amigi, więc generuje całe ekrany gry z HUD-em zamiast pojedynczych sprite'ów (potwierdzone testami przy sile 0.8 i 0.45; prompt negatywny nie pomaga). Naprawa: zbiór treningowy z **wyciętych pojedynczych obiektów na przezroczystym tle**, retrening w `C:\AI\kohya_ss`. Do czasu retreningu izolowane assety rób checkpointem `pixel-art-diffusion-v1` bez tej LoRA — ta ścieżka działa i jest sprawdzona.
-- **Assety AI** — sprite'y statków dalej z jednego arkusza `sailship.png` (8 kierunków, brak wariantów klas i frakcji). Moduł uszkodzeń (v0.9.9) będzie potrzebował klatek zniszczeń. Narzędzie: `node sd-pipeline/tools/comfy.mjs`, playbook `.claude/skills/task/playbooks/assets.md`.
+- **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1). Problem „całe ekrany zamiast sprite'ów" **rozwiązany**: 51/51 assetów to pojedynczy obiekt. Nadaje się do użycia: ikony ekwipunku i budynki portu przy sile 0.6-0.75. **Nie** nadaje się: dziewięć klas statków wychodzi identycznych (w projekcie jest jeden sprite statku — retrening tego nie naprawi bez nowego materiału), towary są bezkształtne, portrety nie trzymają wspólnego stylu. Zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). v3 poprawia ujęcie z góry (10% → 32% zbioru) i balans kategorii. Ocena i szczegóły: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
+- **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
 
 ---

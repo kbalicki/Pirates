@@ -326,6 +326,8 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 
 **Utrata ładunku.** Zatonięcie zabiera ładownię: `cargoSurvivingSinking()` zostawia 10-30% w zależności od tego, ile załogi jeszcze żyje.
 
+**Warstwa wizualna (v0.12.1):** `game/render/ShipDamageOverlay.ts` dorysowuje uszkodzenia na sprite'cie zamiast osobnych klatek — przestrzeliny na kadłubie, wyrwy w płótnie, plamę na linii wodnej przy tonięciu i zwisającą reję przy zerwanym maszcie. Znaki są losowane z hasha identyfikatora statku, więc stoją w miejscu między klatkami i różnią się między jednostkami. Rysowane **w przestrzeni ekranu, bez obrotu o kurs** — `sailship.png` to ujęcie 3/4, w którym kadłub zawsze siedzi w dolnej części kadru, więc obracanie znaków wraz z kursem wsadzało przestrzeliny w takielunek albo w pustą ramkę.
+
 ### AI wroga
 
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie

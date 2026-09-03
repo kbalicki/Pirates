@@ -163,3 +163,23 @@ Prompty (`sd-pipeline/prompts/`):
 > Dane treningowe: `C:\GIT\PiratesChronicles\temp\Pirates Amiga assets` — ręcznie posegregowane
 > screenshoty z Amiga i C64 Pirates!. Cały pipeline wymaga poprawienia.
 > Więcej w [AI Assets subprojekt](../ai-assets/README.md).
+
+## LoRA `amigapxl_pirates` — stan na v0.12.1
+
+| Wersja | Zbiór | Wynik |
+|---|---|---|
+| v1 | pełne zrzuty ekranu z Amigi | generowała **całe ekrany gry z HUD-em** zamiast sprite'ów; prompt negatywny nie pomagał |
+| v2 | 82 wycięte obiekty na jednolitym tle | pojedynczy wyśrodkowany obiekt w 51/51 przypadków — **główny problem rozwiązany** |
+| v3 | 100 obrazów, przebalansowane | zbudowany, **nietrenowany** — `ai-assets/scripts/build_lora_v3_dataset.py` |
+
+**Co v2 robi dobrze:** ikony ekwipunku (skrzynia, sakiewka, kompas, kordelas, moneta, jolly roger, pistolet, rum, luneta, kotwica, beczka, mapa) i budynki portu. Optymalna siła 0.6-0.75; przy 0.9 detal się rozpada.
+
+**Czego v2 nie robi:**
+- **Dziewięć klas statków wygląda tak samo** — w projekcie jest dokładnie jeden sprite statku, więc model nie ma skąd wziąć sylwetki pinasy ani galeonu. Retrening tego nie naprawi; potrzebny nowy materiał źródłowy.
+- **Klatki uszkodzeń** — każdy prompt „podarte żagle" / „zerwany maszt" wracał nietkniętym statkiem. Porzucone na rzecz proceduralnej nakładki (`ShipDamageOverlay`).
+- **Towary** — bezkształtne bryłki; w zbiorze nie ma cukru, tytoniu ani bawełny.
+- **Portrety** — brak wspólnego stylu, jako zestaw się nie kleją.
+
+**Co naprawia v3:** ujęcie z góry (udział klatek top-down 10% → 32%, przy podwojonej wadze `repeats`) i balans kategorii. Nie naprawia różnorodności sylwetek — patrz wyżej.
+
+Pełny raport: [`ai-assets/docs/LORA_V2_RETRAIN.md`](../ai-assets/docs/LORA_V2_RETRAIN.md). Wygenerowane PNG-i leżą poza repo (`.gitignore`), odtwarzalne ze skryptów i `manifest.json`.

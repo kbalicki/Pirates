@@ -47,6 +47,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.10.0.0 | **Pojedynki kapitanów** przy abordażu; naprawa na morzu; ratowanie rozbitków | ✅ |
 | 0.11.0.0 | **System dialogów**, podział łupów, starzenie kapitana, emerytura z punktacją | ✅ |
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
+| 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -67,7 +68,7 @@ Kolejność wynika z zasady: **najpierw domykamy pętle, które już istnieją**
 
 - ✅ **Kadłub:** ≥75% sprawny, ≥50% przeciek, ≥25% ciężko uszkodzony, poniżej — tonie
 - ✅ **Ożaglowanie:** podarte → w strzępach → zerwany maszt (dryf w bitwie, pełzanie ×0.15 na mapie)
-- ✅ **Wizualne:** dym, ogień przy tonięciu, animacja zatonięcia, utrata ładunku
+- ✅ **Wizualne:** dym, ogień przy tonięciu, animacja zatonięcia, utrata ładunku, przestrzeliny i wyrwy w żaglach (`ShipDamageOverlay`, v0.12.1)
 - ✅ **Naprawa prowizoryczna na morzu** — dzienna, sufit 50% kadłuba / 60% takielunku
 - ✅ **Ratowanie załogi** — 40% żywej załogi zatopionego wroga, w miarę wolnych koi
 - ⬜ **Przechył** — pominięty świadomie: widok z góry, przechył byłby niewidoczny
