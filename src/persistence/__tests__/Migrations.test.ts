@@ -295,6 +295,40 @@ describe("v10 — the plunder clock", () => {
   });
 });
 
+describe("v11 — sieges and courtship", () => {
+  it("an old career has stormed no towns and courted nobody", () => {
+    const migrated = migrateWorldState(makeV1Save()) as any;
+    expect(migrated.player.citiesCaptured).toBe(0);
+    expect(migrated.player.courtship).toEqual({});
+  });
+
+  it("keeps counters a save already carries", () => {
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 10;
+    save.player.citiesCaptured = 3;
+    save.player.courtship = { port_royal: 40 };
+    const migrated = migrateWorldState(save) as any;
+    expect(migrated.player.citiesCaptured).toBe(3);
+    expect(migrated.player.courtship).toEqual({ port_royal: 40 });
+  });
+
+  it("leaves port ownership exactly where the save had it", () => {
+    // `PortRuntimeState.factionId` has existed since v3 and simply never
+    // changed until sieges; there is nothing to backfill.
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 10;
+    save.ports.havana.factionId = "pirates";
+    expect((migrateWorldState(save) as any).ports.havana.factionId).toBe("pirates");
+  });
+
+  it("replaces a courtship field that is not an object", () => {
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 10;
+    save.player.courtship = null;
+    expect((migrateWorldState(save) as any).player.courtship).toEqual({});
+  });
+});
+
 describe("entry points and idempotence", () => {
   it("a current-version save passes through untouched", () => {
     const migrated = migrateWorldState(makeV1Save()) as any;

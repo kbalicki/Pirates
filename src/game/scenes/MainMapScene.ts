@@ -22,9 +22,9 @@ import { MountainRenderer } from "../render/MountainRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { SailSystem } from "../../core/systems/SailSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import {
   activeTreasureMaps,
-  treasureQuest,
   digOutcome,
   digHintKey,
 } from "../../core/systems/TreasureSystem.ts";
@@ -324,7 +324,11 @@ export class MainMapScene extends Phaser.Scene {
     };
     this.scale.on("resize", this.onResize);
 
-    const portMarkers = new PortMarkerRenderer(this, this.landGrid).render();
+    const owners: Record<string, string> = {};
+    for (const [key, port] of Object.entries(this.worldState.ports)) {
+      owners[key] = port.factionId as string;
+    }
+    const portMarkers = new PortMarkerRenderer(this, this.landGrid).render(owners);
     this.portSafePositions = portMarkers.portSafePositions;
     this.cityLabels = portMarkers.cityLabels;
     this.coordLabels = portMarkers.coordLabels;
@@ -528,8 +532,13 @@ export class MainMapScene extends Phaser.Scene {
       return;
     }
 
-    const registry = Object.fromEntries(maps.map(m => [m.questId, treasureQuest(m)]));
-    const result = advanceQuests(this.worldState, { type: "dig_at", x: pos.x, y: pos.y, radius: 0 }, registry);
+    // Every quest the log knows about, not just the maps in hand: a dig must
+    // not be fed a registry that quietly omits the other threads (v0.14.0).
+    const result = advanceQuests(
+      this.worldState,
+      { type: "dig_at", x: pos.x, y: pos.y, radius: 0 },
+      buildQuestRegistry(this.worldState),
+    );
     this.worldState = result.world;
     this.registry.set("worldState", this.worldState);
 

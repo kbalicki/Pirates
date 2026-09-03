@@ -583,3 +583,199 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Żniwa (jesień) | ceny jedzenia i cukru ×0.6, zastrzyk do inventarza |
 | Dekret królewski | zmiana ceł w całej frakcji, do roku |
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
+
+---
+
+## SiegeSystem (v0.13.0)
+
+Zdobywanie miast. Do v0.13.0 odpowiedź „ATAK" w `PortApproachScene` startowała
+bitwę morską z `enemyId = portId`, czyli z przeciwnikiem, którego nie ma w
+`entities` — bez kadłuba i bez dział. `PortRuntimeState.defense` istniało od v7,
+było popychane przez wydarzenia świata i nikt go nie czytał.
+
+Trzy etapy, z czego tylko środkowy nie jest decyzją:
+
+1. **Ostrzał** — interaktywny, runda po rundzie
+2. **Desant** — auto-resolve falami
+3. **Łupy** — co zrobić z miastem bez garnizonu
+
+### Garnizon
+
+```
+soldiers = SIZE_SOLDIERS[size] × (0.35 + defense/100 × 0.65) × popFactor
+guns     = TYPE_GUNS[type]     × (0.30 + defense/100 × 0.70)
+walls    = min(TYPE_WALL_CAP[type], defense)
+```
+
+| | outpost | city | fort |
+|---|---|---|---|
+| `TYPE_GUNS` | 4 | 12 | 26 |
+| `TYPE_WALL_CAP` | 35 | 70 | 100 |
+
+`SIZE_SOLDIERS`: small 25 · medium 55 · large 100 · capital 160.
+
+`popFactor = clamp(port.population / baseline.population, 0.4, 1.3)` — miasto
+wyludnione przez epidemię albo głód jest **mierzalnie** łatwiejsze do wzięcia.
+To pierwsze miejsce, w którym numeryka żywego świata rozstrzyga coś, co gracz czuje.
+
+### Ostrzał
+
+Obie strony strzelają w tej samej rundzie, więc uciszenie ostatniego działa i tak
+kosztuje jego ostatnią salwę.
+
+```
+bombardAccuracy(gunnery, training) = 0.35 + gunnery/10 × 0.35 + training × 0.15   // 0.35..0.85
+fleetHits = cannons × accuracy × (0.75 + rng × 0.50)
+walls -= fleetHits × 0.35     (HIT_TO_WALLS)
+guns  -= fleetHits × 0.12     (HIT_TO_GUNS)
+
+fortAccuracy(walls, wallsMax) = 0.30 + (walls/wallsMax) × 0.25                    // 0.30..0.55
+fortHits = guns × fortAccuracy × (0.7 + rng × 0.6)
+hull -= fortHits × 0.9        (FORT_SHOT_HULL)
+crew -= round(fortHits × 0.2) (FORT_SHOT_CREW)
+```
+
+Nietknięte mury to nie tylko osłona — to stabilna platforma działowa i wdrożony
+dalmierz. Zbicie murów pogarsza ogień odwetowy, co jest drugim powodem, żeby
+strzelać w mur, a nie tylko w strzelnice.
+
+Flota odpada przy `hullHp ≤ hullMax × 0.2` (`FLEET_BREAK_HULL`) albo `crew < 5`.
+Fregata ucisza Kartagenę w 8-12 rundach kosztem ~80 kadłuba; slup zostaje odparty,
+zanim działa umilkną. Działa i ludzie liczą się **z całej floty**.
+
+### Desant
+
+```
+attack  = men × (0.6 + morale × 0.6) × (1 + fencing/14) × (0.85 + training × 0.3)
+defence = soldiers × wallFactor × gunFactor × (1 + defense/250)
+  wallFactor = 0.5 + (walls/wallsMax) × 0.8      // 0.5 .. 1.3
+  gunFactor  = 1 + guns × 0.02
+```
+
+`men = landingParty(force)` = 85% załogi, minus 5 rąk zostających na pokładzie.
+
+Mury są warte do **2.5×** siły garnizonu — to cała argumentacja za płaceniem
+kadłubem, zanim zapłaci się ludźmi. Desant na nietknięty fort I klasy to 39%;
+ten sam desant po porządnym ostrzale — 70%.
+
+Rozstrzygnięcie: do `MAX_WAVES = 6` fal wzajemnego wykrwawiania. Każda strona
+traci ułamek **własnej** liczebności (`WAVE_INTENSITY = 0.18`), ważony tym, kto
+wygrywa falę. Wspólna pula (pierwsza wersja) była błędem: mniejsza siła
+docierała do progu paniki pierwsza, nawet gdy była silniejsza, więc przewaga
+liczebna liczyła się dwa razy.
+
+Obrońcy pierzchają przy `DEFENDER_ROUT = 0.35` stanu wyjściowego, atakujący
+wracają do szalup przy `ATTACKER_ROUT = 0.45`.
+
+### Łupy
+
+```
+loot = wealth × 3 + population × 0.05
+```
+
+| Wybór | Udział | Kto trzyma miasto | Skutki |
+|---|---|---|---|
+| `plunder` | 100% | stary właściciel | −30 rep, +10 piraci, +8 sławy |
+| `brethren` | 70% | piraci | −30 rep, +20 piraci, +12 sławy |
+| `sponsor` | 50% | frakcja z listem kaperskim | −35 rep, +25 sponsorowi, +1 ranga, −5 pozostałym |
+
+Złupione miasto zostaje z 15% obrony, 35% zamożności (60% przy `sponsor`) i 85%
+populacji. `EconomyTickSystem` podciąga je z powrotem do baseline'u przez kolejne
+miesiące — zdobycie miasta ma znaczyć, ale nie na zawsze.
+
+`portFaction(world, portKey)` jest **jedynym** poprawnym sposobem na odczytanie
+właściciela portu: `CityDef.factionId` to mapa z 1680 i nigdy się nie zmienia.
+
+`writeBackForce()` rozbija pulę z powrotem na kadłuby — obrażenia proporcjonalnie
+do wniesionego kadłuba, straty w ludziach proporcjonalnie do wniesionej załogi.
+`FleetShip` nie ma pola załogi, więc straty konsorty są odczuwalne dopiero w
+kolejnym oblężeniu (liczy je od klasy) — to to samo uproszczenie, które
+`FleetSystem` robi wszędzie indziej.
+
+---
+
+## RomanceSystem (v0.14.0)
+
+`charm` istniał w `CaptainSkills` od tworzenia postaci i do v0.14.0 **nie był
+czytany nigdzie w kodzie**. To jest to, do czego był.
+
+### Kto istnieje
+
+Każde miasto powyżej przystani (`type !== "outpost"` i `population !== "small"`)
+ma dokładnie jedną córkę gubernatora, **wyprowadzoną** z klucza portu przez
+hash FNV-1a, a nie losowaną: imię i uroda są takie same w każdym zapisie.
+W `WorldState` ląduje jedna liczba: `player.courtship[portKey]` (0-100).
+
+Imiona zależą od frakcji, która **dziś** trzyma miasto — po zdobyciu Hawany
+przez Anglię gubernator ma córkę o angielskim imieniu.
+
+### Zaloty
+
+Dom otwiera się przy reputacji ≥ 20 (`REPUTATION_TO_BE_RECEIVED`).
+
+```
+approachChance = base − (level/100) × 0.55 × beautyDifficulty     clamp 0.05..0.95
+
+  compliment   base = 0.45 + charm/10 × 0.35
+  dance        base = 0.35 + charm/10 × 0.45
+  gift         base = 0.55 + charm/10 × 0.20   (0 przy gold < 500)
+  boast        base = 0.20 + min(1, notoriety/80) × 0.55 + charm/10 × 0.10
+
+  beautyDifficulty: plain 1.0 · comely 1.2 · beautiful 1.6
+```
+
+| Podejście | Trafienie | Pudło |
+|---|---|---|
+| komplement | +6 | −3 |
+| taniec | +14 | −9 |
+| podarunek | +12 | −4 |
+| przechwałka | +10 | −8 |
+
+Pudło kosztuje grunt, więc właściwy ruch zależy od tego, kim kapitan naprawdę
+jest. Podarunek jest opłacony niezależnie od wyniku.
+
+### Progi
+
+- `SHARES_A_LEAD = 30` — powtarza, co ojciec mówił przy kolacji: to darmowe
+  wejście w wątek rodzinny (flaga `daughter_lead_<port>`)
+- `MARRIAGE_THRESHOLD = 85` + `MARRIAGE_MIN_RANK = 2` u jej frakcji — oświadczyny
+- Ślub jest **jeden**, na zawsze: `captain_married` + `married_to_<port>`,
+  +20 reputacji i 500/900/1500 punktów na emeryturze wg urody
+
+---
+
+## FamilyQuestSystem (v0.14.0)
+
+Pierwszy pisany ręcznie wątek. Markiz korony, która najbardziej nie znosi korony
+kapitana (`villainFactionFor()` z tabeli `FACTIONS[...].relations`), rozproszył
+rodzinę po trzech swoich miastach: siostra, brat, ojciec.
+
+Łańcuch jest **instancją** jak mapa skarbu: trzy miasta losowane raz, zapisane w
+`data.chain` questa, a `QuestDef` odbudowywany z nich przez `familyQuest()`.
+Żadnych nowych pól w `WorldState`.
+
+```
+step0  on flag_set("family_step_0")  → step1   +800 gold
+step1  on flag_set("family_step_1")  → step2   +1500 gold
+step2  on flag_set("family_step_2")  → done    +3000 gold, +20 rep własnej korony
+```
+
+Flagi są spoiną między czystą maszyną questów a sceną, która odgrywa walkę:
+`QuestSystem` nie wie nic o pojedynkach, `DuelScene` nie wie nic o questach.
+
+Wejście: informator w tawernie za `INFORMER_PRICE = 200` albo darmowo od córki
+gubernatora przy standingu 30. Przegrany pojedynek nie kosztuje nic poza drogą
+powrotną — ślepy zaułek uwięziłby wątek.
+
+---
+
+## QuestRegistry (v0.14.0)
+
+`advanceQuests` potrzebuje `QuestDef` dla każdego wpisu w logu. Do v0.14.0
+jedyny wywołujący budował tę mapę w locie z map skarbów, które akurat trzymał
+(`MainMapScene.digForTreasure`). Przy drugim źródle questów to przestaje działać:
+kopanie dostawałoby rejestr bez wątku rodzinnego, a odbicie krewnego — rejestr
+bez polowań na skarby.
+
+`buildQuestRegistry(world)` odbudowuje wszystko z `questLog`: `treasure_*` z
+`data.map`, `family_search` z `data.chain`, plus ręcznie pisane `QUESTS`.

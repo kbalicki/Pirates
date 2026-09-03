@@ -172,6 +172,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?debug=1     — enable debug mode
     //   ?battle=1    — bypass everything, launch straight into a sea battle vs a test enemy
     //   ?battle=trader|navy|pirate — choose enemy archetype
+    //   ?siege=cartagena — jump straight to a city assault, with a ship able to try it
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -186,6 +187,13 @@ export class PreloadScene extends Phaser.Scene {
       this.scene.start("SeaBattleScene", { worldState: world, enemyId: "test_enemy", testMode: true });
       return;
     }
+    if (params.has("siege")) {
+      const portKey = params.get("siege") || "cartagena";
+      const world = this.createSiegeWorld();
+      this.registry.set("worldState", world);
+      this.scene.start("CityAssaultScene", { worldState: world, portId: portKey });
+      return;
+    }
     if (params.has("skip")) {
       const world = createNewWorldState(Date.now());
       this.registry.set("worldState", world);
@@ -193,6 +201,43 @@ export class PreloadScene extends Phaser.Scene {
     } else {
       this.scene.start("CharacterCreationScene");
     }
+  }
+
+  /**
+   * A world with a ship that can actually try a fort, for `?siege=` testing.
+   *
+   * The starting sloop is driven off a first-rate battery long before its guns
+   * are out — which is correct, and useless for looking at the screen. This
+   * hands the captain a frigate, a consort and a letter of marque, so every
+   * branch of the spoils menu is reachable.
+   */
+  private createSiegeWorld(): import("../../core/model/WorldState.ts").WorldState {
+    const world = createNewWorldState(Date.now());
+    const shipId = world.player.shipId as string;
+    const entity = world.entities[shipId];
+    if (!entity?.ship) return world;
+    return {
+      ...world,
+      worldFlags: { ...world.worldFlags, letter_of_marque_england: true },
+      player: {
+        ...world.player,
+        fleet: [{ classId: "frigate", hullHp: 120, hullMax: 120, sailsHp: 90, sailsMax: 90, cannons: 28 }],
+      },
+      entities: {
+        ...world.entities,
+        [shipId]: {
+          ...entity,
+          ship: {
+            ...entity.ship,
+            classId: "frigate" as import("../../core/model/ids.ts").ShipClassId,
+            hullHp: 120, hullMax: 120,
+            sailsHp: 90, sailsMax: 90,
+            cannons: 28,
+            crew: { current: 80, max: 80, morale: 0.9 },
+          },
+        },
+      },
+    };
   }
 
   /** Build a minimal world with the player + one test enemy NPC near them for ?battle testing. */

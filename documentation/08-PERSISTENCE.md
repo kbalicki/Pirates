@@ -78,6 +78,7 @@ Aktualna wersja stanu: **10** (`CURRENT_WORLD_VERSION` w `Migrations.ts`)
 | v8 | Dodanie `captain.training` (mechanika przeładowania), domyślnie 0.30 |
 | v9 | Naprawa kształtu portów: `shipyardQueue` i `availableCrew` uzupełniane w portach przeniesionych z zapisów sprzed v2 |
 | v10 | `player.lastPlunderDay` — zegar podziału łupów; w starych zapisach liczony od dnia wczytania, nie od dnia 1 |
+| v11 | `player.citiesCaptured` i `player.courtship` — oba startują puste |
 
 ### Mechanika migracji
 
@@ -99,9 +100,11 @@ function migrate(state: any): WorldState {
 
 W kodzie realizuje to pętla `while (version < CURRENT_WORLD_VERSION)` na mapie `MIGRATIONS`, która rzuca wyjątkiem przy brakującym kroku — dlatego **każda zmiana `WorldState` wymaga dopisania migracji**.
 
-- Migracje sekwencyjne: v1 → v2 → v3 → ... → v10
+- Migracje sekwencyjne: v1 → v2 → v3 → ... → v11
 - Każda migracja uzupełnia brakujące pola wartościami domyślnymi
 - Bezpieczne: nie nadpisuje istniejących danych
+
+> **v11 niczego nie zgaduje.** Stara kariera nie ma zapisu tego, że zdobyła miasto albo się do kogoś zalecała, a wymyślenie takiego zapisu pojawiłoby się w punktacji emerytalnej jako punkty, których nikt nie zarobił. Własność portów nie wymaga uzupełniania: `PortRuntimeState.factionId` istnieje od v3 i po prostu nigdy się nie zmieniało — do v0.13.0.
 
 > **v9 to migracja naprawcza, nie rozszerzenie modelu.** Migracje portów aż do v8 wyłącznie *dopisywały* pola do tego, co zastały, więc port przeniesiony z zapisu sprzed v2 nigdy nie dostał `shipyardQueue` ani `availableCrew` i docierał do v8 niekompletny. v9 normalizuje każdy port do pełnego kształtu `PortRuntimeState`; porty, które już go mają, przechodzą bez zmian. Pokryte testami w `src/persistence/__tests__/Migrations.test.ts`.
 

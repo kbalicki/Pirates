@@ -28,7 +28,12 @@ export class PortMarkerRenderer {
     this.landGrid = landGrid;
   }
 
-  render(): PortMarkerResult {
+  /**
+   * @param owners Faction key per port as of now. Towns change hands from
+   *   v0.13.0 on, and the flag on the map has to follow; a snapshot is enough
+   *   because the map scene is rebuilt after every siege.
+   */
+  render(owners: Record<string, string> = {}): PortMarkerResult {
     const portSafePositions = new Map<string, { x: number; y: number }>();
     const cityLabels: PortMarkerResult["cityLabels"] = [];
     const coordLabels: PortMarkerResult["coordLabels"] = [];
@@ -43,10 +48,11 @@ export class PortMarkerRenderer {
       portSafePositions.set(portKey, safePos);
       const drawPort = { ...port, pos: safePos };
 
-      drawCityIcon(this.scene, g, drawPort);
+      const ownerKey = owners[portKey] ?? (port.factionId as string);
+      drawCityIcon(this.scene, g, drawPort, ownerKey);
 
       // Add historical flag sprite next to city — close to buildings
-      const factionId = port.factionId as string;
+      const factionId = ownerKey;
       const flagKey = `flag_${factionId}`;
       if (this.scene.textures.exists(flagKey)) {
         // LINEAR filtering for crisp flags at all zoom levels

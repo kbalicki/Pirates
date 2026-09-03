@@ -55,6 +55,8 @@ function makeWorld(over: { day?: number; gold?: number; flags?: Record<string, b
       questLog: [],
       fleet: [],
       lastPlunderDay: 1,
+      citiesCaptured: 0,
+      courtship: {},
     },
     entities: {},
     ports: {},

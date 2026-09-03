@@ -11,10 +11,12 @@ export function drawCityIcon(
   scene: Phaser.Scene,
   g: Phaser.GameObjects.Graphics,
   port: PortDef,
+  /** Faction that holds the town now, if it is no longer the one on the map. */
+  ownerKey?: string,
 ): void {
   const x = port.pos.x;
   const y = port.pos.y;
-  const factionDef = FACTIONS[port.factionId as string];
+  const factionDef = FACTIONS[ownerKey ?? (port.factionId as string)];
   const flagColor = factionDef?.color ?? 0xaaaaaa;
   const pop = port.population;
 

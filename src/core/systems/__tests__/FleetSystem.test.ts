@@ -40,6 +40,8 @@ function player(fleet: FleetShip[] = []): PlayerState {
     questLog: [],
     fleet,
     lastPlunderDay: 1,
+    citiesCaptured: 0,
+    courtship: {},
   };
 }
 

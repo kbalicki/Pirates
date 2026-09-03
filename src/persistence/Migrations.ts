@@ -5,7 +5,7 @@ import { portId } from "../core/model/ids.ts";
 import { createDefaultCaptainProfile, TRAINING_DEFAULT } from "../core/model/CaptainState.ts";
 import { getPortBaseline } from "../core/data/economyBaselines.ts";
 
-export const CURRENT_WORLD_VERSION = 10;
+export const CURRENT_WORLD_VERSION = 11;
 
 type Migration = (world: unknown) => unknown;
 
@@ -187,6 +187,26 @@ const migrations: Record<number, Migration> = {
       player: {
         ...world.player,
         lastPlunderDay: typeof world.player?.lastPlunderDay === "number" ? world.player.lastPlunderDay : day,
+      },
+    };
+  },
+  11: (world: any) => {
+    // v0.13.0 sieges and v0.14.0 courtship. Both counters start empty rather
+    // than being guessed from anything already in the save: an old career has
+    // no record of having stormed a town or courted anyone, and inventing one
+    // would show up in the retirement score as points nobody earned.
+    //
+    // Port ownership needs no backfill — `PortRuntimeState.factionId` has
+    // existed since v3 and simply never changed until now.
+    return {
+      ...world,
+      version: 11,
+      player: {
+        ...world.player,
+        citiesCaptured: typeof world.player?.citiesCaptured === "number" ? world.player.citiesCaptured : 0,
+        courtship: (world.player?.courtship && typeof world.player.courtship === "object")
+          ? world.player.courtship
+          : {},
       },
     };
   },

@@ -9,6 +9,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
+import { portFaction } from "../../core/systems/SiegeSystem.ts";
 
 export class CityInfoScene extends Phaser.Scene {
   private portKey!: string;
@@ -59,7 +60,7 @@ export class CityInfoScene extends Phaser.Scene {
       y += 22;
     };
 
-    const factionId = this.portDef.factionId as string;
+    const factionId = portFaction(this.worldState, this.portKey) as string;
     const factionName = t("faction." + factionId + ".name");
 
     // ── City name ──

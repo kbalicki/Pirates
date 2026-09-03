@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.12.1.0 · **Branch:** `main`
-**Kod:** 137 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **489 przechodzi, 0 failuje, 0 `todo`** w 13 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.14.0.0 · **Branch:** `feature/v0.13-land-battles-and-story`
+**Kod:** 145 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **649 przechodzi, 0 failuje, 0 `todo`** w 16 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** wersja v0.12.1.0 jest na `main` i wdrożona na pirates.k4.pl, testy 489/489 zielone, moduły A-D (uszkodzenia, pojedynki, cele i konsekwencje, mapy skarbów) domknięte — następne w kolejce są **bitwy lądowe (v0.13.0)**, opisane w sekcji 3 poniżej.
+> **Start sesji w jednym zdaniu:** v0.14.0.0 siedzi na gałęzi `feature/v0.13-land-battles-and-story` (nie na `main`, **nie wdrożona**), testy 649/649 zielone; moduły A-F domknięte — bitwy lądowe i warstwa fabularna weszły w tym wydaniu, a następne w kolejce jest **domknięcie obu** (obrona miast przez AI, posag i mini-gra taneczna) albo zadania równoległe z sekcji 4.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -25,16 +25,19 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Flota gracza | ✅ | `FleetSystem`: max 3 statki, kupno/sprzedaż/porzucenie, prędkość = najwolniejszy, wzrok = najwyższy maszt |
 | Zapis/odczyt | ✅ | `SaveRepository` + `Migrations` (v8), 5 slotów IndexedDB — UI w `OptionsMenuScene`, nie w osobnej scenie |
 | Obieg newsów | ✅ | `NpcNewsSystem`: NPC zbierają newsy w portach i przekazują graczowi w `ShipEncounterScene` |
+| Bitwy lądowe | ✅ | `SiegeSystem` (~560 l.) + `CityAssaultScene`: ostrzał rundowy, desant falami, trzy zakończenia, port zmienia właściciela |
+| Córki gubernatorów | ✅ | `RomanceSystem`: jedna na miasto, cztery podejścia, ślub raz na karierę |
+| Wątek rodzinny | ✅ | `FamilyQuestSystem`: trzy miasta markiza, pojedynek za każdego krewnego |
 
 ### Nietknięte
 
-Bitwy lądowe / szturm na miasto · pojedynki szermiercze · córki gubernatorów · poszukiwanie rodziny · mapy skarbów · starzenie kapitana (`calculateAge()` tylko **wyświetla** wiek w `OptionsMenuScene:390`, zero efektów) · podział łupów · system questów (`QUESTS` = pusta mapa)
+Obrona miast przez AI (dziś nikt nie odbija zdobytego portu) · posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
 
 ### Świadome placeholdery (zostawione celowo)
 
 | Plik | Po co zostaje |
 |---|---|
-| `src/core/data/quests.ts` | Pusta mapa `QUESTS` — miejsce na questy pisane ręcznie. Skarby są instancjami budowanymi w locie, więc tu ich nie ma |
+| `src/core/data/quests.ts` | Pusta mapa `QUESTS` — miejsce na questy pisane ręcznie. Skarby **i** wątek rodzinny są instancjami odbudowywanymi z `questLog` przez `buildQuestRegistry()`, więc tu ich nie ma |
 | `src/core/services/Pathfinding.ts` | Hak pod A\*; NPC sterują dziś reaktywnie |
 
 W v0.9.8.1 usunięto trzy pliki, do których nic nie prowadziło: `SaveLoadScene`, `DialogueScene`, `PalmRenderer.backup.ts`.
@@ -164,16 +167,56 @@ Tawerna oferuje jedną mapę na port na dzień, zamożniejszy port częściej ma
 - Mapy jako **łup z pirackich statków** (dziś tylko kupno w tawernie)
 - **Fragmenty map** składane w całość, zwiększające precyzję
 
-### v0.13.0 — Bitwy lądowe
-*Największa nowa mechanika; `defense` per port już jest w `PortRuntimeState` i spada po najazdach.*
+### ~~v0.13.0 — Bitwy lądowe~~ ✅ (v0.13.0.0)
 
-- Ostrzał fortów z morza ↔ odpowiedź fortów
-- Desant po osłabieniu; siła obrony = garnizon + fortyfikacje + wielkość miasta
-- Auto-resolve z modyfikatorami (nie pełna gra taktyczna)
-- Przejęcie miasta → zmiana `factionId` portu, kaskada w ekonomii i spawnie NPC
+`src/core/systems/SiegeSystem.ts` + `src/game/scenes/CityAssaultScene.ts`. Odpowiedź „ATAK" w `PortApproachScene` startowała do tej pory bitwę morską z `enemyId = portId` — przeciwnikiem, którego nie ma w `entities`, bez kadłuba i bez dział. `PortRuntimeState.defense` istniało od v7, było popychane przez wydarzenia świata i nikt go nie czytał. Oba te braki spotykały się dokładnie tutaj.
 
-### v0.14.0+ — Warstwa fabularna
-Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.10.0) i questów (v0.12.0).
+**Trzy etapy, z czego tylko środkowy nie jest decyzją.** Ostrzał jest interaktywny, runda po rundzie: obie strony strzelają jednocześnie, więc uciszenie ostatniego działa i tak kosztuje jego ostatnią salwę. Desant jest auto-resolve'em falami — taktyczna bitwa lądowa to inna gra; gracz kontroluje **kiedy** wysadzić ludzi, nie gdzie każdy z nich idzie. Łupy to wybór, co zrobić z miastem bez garnizonu.
+
+Mury są warte do **2.5×** siły garnizonu (`wallFactor` 0.5-1.3), i to jest cała argumentacja za płaceniem kadłubem, zanim zapłaci się ludźmi: desant na nietknięty fort I klasy to 39%, ten sam po porządnym ostrzale — 70%.
+
+Fregata ucisza Kartagenę w 8-12 rundach kosztem ~80 kadłuba; slup zostaje odparty, zanim działa umilkną. Działa, kadłuby i ludzie liczą się **z całej floty** — to pierwsza mechanika, która płaci za drugi i trzeci statek czymś innym niż ładownia.
+
+Garnizon skaluje się populacją, którą ekonomia faktycznie zostawiła miastu (`popFactor` 0.4-1.3), więc miasto po epidemii albo głodzie jest mierzalnie łatwiejsze do wzięcia. To pierwsze miejsce, w którym numeryka żywego świata rozstrzyga coś, co gracz czuje.
+
+**Zakończenia:** złupić (100% łupu, stara flaga zostaje nad ruiną), zatrzymać dla bractwa (70%, port przechodzi piratom), oddać koronie z listu kaperskiego (50% + ranga). Zmiana `PortRuntimeState.factionId` kaskaduje na flagę na mapie, gubernatora, ceny i spawn NPC — wszystko czyta teraz `portFaction(world, portKey)` zamiast `CityDef.factionId`.
+
+**Znaleziony przy okazji błąd:** wszystkie sceny portowe czytały właściciela ze statycznego `CityDef`, więc miasto zdobyte miesiąc temu dalej powiewałoby hiszpańską flagą. `portFaction()` jest teraz jedynym poprawnym odczytem.
+
+**Zostało z tego modułu:**
+- **Obrona miast przez AI** — nikt nie próbuje odbić zdobytego portu, więc zdobycz jest wieczna
+- **Bronienie sojusznika** przed cudzym szturmem, za reputację i złoto
+- **Straty konsorty w ludziach** nie są zapisywane: `FleetShip` nie ma pola załogi, więc konsorta odzyskuje pełną obsadę do kolejnego oblężenia (`SiegeSystem.writeBackForce`)
+
+### ~~v0.14.0 — Warstwa fabularna~~ ✅ trzon (v0.14.0.0)
+
+**Córki gubernatorów** (`RomanceSystem.ts`) — `charm` istniał w `CaptainSkills` od tworzenia postaci i do tej pory **nie był czytany nigdzie w kodzie**. Każde miasto powyżej przystani ma jedną córkę, **wyprowadzoną** z klucza portu hashem FNV-1a, a nie losowaną: to samo imię i ta sama uroda w każdym zapisie. W `WorldState` ląduje jedna liczba, `player.courtship[portKey]`.
+
+Cztery podejścia opierają się na różnych rzeczach: komplement i taniec na uroku, podarunek na złocie (500), przechwałka na sławie — nieznany kapitan, który się przechwala, wychodzi na głupca. Pudło kosztuje grunt, więc właściwy ruch zależy od tego, kim kapitan naprawdę jest. Przy 30 dzieli się tropem (darmowe wejście w wątek rodzinny), przy 85 i randze 2 u jej korony przyjmuje oświadczyny. Ślub jest jeden na karierę i wart 500-1500 punktów na emeryturze.
+
+**Poszukiwanie rodziny** (`FamilyQuestSystem.ts`) — pierwszy pisany ręcznie wątek, nie generowana dziura w piasku. Markiz korony, która najbardziej nie znosi korony kapitana, rozproszył rodzinę po trzech swoich miastach. Łańcuch jest instancją jak mapa skarbu: trzy miasta losowane raz i zapisane w `data.chain`, `QuestDef` odbudowywany z nich. Flagi `family_step_N` są spoiną między maszyną questów a sceną pojedynku — `QuestSystem` nie wie nic o pojedynkach, `DuelScene` nie wie nic o questach. Przegrany pojedynek nie kosztuje nic poza drogą powrotną; ślepy zaułek uwięziłby wątek.
+
+**QuestRegistry** — `advanceQuests` dostawało do tej pory rejestr budowany w locie z map skarbów, które akurat trzymał wywołujący. Przy drugim źródle questów to przestaje działać: kopanie widziałoby rejestr bez wątku rodzinnego, a odbicie krewnego — bez polowań na skarby. `buildQuestRegistry(world)` odbudowuje wszystko z `questLog`.
+
+**Emerytura** liczy trzy nowe linie: zdobyte miasta (400 każde), odzyskana rodzina (700 każdy) i małżeństwo. Żadnej z nich nie da się wyharować w ostatnim roku rajdów, i o to chodzi.
+
+**Znaleziony przy okazji błąd:** `PortScene.tavernMessage` rysował się **tylko** w menu portu, więc każda odpowiedź tawerny — kupiona mapa, cena, której nie stać było zapłacić — była zapisywana i wyrzucana, zanim ktokolwiek ją zobaczył. Naprawione przy okazji dokładania odpowiedzi informatora.
+
+**Migracja v11** — `player.citiesCaptured` i `player.courtship`, oba startują puste. Nic nie jest zgadywane ze starego zapisu: wymyślona historia zdobyczy pojawiłaby się w punktacji jako punkty, których nikt nie zarobił.
+
+**Zostało z tego modułu:**
+- **Posag i baza w porcie żony** — dziś ślub daje reputację i punkty, nic więcej
+- **Mini-gra taneczna** zamiast rzutu kością na urok
+- **Ciotka i wujek** jako czwarty i piąty krewny, z unikalnymi nagrodami (brat jako pierwszy oficer, mapa wielkiego skarbu od wujka)
+- **Tropy od kupców i z tawern** jako alternatywa dla nazwania miasta wprost
+
+### v0.15.0 — co dalej
+
+Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza:
+
+1. **Obrona zdobytego miasta** — najpilniejsze domknięcie v0.13.0. Dziś zdobycz jest wieczna, więc największa nowa mechanika nie ma drugiej połowy. Korona, która straciła port, powinna wysyłać flotę odbijającą; `WorldEventSystem` ma już wojny i frakcje, a `NpcSpawnSystem` już mnoży spawny marynarki dla walczących.
+2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. Najtańsza rzecz o największym wpływie na odbiór.
+3. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża praca, mały dług.
 
 ---
 
@@ -184,6 +227,8 @@ Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.1
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1). Problem „całe ekrany zamiast sprite'ów" **rozwiązany**: 51/51 assetów to pojedynczy obiekt. Nadaje się do użycia: ikony ekwipunku i budynki portu przy sile 0.6-0.75. **Nie** nadaje się: dziewięć klas statków wychodzi identycznych (w projekcie jest jeden sprite statku — retrening tego nie naprawi bez nowego materiału), towary są bezkształtne, portrety nie trzymają wspólnego stylu. Zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). v3 poprawia ujęcie z góry (10% → 32% zbioru) i balans kategorii. Ocena i szczegóły: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
 - **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
+- **Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.** Maszyna je obsługuje i pokrywają je testy, ale żadna scena ich nie emituje — wątek rodzinny chodzi na `flag_set`, skarby na `dig_at`. Naturalne miejsca: `PortApproachScene.executeAction("enter")` dla pierwszego i przejście dnia w `WorldEngine` dla drugiego. Nie dodano ich „na zapas" — martwy hak jest tym samym błędem co martwa scena.
+- **Flagi na mapie to snapshot z `MainMapScene.create()`.** Wystarcza, bo scena mapy jest przebudowywana po każdym oblężeniu, ale port, który zmieni właściciela z innego powodu (przyszła obrona AI) nie odświeży flagi bez restartu sceny. `PortMarkerRenderer.render(owners)`.
 
 ---
 
@@ -194,10 +239,12 @@ Córki gubernatorów, poszukiwanie rodziny. Na koniec — wymaga dialogów (v0.1
 - Font: zawsze `UI_FONT` / `txt()` z `src/game/ui/textStyle.ts` — nigdy hardkodowany.
 - `pixelArt: true` wymusza `roundPixels: true` → w `MainMapScene.create()` musi zostać `camera.setRoundPixels(false)` (inaczej wraca jitter statku).
 - Assety **zawsze kompresować przed commitem** (`sharp` dla PNG, ffmpeg dla JPEG).
-- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie v8) — pętla rzuca wyjątkiem przy brakującym kroku i psuje wszystkie stare zapisy.
+- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie **v11**) — pętla rzuca wyjątkiem przy brakującym kroku i psuje wszystkie stare zapisy.
 - Nowe teksty → `src/core/i18n/locales/en.ts` **i** `pl.ts`.
 - Nie rejestruj scen „na zapas" — scena bez wejścia to martwy kod.
 - `src/core/` nie importuje Phasera. Nigdy.
+- Właściciela portu czytaj **wyłącznie** przez `portFaction(world, portKey)` z `SiegeSystem` — `CityDef.factionId` to mapa z 1680 i nie zmienia się nigdy.
+- Do weryfikacji w grze jest `scripts/drive.mjs` (dowolna sekwencja klawiszy + zrzut stanu). Karta headless dławi `requestAnimationFrame`, więc pętlę Phasera trzeba pompować ręcznie — zamrożony zrzut to prawie zawsze to, a nie błąd gry.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

@@ -16,6 +16,13 @@
  *   reputation   how much of the Caribbean is glad to see you
  *   fame         notoriety — the pirate's own ledger
  *   longevity    years survived at sea, with a bonus for retiring in one piece
+ *   conquest     towns stormed and taken (v0.13.0)
+ *   family       relatives freed, and whether the captain married (v0.14.0)
+ *
+ * The last two are deliberately the only lines that cannot be ground out in a
+ * final year of raiding: a marriage takes dozens of visits to one town and a
+ * rank her father will accept, and the family thread takes three voyages
+ * across the map. They are what makes an old career worth more than a rich one.
  *
  * The age term is the interesting one: retiring young is worth less because
  * there is less career behind it, but every year past the decline also costs
@@ -27,6 +34,8 @@ import type { WorldState } from "../model/WorldState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { captainAge, AGE_DECLINING_FROM } from "./AgingSystem.ts";
+import { marriagePoints } from "./RomanceSystem.ts";
+import { relativesFreed } from "./FamilyQuestSystem.ts";
 
 /** World flag set once the captain has retired. */
 export const RETIRED_FLAG = "captain_retired";
@@ -91,6 +100,10 @@ export function computeScore(world: WorldState): RetirementScore {
   const overstayed = Math.max(0, age - AGE_DECLINING_FROM);
   const longevityPoints = Math.max(0, Math.round(yearsAtSea * 40 - overstayed * 70));
 
+  const towns = Math.max(0, world.player.citiesCaptured ?? 0);
+  const freed = relativesFreed(world);
+  const marriage = marriagePoints(world);
+
   const lines: ScoreLine[] = [
     { key: "retire.line_gold", amount: gold, points: Math.round(gold / 10) },
     { key: "retire.line_fleet", amount: ships, points: Math.round(ships / 20) },
@@ -98,6 +111,9 @@ export function computeScore(world: WorldState): RetirementScore {
     { key: "retire.line_reputation", amount: Math.round(goodwill), points: Math.round(goodwill * 4) },
     { key: "retire.line_fame", amount: fame, points: fame * 12 },
     { key: "retire.line_years", amount: yearsAtSea, points: longevityPoints },
+    { key: "retire.line_towns", amount: towns, points: towns * 400 },
+    { key: "retire.line_family", amount: freed, points: freed * 700 },
+    { key: "retire.line_marriage", amount: marriage > 0 ? 1 : 0, points: marriage },
   ];
 
   const total = lines.reduce((sum, l) => sum + l.points, 0);

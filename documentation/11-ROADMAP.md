@@ -104,22 +104,30 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ⬜ Mapy jako łup z pirackich statków (dziś tylko kupno w tawernie)
 - ⬜ Fragmenty map składane w całość
 
-### Moduł E — Bitwy lądowe *(v0.13.0)*
+### Moduł E — Bitwy lądowe *(v0.13.0)* — ✅ (v0.13.0.0)
 **Priorytet:** ŚREDNI | **Złożoność:** Duża
 
-Największa nowa mechanika. Fundament już jest: `defense` per port istnieje i spada po najazdach.
+`SiegeSystem.ts` + `CityAssaultScene.ts`. Wzory i stałe: [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md).
 
-- **Atak z morza:** ostrzał fortów, odpowiedź fortów, siła obrony = garnizon + fortyfikacje + wielkość miasta
-- **Desant:** po osłabieniu fortów; oblężenie w uproszczonym auto-resolve z modyfikatorami
-- **Przejęcie miasta:** zmiana `factionId` portu z kaskadą w ekonomii i spawnie NPC
-- **Obrona:** AI atakuje miasta, gracz może bronić sojuszników (reputacja + złoto)
+- ✅ **Atak z morza:** ostrzał rundowy, odpowiedź fortu, siła obrony = garnizon × mury × działa × `defense`
+- ✅ **Desant:** auto-resolve falami, szanse pokazane przed decyzją; mury warte do 2.5× garnizonu
+- ✅ **Przejęcie miasta:** `PortRuntimeState.factionId` zmienia się, a za nim flaga na mapie, gubernator, ceny i spawn NPC
+- ✅ **Flota liczy się na lądzie:** działa i desant sumowane ze wszystkich kadłubów
+- ⬜ **Obrona:** AI atakuje miasta, gracz może bronić sojuszników — nietknięte
+- ⬜ **Odbicie miasta przez koronę** — zdobyty port zostaje w rękach gracza na zawsze
 
-### Moduł F — Warstwa fabularna *(v0.14.0+)*
+### Moduł F — Warstwa fabularna *(v0.14.0)* — ✅ trzon (v0.14.0.0)
 **Priorytet:** ŚREDNI | **Złożoność:** Średnia | **Wymaga:** modułów B i D
 
-**Córki gubernatorów** — losowe w dużych portach, atrybuty (uroda, charakter, posag), zaloty przez wizyty u gubernatora, mini-gra taneczna lub dialog z modyfikatorem uroku, prezenty. Małżeństwo daje posag, bazę w porcie żony, bonus reputacji i punkty na koniec.
+✅ **Córki gubernatorów** (`RomanceSystem.ts`) — jedna na miasto powyżej przystani, wyprowadzona z klucza portu, nie losowana. Cztery podejścia (komplement, taniec, podarunek, przechwałka) oparte kolejno na uroku, złocie i sławie; szanse pokazane przy opcji. Przy 30 dzieli się tropem, przy 85 i randze 2 przyjmuje oświadczyny. Ślub jest jeden i wart 500-1500 punktów na emeryturze.
 
-**Poszukiwanie rodziny** — 4 osoby (brat, siostra, ciotka, wujek), każda w innym regionie. Tropy z tawern i od kupców tworzą łańcuch wskazówek. Misje ratunkowe wymagają różnych umiejętności: bitwy, dyplomacji, nawigacji, mapy. Nagroda: +1 do umiejętności i unikalny bonus (brat jako pierwszy oficer, mapa wielkiego skarbu od wujka).
+✅ **Poszukiwanie rodziny** (`FamilyQuestSystem.ts`) — trzy osoby (siostra, brat, ojciec) w trzech miastach markiza korony wrogiej koronie kapitana. Wejście: informator w tawernie za 200 złota albo darmowo od córki gubernatora. Odbicie każdej to pojedynek w `DuelScene`; 800 / 1500 / 3000 złota, na koniec +20 reputacji własnej korony.
+
+⬜ **Zostało z tego modułu:**
+- Posag i baza w porcie żony (dziś ślub daje reputację i punkty, nic więcej)
+- Mini-gra taneczna zamiast rzutu kością na urok
+- Ciotka i wujek jako czwarty i piąty krewny, z unikalnymi nagrodami (brat jako pierwszy oficer, mapa wielkiego skarbu)
+- Tropy od kupców i z tawern jako alternatywa dla nazwania miasta wprost
 
 ### Moduł G — Rozszerzenia poza oryginał *(bez terminu)*
 **Priorytet:** NISKI
@@ -158,9 +166,9 @@ Moduł C ─── Podział łupów, starzenie, punktacja  [GOTOWY]
   │
 Moduł D ─── Mapy skarbów (+ system questów)  [GOTOWY]
   │
-Moduł E ─── Bitwy lądowe
+Moduł E ─── Bitwy lądowe ─────────────── [GOTOWY]
   │
-Moduł F ─── Córki gubernatorów, rodzina
+Moduł F ─── Córki gubernatorów, rodzina  [TRZON GOTOWY]
   │
 Moduł G ─── Rozszerzenia poza oryginał
 

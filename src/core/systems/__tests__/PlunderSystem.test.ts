@@ -82,6 +82,8 @@ function makeWorld(over: {
         };
       }),
       lastPlunderDay,
+      citiesCaptured: 0,
+      courtship: {},
     },
     entities: {
       player_ship: {
@@ -371,7 +373,8 @@ describe("fleetValue", () => {
 describe("computeScore", () => {
   it("scores every source and adds them up", () => {
     const score = computeScore(makeWorld({ gold: 5000, ranks: { england: 3 }, notoriety: 50 }));
-    expect(score.lines).toHaveLength(6);
+    // Six career lines plus the three v0.13/v0.14 endings (towns, family, marriage).
+    expect(score.lines).toHaveLength(9);
     expect(score.total).toBe(score.lines.reduce((s, l) => s + l.points, 0));
   });
 

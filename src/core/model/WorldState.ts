@@ -54,6 +54,10 @@ export type PlayerState = {
   fleet: FleetShip[];
   /** Game day of the last division of plunder. The crew counts from here. */
   lastPlunderDay: number;
+  /** Towns stormed and taken, however they were disposed of afterwards. */
+  citiesCaptured: number;
+  /** Standing with each governor's daughter, keyed by port id (0..100). */
+  courtship: Record<string, number>;
   /** Final score, written once the captain retires. Absent while still at sea. */
   retirementScore?: number;
 };

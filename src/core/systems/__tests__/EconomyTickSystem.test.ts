@@ -65,6 +65,8 @@ function makeWorld(over: Partial<WorldState> = {}): WorldState {
       questLog: [],
       fleet: [],
       lastPlunderDay: 1,
+      citiesCaptured: 0,
+      courtship: {},
     },
     entities: {},
     ports,

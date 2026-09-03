@@ -205,6 +205,27 @@ node scripts/screenshot.mjs "http://localhost:3000/?skip&zoom=z10" out.png 6000
 node scripts/screenshot.mjs http://localhost:3000 out.png 4000 options
 ```
 
+### drive.mjs — chodzenie po grze klawiaturą
+
+`screenshot.mjs` dociera tylko do tych stanów, które ma zaszyte w kodzie.
+`drive.mjs` doprowadza do dowolnego: pompuje zegar Phasera ręcznie, wciska podane
+klawisze i zrzuca stan świata.
+
+```bash
+node scripts/drive.mjs <url> [out.png] [klawisze] [--scene=Klucz:json] [--wait=ms]
+
+node scripts/drive.mjs "http://localhost:3000/?siege=cartagena" out.png "Space,Space,Space,l"
+node scripts/drive.mjs "http://localhost:3000/?skip" out.png "Enter,2" --scene=PortScene:{"portId":"port_royal"}
+```
+
+**Dlaczego pompowanie jest konieczne:** karta headless (i każda w tle) dławi
+`requestAnimationFrame`, więc pętla Phasera stoi, `delayedCall` nigdy nie odpala i
+gra wygląda na zamrożoną. To nie jest błąd gry. Paczki po ≤60 klatek — kilkaset
+w jednym `evaluate` wiesza renderer i CDP przerywa po 45 s.
+
+Skrypt wypisuje na koniec `scenes`, `gold`, `citiesCaptured`, `courtship`,
+`quests`, `flags` i ostatnie wpisy logu, plus błędy strony (`pageerror`, konsola).
+
 ## Konwencje wydań
 
 ### Wersjonowanie
@@ -236,6 +257,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?debug=1` | Tryb debug (wyłącza mgłę wojny) |
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |
+| `?siege=cartagena` | Szturm na miasto, z fregatą, konsortą i listem kaperskim |
 
 ## Deploy produkcyjny
 

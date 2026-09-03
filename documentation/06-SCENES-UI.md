@@ -170,6 +170,42 @@ Główne menu gry pod klawiszem SPACE — zakładki:
 `HelpScene` (klawisz H na mapie) — 5 zakładek: Sterowanie, Statki, Żeglowanie, Świat, Ekonomia.
 `BattleHelpScene` (H w bitwie) — sterowanie, wzory obrażeń i przeładowania, warunki abordażu i kapitulacji.
 
+## CityAssaultScene (v0.13.0)
+
+Ekran oblężenia: dwa panele odczytu (fort / flota), sylwetka fortu tracąca blanki
+w miarę burzenia murów, panel narracji i klawiatura. Świadomie **nie** jest drugą
+symulacją bitwy — decyzja gracza („jeszcze jedna salwa czy desant teraz")
+jest decyzją liczbową, a przebranie jej za walkę w czasie rzeczywistym ukryłoby
+liczbę, nie dodając wyboru.
+
+| Faza | Sterowanie |
+|---|---|
+| `bombard` | SPACJA — salwa · L — desant · ESC — odstąp |
+| `assault` | odgrywa się sama, jedna fala na 0.7 s |
+| `spoils` | W/S — wybór · Enter — potwierdzenie · 1-4 — skrót |
+
+Wejście: `PortApproachScene` → „SZTURM NA MIASTO" (dostępne przy każdym mieście,
+o ile gracz nie jest pieszo). Wyjście: `MainMapScene` z zaktualizowanym światem.
+
+Cała arytmetyka siedzi w `core/systems/SiegeSystem.ts`.
+
+## PortScene — widok „daughter" (v0.14.0)
+
+Salon gubernatora jest widokiem `PortScene`, nie drzewem dialogowym. Powód jest
+konkretny: każda odpowiedź to rzut kością przeciw urokowi, złotu albo sławie, a
+`DialogueEffect` to celowo zamknięty słownik deterministycznych zmian — zakodowanie
+testu umiejętności w nim oznaczałoby wymyślenie drugiego języka wewnątrz danych
+dialogowych.
+
+Drzewo gubernatora robi więc jedną rzecz: otwiera drzwi efektem
+`EFFECT_VISIT_DAUGHTER`, a scena przejmuje stamtąd. Szanse każdego podejścia są
+pokazane przy opcji — ciekawa decyzja to *którą* przewagę kapitana wydać, a
+ukrycie liczb zamieniłoby ją w zgadywankę.
+
+Wątek rodzinny mieszka w tawernie: informator sprzedaje pierwsze nazwisko, a
+miasto, na które wskazuje trop, oferuje samą walkę (`DuelScene` nad wstrzymaną
+`PortScene`).
+
 ## System UI
 
 ### Fonty (`src/game/ui/textStyle.ts`)

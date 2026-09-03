@@ -34,12 +34,27 @@ export type GovernorTreeContext = {
   age: number;
   /** What the career would score if he stopped today. */
   scorePreview: number;
+  /** Her name, when this town has a governor's daughter at home. */
+  daughterName?: string;
+  /** True once the captain is married; the reply disappears for good. */
+  married: boolean;
 };
 
 /** Effect id the caller must handle: hands over the letter of marque. */
 export const EFFECT_GRANT_LETTER = "grant_letter_of_marque";
 /** Effect id the caller must handle: the captain hangs up his sword for good. */
 export const EFFECT_RETIRE = "retire_captain";
+/**
+ * Effect id the caller must handle: show the captain into the drawing room.
+ *
+ * The courtship itself is not a tree. Every approach is a dice roll against
+ * charm, gold or notoriety, and `DialogueEffect` is deliberately a closed
+ * vocabulary of deterministic changes — encoding a skill check in it would
+ * mean inventing a whole second language inside the dialogue data. So the
+ * governor's tree does one thing: it opens the door, and the port scene takes
+ * it from there.
+ */
+export const EFFECT_VISIT_DAUGHTER = "visit_daughter";
 
 export function governorTree(ctx: GovernorTreeContext): DialogueTree {
   const letterFlag = `letter_of_marque_${ctx.factionKey}`;
@@ -82,6 +97,18 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
             textKey: "governor.opt_ask_letter",
             when: { type: "flag", key: letterFlag, value: true },
             next: "letter_already",
+          },
+          {
+            id: "ask_daughter",
+            textKey: "governor.opt_ask_daughter",
+            vars: { name: ctx.daughterName ?? "" },
+            // Hidden entirely for a town with no governor's household, and for
+            // a captain who already has a wife. Reputation is checked by the
+            // caller, which is what actually knows whether the door opens.
+            when: ctx.daughterName && !ctx.married
+              ? { type: "reputation", faction: ctx.factionKey, min: 20 }
+              : { type: "flag", key: "__never__" },
+            effects: [{ type: "custom", id: EFFECT_VISIT_DAUGHTER }],
           },
           { id: "ask_rumor", textKey: "governor.opt_ask_news", next: "rumor" },
           {

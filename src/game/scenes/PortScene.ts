@@ -3,6 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { PortId } from "../../core/model/ids.ts";
 import { itemId, shipClassId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
+import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { ITEMS } from "../../core/data/items.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
@@ -29,7 +30,32 @@ import {
   type DialogueRuntime,
   type DialogueTree,
 } from "../../core/systems/DialogueSystem.ts";
-import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE } from "../../core/data/dialogues.ts";
+import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE, EFFECT_VISIT_DAUGHTER } from "../../core/data/dialogues.ts";
+import {
+  daughterFor,
+  courtshipLevel,
+  willReceive,
+  isMarried,
+  court,
+  propose,
+  approachChance,
+  GIFT_COST,
+  MARRIAGE_THRESHOLD,
+  MARRIAGE_MIN_RANK,
+  SHARES_A_LEAD,
+  type Approach,
+} from "../../core/systems/RomanceSystem.ts";
+import {
+  startFamilySearch,
+  stepAtPort,
+  freeRelative,
+  activeFamilyChain,
+  INFORMER_PRICE,
+} from "../../core/systems/FamilyQuestSystem.ts";
+import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
+import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
+import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { captainAge } from "../../core/systems/AgingSystem.ts";
 import { computeScore, retire, hasRetired } from "../../core/systems/RetirementSystem.ts";
 import { dividePlunder, plunderStatus } from "../../core/systems/PlunderSystem.ts";
@@ -53,7 +79,7 @@ const DLG_H = 420;
 const BORDER = 3;
 const PAD = 16;
 
-type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard";
+type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
@@ -84,6 +110,11 @@ export class PortScene extends Phaser.Scene {
 
   /** Governor conversation in progress; rebuilt whenever the view is entered. */
   private governorDialogue: { tree: DialogueTree; runtime: DialogueRuntime } | null = null;
+
+  /** Set by the governor's `visit_daughter` effect; consumed on the next redraw. */
+  private pendingDaughterVisit = false;
+  /** One line of narration under the courtship menu. */
+  private courtshipMessage: string | null = null;
 
   // Keyboard cleanup
   private keyboardCleanup: (() => void)[] = [];
@@ -134,10 +165,11 @@ export class PortScene extends Phaser.Scene {
     }
 
     // --- Persistent header ---
-    const faction = FACTIONS[portDef.factionId as string];
+    // Whoever holds the town today, which is not necessarily who founded it.
+    const factionKey = portFaction(this.worldState, portKey) as string;
+    const faction = FACTIONS[factionKey];
     const factionColor = faction?.color ?? 0xaaaaaa;
     const factionHex = `#${factionColor.toString(16).padStart(6, "0")}`;
-    const factionKey = portDef.factionId as string;
 
     let y = this.dlgY + PAD;
 
@@ -208,6 +240,7 @@ export class PortScene extends Phaser.Scene {
       case "tavern": this.renderTavern(); break;
       case "merchant": this.renderMerchant(); break;
       case "shipyard": this.renderShipyard(); break;
+      case "daughter": this.renderDaughter(); break;
     }
   }
 
@@ -358,8 +391,7 @@ export class PortScene extends Phaser.Scene {
    * can change that state mid-way.
    */
   private renderGovernor(): void {
-    const portDef = PORTS[this.currentPortId as string];
-    const factionKey = portDef.factionId as string;
+    const factionKey = portFaction(this.worldState, this.currentPortId as string) as string;
     const rep = this.worldState.player.reputation[factionKey] ?? 0;
     const level = getReputationLevel(rep);
     const rankIndex = this.worldState.player.ranks?.[factionKey] ?? 0;
@@ -375,6 +407,10 @@ export class PortScene extends Phaser.Scene {
       rumorKey: getRumorKey(this.worldState),
       age: captainAge(this.worldState),
       scorePreview: computeScore(this.worldState).total,
+      daughterName: willReceive(this.worldState, this.currentPortId as string)
+        ? daughterFor(this.worldState, this.currentPortId as string)?.name
+        : undefined,
+      married: isMarried(this.worldState),
     });
 
     // Keep the place in the conversation across re-renders, but start fresh
@@ -448,9 +484,10 @@ export class PortScene extends Phaser.Scene {
       // it fires a named custom effect and the port resolves it.
       (world, id) => {
         if (id === EFFECT_GRANT_LETTER) {
-          return requestLetterOfMarque(world, PORTS[this.currentPortId as string].factionId).world;
+          return requestLetterOfMarque(world, portFaction(world, this.currentPortId as string)).world;
         }
         if (id === EFFECT_RETIRE) return retire(world).world;
+        if (id === EFFECT_VISIT_DAUGHTER) { this.pendingDaughterVisit = true; return world; }
         return world;
       },
     );
@@ -467,6 +504,14 @@ export class PortScene extends Phaser.Scene {
         score: computeScore(this.worldState),
         captainName: this.worldState.playerName,
       });
+      return;
+    }
+
+    // The drawing room is a view of its own, not a node: see EFFECT_VISIT_DAUGHTER.
+    if (this.pendingDaughterVisit) {
+      this.pendingDaughterVisit = false;
+      this.governorDialogue = null;
+      this.switchView("daughter");
       return;
     }
 
@@ -525,8 +570,18 @@ export class PortScene extends Phaser.Scene {
       { label: t("tavern.buy_drinks", { cost: 10 }), key: "drinks" },
       { label: mapLabel, key: "buy_map" },
       { label: plunderLabel, key: "divide" },
-      { label: t("tavern.back"), key: "back" },
     ];
+
+    // The family thread lives in the tavern: an informer sells the first name,
+    // and the town the trail currently points at offers the fight itself.
+    const here = stepAtPort(this.worldState, this.currentPortId as string);
+    if (here) {
+      actions.push({ label: t("family.strike_" + here.step.relative), key: "family_strike" });
+    } else if (!activeFamilyChain(this.worldState)) {
+      actions.push({ label: t("family.ask_informer", { price: INFORMER_PRICE }), key: "family_ask" });
+    }
+
+    actions.push({ label: t("tavern.back"), key: "back" });
 
     this.setupActionList(actions, y, (key) => {
       switch (key) {
@@ -535,9 +590,24 @@ export class PortScene extends Phaser.Scene {
         case "drinks": this.handleDrinks(); break;
         case "buy_map": this.handleBuyTreasureMap(); break;
         case "divide": this.handleDividePlunder(); break;
+        case "family_ask": this.handleAskAboutFamily(); break;
+        case "family_strike": this.handleFamilyStrike(); break;
         case "back": this.switchView("menu"); break;
       }
     });
+
+    // What the last action in here had to say. Only the port menu drew this
+    // before, so every tavern reply — the map you just bought, the price you
+    // could not meet — was written and then thrown away unseen.
+    if (this.tavernMessage) {
+      const msg = this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 46,
+        this.tavernMessage,
+        { ...txt(12, { color: "#6a4a1a" }), wordWrap: { width: DLG_W - PAD * 2 } },
+      );
+      this.contentContainer.add(msg);
+      this.tavernMessage = null;
+    }
 
     // Hint
     const hint = this.add.text(
@@ -695,6 +765,211 @@ export class PortScene extends Phaser.Scene {
       this.registry.set("worldState", this.worldState);
       this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
     }
+  }
+
+
+  // ===== VIEW: The governor's daughter =====
+
+  /**
+   * The drawing room.
+   *
+   * Courtship is a menu rather than a dialogue tree because every reply here is
+   * a dice roll — see `EFFECT_VISIT_DAUGHTER` in `core/data/dialogues.ts` for
+   * why that does not belong in `DialogueEffect`. The odds are shown next to
+   * each approach on purpose: the interesting decision is which of the
+   * captain's advantages to spend, and hiding the numbers would turn that into
+   * guesswork.
+   */
+  private renderDaughter(): void {
+    const portKey = this.currentPortId as string;
+    const daughter = daughterFor(this.worldState, portKey);
+    if (!daughter) { this.switchView("governor"); return; }
+
+    let y = this.contentStartY;
+
+    const title = this.add.text(this.cx, y, t("romance.title", { name: daughter.name }), txt(16, { bold: true }));
+    title.setOrigin(0.5, 0);
+    this.contentContainer.add(title);
+    y += 26;
+
+    const level = courtshipLevel(this.worldState, portKey);
+    const desc = this.add.text(
+      this.infoX, y,
+      t("romance.beauty_" + daughter.beauty) + "   " + t("romance.standing", { value: level }),
+      txt(12, { color: "#555555" }),
+    );
+    this.contentContainer.add(desc);
+    y += 20;
+
+    if (this.courtshipMessage) {
+      const msg = this.add.text(this.infoX, y, this.courtshipMessage, {
+        ...txt(12, { color: "#6a4a1a" }),
+        wordWrap: { width: DLG_W - PAD * 2 },
+        fontStyle: "italic",
+      });
+      this.contentContainer.add(msg);
+      y += msg.height + 10;
+      this.courtshipMessage = null;
+    }
+
+    const charm = effectiveSkill(this.worldState, "charm");
+    const odds = (approach: Approach) => Math.round(approachChance(
+      approach, charm, level, daughter.beauty,
+      this.worldState.player.gold, this.worldState.player.notoriety,
+    ) * 100);
+
+    const actions: { label: string; key: string }[] = [
+      { label: t("romance.opt_compliment", { pct: odds("compliment") }), key: "compliment" },
+      { label: t("romance.opt_dance", { pct: odds("dance") }), key: "dance" },
+      { label: t("romance.opt_gift", { pct: odds("gift"), cost: GIFT_COST }), key: "gift" },
+      { label: t("romance.opt_boast", { pct: odds("boast") }), key: "boast" },
+    ];
+
+    const rank = this.worldState.player.ranks?.[daughter.factionKey] ?? 0;
+    if (level >= MARRIAGE_THRESHOLD) {
+      actions.push(rank >= MARRIAGE_MIN_RANK
+        ? { label: t("romance.opt_propose"), key: "propose" }
+        : { label: t("romance.opt_propose_blocked", { rank: MARRIAGE_MIN_RANK }), key: "blocked" });
+    } else if (level >= SHARES_A_LEAD) {
+      const hint = this.add.text(this.infoX, y, t("romance.hint_marriage", { need: MARRIAGE_THRESHOLD }),
+        txt(11, { color: "#777777" }));
+      this.contentContainer.add(hint);
+      y += 18;
+    }
+    actions.push({ label: t("romance.opt_leave"), key: "back" });
+
+    this.setupActionList(actions, y, (key) => {
+      if (key === "back") { this.switchView("governor"); return; }
+      if (key === "blocked") { this.courtshipMessage = t("romance.needs_rank"); this.switchView("daughter"); return; }
+      if (key === "propose") { this.handlePropose(); return; }
+      this.handleCourt(key as Approach);
+    });
+
+    const hint = this.add.text(this.cx, this.dlgY + DLG_H - PAD - 4, t("tavern.hint"),
+      txt(10, { color: "#888888" }));
+    hint.setOrigin(0.5, 1);
+    this.contentContainer.add(hint);
+
+    this.bindKey("keydown-ESC", () => this.switchView("governor"));
+  }
+
+  private handleCourt(approach: Approach): void {
+    const portKey = this.currentPortId as string;
+    const result = court(this.worldState, portKey, approach, this.worldState.rng);
+    if (result.error) {
+      this.courtshipMessage = t("romance.failed_" + result.error);
+      this.switchView("daughter");
+      return;
+    }
+
+    this.worldState = { ...result.world, rng: result.rng };
+    this.registry.set("worldState", this.worldState);
+
+    this.courtshipMessage = t((result.succeeded ? "romance.win_" : "romance.lose_") + approach)
+      + "  " + t("romance.delta", { delta: result.delta > 0 ? "+" + result.delta : String(result.delta) });
+
+    // Crossing the halfway mark is where the family thread can start for free:
+    // she repeats what her father says at dinner, and one of the names is a
+    // marquis nobody in the family talks about.
+    if (result.unlockedLead) {
+      const started = startFamilySearch(this.worldState, this.worldState.rng);
+      this.worldState = { ...started.world, rng: started.rng };
+      this.registry.set("worldState", this.worldState);
+      if (started.started) this.courtshipMessage += "  " + t("family.lead_from_daughter");
+    }
+
+    this.switchView("daughter");
+  }
+
+  private handlePropose(): void {
+    const result = propose(this.worldState, this.currentPortId as string);
+    if (!result.accepted) {
+      this.courtshipMessage = t("romance.propose_" + (result.reason ?? "too_soon"));
+      this.switchView("daughter");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.courtshipMessage = t("romance.propose_accepted");
+    this.switchView("daughter");
+  }
+
+  // ===== The family thread =====
+
+  /**
+   * Buy the first name off an informer.
+   *
+   * The same `startFamilySearch` the governor's daughter can trigger for free —
+   * this is the paid door, for a captain with no interest in courting anybody.
+   * Refuses quietly if the hunt is already under way.
+   */
+  private handleAskAboutFamily(): void {
+    if (this.worldState.player.gold < INFORMER_PRICE) {
+      this.tavernMessage = t("family.informer_too_expensive", { price: INFORMER_PRICE });
+      this.switchView("tavern");
+      return;
+    }
+    const paid: WorldState = {
+      ...this.worldState,
+      player: { ...this.worldState.player, gold: this.worldState.player.gold - INFORMER_PRICE },
+    };
+    const started = startFamilySearch(paid, paid.rng);
+    if (!started.started) {
+      this.tavernMessage = t("family.informer_nothing");
+      this.switchView("tavern");
+      return;
+    }
+    this.worldState = { ...started.world, rng: started.rng };
+    this.registry.set("worldState", this.worldState);
+
+    const chain = activeFamilyChain(this.worldState);
+    const first = chain?.steps[0];
+    this.tavernMessage = first
+      ? t("family.informer_told", { port: CITIES[first.portKey]?.name ?? first.portKey })
+      : t("family.informer_nothing");
+    this.switchView("tavern");
+  }
+
+  /**
+   * Storm the house they are held in.
+   *
+   * The fight is a duel like every other personal fight in this game. Winning
+   * sets the step flag; `advanceQuests` picks it up and pays. Losing costs
+   * nothing but the walk back — the marquis' men have every reason to keep a
+   * captain worth ransoming alive, and a dead end here would strand the thread.
+   */
+  private handleFamilyStrike(): void {
+    const here = stepAtPort(this.worldState, this.currentPortId as string);
+    if (!here) { this.switchView("tavern"); return; }
+
+    this.scene.pause();
+    this.scene.launch("DuelScene", {
+      playerFencing: effectiveSkill(this.worldState, "fencing"),
+      enemyFencing: enemyFencingFor(30, 45, this.worldState.player.notoriety ?? 0),
+      seed: this.worldState.time.day * 131 + here.index * 17,
+      onFinish: (playerWon: boolean) => {
+        this.scene.resume();
+        if (!playerWon) {
+          this.tavernMessage = t("family.strike_lost");
+          this.switchView("tavern");
+          return;
+        }
+        const freed = freeRelative(this.worldState, here.index);
+        const advanced = advanceQuests(
+          freed,
+          { type: "flag_set", key: "family_step_" + here.index },
+          buildQuestRegistry(freed),
+        );
+        this.worldState = advanced.world;
+        this.registry.set("worldState", this.worldState);
+        this.tavernMessage = t("family.strike_won_" + here.step.relative);
+        this.scene.restart({
+          worldState: this.worldState,
+          portId: this.currentPortId,
+          returnToView: "tavern" as PortView,
+        });
+      },
+    });
   }
 
   // ===== VIEW: Merchant =====

@@ -45,6 +45,8 @@ function makeWorld(over: {
       questLog: [],
       fleet: [],
       lastPlunderDay: 1,
+      citiesCaptured: 0,
+      courtship: {},
     },
     entities: {},
     ports: {},
@@ -302,6 +304,7 @@ const govCtx = {
   rumorKey: "rumor.storm",
   age: 34,
   scorePreview: 2500,
+  married: false,
 };
 
 describe("governorTree", () => {

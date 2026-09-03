@@ -80,6 +80,27 @@ node scripts/screenshot.mjs "http://localhost:3000/?battle=navy" out.png 6000
 Zapisuj zrzuty do katalogu scratchpad sesji albo do `temp/` (gitignorowane) — **nie** do katalogu głównego repo.
 Potem **obejrzyj plik** narzędziem Read. Zrzut, którego nie otworzyłeś, niczego nie weryfikuje.
 
+### Chodzenie po grze — `scripts/drive.mjs`
+
+`screenshot.mjs` dociera tylko do stanów, które ma zaszyte. Do wszystkiego innego
+(menu portu, zaloty, oblężenie, pojedynek) jest `drive.mjs`: wciska podaną sekwencję
+klawiszy, robi zrzut po każdym i na koniec wypisuje stan świata.
+
+```bash
+node scripts/drive.mjs <url> [out.png] [klawisze] [--scene=Klucz:json] [--wait=ms]
+
+node scripts/drive.mjs "http://localhost:3000/?siege=cartagena" out.png "Space,Space,Space,l"
+node scripts/drive.mjs "http://localhost:3000/?skip" out.png "Enter,2" --scene=PortScene:{"portId":"port_royal"}
+```
+
+**Karta headless dławi `requestAnimationFrame`**, więc pętla Phasera stoi i żaden
+`delayedCall` nie odpala — fale desantu, banery wyniku, animacja tonięcia. `drive.mjs`
+pompuje zegar ręcznie (`g.loop.step(t)`), paczkami po ≤60 klatek; kilkaset naraz wiesza
+renderer i CDP przerywa po 45 s. Zamrożony obraz w zrzucie to prawie zawsze **to**, nie błąd gry.
+
+Skrypt raportuje też `pageerror` i błędy konsoli — cichy wyjątek w scenie inaczej
+wygląda dokładnie jak „nic się nie stało".
+
 ### Co obejrzeć zależnie od zmiany
 
 | Zmiana | Sprawdź |
@@ -87,6 +108,8 @@ Potem **obejrzyj plik** narzędziem Read. Zrzut, którego nie otworzyłeś, nicz
 | Rendering (woda, ląd, chmury, góry) | zrzuty na 2–3 poziomach zoomu — artefakty pojawiają się przy skrajnych |
 | Ruch, sterowanie, żagle | ruch płynny bez drgań; przy podejrzeniu jittera patrz na `setRoundPixels` |
 | Bitwa | `?battle=...`, sprawdź łuki ostrzału, przeładowanie, HUD |
+| Oblężenie miasta | `?siege=<port>`, przejdź `drive.mjs` przez ostrzał → desant → łupy |
+| Questy, zaloty, dialogi | `drive.mjs --scene=PortScene:{"portId":"..."}` i sprawdź `quests` / `flags` w wypisie |
 | Ekonomia, wydarzenia | menu miasta (`CityInfoScene`) — wartości i trendy |
 | UI, teksty | oba języki; polskie znaki `ą ć ę ł ń ó ś ź ż` muszą się renderować |
 

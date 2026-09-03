@@ -5,6 +5,7 @@ import type { PortDef } from "../../core/data/ports.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
+import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -65,12 +66,14 @@ export class PortApproachScene extends Phaser.Scene {
 
     // --- Port info ---
     const portKey = this.portId as string;
-    const faction = FACTIONS[this.portDef.factionId as string];
+    // Who holds the place *now*: a town the player took last month flies a
+    // different flag than `CityDef` remembers (v0.13.0).
+    const ownerKey = portFaction(this.worldState, portKey) as string;
+    const faction = FACTIONS[ownerKey];
     const factionColor = faction?.color ?? 0xaaaaaa;
-    const playerRep = this.worldState.player.reputation[this.portDef.factionId as string] ?? 0;
+    const playerRep = this.worldState.player.reputation[ownerKey] ?? 0;
     const repLevel = getReputationLevel(playerRep);
     const isHostile = repLevel === "hostile";
-    const isFort = this.portDef.type === "fort";
 
     let y = dlgY + PAD;
 
@@ -89,7 +92,7 @@ export class PortApproachScene extends Phaser.Scene {
 
     // --- Faction & type line ---
     const factionHex = `#${factionColor.toString(16).padStart(6, "0")}`;
-    const typeLine = `${t("port_type." + this.portDef.type)} — ${t("faction." + (this.portDef.factionId as string) + ".name")}`;
+    const typeLine = `${t("port_type." + this.portDef.type)} — ${t("faction." + ownerKey + ".name")}`;
     const typeText = this.add.text(cx, y, typeLine, txt(13, { color: factionHex }));
     typeText.setOrigin(0.5, 0);
     y += 20;
@@ -126,14 +129,15 @@ export class PortApproachScene extends Phaser.Scene {
     // --- Build action list ---
     this.actions = [];
     if (isHostile) {
-      if (isFort) {
-        this.actions.push({ label: t("approach.sneak"), action: "sneak" });
-        this.actions.push({ label: t("approach.attack"), action: "attack" });
-      } else {
-        this.actions.push({ label: t("approach.sneak"), action: "sneak" });
-      }
+      this.actions.push({ label: t("approach.sneak"), action: "sneak" });
     } else {
       this.actions.push({ label: t("approach.enter"), action: "enter" });
+    }
+    // Storming the town is offered wherever there is a town and a ship under
+    // you. Before v0.13.0 this reply existed only for hostile forts and started
+    // a sea battle against a port id — an enemy with no hull and no guns.
+    if (!this.isOnFoot) {
+      this.actions.push({ label: t("approach.assault"), action: "attack" });
     }
     this.actions.push({
       label: this.isOnFoot ? t("approach.leave_on_foot") ?? "Odejdź" : t("approach.leave"),
@@ -391,9 +395,9 @@ export class PortApproachScene extends Phaser.Scene {
       case "attack":
         this.scene.stop();
         this.scene.stop("MainMapScene");
-        this.scene.start("SeaBattleScene", {
+        this.scene.start("CityAssaultScene", {
           worldState: this.worldState,
-          enemyId: this.portId,
+          portId: this.portId,
         });
         break;
 

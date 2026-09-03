@@ -48,6 +48,8 @@ function makeWorld(over: {
       questLog: [],
       fleet: [],
       lastPlunderDay: 1,
+      citiesCaptured: 0,
+      courtship: {},
     },
     entities: {
       player_ship: {

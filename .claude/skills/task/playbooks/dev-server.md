@@ -34,6 +34,7 @@ Parsowane w `src/game/scenes/PreloadScene.ts`. Używaj ich zamiast klikania prze
 | `?debug=1` | Tryb debug — wyłącza mgłę wojny |
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader` `navy` `pirate` `hunter` | Bitwa z konkretnym typem |
+| `?siege=<port>` | Szturm na miasto (fregata + konsorta + list kaperski), np. `?siege=cartagena` |
 
 Łączenie: `http://localhost:3000/?skip&zoom=z10&debug=1`
 

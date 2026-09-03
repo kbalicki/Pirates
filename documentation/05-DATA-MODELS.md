@@ -216,6 +216,23 @@ type ShipClassId = string & { __brand: "ShipClassId" };
 
 Branded types zapobiegają pomyłkowemu przekazywaniu ID różnych typów.
 
+## Pola PlayerState dodane w v0.13-v0.14
+
+```typescript
+/** Zdobyte miasta, niezależnie od tego, co się z nimi potem stało. */
+citiesCaptured: number;
+/** Standing u córek gubernatorów, kluczowany portem (0..100). */
+courtship: Record<string, number>;
+```
+
+Oba wchodzą migracją v11, oba startują puste. Stan oblężenia i łańcuch rodzinny
+**nie** mają własnych pól: oblężenie żyje tylko w scenie, a łańcuch siedzi w
+`data.chain` wpisu w `questLog` — tak samo, jak mapa skarbu siedzi w `data.map`.
+
+Właściciel portu to `PortRuntimeState.factionId` — pole istniejące od v3, które
+do v0.13.0 nigdy się nie zmieniało. `CityDef.factionId` to mapa startowa z 1680.
+Odczyt zawsze przez `portFaction(world, portKey)`.
+
 ## RNG Service (`src/core/services/RNG.ts`)
 
 ```typescript
