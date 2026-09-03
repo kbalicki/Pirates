@@ -18,7 +18,12 @@ import {
   attackStrength,
   holdOdds,
   resolveRelief,
+  settleRelief,
   tickReconquest,
+  playerHolds,
+  playerDefends,
+  alliedWith,
+  pendingDefenseFor,
   RELIEF_GRACE_DAYS,
   RELIEF_COOLDOWN_DAYS,
   RELIEF_DAILY_BASE,
@@ -32,7 +37,7 @@ import {
   ROYAL_QUALITY,
   type Expedition,
 } from "../ReconquestSystem.ts";
-import { garrisonFor, capturePort, SHIP_KEEPERS, SIZE_SOLDIERS } from "../SiegeSystem.ts";
+import { garrisonFor, capturePort, attackForceFor, SHIP_KEEPERS, SIZE_SOLDIERS } from "../SiegeSystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
 import { CITIES } from "../../data/cities.ts";
@@ -701,5 +706,220 @@ describe("capturePort stamps the clock the crown counts from", () => {
     expect(next.ports[FORT].factionId as string).toBe("england");
     expect(next.ports[FORT].capturedDay).toBe(300);
     expect(next.ports[FORT].nextReliefDay).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// v0.16.0 — a landing the player can fight in person, and a map crowns move
+// ---------------------------------------------------------------------------
+
+describe("whose town it is", () => {
+  it("counts a town the player kept for the brethren as his", () => {
+    expect(playerHolds(makeWorld(), FORT)).toBe(true);
+  });
+
+  it("does not count a town that never changed hands", () => {
+    const world = makeWorld({ ports: { [OUTPOST]: makePort(OUTPOST) } });
+    expect(playerHolds(world, OUTPOST)).toBe(false);
+  });
+
+  it("does not count a town handed to a sponsor: that is their colony now", () => {
+    const world = makeWorld({
+      ports: { [FORT]: makePort(FORT, { factionId: factionId("england"), capturedDay: 100 }) },
+    });
+    expect(playerHolds(world, FORT)).toBe(false);
+    // And a crown pays for its garrison, so it recovers like any other colony.
+    expect(heldDefenseCeiling(world, FORT)).toBe(getPortBaseline(FORT).defense);
+  });
+});
+
+describe("who counts the player a friend", () => {
+  it("counts a crown that gave him a letter of marque", () => {
+    const world = makeWorld();
+    const commissioned = { ...world, worldFlags: { letter_of_marque_england: true } };
+    expect(alliedWith(commissioned, "england")).toBe(true);
+    expect(alliedWith(world, "england")).toBe(false);
+  });
+
+  it("counts a crown he has earned his way up to", () => {
+    const world = makeWorld();
+    const friendly = { ...world, player: { ...world.player, reputation: { france: 40 } } };
+    const allied = { ...world, player: { ...world.player, reputation: { france: 75 } } };
+    expect(alliedWith(friendly, "france")).toBe(false);
+    expect(alliedWith(allied, "france")).toBe(true);
+  });
+
+  it("never counts the brotherhood, which has no colonies to defend", () => {
+    const world = makeWorld();
+    const loved = { ...world, player: { ...world.player, reputation: { pirates: 100 } } };
+    expect(alliedWith(loved, "pirates")).toBe(false);
+  });
+});
+
+describe("which landings the player gets to fight", () => {
+  const arriving = inFlight(FORT, { endDay: 130 });
+
+  it("offers his own town when he is standing off it", () => {
+    const world = makeWorld({ day: 130, pos: { ...CITIES[FORT].pos } });
+    const pending = pendingDefenseFor(world, arriving);
+    expect(pending).toBeDefined();
+    expect(pending!.portKey).toBe(FORT);
+    expect(pending!.allied).toBe(false);
+    expect(pending!.holder).toBe("pirates");
+    expect(pending!.expedition.soldiers).toBe(120);
+  });
+
+  it("offers nothing when he is over the horizon", () => {
+    const world = makeWorld({ day: 130, pos: { x: 0, y: 0 } });
+    expect(pendingDefenseFor(world, arriving)).toBeUndefined();
+  });
+
+  it("offers an ally's colony he is commissioned by, and says so", () => {
+    const owner = CITIES[OUTPOST].factionId as string;
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[OUTPOST].pos },
+      ports: { [OUTPOST]: makePort(OUTPOST) },
+    });
+    const commissioned = {
+      ...world,
+      worldFlags: { ["letter_of_marque_" + owner]: true },
+    };
+    const event = inFlight(OUTPOST, { endDay: 130, factions: ["spain", owner] });
+    const pending = pendingDefenseFor(commissioned, event);
+    expect(pending).toBeDefined();
+    expect(pending!.allied).toBe(true);
+    expect(pending!.claimant).toBe("spain");
+  });
+
+  it("offers nothing for a colony he has no standing with, however close he is", () => {
+    const owner = CITIES[OUTPOST].factionId as string;
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[OUTPOST].pos },
+      ports: { [OUTPOST]: makePort(OUTPOST) },
+    });
+    const event = inFlight(OUTPOST, { endDay: 130, factions: ["spain", owner] });
+    expect(pendingDefenseFor(world, event)).toBeUndefined();
+  });
+});
+
+describe("standing in a defence", () => {
+  it("only counts the player into a town that is actually his", () => {
+    const own = makeWorld({ day: 130, pos: { ...CITIES[FORT].pos } });
+    expect(playerDefends(own, FORT)).toBe(true);
+
+    const someoneElses = makeWorld({
+      day: 130,
+      pos: { ...CITIES[OUTPOST].pos },
+      ports: { [OUTPOST]: makePort(OUTPOST) },
+    });
+    expect(playerDefends(someoneElses, OUTPOST)).toBe(false);
+  });
+});
+
+describe("tickReconquest hands a playable landing back unresolved", () => {
+  it("names the town instead of settling it when the player is there", () => {
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[FORT].pos },
+      worldEvents: [inFlight(FORT, { endDay: 130 })],
+    });
+    const tick = tickReconquest(world);
+    expect(tick.playable).toBeDefined();
+    expect(tick.playable!.portKey).toBe(FORT);
+    // Nothing written: no toast, no flag change, no line in the log.
+    expect(tick.ownersChanged).toEqual([]);
+    expect(tick.world.ports[FORT].factionId as string).toBe("pirates");
+    expect(tick.world.eventLog).toEqual(world.eventLog);
+  });
+
+  it("drops the event all the same, so it cannot be expired away tomorrow", () => {
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[FORT].pos },
+      worldEvents: [inFlight(FORT, { endDay: 130 })],
+    });
+    expect(activeExpeditionFor(tickReconquest(world).world, FORT)).toBeUndefined();
+  });
+
+  it("settles it as before when the player is nowhere near", () => {
+    const world = makeWorld({
+      day: 130,
+      pos: { x: 0, y: 0 },
+      worldEvents: [inFlight(FORT, { endDay: 130 })],
+    });
+    const tick = tickReconquest(world);
+    expect(tick.playable).toBeUndefined();
+    expect(tick.events.length).toBeGreaterThan(0);
+  });
+
+  it("makes only one landing a day playable and settles the rest", () => {
+    const second = "porto_bello";
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[FORT].pos },
+      ports: { [FORT]: takenPort(FORT), [second]: takenPort(second) },
+      worldEvents: [inFlight(FORT, { endDay: 130 }), inFlight(second, { endDay: 130 })],
+    });
+    const tick = tickReconquest(world);
+    expect(tick.playable!.portKey).toBe(FORT);
+    expect(activeExpeditionFor(tick.world, second)).toBeUndefined();
+    expect(tick.events.length).toBeGreaterThan(0);
+  });
+});
+
+describe("settleRelief is the one place a landing is written down", () => {
+  const expedition = { soldiers: 120, guns: 30, sailDays: 10 };
+
+  it("keeps the flag and starts the cooling-off period when the town holds", () => {
+    const world = makeWorld({ day: 200 });
+    const out = settleRelief(world, FORT, "spain", expedition, {
+      held: true, playerFought: false, garrisonAfter: 40, partyLost: 0,
+    });
+    expect(out.world.ports[FORT].factionId as string).toBe("pirates");
+    expect(out.world.ports[FORT].garrison).toBe(40);
+    expect(out.world.ports[FORT].nextReliefDay).toBe(200 + RELIEF_COOLDOWN_DAYS);
+    expect(out.gold).toBe(0);
+  });
+
+  it("pays for the transports only when the player was in it", () => {
+    const world = makeWorld({ day: 200 });
+    const out = settleRelief(world, FORT, "spain", expedition, {
+      held: true, playerFought: true, garrisonAfter: 0, partyLost: 0,
+    });
+    expect(out.gold).toBe(expedition.soldiers * WRECK_GOLD_PER_SOLDIER);
+    expect(out.world.eventLog.some(e => e.key === "reconquest.log_held_present")).toBe(true);
+  });
+
+  it("clears the clock when the town goes back under the flag it was founded with", () => {
+    const world = makeWorld({ day: 200 });
+    const out = settleRelief(world, FORT, "spain", expedition, {
+      held: false, playerFought: false, garrisonAfter: 0, partyLost: 0,
+    });
+    expect(out.world.ports[FORT].factionId as string).toBe("spain");
+    expect(out.world.ports[FORT].capturedDay).toBeUndefined();
+  });
+
+  it("starts a new one when a different crown takes it", () => {
+    const world = makeWorld({ day: 200 });
+    const out = settleRelief(world, FORT, "france", expedition, {
+      held: false, playerFought: false, garrisonAfter: 0, partyLost: 0,
+    });
+    expect(out.world.ports[FORT].factionId as string).toBe("france");
+    expect(out.world.ports[FORT].capturedDay).toBe(200);
+  });
+
+  it("takes the losses out of the ships when a fought battle hands them over", () => {
+    const world = makeWorld({ day: 200 });
+    const before = world.entities.player_ship.ship!;
+    const initial = attackForceFor(world);
+    const out = settleRelief(world, FORT, "spain", expedition, {
+      held: true, playerFought: true, garrisonAfter: 0, partyLost: 0,
+      force: { initial, final: { ...initial, crew: initial.crew - 30, hullHp: initial.hullHp - 20 } },
+    });
+    const after = out.world.entities.player_ship.ship!;
+    expect(after.crew.current).toBe(before.crew.current - 30);
+    expect(after.hullHp).toBeLessThan(before.hullHp);
   });
 });

@@ -135,6 +135,7 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     // event lists every port its crown still holds so the news travels. Giving
     // it any per-port effect would apply that effect to a whole empire.
     case "reconquest":
+    case "campaign":
     case "war_end":
     default:
       return NEUTRAL;

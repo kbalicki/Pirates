@@ -96,6 +96,13 @@ export type PortRuntimeState = {
   garrison?: number;
   /** Earliest day a relief expedition may sail again. Set after each attempt. */
   nextReliefDay?: number;
+  /**
+   * Earliest day a rival crown may fit out a campaign against this town (v13+).
+   *
+   * Stamped when an expedition sails rather than when it lands, so a colony is
+   * not queued up for a second invasion while the first is still at sea.
+   */
+  nextCampaignDay?: number;
 };
 
 export type GameEventEntry = {
@@ -114,7 +121,9 @@ export type WorldEventType =
   | "gold_discovery" | "native_raid" | "famine" | "harvest"
   | "royal_decree" | "treaty_signed"
   // ── v0.15.0 the crown comes back ────────────────────────
-  | "reconquest";
+  | "reconquest"
+  // ── v0.16.0 crowns take colonies off each other ─────────
+  | "campaign";
 
 export type WorldEventState = {
   id: string;

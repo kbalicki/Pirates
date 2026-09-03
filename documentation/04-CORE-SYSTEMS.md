@@ -795,9 +795,15 @@ odejmuje `GARRISON_DECAY = 0.4%` dziennie (dezercja i febra).
 ### Sufit odbudowy obrony
 
 `heldDefenseCeiling(world, portKey)` — `EconomyTickSystem` ciągnie `defense` ku
-**45% baseline'u** (`HELD_DEFENSE_SHARE`) dla miasta, które zmieniło właściciela,
-i ku pełnemu baseline'owi dla pozostałych. Bez tego miasto odbudowałoby się samo
-do pełnej obrony w jeden sezon i dźwignia garnizonu nie miałaby znaczenia.
+**45% baseline'u** (`HELD_DEFENSE_SHARE`) dla miasta pod **czarną banderą**, i ku
+pełnemu baseline'owi dla wszystkich pozostałych. Bez tego dźwignia garnizonu nie
+miałaby znaczenia: miasto odbudowałoby się samo w jeden sezon.
+
+**Zmiana w v0.16.0:** kryterium to `playerHolds` (piracka flaga **i** zmiana
+właściciela), a nie samo `portChangedHands`. Kolonia zdobyta przez koronę —
+oddana sponsorowi albo wzięta przez inną koronę w `CrownCampaignSystem` —
+dostaje gubernatora i budżet na garnizon jak każda inna, więc odbudowuje się do
+pełnego baseline'u. Za czarną banderę nie płaci nikt.
 
 ### Kolejność w pętli dnia
 
@@ -805,6 +811,216 @@ do pełnej obrony w jeden sezon i dźwignia garnizonu nie miałaby znaczenia.
 `expireEvents` kasuje zdarzenia z minionym `endDay`, więc eskadra docierająca w
 przeskoczonym dniu zostałaby po cichu usunięta zamiast stoczyć desant — błąd
 widoczny wyłącznie jako miasta, na które nikt nigdy nie napada.
+
+### Jedno miejsce rozliczenia (v0.16.0)
+
+`settleRelief(world, portKey, claimant, expedition, settlement)` zapisuje wynik
+desantu: właściciel, garnizon, `defense`, `nextReliefDay`, `capturedDay`, złoto,
+sława, wpis do logu, straty floty. Od v0.16.0 są **trzy** drogi do tego samego
+zapisu — eskadra poza ekranem (`resolveRelief`), wyprawa korony przeciw koronie
+(`CrownCampaignSystem`) i bitwa rozegrana ręcznie (`CityDefenseSystem`) — więc
+arytmetyka może się różnić, a księgowość nie.
+
+`capturedDay` przy utracie miasta: **skasowany**, gdy zdobywca jest koroną
+założycielską (nic już przeciw temu miastu nie liczy), **ustawiony na dziś**, gdy
+jest kimkolwiek innym. To ta druga gałąź otwiera rekonkwistę przeciw koloniom
+zdobywanym przez korony między sobą.
+
+`playerDefends` (nie samo `playerPresentAt`) decyduje, czy flota gracza wchodzi
+do obrony rozstrzyganej poza ekranem: samo bycie w pobliżu cudzego miasta to nie
+udział w jego obronie. Udział w cudzej obronie jest decyzją i zapada w
+`CityDefenseScene`.
+
+---
+
+## CityDefenseSystem (v0.16.0)
+
+`SiegeSystem` widziany z plaży. Do v0.15.0 desant korony rozstrzygał się poza
+ekranem **także wtedy, gdy gracz stał na redzie** — jedyne miejsce w grze, gdzie
+obecność gracza dawała mu komunikat zamiast sterów.
+
+`src/core/systems/CityDefenseSystem.ts`, czysty, deterministyczny z `RngState`.
+
+### Wejście
+
+`tickReconquest` zwraca `playable?: PendingDefense` zamiast rozstrzygać desant,
+gdy `pendingDefenseFor` mówi „tak". Zdarzenie jest **mimo to** usuwane ze świata:
+zostawione, zostałoby skasowane przez `expireEvents` przy następnej zmianie dnia,
+co dla jedynego desantu, po który gracz wracał, wyglądałoby jak zawrócenie
+eskadry. Dane jadą w `Transition { scene: "CityDefense" }` → `MainMapScene` →
+`CityDefenseScene`.
+
+Warunki (`pendingDefenseFor`):
+
+| Warunek | Skutek |
+|---|---|
+| gracz w `PRESENCE_RANGE` lub w tym porcie | konieczny |
+| `playerHolds` (piracka flaga **i** miasto zmieniło właściciela) | własne miasto, `allied = false` |
+| `alliedWith(holder)` — list kaperski albo reputacja „allied" (≥ 60) | cudza kolonia, `allied = true` |
+| nic z powyższych | desant idzie poza ekranem, gracz nie bierze udziału |
+
+Jeden desant dziennie jest rozgrywalny; drugi tego samego ranka rozstrzyga się
+poza ekranem — kapitan może być tylko w jednym porcie. Port z rozgrywanym
+desantem jest pomijany w kroku 3 `tickReconquest`, inaczej ten sam dzień
+wysłałby po niego drugą eskadrę.
+
+### Runda ostrzału
+
+Obie strony strzelają jednocześnie. Gracz wybiera **cel**:
+
+```
+trafienia_brzegu = działa_fortu × fortAccuracy(walls, wallsMax)
+                 + działa_floty × bombardAccuracy(gunnery, training)
+                 razy swing 0.75..1.25
+
+cel "transports":  utopieni = trafienia × SHOT_TO_SOLDIERS (1.6) × transportExposure
+cel "escorts":     działa_eskadry −= trafienia × SHOT_TO_SQUADRON_GUNS (0.30)
+
+transportExposure = 1 − ESCORT_COVER (0.65) × (działa_eskadry / max)
+```
+
+`ESCORT_COVER` jest tym, co czyni z tego decyzję. Bez niego ogień do szalup był
+**zawsze** lepszy — szedł prosto w liczbę rozstrzygającą plażę — więc eskorta
+była dekoracją. Teraz eskorta zasłania: przy nietkniętych działach przepuszcza
+ok. 35% ognia, a jedynym sposobem na szalupy jest wcześniejsze jej uciszenie,
+płacone murem.
+
+Odpowiedź eskadry:
+
+```
+trafienia_eskadry = działa_eskadry × SQUADRON_ACCURACY (0.45) × swing 0.75..1.25
+do floty  = trafienia × FLEET_FIRE_SHARE (0.30)   → kadłub × 0.9, ludzie × 0.2
+do miasta = reszta                                 → mur × 0.40, działa × 0.12
+```
+
+Flota, która stoi na redzie, **strzela i chłonie**: bez niej całość ognia idzie
+w mur. Poniżej `FLEET_BREAK_HULL` (20% kadłuba) albo 5 rąk wychodzi w morze.
+
+### Ludzie na mury
+
+`landMen` przenosi `landingParty(force)` z pokładów na mury — raz, w jedną
+stronę. Ci sami ludzie obsługiwali działa, więc `fleetGuns` spada proporcjonalnie
+(`cannons × załoga_teraz / załoga_na_starcie`). To druga oś decyzji: mur pełen
+ludzi albo cicha reda.
+
+### Kiedy schodzą na ląd
+
+Eskadra decyduje sama — gracz nie może przeczekać:
+
+| Wyzwalacz | Wartość |
+|---|---|
+| mur poniżej | `LANDING_TRIGGER_WALLS = 40%` `wallsMax` |
+| eskorta ucisza się do zera | działa = 0 |
+| cierpliwość | `SQUADRON_PATIENCE = 8` rund |
+
+Wybicie wszystkich żołnierzy przed desantem (`squadronBroken`) kończy sprawę
+**bez plaży** — miasto broni się automatycznie.
+
+### Plaża
+
+`resolveDefenseAssault` to `resolveAssault` z zamienionymi rolami: fale wzajemnej
+attrycji, każda strona traci ułamek **własnej** liczebności ważony tym, kto
+wygrywa falę, progi `DEFENDER_ROUT`/`ATTACKER_ROUT` i `MAX_WAVES` wzięte wprost
+z oblężenia (opisują ludzi, nie stronę plaży).
+
+```
+siła_miasta = obrońcy × wallFactor × gunFactor      (jak w defenceStrength)
+siła_desantu = attackStrength(expedition)            (ROYAL_QUALITY 1.15)
+```
+
+`defenseOdds` **nie** podnosi stron do potęgi — inaczej niż rzut poza ekranem.
+Tu walka toczy się falami i attrycja robi to, co `RESOLVE_SHARPNESS` zastępowało;
+wyostrzanie na wierzchu liczyłoby tę samą przewagę dwa razy.
+
+### Rozliczenie
+
+`applyDefenseOutcome` oddaje księgowość do `settleRelief` (jedno miejsce dla
+wszystkich trzech dróg rozstrzygnięcia desantu), dokładając to, co istnieje tylko
+przy obecności gracza:
+
+| Rzecz | Wartość |
+|---|---|
+| straty garnizonu i desantu | `splitTownLosses` — proporcjonalnie do strat całego fortu |
+| ocalali z desantu wracają na pokład | `force.final.crew += ocalali` |
+| miasto padło | garnizon 0, wraca `ROUTED_PARTY_SURVIVAL = 30%` desantu |
+| reputacja korony atakującej | `DEFENCE_CLAIMANT_REP = −15`, zawsze |
+| reputacja sojusznika | `ALLY_DEFENCE_REP = +25`, tylko przy `allied` **i** wygranej |
+| złoto z transportowców | `WRECK_GOLD_PER_SOLDIER × żołnierze` (przez `settleRelief`) |
+
+`abandonDefense` (ESC) rozstrzyga desant **bez** wkładu floty: bez złota, bez
+wpisu „obroniono osobiście", garnizon przy wygranej ścięty o połowę.
+
+---
+
+## CrownCampaignSystem (v0.16.0)
+
+Dziesięć wojen historycznych siedziało na tablicy newsów od v0.9.7 i nie
+przesunęło ani jednej flagi. Tylko gracz mógł zdobyć miasto.
+
+`src/core/systems/CrownCampaignSystem.ts`, czysty, deterministyczny z `RngState`.
+
+### Pętla
+
+1. Dwie korony są w stanie wojny (`war_start`). `warPairs` czyta każdą wojnę
+   **w obie strony** — zdarzenie nie nazywa agresora, a dla desantu to ma
+   znaczenie.
+2. Codzienny rzut na wyprawę przeciw najsłabszej kolonii przeciwnika.
+3. Wyprawa to `WorldEventState` typu `campaign`, więc jedzie tą samą siecią
+   newsów: tawerny **obu** koron i NPC. 10-20 dni na morzu.
+4. `tickReconquest` rozstrzyga ją tym samym kodem, co eskadrę odbijającą —
+   `expeditionsInFlight` obejmuje oba typy.
+
+### Wybór celu
+
+```
+kandydaci: porty defendera (wg portFaction), z pominięciem:
+  – tych, po które coś już płynie (activeExpeditionFor, oba typy)
+  – tych w okresie karencji (nextCampaignDay)
+  – tych z defense > CAMPAIGN_DEFENSE_CEILING (70)
+
+waga = (1.05 − defense/100)² × SIZE_PRIORITY[rozmiar]
+```
+
+Kwadrat jest tam po to, żeby „najpierw słabe" było prawdą, a nie deklaracją:
+liniowo człon rozmiaru wygrywał i dobrze obwarowane średnie miasto biło
+bezbronną przystań. Miasto, które gracz właśnie złupił, jest teraz na szczycie
+listy — i to jest cała strategiczna treść tego modułu.
+
+### Szansa i tempo
+
+```
+p = CAMPAIGN_DAILY_BASE (0.03)
+  × clamp(0.3, 1.2, 0.3 + siła_atakującego × 0.9)
+  × clamp(0.4, 1.6, 0.6 + (siła_atakującego − siła_defendera) × 1.2)
+```
+
+| Stała | Wartość | Po co |
+|---|---|---|
+| `CAMPAIGN_DAILY_BASE` | 0.03 | połowa tempa `RELIEF_DAILY_BASE` |
+| `MAX_CAMPAIGNS_IN_FLIGHT` | 2 | ile wypraw naraz na morzu |
+| `CAMPAIGN_COOLDOWN_DAYS` | 90 | stemplowane **przy wypłynięciu**, nie przy lądowaniu |
+| `CAMPAIGN_SAIL_DAYS` | 10-20 | ostrzeżenie dla gracza |
+| `CAMPAIGN_DEFENSE_CEILING` | 70 | powyżej ministerstwo znajduje fleecie inne zajęcie |
+
+Korona zdobywa kolonie wyraźnie wolniej niż gracz. Gdyby tempa się zrównały,
+mapa by się kotłowała, każda flaga byłaby tymczasowa i zdobycie miasta przestało
+by cokolwiek znaczyć.
+
+### Kolejność w pętli dnia
+
+`tickCampaigns` idzie **po** `tickReconquest` — odwrotnie niż intuicja. Gdyby
+szło przed, wyprawa mogłaby zostać wystawiona i stoczona tego samego ranka:
+`tickReconquest` obsługuje każdą wyprawę z minionym `endDay`, a zerowy rejs
+się kwalifikuje.
+
+### Skutek uboczny na mapie
+
+Kolonia zdobyta przez koronę dostaje `capturedDay` (bo `settleRelief` stempluje
+go, gdy zdobywca **nie jest** założycielem), więc uruchamia zwykłą rekonkwistę:
+korona założycielska będzie chciała ją odbić. Flagi na mapie odświeża
+`refreshPortFlags`, ten sam mechanizm co przy zdobyczach gracza.
+
+---
 
 ## RomanceSystem (v0.14.0)
 

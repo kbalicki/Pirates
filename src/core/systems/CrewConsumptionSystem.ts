@@ -1,5 +1,8 @@
 import type { WorldState, GameTime } from "../model/WorldState.ts";
 import type { WorldEvent } from "../model/Events.ts";
+// Toasts are drawn verbatim by `WorldRenderer.showToast`, so they have to be
+// translated where they are made — the renderer has no idea these are keys.
+import { t } from "../i18n/index.ts";
 
 // Consumption rates: units consumed per crew member per game-day
 const FOOD_PER_CREW_PER_DAY = 0.1;
@@ -53,7 +56,7 @@ export function processCrewConsumption(world: WorldState): ConsumptionResult {
   } else {
     cargo["food"] = 0;
     hasFood = false;
-    events.push({ type: "Toast", message: "event.food_out" });
+    events.push({ type: "Toast", message: t("event.food_out") });
   }
 
   // --- Consume water ---
@@ -67,7 +70,7 @@ export function processCrewConsumption(world: WorldState): ConsumptionResult {
   } else {
     cargo["water"] = 0;
     hasWater = false;
-    events.push({ type: "Toast", message: "event.water_out" });
+    events.push({ type: "Toast", message: t("event.water_out") });
   }
 
   // --- Morale effects ---
@@ -82,7 +85,7 @@ export function processCrewConsumption(world: WorldState): ConsumptionResult {
     const deathFraction = CREW_DEATH_RATE * (1 - morale / CREW_DEATH_THRESHOLD_MORALE);
     crewDeaths = Math.max(1, Math.floor(currentCrew * deathFraction));
     currentCrew = Math.max(0, currentCrew - crewDeaths);
-    events.push({ type: "Toast", message: "event.crew_died" });
+    events.push({ type: "Toast", message: t("event.crew_died", { count: crewDeaths }) });
   }
 
   // Low supply warnings — logged in event log only, no screen toast spam

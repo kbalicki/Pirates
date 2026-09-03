@@ -13,6 +13,7 @@ import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { tickReconquest } from "../systems/ReconquestSystem.ts";
+import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
@@ -89,6 +90,25 @@ export class WorldEngine {
       const relief = tickReconquest({ ...world, time: newTime });
       world = relief.world;
       allEvents.push(...relief.events);
+      // A landing the player is standing in comes back unresolved. Hand it to
+      // the scene layer as a transition and stop simulating the day around it —
+      // `CityDefenseScene` writes the outcome itself, and letting the economy
+      // and the news run first would have the player reading about a town he is
+      // still fighting for.
+      if (relief.playable) {
+        allTransitions.push({
+          type: "GoToScene",
+          scene: "CityDefense",
+          payload: relief.playable as unknown as Record<string, unknown>,
+        });
+      }
+      // Crowns at war now take colonies off each other, and those expeditions
+      // arrive through the same `expeditionsInFlight` loop above — so they are
+      // launched after it, or a zero-day passage would be fought the morning it
+      // was ordered.
+      const campaigns = tickCampaigns(world);
+      world = campaigns.world;
+      allEvents.push(...campaigns.events);
       // Generate/expire world events once per day
       world = updateWorldEvents(world);
       // Daily economy simulation (production, consumption, price update, recovery)

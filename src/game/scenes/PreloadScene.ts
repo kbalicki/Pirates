@@ -176,6 +176,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?battle=trader|navy|pirate — choose enemy archetype
     //   ?siege=cartagena — jump straight to a city assault, with a ship able to try it
     //   ?relief=cartagena — a town already taken, with a royal squadron arriving today
+    //   ?defend=cartagena — the same landing, fought in person (&ally=1 for someone else's town)
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -208,6 +209,40 @@ export class PreloadScene extends Phaser.Scene {
       );
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("defend")) {
+      const portKey = params.get("defend") || "cartagena";
+      const men = params.has("garrison") ? Number(params.get("garrison")) : 60;
+      const soldiers = params.has("soldiers") ? Number(params.get("soldiers")) : 140;
+      const ally = params.get("ally") === "1";
+      const world = this.createDefenseWorld(
+        portKey,
+        Number.isFinite(men) ? men : 60,
+        ally,
+      );
+      this.registry.set("worldState", world);
+      this.scene.start("CityDefenseScene", {
+        worldState: world,
+        pending: {
+          portKey,
+          // Somebody has to be attacking, and it cannot be the crown holding
+          // the place: for an allied defence the claimant is the town's
+          // hereditary rival rather than its owner.
+          claimant: ally
+            ? ((CITIES[portKey]?.factionId as unknown as string) === "spain" ? "england" : "spain")
+            : ((CITIES[portKey]?.factionId as unknown as string) ?? "spain"),
+          holder: ally
+            ? ((CITIES[portKey]?.factionId as unknown as string) ?? "spain")
+            : "pirates",
+          expedition: {
+            soldiers: Number.isFinite(soldiers) ? soldiers : 140,
+            guns: Math.round((Number.isFinite(soldiers) ? soldiers : 140) / 4),
+            sailDays: 0,
+          },
+          allied: ally,
+        },
+      });
       return;
     }
     if (params.has("skip")) {
@@ -269,6 +304,46 @@ export class PreloadScene extends Phaser.Scene {
    * squadron, so both endings are drivable and the balance is adjustable
    * without a rebuild: the default holds the town, `&soldiers=600` loses it.
    */
+  /**
+   * A town under attack with the player standing in it, for `?defend=`.
+   *
+   * Same shortcut as `?relief=`, one step further along: there is no squadron
+   * at sea and no clock to run down, because the scene is started directly with
+   * a `PendingDefense`. What this world has to get right is the town — who
+   * holds it, how many men are on the walls, and (for `&ally=1`) the letter of
+   * marque that makes somebody else's colony the player's business.
+   */
+  private createDefenseWorld(portKey: string, men: number, ally: boolean): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const port = base.ports[portKey];
+    const owner = def.factionId as unknown as string;
+    return {
+      ...base,
+      worldFlags: ally
+        ? { ...base.worldFlags, [`letter_of_marque_${owner}`]: true }
+        : base.worldFlags,
+      // In the harbour itself: `playerPresentAt` short-circuits on a port
+      // location, so this is the least fragile way to be unambiguously there.
+      player: {
+        ...base.player,
+        location: { type: "port", portId: def.id, pos: { ...def.pos } },
+        citiesCaptured: ally ? 0 : 1,
+      },
+      ports: port ? {
+        ...base.ports,
+        [portKey]: {
+          ...port,
+          factionId: ally ? port.factionId : factionId("pirates"),
+          capturedDay: ally ? undefined : base.time.day - 40,
+          defense: Math.round(port.defense * 0.6),
+          garrison: Math.max(0, Math.round(men)),
+        },
+      } : base.ports,
+    };
+  }
+
   private createReliefWorld(portKey: string, men: number, soldiers: number): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];

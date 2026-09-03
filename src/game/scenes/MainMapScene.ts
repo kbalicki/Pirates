@@ -1121,6 +1121,11 @@ export class MainMapScene extends Phaser.Scene {
       case "SeaBattle":
         this.scene.start("SeaBattleScene", { worldState: this.worldState, enemyId: payload?.enemyId });
         break;
+      // A landing on a town the player is standing off. The engine handed it up
+      // unresolved — the scene fights it out and writes the outcome itself.
+      case "CityDefense":
+        this.scene.start("CityDefenseScene", { worldState: this.worldState, pending: payload });
+        break;
       default:
         break;
     }

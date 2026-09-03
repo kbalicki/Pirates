@@ -19,6 +19,7 @@ import { PortScene } from "./scenes/PortScene.ts";
 import { SeaBattleScene } from "./scenes/SeaBattleScene.ts";
 import { DuelScene } from "./scenes/DuelScene.ts";
 import { CityAssaultScene } from "./scenes/CityAssaultScene.ts";
+import { CityDefenseScene } from "./scenes/CityDefenseScene.ts";
 import { RetirementScene } from "./scenes/RetirementScene.ts";
 import { PauseMenuScene } from "./scenes/PauseMenuScene.ts";
 import { PortApproachScene } from "./scenes/PortApproachScene.ts";
@@ -180,6 +181,7 @@ export function launchGame(containerId: string): Phaser.Game {
       SeaBattleScene,
       DuelScene,
       CityAssaultScene,
+      CityDefenseScene,
       RetirementScene,
       PauseMenuScene,
       OptionsMenuScene,

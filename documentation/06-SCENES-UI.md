@@ -208,6 +208,43 @@ o ile gracz nie jest pieszo). Wyjście: `MainMapScene` z zaktualizowanym świate
 
 Cała arytmetyka siedzi w `core/systems/SiegeSystem.ts`.
 
+## CityDefenseScene (v0.16.0)
+
+`CityAssaultScene` odbite w lustrze: ten sam układ — trzy panele pasków,
+sylwetka muru, panel narracji, klawiatura — tylko gracz stoi za działami, a to,
+co leży na redzie, należy do kogoś innego. Symetria jest celowa: kto raz zdobył
+miasto, umie czytać ten ekran.
+
+| Faza | Sterowanie |
+|---|---|
+| `bombard` | T — ognia do szalup · G — ognia do eskorty · SPACJA — powtórz cel · L — ludzi na mury · ESC — ciąć liny |
+| `assault` | odgrywa się sama, jedna fala na 0.7 s |
+| `done` | Enter — powrót na mapę |
+
+Wejście: `WorldEngine` → `Transition { scene: "CityDefense" }` →
+`MainMapScene.handleTransition`. Bezpośrednio: `?defend=<port>` (`&ally=1`,
+`&garrison=N`, `&soldiers=N`). Wyjście: `MainMapScene`.
+
+Cała arytmetyka siedzi w `core/systems/CityDefenseSystem.ts`. Scena odpowiada za
+tempo (runda na klawisz, potem fala na sekundę) i za dwie rzeczy, które łatwo
+zrobić źle:
+
+- **`soldiersAtLanding`** — pętla fal wpisuje straty prosto w `this.state`, żeby
+  paski nie kłamały w trakcie; `splitTownLosses` potrzebuje stanu **sprzed**
+  desantu, więc jest trzymany osobno.
+- **Blokada klawiatury po `squadronBroken`** — wynik idzie z opóźnieniem, żeby
+  dało się przeczytać ostatnią linię; bez `busy = true` gracz zdążyłby ostrzelać
+  wyprawę, której już nie ma.
+
+**`Guns bearing`** pokazuje `fleetGuns`, nie `force.cannons` — po wysłaniu ludzi
+na mury działa na pokładach nie mają obsady, a odczyt ignorujący to ukrywałby
+cały koszt decyzji.
+
+Scena zatrzymuje `UIOverlayScene` w `create()`. `scene.start` wywołany z wnętrza
+`MainMapScene.update` nie zabiera ze sobą stałej nakładki mapy, więc bez tego róża
+wiatrów i data rysowały się nad bitwą lądową. To samo dołożono do
+`CityAssaultScene` — miała ten sam błąd od v0.13.0.
+
 ## PortScene — widok „daughter" (v0.14.0)
 
 Salon gubernatora jest widokiem `PortScene`, nie drzewem dialogowym. Powód jest

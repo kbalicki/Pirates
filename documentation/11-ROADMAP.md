@@ -114,7 +114,7 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ **Przejęcie miasta:** `PortRuntimeState.factionId` zmienia się, a za nim flaga na mapie, gubernator, ceny i spawn NPC
 - ✅ **Flota liczy się na lądzie:** działa i desant sumowane ze wszystkich kadłubów
 - ✅ **Odbicie miasta przez koronę** (v0.15.0.0, `ReconquestSystem.ts`) — patrz moduł H
-- ⬜ **Obrona sojusznika:** cudzy szturm na port zaprzyjaźnionej korony, za reputację i złoto — nietknięte
+- ✅ **Obrona sojusznika** (v0.16.0.0) — desant na kolonię korony, która liczy gracza za swojego (list kaperski albo reputacja „allied"), jest rozgrywalny; patrz moduł I
 - ⬜ **Straty konsorty w ludziach** nie są zapisywane: `FleetShip` nie ma pola załogi
 
 ### Moduł F — Warstwa fabularna *(v0.14.0)* — ✅ trzon (v0.14.0.0)
@@ -142,7 +142,22 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ **Obecność floty** — flota w promieniu 400 px rzuca desant do obrony; kosztuje ludzi, płaci złotem z rozbitych transportowców
 - ✅ **Sufit odbudowy** — miasto, które zmieniło właściciela, odbudowuje obronę tylko do 45% baseline'u. Czekanie nie jest planem
 - ✅ **Flaga na mapie** nadąża za miastem zmieniającym właściciela w trakcie rejsu
-- ⬜ **Rozgrywalna bitwa obronna** — desant rozstrzyga się poza ekranem; scena lustrzana do `CityAssaultScene` to osobne zadanie
+- ✅ **Rozgrywalna bitwa obronna** (v0.16.0.0, `CityDefenseSystem.ts` + `CityDefenseScene.ts`) — patrz moduł I
+
+### Moduł I — Miasto się broni, korony się biją *(v0.16.0)* — ✅ (v0.16.0.0)
+**Priorytet:** WYSOKI | **Złożoność:** Duża | **Wymaga:** modułów E i H
+
+`CityDefenseSystem.ts` + `CityDefenseScene.ts` + `CrownCampaignSystem.ts`. Wzory i stałe: [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md).
+
+- ✅ **Rozgrywalna bitwa obronna** — desant na miasto, przy którym stoi gracz, jest rozgrywany rundami zza murów zamiast rozstrzygać się w komunikacie
+- ✅ **Wybór celu ostrzału** — szalupy (mniej żołnierzy na plaży) albo eskorta (mniej ognia w mur). Eskorta zasłania transportowce (`ESCORT_COVER = 0.65`), więc droga do szalup prowadzi przez nią i kosztuje mur
+- ✅ **Ludzie na mury** — desant floty na mury jest jednorazowy i wycisza działa okrętowe proporcjonalnie; przy utracie miasta wraca 30% z nich
+- ✅ **Cierpliwość eskadry** — 8 rund albo mur poniżej 40%; przeczekać się nie da
+- ✅ **Korona kontra korona** (`CrownCampaignSystem.ts`) — wojny przesuwają flagi: wyprawy na najsłabsze kolonie przeciwnika, jadące tą samą siecią newsów, rozstrzygane tym samym kodem co eskadra odbijająca
+- ✅ **Obrona sojusznika** — kolonia korony, która liczy gracza za swojego, jest rozgrywalna; wygrana płaci +25 reputacji i złotem z transportowców
+- ✅ **Sufit odbudowy tylko pod czarną banderą** — kolonia pod koroną (także zdobyta) odbudowuje obronę do pełnego baseline'u
+- ⬜ **Bitwa obronna z pozycjami** — dziś to ekran liczb, jak `CityAssaultScene`; taktyczna bitwa lądowa to inny projekt
+- ⬜ **Sojusznik prosi o pomoc** — dziś gracz musi sam być na miejscu; brak zlecenia „broń Port Royale" u gubernatora
 
 ### Moduł G — Rozszerzenia poza oryginał *(bez terminu)*
 **Priorytet:** NISKI
@@ -186,7 +201,8 @@ Moduł E ─── Bitwy lądowe ─────────────── [
 Moduł F ─── Córki gubernatorów, rodzina  [TRZON GOTOWY]
   │
 Moduł H ─── Korona wraca po swoje ─────── [GOTOWY]
-  │          (zostaje rozgrywalna bitwa obronna)
+  │
+Moduł I ─── Miasto się broni, korony się biją  [GOTOWY]
   │
 Moduł G ─── Rozszerzenia poza oryginał
 
@@ -203,7 +219,7 @@ Moduł G ─── Rozszerzenia poza oryginał
 | **Beta 1 — żywy świat** | NPC, wydarzenia, ekonomia, bitwy morskie, flota | v0.9.x ✅ |
 | Beta 2 — pełna walka | Moduły A + B (uszkodzenia, pojedynki) | v1.0.x |
 | Beta 3 — kariera kapitana | Moduł C (łupy, starzenie, punktacja) | v1.1.x |
-| Beta 4 — questy i skarby | Moduły D + E + H (skarby, bitwy lądowe, obrona zdobyczy) | v1.2.x |
+| Beta 4 — questy i skarby | Moduły D + E + H + I (skarby, bitwy lądowe, obrona zdobyczy, ruchoma mapa) | v1.2.x |
 | Release Candidate | Moduł F (fabuła) | v1.5.x |
 | v2.0 — pełna gra | Moduł G + kompletne assety AI | v2.0 |
 

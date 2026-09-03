@@ -4,7 +4,7 @@ import type { NewsItem } from "./EntityState.ts";
 
 export type Transition = {
   type: "GoToScene";
-  scene: "MainMap" | "Port" | "SeaBattle" | "Dialogue" | "SaveLoad";
+  scene: "MainMap" | "Port" | "SeaBattle" | "Dialogue" | "SaveLoad" | "CityDefense";
   payload?: unknown;
 };
 

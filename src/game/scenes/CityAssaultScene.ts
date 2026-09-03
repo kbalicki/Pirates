@@ -81,6 +81,12 @@ export class CityAssaultScene extends Phaser.Scene {
   }
 
   create(): void {
+    // The map's fixed overlay — compass, date, sail readout — is a separate
+    // always-on scene, and a `scene.start` from inside `MainMapScene.update`
+    // does not reliably take it down with the map. Left running it draws a
+    // wind rose over a land battle. Restarting the map relaunches it.
+    if (this.scene.isActive("UIOverlayScene")) this.scene.stop("UIOverlayScene");
+
     const cw = this.cameras.main.width;
     const ch = this.cameras.main.height;
     const def = PORTS[this.portKey];

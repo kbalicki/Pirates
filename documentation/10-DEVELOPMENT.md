@@ -215,6 +215,7 @@ klawisze i zrzuca stan świata.
 node scripts/drive.mjs <url> [out.png] [klawisze] [--scene=Klucz:json] [--wait=ms]
 
 node scripts/drive.mjs "http://localhost:3000/?siege=cartagena" out.png "Space,Space,Space,l"
+node scripts/drive.mjs "http://localhost:3000/?defend=cartagena&soldiers=300" out.png "g,g,g,t,t,t,l,t"
 node scripts/drive.mjs "http://localhost:3000/?skip" out.png "Enter,2" --scene=PortScene:{"portId":"port_royal"}
 node scripts/drive.mjs "http://localhost:3000/?relief=cartagena" out.png "s,s,s,s,Enter" --scene=PortScene:{"portId":"cartagena"}
 ```
@@ -274,6 +275,9 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?relief=cartagena` | Miasto już zdobyte, eskadra królewska dociera dzisiaj |
 | `&garrison=N` | Ilu ludzi stoi na murach (domyślnie 120) — razem z `?relief=` |
 | `&soldiers=N` | Wielkość eskadry (domyślnie 100) — `&soldiers=600` gwarantuje utratę miasta |
+| `?defend=cartagena` | Rozgrywalna bitwa obronna od razu, bez czekania na eskadrę |
+| `&ally=1` | Bronisz cudzej kolonii (list kaperski dodany), a nie własnego miasta |
+| `&garrison=N` `&soldiers=N` | Ludzie na murach (domyślnie 60) i wielkość wyprawy (domyślnie 140) — razem z `?defend=` |
 
 ## Deploy produkcyjny
 
