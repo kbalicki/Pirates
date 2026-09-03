@@ -12,6 +12,7 @@ import { addLogEntry } from "../systems/EventLogSystem.ts";
 import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
+import { tickReconquest } from "../systems/ReconquestSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
@@ -81,6 +82,13 @@ export class WorldEngine {
         "event.day_passed",
         { day: String(newTime.day) },
       );
+      // Relief squadrons first: a crown coming back for a town the player took
+      // resolves its landing *before* `updateWorldEvents` expires anything, or
+      // an expedition that arrives on a skipped day would be dropped instead of
+      // fought — a silent bug that only shows up as towns nobody ever attacks.
+      const relief = tickReconquest({ ...world, time: newTime });
+      world = relief.world;
+      allEvents.push(...relief.events);
       // Generate/expire world events once per day
       world = updateWorldEvents(world);
       // Daily economy simulation (production, consumption, price update, recovery)

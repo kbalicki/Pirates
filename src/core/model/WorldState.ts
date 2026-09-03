@@ -85,6 +85,17 @@ export type PortRuntimeState = {
   defense: number;
   /** Extra goods this port temporarily produces (e.g. "gold" after a strike). */
   bonusProduces: string[];
+  // ── Holding a town you took (v12+) ────────────────────────
+  /**
+   * The day this town last changed hands. Absent while it still flies the flag
+   * it started with. The dispossessed crown counts from here: the longer a town
+   * stays lost, the bigger the squadron it sends to take it back.
+   */
+  capturedDay?: number;
+  /** Men the player has stationed here. They are the town's real defence. */
+  garrison?: number;
+  /** Earliest day a relief expedition may sail again. Set after each attempt. */
+  nextReliefDay?: number;
 };
 
 export type GameEventEntry = {
@@ -101,7 +112,9 @@ export type WorldEventType =
   | "treasure_fleet" | "new_governor"
   // ── v0.9.7 economy expansion ────────────────────────────
   | "gold_discovery" | "native_raid" | "famine" | "harvest"
-  | "royal_decree" | "treaty_signed";
+  | "royal_decree" | "treaty_signed"
+  // ── v0.15.0 the crown comes back ────────────────────────
+  | "reconquest";
 
 export type WorldEventState = {
   id: string;

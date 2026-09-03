@@ -5,7 +5,7 @@ import { portId } from "../core/model/ids.ts";
 import { createDefaultCaptainProfile, TRAINING_DEFAULT } from "../core/model/CaptainState.ts";
 import { getPortBaseline } from "../core/data/economyBaselines.ts";
 
-export const CURRENT_WORLD_VERSION = 11;
+export const CURRENT_WORLD_VERSION = 12;
 
 type Migration = (world: unknown) => unknown;
 
@@ -209,6 +209,33 @@ const migrations: Record<number, Migration> = {
           : {},
       },
     };
+  },
+  12: (world: any) => {
+    // v0.15.0 — the crown comes back for towns it lost.
+    //
+    // `garrison` and `nextReliefDay` start empty: nobody stationed men in a
+    // town before there was a reason to. `capturedDay` is only written for
+    // ports that already changed hands in a v11 save, and it is set to the day
+    // the save is loaded rather than to whenever the town actually fell. The
+    // save has no record of that day, and guessing it wrong the other way —
+    // treating a town taken a year ago as a year overdue — would open the save
+    // with a full-strength royal squadron already at the harbour mouth. Same
+    // reasoning as the plunder clock in v10.
+    const day = world.time?.day ?? 1;
+    const ports: Record<string, any> = {};
+    for (const [key, old] of Object.entries<any>(world.ports ?? {})) {
+      // The starting map lives in the city table, not in the save; a port whose
+      // runtime faction differs from its own `portId` origin is the only thing
+      // v11 recorded, so fall back to "unchanged" when we cannot tell.
+      ports[key] = {
+        ...old,
+        garrison: typeof old.garrison === "number" ? old.garrison : 0,
+        capturedDay: typeof old.capturedDay === "number"
+          ? old.capturedDay
+          : (CITIES[key] && (CITIES[key].factionId as string) !== (old.factionId as string) ? day : undefined),
+      };
+    }
+    return { ...world, version: 12, ports };
   },
 };
 

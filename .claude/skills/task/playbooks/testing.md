@@ -91,6 +91,7 @@ node scripts/drive.mjs <url> [out.png] [klawisze] [--scene=Klucz:json] [--wait=m
 
 node scripts/drive.mjs "http://localhost:3000/?siege=cartagena" out.png "Space,Space,Space,l"
 node scripts/drive.mjs "http://localhost:3000/?skip" out.png "Enter,2" --scene=PortScene:{"portId":"port_royal"}
+node scripts/drive.mjs "http://localhost:3000/?relief=cartagena&garrison=0&soldiers=600" out.png
 ```
 
 **Karta headless dławi `requestAnimationFrame`**, więc pętla Phasera stoi i żaden
@@ -109,6 +110,7 @@ wygląda dokładnie jak „nic się nie stało".
 | Ruch, sterowanie, żagle | ruch płynny bez drgań; przy podejrzeniu jittera patrz na `setRoundPixels` |
 | Bitwa | `?battle=...`, sprawdź łuki ostrzału, przeładowanie, HUD |
 | Oblężenie miasta | `?siege=<port>`, przejdź `drive.mjs` przez ostrzał → desant → łupy |
+| Odbicie miasta przez koronę | `?relief=<port>` (+ `&garrison=N`, `&soldiers=N`), sprawdź `towns`, `reliefs` i `staleFlags` w wypisie |
 | Questy, zaloty, dialogi | `drive.mjs --scene=PortScene:{"portId":"..."}` i sprawdź `quests` / `flags` w wypisie |
 | Ekonomia, wydarzenia | menu miasta (`CityInfoScene`) — wartości i trendy |
 | UI, teksty | oba języki; polskie znaki `ą ć ę ł ń ó ś ź ż` muszą się renderować |

@@ -694,6 +694,118 @@ kolejnym oblężeniu (liczy je od klasy) — to to samo uproszczenie, które
 
 ---
 
+## ReconquestSystem (v0.15.0)
+
+Druga połowa `SiegeSystem`. Do v0.15.0 zdobycz była wieczna — nikt nie próbował
+odbić portu, więc największa mechanika gry miała tylko połowę pętli.
+
+`src/core/systems/ReconquestSystem.ts`, czysty, deterministyczny z `RngState`.
+
+### Pętla
+
+1. Miasto zmienia właściciela. `capturePort` stempluje `PortRuntimeState.capturedDay`.
+2. Po `RELIEF_GRACE_DAYS = 12` każdy dzień to rzut: czy wypływa eskadra odbijająca.
+3. Gdy wypływa, staje się zwykłym `WorldEventState` typu `reconquest` — czyli
+   jedzie istniejącą siecią newsów: tawerny wszystkich portów tej korony
+   (`event.ports` wymienia je wszystkie) i NPC roznoszący plotki. Gracz dowiaduje
+   się o niej **6-14 dni przed** desantem.
+4. W dniu `endDay` desant rozstrzyga się poza ekranem, a flaga zostaje albo wraca.
+
+### Szansa na wypłynięcie
+
+```
+p = RELIEF_DAILY_BASE (0.06)
+  × SIZE_PRIORITY[rozmiar]          small 0.6 · medium 0.9 · large 1.2 · capital 1.5
+  × clamp(0.3, 1.2, 0.3 + siła_korony × 0.9)
+  × (korona w stanie wojny ? 0.5 : 1)
+```
+
+`siła_korony` = porty trzymane teraz / porty z mapy startowej. Korona bez ani
+jednego portu nie wypływa w ogóle. Rzut jest zerowany, gdy trwa okres karencji,
+gdy eskadra już płynie, albo gdy działa `nextReliefDay` (45 dni po odparciu).
+
+Dla dużego miasta w spokojnych czasach daje to ok. 7%/dzień, czyli pierwszą
+eskadrę zwykle ok. 25-40 dni po zdobyciu.
+
+### Siła eskadry
+
+```
+eskalacja = 1 + min(1, dni_utraty / 180)        // podwaja się przez pół roku
+żołnierze = SIZE_SOLDIERS[rozmiar] × rand(0.8..1.3) × eskalacja
+          × clamp(0.5, 1.0, 0.4 + siła_korony × 0.6)
+działa    = żołnierze / 4
+rejs      = 6..14 dni
+atak      = żołnierze × ROYAL_QUALITY (1.15) × (1 + działa × 0.01)
+```
+
+Sufit współczynnika siły korony to **1.0**, nie 1.2. Wyżej świeżo złupione duże
+miasto było nie do utrzymania niezależnie od liczby pozostawionych ludzi, co
+opróżniało z sensu zakończenie „zatrzymaj dla bractwa".
+
+### Obrona
+
+```
+obrona = (milicja + załoga_miasta) × wallFactor × gunFactor  [+ flota, jeśli obecna]
+wallFactor = 0.5 + (walls / TYPE_WALL_CAP[typ]) × 0.8
+gunFactor  = 1 + działa_brzegowe × 0.02
+```
+
+Człon murów mierzy się względem tego, co **taki** typ osady może mieć, a nie
+względem jego własnego stanu bieżącego — desant poza ekranem nie ma fazy
+ostrzału, która obniżałaby stosunek, więc stosunek musi być bezwzględny.
+
+**Flota gracza** liczy się, gdy jest w promieniu `PRESENCE_RANGE = 400 px` od
+miasta albo gdy gracz stoi w tym porcie. Jej wkład ma ten sam kształt, co człon
+ataku w `assaultStrengths`, razy `PRESENCE_PENALTY = 0.7`.
+
+### Rozstrzygnięcie
+
+```
+p_utrzymania = obrona^1.8 / (obrona^1.8 + atak^1.8)
+```
+
+Wykładnik `RESOLVE_SHARPNESS = 1.8` zamiast uczciwego stosunku: 1.0 wyrzucałoby
+sezon pracy na jednym pechowym rzucie, 1.8 zostawia wyrównaną walkę rzutem
+monetą, a nierówną każe zachowywać się tak, jak mówi arytmetyka.
+
+Straty są udziałem **własnych** liczebności każdej strony, skalowanym bliskością
+wyniku (`0.55..0.90` dla przegranego, `0.10..0.45` dla zwycięzcy) — ta sama
+zasada, co w `resolveAssault`.
+
+| Wynik | Co się dzieje |
+|---|---|
+| Miasto pada | `factionId` wraca do dawnej korony, `garrison = 0`, `capturedDay` skasowany, `defense = 50% baseline` |
+| Miasto się broni | `garrison` pomniejszony o straty, `defense × 0.85`, `nextReliefDay = dziś + 45`, sława +4 (+8 przy obecności) |
+
+Obecny gracz płaci za to załogą (połowa tempa strat desantu) i dostaje
+`WRECK_GOLD_PER_SOLDIER = 3` złota za żołnierza rozbitej eskadry.
+
+### Załoga miasta (garnizon)
+
+| Funkcja | Co robi |
+|---|---|
+| `garrisonCapacity(portKey)` | `SIZE_SOLDIERS[rozmiar] × 2` |
+| `maxStationable(world, portKey)` | ilu ludzi da się zostawić teraz (koje minus `SHIP_KEEPERS`) |
+| `stationMen(world, portKey, ±n)` | przenosi ludzi między pokładem a murami |
+| `garrisonAt(world, portKey)` | ilu stoi na murach |
+
+`garrisonFor` (SiegeSystem) dolicza ich do `soldiers` **1:1**. `tickReconquest`
+odejmuje `GARRISON_DECAY = 0.4%` dziennie (dezercja i febra).
+
+### Sufit odbudowy obrony
+
+`heldDefenseCeiling(world, portKey)` — `EconomyTickSystem` ciągnie `defense` ku
+**45% baseline'u** (`HELD_DEFENSE_SHARE`) dla miasta, które zmieniło właściciela,
+i ku pełnemu baseline'owi dla pozostałych. Bez tego miasto odbudowałoby się samo
+do pełnej obrony w jeden sezon i dźwignia garnizonu nie miałaby znaczenia.
+
+### Kolejność w pętli dnia
+
+`tickReconquest` w `WorldEngine` idzie **przed** `updateWorldEvents`. Tamtejszy
+`expireEvents` kasuje zdarzenia z minionym `endDay`, więc eskadra docierająca w
+przeskoczonym dniu zostałaby po cichu usunięta zamiast stoczyć desant — błąd
+widoczny wyłącznie jako miasta, na które nikt nigdy nie napada.
+
 ## RomanceSystem (v0.14.0)
 
 `charm` istniał w `CaptainSkills` od tworzenia postaci i do v0.14.0 **nie był

@@ -27,6 +27,7 @@ import {
   getAggregatedEffects,
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
+import { heldDefenseCeiling } from "./ReconquestSystem.ts";
 
 const RECOVERY_WEALTH = 0.01;     // 1% per day toward baseline
 const RECOVERY_POPULATION = 0.005; // 0.5% per day
@@ -109,7 +110,10 @@ export function economyDailyTick(world: WorldState): WorldState {
     const rmul = effects.recoveryMul;
     wealth     += (baseline.wealth     - wealth)     * RECOVERY_WEALTH * rmul;
     population += (baseline.population - population) * RECOVERY_POPULATION * rmul;
-    defense    += (baseline.defense    - defense)    * RECOVERY_DEFENSE * rmul;
+    // A town that changed hands rebuilds only toward what its own people will
+    // raise for whoever holds the fort — no crown is paying for a garrison any
+    // more. Without this the player would never have to defend a conquest.
+    defense    += (heldDefenseCeiling(w, portKey) - defense) * RECOVERY_DEFENSE * rmul;
 
     // Clamp + round
     const finalWealth = Math.max(0, Math.min(1000, Math.round(wealth)));

@@ -120,9 +120,28 @@ Menu port:
 2. **Tawerna** — rekrutacja, drink (+morale), plotki i lokalne newsy ze świata
 3. **Kupiec** — kupno/sprzedaż 6 towarów
 4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do floty
-5. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
+5. **Załoga miasta** — tylko w mieście, które zmieniło właściciela (v0.15.0)
+6. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
 
 Nawigacja: klawisze lub klik na opcje. ESC = wyjście z portu.
+
+#### Widok „garrison" (v0.15.0)
+
+Pojawia się w menu tylko wtedy, gdy `portChangedHands(world, portKey)`. Cały
+ekran to jedna liczba, którą gracz kontroluje — ludzie na murach — i dwie, które
+ona porusza:
+
+- ilu ludzi stoi na murach i ile miasto pomieści (`garrisonCapacity`)
+- ilu jest razem z milicją (`garrisonFor(...).soldiers`) i ilu zostało na pokładzie
+- czy eskadra już płynie i za ile dni (`activeExpeditionFor` / `daysUntilRelief`)
+- szanse obrony **z flotą na redzie i bez niej** — dwa dostępne plany: zostawić
+  dość ludzi albo być tu osobiście
+
+Akcje: zostaw / zabierz 10, 25 albo 50 ludzi (plus resztę, gdy jest jej mniej niż
+10). Trzy wielkości zamiast suwaka — decyzja brzmi „drużyna, kompania czy większość
+załogi", a suwak dołożyłby do niej wyłącznie naciśnięcia klawiszy.
+
+Cała arytmetyka siedzi w `ReconquestSystem`; scena tylko pyta i rysuje odpowiedź.
 
 ### SeaBattleScene
 

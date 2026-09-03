@@ -12,7 +12,7 @@ import { SeagullRenderer } from "../render/SeagullRenderer.ts";
 import type { UIOverlayScene } from "./UIOverlayScene.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
-import { PortMarkerRenderer } from "../render/PortMarkerRenderer.ts";
+import { PortMarkerRenderer, refreshPortFlags, type PortMarkerResult } from "../render/PortMarkerRenderer.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
@@ -103,6 +103,9 @@ export class MainMapScene extends Phaser.Scene {
   private cityLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number; offsetPx: number }> = [];
   private cityGraphics: Phaser.GameObjects.Graphics | null = null;
   private flagImages: Phaser.GameObjects.Image[] = [];
+  private portMarkers: PortMarkerResult | null = null;
+  /** Day the flags on the map were last painted. */
+  private ownersDrawnDay = -1;
   private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
 
   constructor() {
@@ -329,6 +332,8 @@ export class MainMapScene extends Phaser.Scene {
       owners[key] = port.factionId as string;
     }
     const portMarkers = new PortMarkerRenderer(this, this.landGrid).render(owners);
+    this.portMarkers = portMarkers;
+    this.ownersDrawnDay = this.worldState.time.day;
     this.portSafePositions = portMarkers.portSafePositions;
     this.cityLabels = portMarkers.cityLabels;
     this.coordLabels = portMarkers.coordLabels;
@@ -787,6 +792,17 @@ export class MainMapScene extends Phaser.Scene {
 
     if (result.events.length > 0) {
       this.worldRenderer.applyEvents(this, result.events);
+    }
+
+    // Towns change hands from the daily tick now, not only from a siege that
+    // rebuilds this scene, so the flags have to be checked as the days pass.
+    if (this.portMarkers && this.worldState.time.day !== this.ownersDrawnDay) {
+      this.ownersDrawnDay = this.worldState.time.day;
+      const owners: Record<string, string> = {};
+      for (const [key, port] of Object.entries(this.worldState.ports)) {
+        owners[key] = port.factionId as string;
+      }
+      refreshPortFlags(this, this.portMarkers, owners);
     }
 
     if (result.transitions) {

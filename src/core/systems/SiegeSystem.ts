@@ -71,7 +71,7 @@ export function portChangedHands(world: WorldState, portKey: string): boolean {
 // ── The garrison ──────────────────────────────────────────
 
 /** Soldiers a town of each size keeps under arms at full defence. */
-const SIZE_SOLDIERS: Record<CitySize, number> = {
+export const SIZE_SOLDIERS: Record<CitySize, number> = {
   small: 25,
   medium: 55,
   large: 100,
@@ -79,14 +79,14 @@ const SIZE_SOLDIERS: Record<CitySize, number> = {
 };
 
 /** Shore guns each kind of settlement can mount at full defence. */
-const TYPE_GUNS: Record<"city" | "fort" | "outpost", number> = {
+export const TYPE_GUNS: Record<"city" | "fort" | "outpost", number> = {
   outpost: 4,
   city: 12,
   fort: 26,
 };
 
 /** However well defended, an outpost has no curtain wall to hide behind. */
-const TYPE_WALL_CAP: Record<"city" | "fort" | "outpost", number> = {
+export const TYPE_WALL_CAP: Record<"city" | "fort" | "outpost", number> = {
   outpost: 35,
   city: 70,
   fort: 100,
@@ -112,6 +112,10 @@ export type FortState = {
  * actually left. A town gutted by plague or famine is measurably easier to take
  * than the same town at baseline — the living-world numbers finally decide
  * something the player can feel.
+ *
+ * Men the player stationed here (v0.15.0) stand with the militia and are
+ * counted at face value: they are the only part of a taken town's defence that
+ * does not come out of `defense`, which is exactly why they are the lever.
  */
 export function garrisonFor(world: WorldState, portKey: string): FortState {
   const def = CITIES[portKey];
@@ -124,7 +128,9 @@ export function garrisonFor(world: WorldState, portKey: string): FortState {
 
   const guns = Math.round(TYPE_GUNS[def.type] * (0.3 + (defense / 100) * 0.7));
   const walls = Math.round(Math.min(TYPE_WALL_CAP[def.type], defense));
-  const soldiers = Math.round(SIZE_SOLDIERS[def.population] * (0.35 + (defense / 100) * 0.65) * popFactor);
+  const stationed = Math.max(0, Math.round(port?.garrison ?? 0));
+  const soldiers = Math.round(SIZE_SOLDIERS[def.population] * (0.35 + (defense / 100) * 0.65) * popFactor)
+    + stationed;
 
   return {
     guns, gunsMax: Math.max(1, guns),
@@ -554,9 +560,15 @@ export function capturePort(
   // of its people. `EconomyTickSystem` will pull it back toward baseline over
   // months, which is the intended shape: taking a town matters, and it does not
   // matter forever.
+  const changedHands = newOwnerKey !== oldOwner;
   const sacked: PortRuntimeState | undefined = port ? {
     ...port,
     factionId: makeFactionId(newOwnerKey),
+    // The dispossessed crown starts counting today. Sacking a town without
+    // taking it leaves the flag alone, so it starts no clock either.
+    ...(changedHands
+      ? { capturedDay: world.time.day, garrison: 0, nextReliefDay: undefined }
+      : {}),
     defense: Math.max(0, Math.round(port.defense * 0.15)),
     wealth: Math.max(0, Math.round(port.wealth * (choice === "sponsor" ? 0.6 : 0.35))),
     population: Math.max(0, Math.round(port.population * 0.85)),

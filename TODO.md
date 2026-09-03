@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.14.0.0 · **Branch:** `feature/v0.13-land-battles-and-story`
-**Kod:** 145 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **649 przechodzi, 0 failuje, 0 `todo`** w 16 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.15.0.0 · **Branch:** `main`
+**Kod:** 147 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **721 przechodzi, 0 failuje, 0 `todo`** w 17 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.14.0.0 siedzi na gałęzi `feature/v0.13-land-battles-and-story` (nie na `main`, **nie wdrożona**), testy 649/649 zielone; moduły A-F domknięte — bitwy lądowe i warstwa fabularna weszły w tym wydaniu, a następne w kolejce jest **domknięcie obu** (obrona miast przez AI, posag i mini-gra taneczna) albo zadania równoległe z sekcji 4.
+> **Start sesji w jednym zdaniu:** v0.15.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 721/721 zielone; moduł H (korona odbija zdobyte miasta) domknął drugą połowę bitew lądowych, a następne w kolejce jest **rozgrywalna bitwa obronna**, muzyka albo zadania równoległe z sekcji 4.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -28,10 +28,11 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Bitwy lądowe | ✅ | `SiegeSystem` (~560 l.) + `CityAssaultScene`: ostrzał rundowy, desant falami, trzy zakończenia, port zmienia właściciela |
 | Córki gubernatorów | ✅ | `RomanceSystem`: jedna na miasto, cztery podejścia, ślub raz na karierę |
 | Wątek rodzinny | ✅ | `FamilyQuestSystem`: trzy miasta markiza, pojedynek za każdego krewnego |
+| Odbicie miast przez koronę | ✅ | `ReconquestSystem` (~490 l.): eskadry odbijające jako newsy, załoga miasta jako dźwignia, desant rozstrzygany poza ekranem |
 
 ### Nietknięte
 
-Obrona miast przez AI (dziś nikt nie odbija zdobytego portu) · posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
+Rozgrywalna bitwa obronna (desant korony rozstrzyga się poza ekranem) · bronienie sojusznika przed cudzym szturmem · posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
 
 ### Świadome placeholdery (zostawione celowo)
 
@@ -184,7 +185,7 @@ Garnizon skaluje się populacją, którą ekonomia faktycznie zostawiła miastu 
 **Znaleziony przy okazji błąd:** wszystkie sceny portowe czytały właściciela ze statycznego `CityDef`, więc miasto zdobyte miesiąc temu dalej powiewałoby hiszpańską flagą. `portFaction()` jest teraz jedynym poprawnym odczytem.
 
 **Zostało z tego modułu:**
-- **Obrona miast przez AI** — nikt nie próbuje odbić zdobytego portu, więc zdobycz jest wieczna
+- ~~**Obrona miast przez AI**~~ ✅ v0.15.0.0 — `ReconquestSystem`, opisany niżej
 - **Bronienie sojusznika** przed cudzym szturmem, za reputację i złoto
 - **Straty konsorty w ludziach** nie są zapisywane: `FleetShip` nie ma pola załogi, więc konsorta odzyskuje pełną obsadę do kolejnego oblężenia (`SiegeSystem.writeBackForce`)
 
@@ -210,13 +211,73 @@ Cztery podejścia opierają się na różnych rzeczach: komplement i taniec na u
 - **Ciotka i wujek** jako czwarty i piąty krewny, z unikalnymi nagrodami (brat jako pierwszy oficer, mapa wielkiego skarbu od wujka)
 - **Tropy od kupców i z tawern** jako alternatywa dla nazwania miasta wprost
 
-### v0.15.0 — co dalej
+### ~~v0.15.0 — Korona wraca po swoje~~ ✅ (v0.15.0.0)
+
+`src/core/systems/ReconquestSystem.ts`. Druga połowa v0.13.0: do tej pory zdobycz
+była wieczna, więc największa mechanika gry miała tylko połowę pętli. Konkwista,
+której nie da się stracić, jest trofeum, nie posiadłością.
+
+**Pętla.** Miasto zmienia właściciela → `capturePort` stempluje `capturedDay` →
+po 12 dniach karencji każdy dzień to rzut o wypłynięcie eskadry → eskadra jest
+zwykłym `WorldEventState` typu `reconquest`, więc **jedzie istniejącą siecią
+newsów**: tawerny wszystkich portów tej korony i NPC roznoszący plotki → 6-14 dni
+później desant rozstrzyga się poza ekranem.
+
+To ostrzeżenie jest sensem całości. Gracz nie dowiaduje się, że stracił miasto —
+dowiaduje się, że **może** je stracić, i ma czas coś z tym zrobić.
+
+**Dwie dźwignie, celowo różne w naturze.** *Zostaw ludzi* — załoga na murach liczy
+się 1:1 jako żołnierze w `garrisonFor`, pojemność 2× etatu miasta, dezercja
+0.4%/dzień; odpowiedź na miasto, przy którym nie da się być. *Bądź tam* — flota w
+promieniu 400 px rzuca desant do obrony, a załoga fregaty na brzegu przeważa
+wszystko, co zostało złupionemu miastu; odpowiedź na miasto, po które warto wrócić.
+
+Samo miasto **nie** jest dźwignią: `heldDefenseCeiling` ciągnie `defense` ku 45%
+baseline'u zamiast ku pełnemu, bo za garnizon nikt już nie płaci. Bez tego miasto
+odbudowałoby się samo w jeden sezon i nie byłoby czego decydować.
+
+| Stała | Wartość | Po co |
+|---|---|---|
+| `RELIEF_GRACE_DAYS` | 12 | zanim korona w ogóle zbierze okręty |
+| `RELIEF_DAILY_BASE` | 0.06 | ×priorytet rozmiaru ×siła korony ×(wojna 0.5) |
+| `RELIEF_COOLDOWN_DAYS` | 45 | po odparciu |
+| `ESCALATION_DAYS` | 180 | wyprawa podwaja się przez pół roku |
+| `RESOLVE_SHARPNESS` | 1.8 | wyrównana walka = rzut monetą, nierówna zachowuje się jak arytmetyka |
+| `HELD_DEFENSE_SHARE` | 0.45 | sufit odbudowy zdobytego miasta |
+
+**Migracja v12** — `garrison`, `capturedDay`, `nextReliefDay` w `PortRuntimeState`.
+Miasto, które w zapisie v11 jest już w cudzych rękach, dostaje `capturedDay` równy
+**dniowi wczytania**, nie zgadywanej dacie upadku: pomyłka w drugą stronę otwierałaby
+zapis eskadrą już na redzie. Ta sama zasada, co przy zegarze łupów w v10.
+
+**Naprawione przy okazji:** flagi na mapie były snapshotem z `MainMapScene.create()`
+— wystarczało, dopóki właściciel zmieniał się wyłącznie po oblężeniu przebudowującym
+scenę. Teraz `refreshPortFlags` podmienia teksturę flagi w każdym dniu, w którym
+właściciel się rozjechał z tym, co narysowano.
+
+**Weryfikacja w grze:** `?relief=<port>` (+ `&garrison=N`, `&soldiers=N`) stawia
+gracza pod miastem, które trzyma, z eskadrą docierającą dzisiaj i zegarem
+przyspieszonym do doby na sekundę. Obie gałęzie przejechane: `reconquest.log_held_present`
+(garnizon 120 → 88, obrona 40 → 34, flaga zostaje) i `reconquest.log_lost` (flaga
+wraca do Hiszpanii). `drive.mjs` ma nowe pole `staleFlags` — porty, których
+narysowana flaga nie zgadza się z właścicielem; w obu przebiegach puste.
+
+**Zostało z tego modułu:**
+- **Rozgrywalna bitwa obronna** — dziś desant korony rozstrzyga się poza ekranem, nawet gdy gracz stoi na redzie. Scena lustrzana do `CityAssaultScene` (ostrzał z fortu, fale desantu z drugiej strony) to naturalny następny krok
+- **Bronienie sojusznika** przed cudzym szturmem
+- **Korona kontra korona** — dziś tylko gracz zmienia właściciela portu; wojny między koronami nie przesuwają flag
+
+### v0.16.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza:
 
-1. **Obrona zdobytego miasta** — najpilniejsze domknięcie v0.13.0. Dziś zdobycz jest wieczna, więc największa nowa mechanika nie ma drugiej połowy. Korona, która straciła port, powinna wysyłać flotę odbijającą; `WorldEventSystem` ma już wojny i frakcje, a `NpcSpawnSystem` już mnoży spawny marynarki dla walczących.
-2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. Najtańsza rzecz o największym wpływie na odbiór.
-3. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża praca, mały dług.
+1. **Rozgrywalna bitwa obronna** — domknięcie v0.15.0. Gracz, który przypłynął
+   bronić swojego miasta, ogląda dziś komunikat zamiast bitwy; to jedyne miejsce w
+   grze, gdzie obecność gracza nie daje mu sterów.
+2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. Najtańsza rzecz o
+   największym wpływie na odbiór.
+3. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
+   praca, mały dług.
 
 ---
 
@@ -228,7 +289,9 @@ Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza
 - **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
 - **Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.** Maszyna je obsługuje i pokrywają je testy, ale żadna scena ich nie emituje — wątek rodzinny chodzi na `flag_set`, skarby na `dig_at`. Naturalne miejsca: `PortApproachScene.executeAction("enter")` dla pierwszego i przejście dnia w `WorldEngine` dla drugiego. Nie dodano ich „na zapas" — martwy hak jest tym samym błędem co martwa scena.
-- **Flagi na mapie to snapshot z `MainMapScene.create()`.** Wystarcza, bo scena mapy jest przebudowywana po każdym oblężeniu, ale port, który zmieni właściciela z innego powodu (przyszła obrona AI) nie odświeży flagi bez restartu sceny. `PortMarkerRenderer.render(owners)`.
+- ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
+- **Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.** `src/core/systems/CrewConsumptionSystem.ts:56,70,85` wypychają `{ type: "Toast", message: "event.food_out" }`, a `WorldRenderer.showToast` rysuje `message` dosłownie — gracz widzi „event.food_out". Poprawka: przepuścić przez `t()` w miejscu tworzenia zdarzenia, jak robi to `ReconquestSystem`, albo tłumaczyć w `applyEvents`. Dotyczy trzech komunikatów o kończącej się prowiancie i śmierci załogi.
+- **Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.** `heldDefenseCeiling` obcina sufit obrony do 45%, ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
 
 ---
 
@@ -239,12 +302,12 @@ Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza
 - Font: zawsze `UI_FONT` / `txt()` z `src/game/ui/textStyle.ts` — nigdy hardkodowany.
 - `pixelArt: true` wymusza `roundPixels: true` → w `MainMapScene.create()` musi zostać `camera.setRoundPixels(false)` (inaczej wraca jitter statku).
 - Assety **zawsze kompresować przed commitem** (`sharp` dla PNG, ffmpeg dla JPEG).
-- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie **v11**) — pętla rzuca wyjątkiem przy brakującym kroku i psuje wszystkie stare zapisy.
+- Zmiany w `WorldState` wymagają migracji w `src/persistence/Migrations.ts` (obecnie **v12**) — pętla rzuca wyjątkiem przy brakującym kroku i psuje wszystkie stare zapisy.
 - Nowe teksty → `src/core/i18n/locales/en.ts` **i** `pl.ts`.
 - Nie rejestruj scen „na zapas" — scena bez wejścia to martwy kod.
 - `src/core/` nie importuje Phasera. Nigdy.
 - Właściciela portu czytaj **wyłącznie** przez `portFaction(world, portKey)` z `SiegeSystem` — `CityDef.factionId` to mapa z 1680 i nie zmienia się nigdy.
 - Do weryfikacji w grze jest `scripts/drive.mjs` (dowolna sekwencja klawiszy + zrzut stanu). Karta headless dławi `requestAnimationFrame`, więc pętlę Phasera trzeba pompować ręcznie — zamrożony zrzut to prawie zawsze to, a nie błąd gry.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>` (+ `&garrison=N`, `&soldiers=N`).
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

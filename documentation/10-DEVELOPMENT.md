@@ -216,6 +216,7 @@ node scripts/drive.mjs <url> [out.png] [klawisze] [--scene=Klucz:json] [--wait=m
 
 node scripts/drive.mjs "http://localhost:3000/?siege=cartagena" out.png "Space,Space,Space,l"
 node scripts/drive.mjs "http://localhost:3000/?skip" out.png "Enter,2" --scene=PortScene:{"portId":"port_royal"}
+node scripts/drive.mjs "http://localhost:3000/?relief=cartagena" out.png "s,s,s,s,Enter" --scene=PortScene:{"portId":"cartagena"}
 ```
 
 **Dlaczego pompowanie jest konieczne:** karta headless (i każda w tle) dławi
@@ -224,7 +225,19 @@ gra wygląda na zamrożoną. To nie jest błąd gry. Paczki po ≤60 klatek — 
 w jednym `evaluate` wiesza renderer i CDP przerywa po 45 s.
 
 Skrypt wypisuje na koniec `scenes`, `gold`, `citiesCaptured`, `courtship`,
-`quests`, `flags` i ostatnie wpisy logu, plus błędy strony (`pageerror`, konsola).
+`quests`, `flags`, ostatnie wpisy logu i błędy strony (`pageerror`, konsola),
+a od v0.15.0 także:
+
+| Pole | Co pokazuje |
+|---|---|
+| `towns` | porty z `capturedDay` albo garnizonem: właściciel, ludzie, obrona |
+| `reliefs` | eskadry odbijające w drodze: cel, korona, dni, żołnierze |
+| `staleFlags` | porty, których **narysowana** flaga nie zgadza się z właścicielem — dokładnie ten błąd, przed którym broni odświeżanie flag w `MainMapScene` |
+
+Nawigacja czeka na `domcontentloaded`, nie `networkidle0`: socket HMR Vite i
+strumień audio gry trzymają otwarte żądanie tak długo, jak żyje strona, więc
+`networkidle0` zawsze wyczekiwał swój timeout i przerywał przebieg, zanim ten
+się zaczął. Boot pokrywa `--wait`.
 
 ## Konwencje wydań
 
@@ -258,6 +271,9 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |
 | `?siege=cartagena` | Szturm na miasto, z fregatą, konsortą i listem kaperskim |
+| `?relief=cartagena` | Miasto już zdobyte, eskadra królewska dociera dzisiaj |
+| `&garrison=N` | Ilu ludzi stoi na murach (domyślnie 120) — razem z `?relief=` |
+| `&soldiers=N` | Wielkość eskadry (domyślnie 100) — `&soldiers=600` gwarantuje utratę miasta |
 
 ## Deploy produkcyjny
 

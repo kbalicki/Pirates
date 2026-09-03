@@ -43,7 +43,11 @@ const errors = [];
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 
-await page.goto(url, { waitUntil: 'networkidle0', timeout: 20000 });
+// `networkidle0` is not reachable here: Vite's HMR socket and the game's own
+// audio streaming keep a request open for as long as the page lives, so the
+// navigation waits out its timeout and the run dies before it starts. Wait for
+// the document and let `--wait` cover the boot.
+await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 });
 await new Promise(r => setTimeout(r, parseInt(flags.wait ?? '3500', 10)));
 
 /**
@@ -102,7 +106,29 @@ const state = await page.evaluate(() => {
     courtship: w.player.courtship,
     quests: w.player.questLog.map(q => ({ id: q.questId, stage: q.stage, done: q.completed })),
     flags: Object.keys(w.worldFlags).filter(k => w.worldFlags[k]),
-    log: w.eventLog.slice(-5).map(e => e.key),
+    // Towns that are not where the 1680 map left them, plus any royal squadron
+    // currently at sea for one of them.
+    towns: Object.entries(w.ports)
+      .filter(([, p]) => p.capturedDay !== undefined || (p.garrison ?? 0) > 0)
+      .map(([k, p]) => `${k}=${p.factionId} garrison:${p.garrison ?? 0} defense:${p.defense}`),
+    reliefs: w.worldEvents
+      .filter(e => e.type === 'reconquest')
+      .map(e => `${e.ports[0]} <- ${e.factions[0]}, ${e.endDay - w.time.day}d, ${e.vars.soldiers} men`),
+    log: w.eventLog.slice(-8).map(e => e.key),
+    // Flags on the map are drawn once and repainted when a town changes hands.
+    // Anything listed here is a town whose drawn colours no longer match who
+    // actually holds it — the exact bug the repaint exists to prevent.
+    staleFlags: (() => {
+      const map = g.scene.scenes.find(s => s.scene.key === 'MainMapScene');
+      const byPort = map && map.portMarkers && map.portMarkers.flagByPort;
+      if (!byPort) return null;
+      const bad = [];
+      for (const [key, img] of byPort) {
+        const want = `flag_${w.ports[key] ? w.ports[key].factionId : '?'}`;
+        if (img.texture.key !== want) bad.push(`${key} drawn:${img.texture.key} owner:${want}`);
+      }
+      return bad;
+    })(),
   };
 });
 

@@ -3,7 +3,18 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { PortId } from "../../core/model/ids.ts";
 import { itemId, shipClassId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
-import { portFaction } from "../../core/systems/SiegeSystem.ts";
+import { portFaction, portChangedHands, garrisonFor } from "../../core/systems/SiegeSystem.ts";
+import {
+  garrisonAt,
+  garrisonCapacity,
+  maxStationable,
+  stationMen,
+  activeExpeditionFor,
+  daysUntilRelief,
+  defenceStrength,
+  attackStrength,
+  holdOdds,
+} from "../../core/systems/ReconquestSystem.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { ITEMS } from "../../core/data/items.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
@@ -79,7 +90,7 @@ const DLG_H = 420;
 const BORDER = 3;
 const PAD = 16;
 
-type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter";
+type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
@@ -115,6 +126,7 @@ export class PortScene extends Phaser.Scene {
   private pendingDaughterVisit = false;
   /** One line of narration under the courtship menu. */
   private courtshipMessage: string | null = null;
+  private garrisonMessage: string | null = null;
 
   // Keyboard cleanup
   private keyboardCleanup: (() => void)[] = [];
@@ -241,6 +253,7 @@ export class PortScene extends Phaser.Scene {
       case "merchant": this.renderMerchant(); break;
       case "shipyard": this.renderShipyard(); break;
       case "daughter": this.renderDaughter(); break;
+      case "garrison": this.renderGarrison(); break;
     }
   }
 
@@ -344,8 +357,18 @@ export class PortScene extends Phaser.Scene {
       { label: t("port.visit_tavern"), key: "tavern" },
       { label: t("port.visit_merchant"), key: "merchant" },
       { label: t("port.visit_shipyard"), key: "shipyard" },
-      { label: this.isOnFoot ? t("port.leave_on_foot") ?? "ODEJDŹ" : t("port.set_sail"), key: "sail" },
     ];
+
+    // A town that changed hands has a garrison to man, and it is the only thing
+    // standing between the player and the squadron the old crown will send.
+    if (portChangedHands(this.worldState, this.currentPortId as string)) {
+      actions.push({ label: t("port.garrison"), key: "garrison" });
+    }
+
+    actions.push({
+      label: this.isOnFoot ? t("port.leave_on_foot") ?? "ODEJDŹ" : t("port.set_sail"),
+      key: "sail",
+    });
 
     this.setupActionList(actions, y, (key) => {
       switch (key) {
@@ -353,6 +376,7 @@ export class PortScene extends Phaser.Scene {
         case "tavern": this.switchView("tavern"); break;
         case "merchant": this.switchView("merchant"); break;
         case "shipyard": this.switchView("shipyard"); break;
+        case "garrison": this.switchView("garrison"); break;
         case "sail": this.leavePort(); break;
       }
     });
@@ -780,6 +804,131 @@ export class PortScene extends Phaser.Scene {
    * captain's advantages to spend, and hiding the numbers would turn that into
    * guesswork.
    */
+  // ===== VIEW: Garrison =====
+
+  /**
+   * Manning a town you took.
+   *
+   * The whole screen is one number the player controls — men on the walls —
+   * and the two numbers it moves: how long until a squadron arrives, and the
+   * odds the town holds when it does. `ReconquestSystem` owns both; this only
+   * asks it and draws the answer.
+   *
+   * The odds line names the town's chances with and without the fleet standing
+   * in the roads, because those are the two plans available: leave enough men,
+   * or be here yourself.
+   */
+  private renderGarrison(): void {
+    const portKey = this.currentPortId as string;
+    let y = this.contentStartY;
+
+    const title = this.add.text(
+      this.cx, y,
+      t("garrison.title", { port: t("port." + portKey + ".name") }),
+      txt(16, { bold: true }),
+    );
+    title.setOrigin(0.5, 0);
+    this.contentContainer.add(title);
+    y += 26;
+
+    const stationed = garrisonAt(this.worldState, portKey);
+    const cap = garrisonCapacity(portKey);
+    const aboard = this.worldState.entities[this.worldState.player.shipId as string]?.ship?.crew.current ?? 0;
+    const underArms = garrisonFor(this.worldState, portKey).soldiers;
+
+    for (const line of [
+      t("garrison.stationed", { men: stationed, cap }),
+      t("garrison.militia", { men: underArms }),
+      t("garrison.aboard", { men: aboard }),
+    ]) {
+      const text = this.add.text(this.infoX, y, line, txt(12, { color: "#555555" }));
+      this.contentContainer.add(text);
+      y += 18;
+    }
+    y += 6;
+
+    // What is coming, if anything is.
+    const incoming = activeExpeditionFor(this.worldState, portKey);
+    const threat = incoming
+      ? t("garrison.threat_soon", {
+          faction: String(incoming.vars.faction ?? ""),
+          days: daysUntilRelief(this.worldState, portKey) ?? 0,
+          soldiers: Number(incoming.vars.soldiers) || 0,
+        })
+      : t("garrison.threat_none");
+    const threatText = this.add.text(this.infoX, y, threat, {
+      ...txt(12, { color: incoming ? "#8a3a3a" : "#777777" }),
+      wordWrap: { width: DLG_W - PAD * 2 },
+    });
+    this.contentContainer.add(threatText);
+    y += threatText.height + 8;
+
+    // Odds against whatever is actually at sea; against a typical squadron for
+    // this town when nothing is, so the number means something before the news.
+    const expected = incoming
+      ? attackStrength({
+          soldiers: Number(incoming.vars.soldiers) || 0,
+          guns: Number(incoming.vars.guns) || 0,
+          sailDays: 0,
+        })
+      : attackStrength({ soldiers: garrisonCapacity(portKey) / 2, guns: garrisonCapacity(portKey) / 8, sailDays: 0 });
+    const withFleet = Math.round(holdOdds(defenceStrength(this.worldState, portKey, true), expected) * 100);
+    const alone = Math.round(holdOdds(defenceStrength(this.worldState, portKey, false), expected) * 100);
+    const oddsText = this.add.text(
+      this.infoX, y,
+      t("garrison.odds_here", { pct: withFleet, alone }),
+      txt(12, { color: "#555555" }),
+    );
+    this.contentContainer.add(oddsText);
+    y += 22;
+
+    if (this.garrisonMessage) {
+      const msg = this.add.text(this.infoX, y, this.garrisonMessage, {
+        ...txt(12, { color: "#6a4a1a" }),
+        wordWrap: { width: DLG_W - PAD * 2 },
+        fontStyle: "italic",
+      });
+      this.contentContainer.add(msg);
+      y += msg.height + 8;
+      this.garrisonMessage = null;
+    }
+
+    const spare = maxStationable(this.worldState, portKey);
+    const actions: { label: string; key: string }[] = [];
+    // Three sizes rather than a slider: the decision is "a squad, a company or
+    // most of the crew", and a slider would only add keystrokes to it.
+    for (const men of [10, 25, 50]) {
+      if (spare >= men) actions.push({ label: t("garrison.leave", { men }), key: "leave_" + men });
+    }
+    if (spare > 0 && spare < 10) actions.push({ label: t("garrison.leave", { men: spare }), key: "leave_" + spare });
+    for (const men of [10, 25, 50]) {
+      if (stationed >= men) actions.push({ label: t("garrison.take", { men }), key: "take_" + men });
+    }
+    if (stationed > 0 && stationed < 10) actions.push({ label: t("garrison.take", { men: stationed }), key: "take_" + stationed });
+    if (actions.length === 0) {
+      const none = this.add.text(this.infoX, y, t("garrison.no_men"), txt(12, { color: "#777777" }));
+      this.contentContainer.add(none);
+      y += 20;
+    }
+    actions.push({ label: t("garrison.back"), key: "back" });
+
+    this.setupActionList(actions, y, (key) => {
+      if (key === "back") { this.switchView("menu"); return; }
+      const [dir, sizeStr] = key.split("_");
+      const men = Number(sizeStr) * (dir === "leave" ? 1 : -1);
+      const before = garrisonAt(this.worldState, portKey);
+      this.worldState = stationMen(this.worldState, portKey, men);
+      const moved = garrisonAt(this.worldState, portKey) - before;
+      this.garrisonMessage = moved >= 0
+        ? t("garrison.left", { men: moved })
+        : t("garrison.taken", { men: -moved });
+      this.registry.set("worldState", this.worldState);
+      this.switchView("garrison");
+    });
+
+    this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  }
+
   private renderDaughter(): void {
     const portKey = this.currentPortId as string;
     const daughter = daughterFor(this.worldState, portKey);

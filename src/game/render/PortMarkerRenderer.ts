@@ -13,6 +13,33 @@ export interface PortMarkerResult {
   coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }>;
   cityGraphics: Phaser.GameObjects.Graphics;
   flagImages: Phaser.GameObjects.Image[];
+  /** Flag sprite per port, so a town that changes hands can be repainted. */
+  flagByPort: Map<string, Phaser.GameObjects.Image>;
+}
+
+/**
+ * Repaint the flags of towns that have changed hands since the map was built.
+ *
+ * v0.13.0 got away with a snapshot because the map scene was rebuilt after
+ * every siege. v0.15.0 changes owners from the daily tick — a relief squadron
+ * takes a town back while the player is at sea — and the scene is not rebuilt
+ * for that, so the flag has to follow on its own.
+ *
+ * Only the flag sprite is swapped. The city icon itself is a faction-neutral
+ * sprite; the faction colour in `drawCityIcon` is used only by the procedural
+ * fallback, which the shipped game never reaches.
+ */
+export function refreshPortFlags(
+  scene: Phaser.Scene,
+  result: PortMarkerResult,
+  owners: Record<string, string>,
+): void {
+  for (const [portKey, img] of result.flagByPort) {
+    const key = `flag_${owners[portKey] ?? (PORTS[portKey]?.factionId as string)}`;
+    if (!scene.textures.exists(key) || img.texture.key === key) continue;
+    scene.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    img.setTexture(key);
+  }
 }
 
 /**
@@ -38,6 +65,7 @@ export class PortMarkerRenderer {
     const cityLabels: PortMarkerResult["cityLabels"] = [];
     const coordLabels: PortMarkerResult["coordLabels"] = [];
     const flagImages: Phaser.GameObjects.Image[] = [];
+    const flagByPort = new Map<string, Phaser.GameObjects.Image>();
 
     const g = this.scene.add.graphics();
     g.setDepth(500);
@@ -67,6 +95,7 @@ export class PortMarkerRenderer {
         flagImg.setData("origX", flagX);
         flagImg.setData("origY", flagY);
         flagImages.push(flagImg);
+        flagByPort.set(portKey, flagImg);
         // Waving animation
         this.scene.tweens.add({
           targets: flagImg,
@@ -154,7 +183,7 @@ export class PortMarkerRenderer {
     // Merge grid labels into cityLabels so MainMapScene scales them identically
     cityLabels.push(...gridLabels);
 
-    return { portSafePositions, cityLabels, coordLabels, cityGraphics: g, flagImages };
+    return { portSafePositions, cityLabels, coordLabels, cityGraphics: g, flagImages, flagByPort };
   }
 
   /**

@@ -3,6 +3,8 @@ import { MusicManager } from "../audio/MusicManager.ts";
 import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
+import { CITIES } from "../../core/data/cities.ts";
+import { factionId } from "../../core/model/ids.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -173,6 +175,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?battle=1    — bypass everything, launch straight into a sea battle vs a test enemy
     //   ?battle=trader|navy|pirate — choose enemy archetype
     //   ?siege=cartagena — jump straight to a city assault, with a ship able to try it
+    //   ?relief=cartagena — a town already taken, with a royal squadron arriving today
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -192,6 +195,19 @@ export class PreloadScene extends Phaser.Scene {
       const world = this.createSiegeWorld();
       this.registry.set("worldState", world);
       this.scene.start("CityAssaultScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("relief")) {
+      const portKey = params.get("relief") || "cartagena";
+      const men = params.has("garrison") ? Number(params.get("garrison")) : 120;
+      const soldiers = params.has("soldiers") ? Number(params.get("soldiers")) : 100;
+      const world = this.createReliefWorld(
+        portKey,
+        Number.isFinite(men) ? men : 120,
+        Number.isFinite(soldiers) ? soldiers : 100,
+      );
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
       return;
     }
     if (params.has("skip")) {
@@ -237,6 +253,69 @@ export class PreloadScene extends Phaser.Scene {
           },
         },
       },
+    };
+  }
+
+  /**
+   * A town already taken, with the crown's answer one day out, for `?relief=`.
+   *
+   * Waiting for the real thing means holding a town for a month of game time.
+   * This puts the player off the harbour of a pirate-held port with a squadron
+   * arriving today and the clock running fast enough to see it land, which is
+   * the only part of `ReconquestSystem` that cannot be read off a unit test:
+   * the toast, the log line and the flag on the map.
+   *
+   * `&garrison=N` sets the men on the walls and `&soldiers=N` the size of the
+   * squadron, so both endings are drivable and the balance is adjustable
+   * without a rebuild: the default holds the town, `&soldiers=600` loses it.
+   */
+  private createReliefWorld(portKey: string, men: number, soldiers: number): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const port = base.ports[portKey];
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    const day = base.time.day;
+    // Close enough for `PRESENCE_RANGE`, far enough out that the port dialog
+    // does not open: `PortApproachScene` pauses the world, and a paused world
+    // never sees a day change, so a squadron parked on the anchorage would
+    // never arrive. The crew may walk ashore here; presence is measured in
+    // distance, so that costs this harness nothing.
+    const pos = { x: def.pos.x + 60, y: def.pos.y + 60 };
+
+    return {
+      ...base,
+      // A game day every second or so — the tick this exercises is daily.
+      gameSpeed: 30,
+      player: { ...base.player, location: { type: "sea", pos }, citiesCaptured: 1 },
+      entities: entity ? { ...base.entities, [shipId]: { ...entity, pos } } : base.entities,
+      ports: port ? {
+        ...base.ports,
+        [portKey]: {
+          ...port,
+          factionId: factionId("pirates"),
+          capturedDay: day - 60,
+          // Two months of the town patching its own walls, which is roughly
+          // where `heldDefenseCeiling` leaves a place nobody is paying for.
+          defense: Math.round(port.defense * 0.4),
+          garrison: Math.max(0, Math.round(men)),
+        },
+      } : base.ports,
+      worldEvents: [
+        ...base.worldEvents,
+        {
+          id: `reconquest_${portKey}_debug`,
+          type: "reconquest" as const,
+          startDay: day - 8,
+          endDay: day,
+          ports: [portKey],
+          factions: [def.factionId as string, "pirates"],
+          severity: 3 as const,
+          headline: "news.reconquest",
+          vars: { port: def.name, faction: def.factionId as string, soldiers, guns: Math.round(soldiers / 4), days: 8 },
+        },
+      ],
     };
   }
 

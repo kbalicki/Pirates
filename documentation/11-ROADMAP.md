@@ -113,8 +113,9 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ **Desant:** auto-resolve falami, szanse pokazane przed decyzją; mury warte do 2.5× garnizonu
 - ✅ **Przejęcie miasta:** `PortRuntimeState.factionId` zmienia się, a za nim flaga na mapie, gubernator, ceny i spawn NPC
 - ✅ **Flota liczy się na lądzie:** działa i desant sumowane ze wszystkich kadłubów
-- ⬜ **Obrona:** AI atakuje miasta, gracz może bronić sojuszników — nietknięte
-- ⬜ **Odbicie miasta przez koronę** — zdobyty port zostaje w rękach gracza na zawsze
+- ✅ **Odbicie miasta przez koronę** (v0.15.0.0, `ReconquestSystem.ts`) — patrz moduł H
+- ⬜ **Obrona sojusznika:** cudzy szturm na port zaprzyjaźnionej korony, za reputację i złoto — nietknięte
+- ⬜ **Straty konsorty w ludziach** nie są zapisywane: `FleetShip` nie ma pola załogi
 
 ### Moduł F — Warstwa fabularna *(v0.14.0)* — ✅ trzon (v0.14.0.0)
 **Priorytet:** ŚREDNI | **Złożoność:** Średnia | **Wymaga:** modułów B i D
@@ -128,6 +129,20 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - Mini-gra taneczna zamiast rzutu kością na urok
 - Ciotka i wujek jako czwarty i piąty krewny, z unikalnymi nagrodami (brat jako pierwszy oficer, mapa wielkiego skarbu)
 - Tropy od kupców i z tawern jako alternatywa dla nazwania miasta wprost
+
+### Moduł H — Korona wraca po swoje *(v0.15.0)* — ✅ (v0.15.0.0)
+**Priorytet:** WYSOKI | **Złożoność:** Średnia | **Wymaga:** modułu E
+
+`ReconquestSystem.ts`. Druga połowa modułu E: zdobycz, której da się nie utrzymać. Wzory i stałe: [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md).
+
+- ✅ **Eskadra odbijająca** — korona, która straciła miasto, po 12 dniach karencji rzuca codziennie o wypłynięcie; szansa zależy od rozmiaru miasta, od tego, ile korona jeszcze trzyma, i od tego, czy nie prowadzi już wojny
+- ✅ **Ostrzeżenie przed desantem** — eskadra jest zwykłym `WorldEventState`, więc jedzie istniejącą siecią newsów: tawerny całej korony i NPC roznoszący plotki, 6-14 dni wyprzedzenia
+- ✅ **Eskalacja** — wyprawa podwaja się przez pół roku utraty miasta
+- ✅ **Załoga miasta** — ludzie zostawieni na murach liczą się 1:1 jako żołnierze, dezerterują 0.4%/dzień, pojemność = 2× etat miasta
+- ✅ **Obecność floty** — flota w promieniu 400 px rzuca desant do obrony; kosztuje ludzi, płaci złotem z rozbitych transportowców
+- ✅ **Sufit odbudowy** — miasto, które zmieniło właściciela, odbudowuje obronę tylko do 45% baseline'u. Czekanie nie jest planem
+- ✅ **Flaga na mapie** nadąża za miastem zmieniającym właściciela w trakcie rejsu
+- ⬜ **Rozgrywalna bitwa obronna** — desant rozstrzyga się poza ekranem; scena lustrzana do `CityAssaultScene` to osobne zadanie
 
 ### Moduł G — Rozszerzenia poza oryginał *(bez terminu)*
 **Priorytet:** NISKI
@@ -170,6 +185,9 @@ Moduł E ─── Bitwy lądowe ─────────────── [
   │
 Moduł F ─── Córki gubernatorów, rodzina  [TRZON GOTOWY]
   │
+Moduł H ─── Korona wraca po swoje ─────── [GOTOWY]
+  │          (zostaje rozgrywalna bitwa obronna)
+  │
 Moduł G ─── Rozszerzenia poza oryginał
 
 ║ Równolegle: Faza AI (generowanie assetów) ║
@@ -185,7 +203,7 @@ Moduł G ─── Rozszerzenia poza oryginał
 | **Beta 1 — żywy świat** | NPC, wydarzenia, ekonomia, bitwy morskie, flota | v0.9.x ✅ |
 | Beta 2 — pełna walka | Moduły A + B (uszkodzenia, pojedynki) | v1.0.x |
 | Beta 3 — kariera kapitana | Moduł C (łupy, starzenie, punktacja) | v1.1.x |
-| Beta 4 — questy i skarby | Moduły D + E (skarby, bitwy lądowe) | v1.2.x |
+| Beta 4 — questy i skarby | Moduły D + E + H (skarby, bitwy lądowe, obrona zdobyczy) | v1.2.x |
 | Release Candidate | Moduł F (fabuła) | v1.5.x |
 | v2.0 — pełna gra | Moduł G + kompletne assety AI | v2.0 |
 

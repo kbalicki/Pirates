@@ -35,6 +35,7 @@ Parsowane w `src/game/scenes/PreloadScene.ts`. Używaj ich zamiast klikania prze
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader` `navy` `pirate` `hunter` | Bitwa z konkretnym typem |
 | `?siege=<port>` | Szturm na miasto (fregata + konsorta + list kaperski), np. `?siege=cartagena` |
+| `?relief=<port>` | Miasto już zdobyte, eskadra królewska dociera dzisiaj; `&garrison=N` ustawia ludzi na murach (domyślnie 120), `&soldiers=N` wielkość eskadry (domyślnie 100) |
 
 Łączenie: `http://localhost:3000/?skip&zoom=z10&debug=1`
 

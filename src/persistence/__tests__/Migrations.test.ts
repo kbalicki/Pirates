@@ -329,6 +329,42 @@ describe("v11 — sieges and courtship", () => {
   });
 });
 
+describe("v12 — holding a town the crown wants back", () => {
+  it("gives every port an empty garrison and no relief clock", () => {
+    const migrated = migrateWorldState(makeV1Save()) as any;
+    for (const port of Object.values<any>(migrated.ports)) {
+      expect(port.garrison).toBe(0);
+      expect(port.nextReliefDay).toBeUndefined();
+    }
+  });
+
+  it("starts no claim on a town that never changed hands", () => {
+    const migrated = migrateWorldState(makeV1Save()) as any;
+    expect(migrated.ports.havana.capturedDay).toBeUndefined();
+  });
+
+  it("counts a town already in other hands from the day the save is loaded", () => {
+    // The save has no record of when the town actually fell, and guessing
+    // early would open it with a full-strength squadron already at the mouth
+    // of the harbour.
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 11;
+    save.ports.havana.factionId = "pirates";
+    save.time.day = 742;
+    expect((migrateWorldState(save) as any).ports.havana.capturedDay).toBe(742);
+  });
+
+  it("keeps a garrison and a capture day the save already carries", () => {
+    const save = migrateWorldState(makeV1Save()) as any;
+    save.version = 11;
+    save.ports.havana.garrison = 60;
+    save.ports.havana.capturedDay = 12;
+    const migrated = migrateWorldState(save) as any;
+    expect(migrated.ports.havana.garrison).toBe(60);
+    expect(migrated.ports.havana.capturedDay).toBe(12);
+  });
+});
+
 describe("entry points and idempotence", () => {
   it("a current-version save passes through untouched", () => {
     const migrated = migrateWorldState(makeV1Save()) as any;

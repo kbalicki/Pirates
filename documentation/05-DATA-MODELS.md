@@ -233,6 +233,32 @@ Właściciel portu to `PortRuntimeState.factionId` — pole istniejące od v3, k
 do v0.13.0 nigdy się nie zmieniało. `CityDef.factionId` to mapa startowa z 1680.
 Odczyt zawsze przez `portFaction(world, portKey)`.
 
+### Trzymanie zdobytego miasta (v12, v0.15.0)
+
+```typescript
+/** Dzień, w którym miasto ostatnio zmieniło właściciela. Brak = flaga jak na starcie. */
+capturedDay?: number;
+/** Ludzie zostawieni przez gracza na murach. To oni są prawdziwą obroną. */
+garrison?: number;
+/** Najwcześniejszy dzień, w którym może wypłynąć kolejna eskadra odbijająca. */
+nextReliefDay?: number;
+```
+
+Wszystkie trzy są opcjonalne i wchodzą migracją v12. `capturedDay` stempluje
+`capturePort` — **tylko** gdy flaga faktycznie się zmienia, więc złupienie bez
+zdobycia nie uruchamia zegara korony. Stan samej eskadry nie ma własnego pola:
+siedzi w `WorldEventState` typu `reconquest`, a jej siła w `event.vars`.
+
+Nowy typ wydarzenia świata:
+
+```typescript
+| "reconquest"   // eskadra odbijająca w drodze do miasta (v0.15.0)
+```
+
+`EventEffectsSystem` daje mu **celowo zerowy** efekt na port: `event.ports`
+wymienia wszystkie porty korony (żeby news dojechał do tawern), a jakikolwiek
+efekt na port rozlałby się wtedy na całe imperium.
+
 ## RNG Service (`src/core/services/RNG.ts`)
 
 ```typescript

@@ -6,6 +6,38 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.15.0.0",
+    date: "2026-09-03",
+    changes: [
+      "THE CROWN COMES BACK — a town you took can be taken off you",
+      "  Storm a town and the crown that lost it starts counting. After 12 days",
+      "  it may fit out a relief squadron, and every day after that is a roll",
+      "  A capital is worth coming back for; a fishing village is an",
+      "  inconvenience. A crown already at war sails half as often",
+      "  The squadron is news before it is a landing: 6-14 days at sea, gossiped",
+      "  in every tavern its crown still holds and carried by NPC captains",
+      "  The longer a town stays lost the harder they try — the expedition",
+      "  doubles in size over six months",
+      "THE GARRISON — crew left ashore, and the only thing holding the town",
+      "  A town that changed hands shows THE GARRISON in its port menu: leave men",
+      "  on the walls, or take them back aboard. Capacity is twice what the place",
+      "  keeps under arms, so an outpost is cheap to hold and a capital is a war",
+      "  The screen names the odds with your fleet in the roads and without it",
+      "  Stationed men count as soldiers at face value, and desert at 0.4% a day",
+      "  Being there when the squadron lands throws your landing party into the",
+      "  defence, and pays 3 Gold a soldier out of the wrecked transports",
+      "  A taken town now only rebuilds its defences to 45% of what the crown",
+      "  used to pay for. Waiting is not a plan",
+      "The flag on the map now follows a town that changes hands while you are",
+      "  at sea, not only after a siege",
+      "Migration v12 adds the garrison, the capture day and the relief clock.",
+      "  A town already in other hands in an old save starts its clock from the",
+      "  day the save is loaded, not from whenever it actually fell",
+      "?relief=cartagena drops you off a town you hold with a squadron arriving",
+      "  today; &garrison=N and &soldiers=N set both sides of the fight",
+    ],
+  },
+  {
     version: "0.14.0.0",
     date: "2026-09-03",
     changes: [
