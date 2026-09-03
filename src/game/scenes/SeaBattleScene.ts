@@ -14,7 +14,7 @@ import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
 import type { AiArchetype } from "../../core/engine/CombatEngine.ts";
 import { changeReputation } from "../../core/systems/ReputationSystem.ts";
-import { addToFleet, canAddToFleet, consortCrew, consortCrewMax } from "../../core/systems/FleetSystem.ts";
+import { addToFleet, canAddToFleet, consortCrew, consortCrewMax, consortMorale } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
@@ -124,7 +124,7 @@ export class SeaBattleScene extends Phaser.Scene {
           // v0.17.0: the consort's own people, not a full complement conjured
           // for the occasion. A ship that came out of a siege short-handed
           // reloads slower here, and says so.
-          crew: { current: consortCrew(fs), max: consortCrewMax(fs) || 10, morale: 0.8 },
+          crew: { current: consortCrew(fs), max: consortCrewMax(fs) || 10, morale: consortMorale(fs) },
           cooldown: { left: 0, right: 0 },
           ammoType: "round",
         },
@@ -1247,6 +1247,7 @@ export class SeaBattleScene extends Phaser.Scene {
             hullHp: Math.max(0, ally.ship.hullHp),
             sailsHp: Math.max(0, ally.ship.sailsHp),
             crew: Math.max(0, Math.round(ally.ship.crew.current)),
+            morale: Math.max(0, Math.min(1, ally.ship.crew.morale)),
           };
         })
         .filter(fs => fs.hullHp > 0);

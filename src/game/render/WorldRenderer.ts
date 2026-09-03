@@ -2,6 +2,12 @@ import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
 import type { WorldEvent } from "../../core/model/Events.ts";
+
+/** Flag size in screen pixels per texture pixel, held constant across zooms. */
+const FLAG_SCREEN_SCALE = 0.8;
+/** Where the ensign sits relative to the hull, in flag-sized units. */
+const FLAG_OFFSET_X = 7;
+const FLAG_OFFSET_Y = 5;
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 // FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
@@ -52,6 +58,17 @@ export class WorldRenderer {
   private entitySprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
   /** Anchor ship sprite shown at dock position when crew is on land. */
   private anchorSprites: Map<string, Phaser.GameObjects.Sprite> = new Map();
+  /**
+   * A small ensign flown beside each NPC hull, keyed by entity id.
+   *
+   * Whose ship that is has been the single most useful thing on this screen and
+   * the hardest to find out: the answer lived in the encounter dialogue, which
+   * means sailing up to it. It was a sprite tint once, until v0.9.x, and the
+   * tint drew a blue rectangle round every hull — the sprite sheet has no alpha
+   * to tint. A separate 16x12 flag has no such problem, and it is the same
+   * texture the port markers already fly.
+   */
+  private flagSprites: Map<string, Phaser.GameObjects.Image> = new Map();
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
   /** Track mode per entity to detect mode changes. */
   private entityModes: Map<string, string> = new Map();
@@ -235,8 +252,7 @@ export class WorldRenderer {
           sprite.setAlpha(dimAlpha);
         }
 
-        // Faction tint removed — caused blue rectangles around sprites
-        // TODO: replace with small flag sprite next to NPC ship
+        this.syncFlag(scene, id, entity, sprite);
       }
     }
 
@@ -249,8 +265,50 @@ export class WorldRenderer {
         this.visualPos.delete(id);
         const anchor = this.anchorSprites.get(id);
         if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
+        const flag = this.flagSprites.get(id);
+        if (flag) { flag.destroy(); this.flagSprites.delete(id); }
       }
     }
+  }
+
+  /**
+   * Fly the right colours beside an NPC hull.
+   *
+   * Follows the hull's own alpha, so a ship fading out at the edge of vision
+   * takes its ensign with it and the fog is never given away by a flag hanging
+   * in empty water. Held at a constant *screen* size rather than scaled with
+   * the hull: at low zoom a proportional flag is two pixels of mud, and the
+   * whole point of it is to be read at a glance.
+   */
+  private syncFlag(
+    scene: Phaser.Scene,
+    id: string,
+    entity: EntityState,
+    hull: Phaser.GameObjects.Sprite,
+  ): void {
+    const faction = entity.ship?.factionId as string | undefined;
+    const key = faction ? `flag_${faction}` : undefined;
+    if (!key || !scene.textures.exists(key)) return;
+
+    let flag = this.flagSprites.get(id);
+    if (!flag) {
+      flag = scene.add.image(hull.x, hull.y, key);
+      flag.setOrigin(0, 1);
+      this.flagSprites.set(id, flag);
+    } else if (flag.texture.key !== key) {
+      // A hull that changed hands — a prize, or a town's colours changing under
+      // a ship still at sea. Cheaper than destroying and rebuilding it.
+      flag.setTexture(key);
+    }
+
+    const zoom = scene.cameras.main.zoom;
+    const scale = FLAG_SCREEN_SCALE / Math.max(0.1, zoom);
+    flag.setScale(scale);
+    // Off the stern quarter, clear of the hull and of its own wake.
+    flag.setPosition(hull.x + FLAG_OFFSET_X * scale, hull.y - FLAG_OFFSET_Y * scale);
+    flag.setDepth(hull.depth + 1);
+    flag.setAlpha(hull.alpha);
+    flag.setVisible(hull.visible && hull.alpha > 0.05);
   }
 
   applyEvents(scene: Phaser.Scene, events: WorldEvent[]): void {

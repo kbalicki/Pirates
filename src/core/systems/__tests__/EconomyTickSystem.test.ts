@@ -10,7 +10,7 @@ import {
 import { CITIES } from "../../data/cities.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
-import { portId, entityId } from "../../model/ids.ts";
+import { portId, entityId, factionId } from "../../model/ids.ts";
 import type { WorldState, WorldEventState, WorldEventType, PortRuntimeState } from "../../model/WorldState.ts";
 
 // ===========================================================================
@@ -239,6 +239,56 @@ describe("recovery toward baseline", () => {
   });
 });
 
+describe("a town under the black flag (v0.19.0)", () => {
+  /** The same world, with Port Royale taken and held by the brotherhood. */
+  function held() {
+    const world = makeWorld();
+    world.ports.port_royal.factionId = factionId("pirates");
+    world.ports.port_royal.capturedDay = 1;
+    return world;
+  }
+
+  it("settles well below the numbers it had as a colony", () => {
+    const baseline = getPortBaseline("port_royal");
+    const after = runDays(held(), 600).ports.port_royal;
+    // Before v0.19.0 both of these climbed back to the royal baseline: the
+    // prize regenerated under the flag that guarantees none of it.
+    expect(after.wealth).toBeLessThan(baseline.wealth * 0.7);
+    expect(after.population).toBeLessThan(baseline.population * 0.85);
+  });
+
+  it("declines without evaporating", () => {
+    // The first cut of this used a 0.42 wealth target and settled Port Royale
+    // at a wealth of 5: the town did not decline, it vanished. Wealth carries a
+    // constant downward trade pressure on top of the drift, so the equilibrium
+    // falls much further than the target does. These bounds are the tuning.
+    const royal = runDays(makeWorld(), 600).ports.port_royal;
+    const after = runDays(held(), 600).ports.port_royal;
+    expect(after.wealth).toBeGreaterThan(royal.wealth * 0.35);
+    expect(after.wealth).toBeLessThan(royal.wealth * 0.75);
+    expect(after.population).toBeGreaterThan(royal.population * 0.5);
+  });
+
+  it("recovers toward the royal numbers again once a crown holds it", () => {
+    const settled = runDays(held(), 400);
+    const stillHeld = runDays(settled, 400).ports.port_royal.wealth;
+
+    const returned: WorldState = {
+      ...settled,
+      ports: {
+        ...settled.ports,
+        port_royal: {
+          ...settled.ports.port_royal,
+          factionId: CITIES.port_royal.factionId,
+          capturedDay: undefined,
+        },
+      },
+    };
+    const after = runDays(returned, 400).ports.port_royal.wealth;
+    expect(after).toBeGreaterThan(stillHeld);
+  });
+});
+
 describe("getAggregatedEffects", () => {
   it("an undisturbed port gets neutral effects", () => {
     const e = getAggregatedEffects(makeWorld(), "port_royal");
@@ -406,3 +456,4 @@ describe("port closure and war helpers", () => {
     expect(warSpawnMultipliers(makeWorld())).toEqual({});
   });
 });
+

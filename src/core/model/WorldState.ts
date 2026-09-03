@@ -50,6 +50,14 @@ export type FleetShip = {
    * any.
    */
   crew?: number;
+  /**
+   * How the men aboard this consort feel about the voyage (v0.19.0).
+   *
+   * Optional, read through `consortMorale()`, which falls back to
+   * `FLEET_DEFAULT_MORALE` — the flat 0.8 the sea battle used to conjure for
+   * every consort. An old save keeps answering exactly what it did.
+   */
+  morale?: number;
 };
 
 export type PlayerState = {

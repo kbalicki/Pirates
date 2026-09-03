@@ -84,6 +84,38 @@ export function consortCrew(consort: FleetShip): number {
   return Math.max(0, Math.round(consort.crew ?? consortCrewMax(consort) * FLEET_CREW_FRACTION));
 }
 
+/**
+ * Morale a consort is assumed to have when none was ever written.
+ *
+ * The number `SeaBattleScene` used to hardcode when it built an ally out of a
+ * `FleetShip`, so a save from before the field existed fights exactly as it did.
+ */
+export const FLEET_DEFAULT_MORALE = 0.8;
+
+/** How the men aboard a consort feel, 0..1. */
+export function consortMorale(consort: FleetShip): number {
+  return Math.max(0, Math.min(1, consort.morale ?? FLEET_DEFAULT_MORALE));
+}
+
+/**
+ * Morale across the whole fleet, weighted by how many men each ship carries.
+ *
+ * Weighted rather than averaged: a mutinous pinnace should not drag a
+ * hundred-hand frigate down to its own mood, and a happy pinnace should not
+ * rescue one. Falls back to the flagship's own morale for a one-ship fleet,
+ * which is what every caller got before this existed.
+ */
+export function fleetMorale(flagshipMorale: number, flagshipCrew: number, fleet: FleetShip[]): number {
+  let men = Math.max(0, flagshipCrew);
+  let sum = Math.max(0, flagshipCrew) * flagshipMorale;
+  for (const consort of fleet) {
+    const crew = consortCrew(consort);
+    men += crew;
+    sum += crew * consortMorale(consort);
+  }
+  return men > 0 ? Math.max(0, Math.min(1, sum / men)) : flagshipMorale;
+}
+
 /** Berths standing empty across the consorts. */
 export function consortBerthsFree(fleet: FleetShip[]): number {
   return fleet.reduce((sum, c) => sum + Math.max(0, consortCrewMax(c) - consortCrew(c)), 0);
@@ -165,6 +197,7 @@ export function addToFleet(fleet: FleetShip[], classId: string): FleetShip[] | n
       // by the yard that sold it. Either way it is the notional complement, so
       // buying and capturing behave the way they did before the field existed.
       crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
+      morale: FLEET_DEFAULT_MORALE,
     },
   ];
 }

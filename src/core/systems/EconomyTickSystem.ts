@@ -18,7 +18,6 @@ import { CITIES } from "../data/cities.ts";
 import { ITEMS } from "../data/items.ts";
 import { getBasePrice } from "../data/prices.ts";
 import {
-  getPortBaseline,
   baselineProductionRate,
   baselineConsumptionRate,
   inventoryCap,
@@ -27,7 +26,7 @@ import {
   getAggregatedEffects,
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
-import { heldDefenseCeiling } from "./ReconquestSystem.ts";
+import { heldDefenseCeiling, heldEconomyCeiling } from "./ReconquestSystem.ts";
 
 const RECOVERY_WEALTH = 0.01;     // 1% per day toward baseline
 const RECOVERY_POPULATION = 0.005; // 0.5% per day
@@ -49,7 +48,6 @@ export function economyDailyTick(world: WorldState): WorldState {
     const def = CITIES[portKey];
     if (!port || !def) continue;
 
-    const baseline = getPortBaseline(portKey);
     const effects = getAggregatedEffects(w, portKey);
 
     // Skip closed ports for trade simulation (still apply recovery + events)
@@ -107,9 +105,16 @@ export function economyDailyTick(world: WorldState): WorldState {
     }
 
     // 7. Recovery toward baseline (modulated by event recoveryMul)
+    //
+    // Toward the *held* ceiling, not the founding colony's numbers. A town
+    // under the black flag has no governor, no garrison budget and no place on
+    // anybody's trade route, and until v0.19.0 it rebuilt itself into the
+    // colony it used to be anyway — the prize regenerated under the flag that
+    // guaranteed none of it.
     const rmul = effects.recoveryMul;
-    wealth     += (baseline.wealth     - wealth)     * RECOVERY_WEALTH * rmul;
-    population += (baseline.population - population) * RECOVERY_POPULATION * rmul;
+    const ceiling = heldEconomyCeiling(w, portKey);
+    wealth     += (ceiling.wealth     - wealth)     * RECOVERY_WEALTH * rmul;
+    population += (ceiling.population - population) * RECOVERY_POPULATION * rmul;
     // A town that changed hands rebuilds only toward what its own people will
     // raise for whoever holds the fort — no crown is paying for a garrison any
     // more. Without this the player would never have to defend a conquest.

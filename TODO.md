@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.18.0.0 · **Branch:** `main`
-**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **963 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.19.0.0 · **Branch:** `main`
+**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **977 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.18.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 963/963 zielone; mapa rysuje kurs wyprawy, o której gracz słyszał, a małżeństwo daje port macierzysty (posag, darmowe klarowanie floty, magazyn na 300 ton) — następne w kolejce są zadania równoległe z sekcji 4, bo muzyka to brak plików audio, nie brak kodu.
+> **Start sesji w jednym zdaniu:** v0.19.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 977/977 zielone; statki NPC wywieszają bandery, zdobyte miasto przestaje odbudowywać się w kolonię, a konsorty mają własne morale — lista kandydatów na v0.20.0 jest niżej, a muzyka wciąż czeka na pliki audio, nie na kod.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -36,6 +36,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Załoga konsorty | ✅ | `FleetShip.crew?` + `consortCrew()`/`manConsorts()`: straty w ludziach wreszcie zostają |
 | Kurs wyprawy na mapie | ✅ | `ExpeditionCourseRenderer`: kreskowany kurs, pierścień celu, grot zliczenia — tylko dla znanych wypraw |
 | Port macierzysty | ✅ | `HomePortSystem`: posag, darmowe klarowanie całej floty, magazyn 300 ton; wygasa, gdy miasto zmieni ręce |
+| Bandery statków NPC | ✅ | `WorldRenderer.syncFlag`: mała bandera przy kadłubie, idzie za alfą mgły, stały rozmiar ekranowy |
+| Ekonomia miast pirackich | ✅ | `heldEconomyCeiling`: ludzie i pieniądze przestają dryfować ku liczbom kolonii |
+| Morale konsorty | ✅ | `FleetShip.morale?` + `fleetMorale()`: własne morale, ważone ludźmi w oblężeniu |
 
 ### Nietknięte
 
@@ -538,20 +541,77 @@ rachunku.
 - **Konsorty nie mają morale ani wyszkolenia** — od v0.17.0 mają własną załogę,
   ale morale i drill dalej biorą z okrętu flagowego
 
-### v0.19.0 — co dalej
+### ~~v0.19.0 — Czyj to statek, i co zostaje z miasta~~ ✅ (v0.19.0.0)
+
+Trzy pozycje z listy zadań równoległych, każda mała, wszystkie razem zmieniające
+to, co gracz **widzi** i **czuje** na mapie.
+
+**Bandery statków NPC** (`WorldRenderer.syncFlag`) — domknięcie jedynego `TODO`
+zostawionego wprost w kodzie renderera. Czyj to statek było najużyteczniejszą
+informacją na tym ekranie i najtrudniejszą do zdobycia: odpowiedź żyła w oknie
+spotkania, czyli do obcego żagla trzeba było **podpłynąć**. Kiedyś był to tint
+sprite'a i rysował niebieski prostokąt wokół każdego kadłuba — arkusz nie ma
+kanału alfa, który dałoby się zabarwić.
+
+Dwie reguły: bandera **idzie za alfą kadłuba** (statek gasnący na skraju
+widoczności zabiera ją ze sobą, inaczej mgła zdradzałaby się flagą wiszącą nad
+pustą wodą) i ma **stały rozmiar ekranowy**, bo proporcjonalna przy oddaleniu
+jest dwoma pikselami błota.
+
+**Miasto pod czarną banderą przestaje być kolonią**
+(`heldEconomyCeiling`) — sufit miał do tej pory wyłącznie `defense`.
+`population` i `wealth` dryfowały ku liczbom, które miasto miało jako **czyjaś
+kolonia**, więc zdobycz po cichu odbudowywała się dokładnie w tę nagrodę, którą
+była — dotowana żegluga, gubernator, koloniści — pod flagą, która nie gwarantuje
+niczego z tych rzeczy.
+
+**Pułapka, i to niebanalna: sufit to nie równowaga.** `wealth` jest codziennie
+spychane w dół przez człon handlowy, a ta presja jest z grubsza stała, więc
+ścięcie celu o ćwierć kosztuje równowagę znacznie więcej niż ćwierć. Pierwsza
+wersja użyła udziału 0.42 i ustawiła zdobytą Port Royale na bogactwie **5** —
+miasto nie podupadło, ono wyparowało. `population` nie ma takiej przeciwwagi i
+osiada blisko celu. Dlatego udziały są tak różne (0.62 ludzi, **0.75** pieniędzy)
+i nie wolno ich „ujednolicać". Zmierzone po 600 dniach: kolonia `w=353 p=2500`,
+czarna bandera `w=203 p=1650`.
+
+Oddane koronie — **dowolnej**, także tej, która je zdobyła — wraca w górę:
+`playerHolds` wymaga piratów, a nie „zmieniło właściciela".
+
+**Morale konsorty** (`FleetShip.morale?`) — konsorty wożą własnych ludzi od
+v0.17.0, a morale brały z okrętu flagowego; `SeaBattleScene` wprost wpisywał
+każdej `0.8`. Teraz morale jest ich własne: spada, gdy podział łupów się
+przeterminuje, wraca do 1 przy podziale, i napędza ich działa w bitwie.
+Oblężenie uśrednia morale **ważąc ludźmi** — zbuntowana pinasa nie ma prawa
+ściągnąć stuosobowej fregaty do swojego nastroju.
+
+**Weryfikacja w grze:** `?intercept=cartagena` — hiszpańskie krzyże burgundzkie
+przy każdym kadłubie NPC, czytelne na domyślnym zoomie, znikające razem ze
+statkiem pod mgłą.
+
+**Zostało z tego modułu:**
+- **Bandera nie mówi nic o zachowaniu** — kupiec i okręt wojenny tej samej
+  korony wyglądają identycznie. Drugi znacznik (albo kształt banderoli) dałby
+  „kto" **i** „co"
+- **Równowaga bogactwa portu jest w ogóle niska** — nawet kolonia królewska
+  osiada na 353 z 600 baseline'u. Nie jest to błąd wprowadzony teraz, ale wyszło
+  przy pomiarach i warto to kiedyś przejrzeć razem z `EconomyTickSystem`
+
+### v0.20.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
 
-1. **Morale i wyszkolenie konsorty** — od v0.17.0 konsorta ma własną załogę, ale
-   morale i drill bierze z okrętu flagowego. Widać to w bitwie: konsorta z
-   dziesięcioma ludźmi przeładowuje tak, jakby miała morale kapitana. Mała
-   zmiana, duża spójność z tym, co już jest.
-2. **Flaga frakcji jako sprite przy statku NPC** (`WorldRenderer.ts:239`) — dziś
-   tint. Jedyny TODO zostawiony wprost w kodzie renderera.
-3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
-   zadanie programistyczne**: brakuje plików audio, nie kodu. Dopóki nie ma
-   ścieżek, agent nie ma tu czego zrobić poza podpięciem gotowych plików.
-4. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
+1. **Wyszkolenie konsorty** — morale ma już własne (v0.19.0), `training` wciąż
+   bierze z kapitana. Domknięcie tej samej myśli, ale wymaga decyzji, czym drill
+   konsorty w ogóle jest: załoga pryzowa uczy się osobno czy razem z flotą?
+2. **Bandera nie mówi nic o zachowaniu** — kupiec i okręt wojenny tej samej
+   korony wyglądają identycznie. Drugi znacznik albo kształt banderoli dałby
+   „kto" i „co" naraz. Mała praca, duża czytelność mapy.
+3. **Równowaga bogactwa portów** — nawet kolonia królewska osiada na 353 z 600
+   baseline'u, bo człon handlowy stale ciągnie w dół. Nie jest to nowy błąd, ale
+   wyszedł przy pomiarach v0.19.0 i wygląda na przeoczenie w `EconomyTickSystem`.
+4. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
+   zadanie programistyczne**: brakuje plików audio, nie kodu.
+5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
    praca, mały dług.
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
@@ -560,16 +620,16 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1). Problem „całe ekrany zamiast sprite'ów" **rozwiązany**: 51/51 assetów to pojedynczy obiekt. Nadaje się do użycia: ikony ekwipunku i budynki portu przy sile 0.6-0.75. **Nie** nadaje się: dziewięć klas statków wychodzi identycznych (w projekcie jest jeden sprite statku — retrening tego nie naprawi bez nowego materiału), towary są bezkształtne, portrety nie trzymają wspólnego stylu. Zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). v3 poprawia ujęcie z góry (10% → 32% zbioru) i balans kategorii. Ocena i szczegóły: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
 - **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
-- **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
+- ~~**`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.~~ ✅ v0.19.0.0 — `syncFlag`. Bandera mówi **kto**, ale nie **co**: kupiec i okręt wojenny tej samej korony wyglądają identycznie.
 - ~~**Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.**~~ ✅ v0.17.0.0 — `PortScene.create()` (tylko przy wejściu przez bramę) i zmiana dnia w `WorldEngine`; pierwszym konsumentem obu jest zlecenie obrony. Zwłoka była celowa: martwy hak jest tym samym błędem co martwa scena, więc czekały na pierwszy quest, który naprawdę ich potrzebuje.
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
-- **Konsorty nie mają morale ani wyszkolenia.** `FleetShip` ma od v0.17.0 własną załogę, ale morale i drill nadal biorą się z okrętu flagowego. Widać to w bitwie morskiej: konsorta z dziesięcioma ludźmi przeładowuje tak, jakby miała morale kapitana.
+- ~~**Konsorty nie mają morale.**~~ ✅ v0.19.0.0 — `FleetShip.morale?` + `fleetMorale()`. **`training` wciąż jest wspólne** i bierze się z kapitana; domknięcie wymaga decyzji, czym drill załogi pryzowej w ogóle jest.
 - **Magazyn jest jeden, tylko w porcie żony.** Wynajęty skład w dowolnym mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla ekonomii: gracz mógłby magazynować pod każdą górkę cenową.
 - **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Prawdziwa trasa wymaga `Pathfinding.ts`, który wciąż jest pustym hakiem.
 - **Zlecenie obrony jest jedno na raz i tylko od gubernatora.** Informator w tawernie albo tablica w porcie dałyby drugie źródło i drugi typ zlecenia.
 - ~~**`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.**~~ ✅ v0.18.0.0 — `ExpeditionCourseRenderer` rysuje kreskowany kurs każdej wyprawy, o której gracz słyszał; sama eskadra dalej materializuje się dopiero w promieniu 620.
-- **Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.** `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
+- ~~**Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.**~~ ✅ v0.19.0.0 — `heldEconomyCeiling`. Uwaga na przyszłość: **sufit to nie równowaga** — `wealth` ma stałą presję w dół z członu handlowego, więc udział 0.42 dał bogactwo **5**, a nie „mniej zamożne miasto". Historycznie: `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
 - ~~**Wyprawy koron nie mają kadłubów na mapie.**~~ ✅ v0.17.0.0 — `ExpeditionFleetSystem` materializuje eskadrę w promieniu 620 od gracza, a jej rozbicie kasuje zdarzenie i daje celowi karencję.
 
 ---

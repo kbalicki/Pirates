@@ -1356,3 +1356,73 @@ rysuje się w jednostkach świata, więc adnotacja o stałych wymiarach świata 
 z przybliżeniem — przy z2 grot zakrywał półwysep. Notatka ołówkiem na mapie ma
 szerokość ołówka niezależnie od skali mapy. Przerysowanie następuje przy zmianie
 dnia, zmianie zestawu znanych wypraw albo zmianie zoomu.
+
+
+---
+
+## Miasto pod czarną banderą (v0.19.0)
+
+`ReconquestSystem.heldEconomyCeiling` + `EconomyTickSystem` krok 7.
+
+Do v0.19.0 sufit miał wyłącznie `defense`. `population` i `wealth` dryfowały ku
+liczbom, które miasto miało jako **czyjaś kolonia** — więc zdobyte miasto po
+cichu odbudowywało się dokładnie w tę nagrodę, którą było: dotowana żegluga,
+gubernator na miejscu, koloniści z pakietboty — pod flagą, która nie gwarantuje
+niczego z tych rzeczy.
+
+**Sufit to nie równowaga, i przy bogactwie to jest cała historia.** `wealth` jest
+codziennie spychane w dół przez człon handlowy (towar bez nabywcy, popyt bez
+pokrycia), a ta presja jest z grubsza stała. Ścięcie celu o ćwierć kosztuje
+równowagę **znacznie więcej** niż ćwierć. Pierwsza wersja użyła 0.42 i ustawiła
+zdobytą Port Royale na bogactwie **5** — miasto nie podupadło, ono wyparowało.
+`population` nie ma takiej przeciwwagi i osiada blisko celu; dlatego oba udziały
+są tak różne (`0.62` ludzi, `0.75` pieniędzy) i **nie wolno ich „ujednolicać"**.
+
+Zmierzone po 600 dniach dla Port Royale: kolonia `w=353 p=2500`, pod czarną
+banderą `w=203 p=1650`. Oddana koronie — dowolnej, także tej, która ją zdobyła —
+wraca w górę: `playerHolds` wymaga **piratów**, a nie „zmieniła właściciela".
+
+---
+
+## Morale konsorty (v0.19.0)
+
+`FleetShip.morale?` + `consortMorale()` / `fleetMorale()` w `FleetSystem`.
+
+Konsorty wożą własnych ludzi od v0.17.0, a morale brały z okrętu flagowego —
+`SeaBattleScene` wprost wpisywał każdej `0.8`. Widać to było jako statek z
+dziesięcioma ludźmi przeładowujący tak żwawo jak pełny pokład.
+
+| Gdzie | Co się zmieniło |
+|---|---|
+| `PlunderSystem.applyOverdueMorale` | konsorty spadają tym samym tempem co flagowy |
+| `PlunderSystem.dividePlunder` | podział wraca morale **całej** flocie do 1 |
+| `SeaBattleScene` | ally czyta `consortMorale(fs)` i zapisuje wynik z powrotem |
+| `SiegeSystem.attackForceFor` | `morale` to teraz `fleetMorale(...)` — średnia **ważona ludźmi** |
+
+Ważona, nie zwykła: zbuntowana pinasa nie ma prawa ściągnąć stuosobowej fregaty
+do swojego nastroju, a szczęśliwa pinasa nie ma prawa jej uratować. Dla floty
+jednostatkowej `fleetMorale` zwraca morale flagowego, czyli dokładnie to, co
+każdy wywołujący dostawał wcześniej.
+
+Pole jest opcjonalne, z fallbackiem `FLEET_DEFAULT_MORALE = 0.8` — czyli tą samą
+liczbą, którą bitwa morska wpisywała z palca. Stary zapis walczy identycznie jak
+przedtem. Bez migracji.
+
+---
+
+## Bandery statków NPC (v0.19.0)
+
+`WorldRenderer.syncFlag` — domknięcie jedynego `TODO` zostawionego wprost w
+kodzie renderera (`WorldRenderer.ts:239`).
+
+Czyj to statek było najużyteczniejszą informacją na tym ekranie i
+najtrudniejszą do zdobycia: odpowiedź żyła w oknie spotkania, czyli trzeba było
+do obcego żagla **podpłynąć**. Kiedyś był to tint sprite'a i rysował niebieski
+prostokąt wokół każdego kadłuba — arkusz nie ma kanału alfa, który dałoby się
+zabarwić. Osobna bandera 16×12 tego problemu nie ma i jest tą samą teksturą,
+którą wywieszają porty.
+
+Dwie reguły: bandera **idzie za alfą kadłuba** (statek gasnący na skraju
+widoczności zabiera ją ze sobą — inaczej mgła zdradzałaby się flagą wiszącą nad
+pustą wodą) i ma **stały rozmiar ekranowy**, bo proporcjonalna przy oddaleniu
+jest dwoma pikselami błota, a cały jej sens to czytelność jednym rzutem oka.

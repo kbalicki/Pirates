@@ -24,6 +24,7 @@
 
 import type { WorldState } from "../model/WorldState.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
+import { consortMorale } from "./FleetSystem.ts";
 
 /** Days between divisions before the crew starts grumbling. */
 export const PLUNDER_INTERVAL_DAYS = 60;
@@ -88,17 +89,26 @@ export function applyOverdueMorale(world: WorldState): WorldState {
   const ship = entity?.ship;
   if (!ship) return world;
 
-  const morale = ship.crew.morale;
-  if (morale <= PLUNDER_OVERDUE_MORALE_FLOOR) return world;
+  const decay = (m: number) => Math.max(PLUNDER_OVERDUE_MORALE_FLOOR, m - PLUNDER_OVERDUE_MORALE_PER_DAY);
 
-  const next = Math.max(PLUNDER_OVERDUE_MORALE_FLOOR, morale - PLUNDER_OVERDUE_MORALE_PER_DAY);
-  if (next === morale) return world;
+  const morale = decay(ship.crew.morale);
+  // The consorts' people are owed the same share and grumble at the same rate
+  // (v0.19.0). Before this only the flagship noticed, which made a fleet's
+  // morale a property of one deck.
+  const fleet = (world.player.fleet ?? []).map(consort => {
+    const next = decay(consortMorale(consort));
+    return next === consortMorale(consort) ? consort : { ...consort, morale: next };
+  });
+
+  const fleetChanged = fleet.some((c, i) => c !== (world.player.fleet ?? [])[i]);
+  if (morale === ship.crew.morale && !fleetChanged) return world;
 
   return {
     ...world,
+    player: { ...world.player, fleet },
     entities: {
       ...world.entities,
-      [shipId]: { ...entity, ship: { ...ship, crew: { ...ship.crew, morale: next } } },
+      [shipId]: { ...entity, ship: { ...ship, crew: { ...ship.crew, morale } } },
     },
   };
 }
@@ -148,6 +158,8 @@ export function dividePlunder(world: WorldState): ShareResult {
       ...world.player,
       gold: captainKept,
       lastPlunderDay: world.time.day,
+      // Everyone who was owed a share got one, the men on the consorts included.
+      fleet: (world.player.fleet ?? []).map(c => ({ ...c, morale: 1 })),
     },
     entities: {
       ...world.entities,

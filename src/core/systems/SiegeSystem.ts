@@ -46,7 +46,7 @@ import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
-import { consortCrew, consortCrewMax, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
+import { consortCrew, consortCrewMax, fleetMorale, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
 // ── Who owns a port right now ─────────────────────────────
 
@@ -184,7 +184,13 @@ export function attackForceFor(world: WorldState): AttackForce {
     hullMax: Math.max(1, hullMax),
     crew,
     crewMax: Math.max(1, crewMax),
-    morale: flagship?.crew.morale ?? 0.5,
+    // Weighted across the fleet (v0.19.0): a consort whose people have not
+    // been paid in two months does not storm a wall like the flagship's.
+    morale: fleetMorale(
+      flagship?.crew.morale ?? 0.5,
+      flagship?.crew.current ?? 0,
+      world.player.fleet ?? [],
+    ),
     gunnery: effectiveSkill(world, "gunnery"),
     fencing: effectiveSkill(world, "fencing"),
     training: world.captain?.training ?? 0.5,

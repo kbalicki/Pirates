@@ -11,6 +11,9 @@ import {
   removeFromFleet,
   fleetSummary,
   FLEET_CREW_FRACTION,
+  FLEET_DEFAULT_MORALE,
+  consortMorale,
+  fleetMorale,
   consortCrew,
   consortCrewMax,
   consortBerthsFree,
@@ -114,6 +117,7 @@ describe("addToFleet / removeFromFleet", () => {
       sailsMax: cls.sailsMax,
       cannons: cls.cannons,
       crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
+      morale: FLEET_DEFAULT_MORALE,
     });
   });
 
@@ -336,5 +340,50 @@ describe("addToFleet — a hull joins already manned", () => {
   it("gives a bought or captured hull the notional prize crew", () => {
     const fleet = addToFleet([], "barque")!;
     expect(fleet[0].crew).toBe(Math.round(SHIP_CLASSES.barque.crewMax * FLEET_CREW_FRACTION));
+  });
+});
+
+// ===========================================================================
+// Consort morale (v0.19.0)
+// ===========================================================================
+
+/**
+ * `SeaBattleScene` used to build every consort with a flat 0.8 morale, so a
+ * ship whose people had not been paid in two months reloaded as briskly as the
+ * flagship. The field is optional and that flat number is its fallback.
+ */
+describe("consortMorale / fleetMorale", () => {
+  it("falls back to the number the sea battle used to conjure", () => {
+    const { morale: _dropped, ...legacy } = { ...escort("sloop"), morale: 0.4 };
+    expect(consortMorale(legacy)).toBe(FLEET_DEFAULT_MORALE);
+  });
+
+  it("reads the ship's own morale once it has one", () => {
+    expect(consortMorale({ ...escort("sloop"), morale: 0.31 })).toBeCloseTo(0.31, 6);
+  });
+
+  it("clamps a value that has drifted out of range", () => {
+    expect(consortMorale({ ...escort("sloop"), morale: 1.9 })).toBe(1);
+    expect(consortMorale({ ...escort("sloop"), morale: -2 })).toBe(0);
+  });
+
+  it("is the flagship's own morale for a one-ship fleet", () => {
+    expect(fleetMorale(0.42, 60, [])).toBeCloseTo(0.42, 6);
+  });
+
+  it("weights by men, so a small unhappy consort barely moves a big fleet", () => {
+    const pinnace = { ...escort("pinnace"), crew: 4, morale: 0 };
+    const pooled = fleetMorale(1, 200, [pinnace]);
+    expect(pooled).toBeGreaterThan(0.95);
+    expect(pooled).toBeLessThan(1);
+  });
+
+  it("is dragged down properly when the unhappy ship carries the men", () => {
+    const galleon = { ...escort("galleon"), crew: 200, morale: 0 };
+    expect(fleetMorale(1, 10, [galleon])).toBeLessThan(0.1);
+  });
+
+  it("falls back to the flagship rather than dividing by zero in an empty fleet", () => {
+    expect(fleetMorale(0.7, 0, [])).toBeCloseTo(0.7, 6);
   });
 });
