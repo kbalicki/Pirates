@@ -13,6 +13,7 @@
  *
  *   treasure_*      from the `TreasureMap` in the entry's own data
  *   family_search   from the `FamilyChain` in the entry's own data
+ *   defense_*       from the `DefenseContract` in the entry's own data
  *   QUESTS          hand-authored definitions, if there ever are any
  */
 
@@ -21,6 +22,7 @@ import type { QuestRegistry } from "./QuestSystem.ts";
 import { QUESTS } from "../data/quests.ts";
 import { treasureQuest, type TreasureMap } from "./TreasureSystem.ts";
 import { familyQuest, FAMILY_QUEST_ID, type FamilyChain } from "./FamilyQuestSystem.ts";
+import { defenseQuest, DEFENSE_QUEST_PREFIX, type DefenseContract } from "./DefenseContractSystem.ts";
 
 /**
  * Every definition the world can currently act on.
@@ -38,6 +40,12 @@ export function buildQuestRegistry(world: WorldState): QuestRegistry {
     if (id.startsWith("treasure_")) {
       const map = runtime.data.map as TreasureMap | undefined;
       if (map) registry[id] = treasureQuest(map);
+      continue;
+    }
+
+    if (id.startsWith(DEFENSE_QUEST_PREFIX)) {
+      const contract = runtime.data.contract as DefenseContract | undefined;
+      if (contract) registry[id] = defenseQuest(contract);
       continue;
     }
 

@@ -35,6 +35,26 @@ export type AiData = {
   awarenessRadius: number; // in world units
   /** News carried by this NPC (max 5). Picked up at ports. */
   news?: NewsItem[];
+  /**
+   * The invasion this hull belongs to (v0.17.0).
+   *
+   * A crown's expedition is a `WorldEventState` crossing the map over one to
+   * three weeks. While the player is near enough to see it, that event is given
+   * hulls, and each hull carries a share of the landing. Sink it and the share
+   * goes down with it — `ExpeditionFleetSystem` writes the survivors back into
+   * the event every tick, so what comes ashore is whatever got through.
+   *
+   * Optional, and absent on every ordinary trader and patrol, so no save
+   * migration was needed.
+   */
+  expedition?: {
+    /** `WorldEventState.id` of the landing this hull is part of. */
+    eventId: string;
+    /** Soldiers in this hull's hold. Transports carry them; escorts carry none. */
+    soldiers: number;
+    /** Guns this hull adds to the landing's covering fire. */
+    guns: number;
+  };
   /** Last port visited — determines when NPC gets fresh news. */
   lastPortVisited?: string;
 };

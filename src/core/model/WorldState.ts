@@ -39,6 +39,17 @@ export type FleetShip = {
   sailsHp: number;
   sailsMax: number;
   cannons: number;
+  /**
+   * Men aboard this consort (v0.17.0).
+   *
+   * Optional, and read everywhere through `consortCrew()`, which falls back to
+   * `crewMax x FLEET_CREW_FRACTION` — the notional complement every consort was
+   * assumed to carry before this field existed. That fallback is why no
+   * migration step was added: an old save simply keeps answering the same
+   * number it always did, and starts recording losses the first time it takes
+   * any.
+   */
+  crew?: number;
 };
 
 export type PlayerState = {

@@ -41,12 +41,12 @@ import type { FactionId } from "../model/ids.ts";
 import { factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES, type CitySize } from "../data/cities.ts";
 import { FACTIONS } from "../data/factions.ts";
-import { SHIP_CLASSES } from "../data/ships.ts";
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
+import { consortCrew, consortCrewMax, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
 // ── Who owns a port right now ─────────────────────────────
 
@@ -157,8 +157,7 @@ export type AttackForce = {
   training: number;
 };
 
-/** Crew a consort is assumed to carry: most of its berths, but not all. */
-export const FLEET_CREW_FRACTION = 0.8;
+export { FLEET_CREW_FRACTION };
 
 export function attackForceFor(world: WorldState): AttackForce {
   const flagship = world.entities[world.player.shipId as string]?.ship;
@@ -169,12 +168,14 @@ export function attackForceFor(world: WorldState): AttackForce {
   let crewMax = flagship?.crew.max ?? 1;
 
   for (const consort of world.player.fleet ?? []) {
-    const cls = SHIP_CLASSES[consort.classId];
     cannons += consort.cannons;
     hullHp += consort.hullHp;
     hullMax += consort.hullMax;
-    crew += Math.round((cls?.crewMax ?? 0) * FLEET_CREW_FRACTION);
-    crewMax += cls?.crewMax ?? 0;
+    // v0.17.0: a consort's own count, when it has one. Before this the number
+    // was derived from the class every time it was asked for, so a consort
+    // walked off one siege beach with everyone it had walked onto the last.
+    crew += consortCrew(consort);
+    crewMax += consortCrewMax(consort);
   }
 
   return {
@@ -457,11 +458,11 @@ export function resolveAssault(state: SiegeState, defense: number, rng: RngState
  * bill again: hull damage in proportion to how much hull each ship brought,
  * crew losses in proportion to how many men each ship brought.
  *
- * `FleetShip` has no crew field — a consort's complement is notional, derived
- * from its class — so a consort's share of the casualties is felt in the next
- * siege (it recomputes from the class) and nowhere else. Only the flagship's
- * losses persist, which is the same simplification `FleetSystem` already makes
- * everywhere else.
+ * Until v0.17.0 the crew half of that sentence was a lie. `FleetShip` had no
+ * crew field, so a consort's complement was recomputed from its class on the
+ * way into the next siege and its share of the dead was quietly written off —
+ * the one place in the game where men came back. `FleetShip.crew` closes it,
+ * and the split below is what it is for.
  */
 export function writeBackForce(
   world: WorldState,
@@ -483,8 +484,16 @@ export function writeBackForce(
   const crew = Math.max(0, Math.round(entity.ship.crew.current - crewLost * flagCrewShare));
 
   const fleet = (world.player.fleet ?? []).map(consort => {
-    const share = initial.hullMax > 0 ? consort.hullMax / initial.hullMax : 0;
-    return { ...consort, hullHp: Math.max(0, Math.round((consort.hullHp - hullLost * share) * 10) / 10) };
+    const hullShare = initial.hullMax > 0 ? consort.hullMax / initial.hullMax : 0;
+    // Deliberately the same denominator the flagship uses — the force the
+    // siege was fought with, not the men still standing. Dividing by the
+    // survivors would hand the whole butcher's bill to whoever bled least.
+    const crewShare = initial.crew > 0 ? consortCrew(consort) / initial.crew : 0;
+    return {
+      ...consort,
+      hullHp: Math.max(0, Math.round((consort.hullHp - hullLost * hullShare) * 10) / 10),
+      crew: Math.max(0, Math.round(consortCrew(consort) - crewLost * crewShare)),
+    };
   });
 
   return {

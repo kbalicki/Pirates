@@ -58,6 +58,72 @@ export function fleetMaxMastHeight(flagshipClassId: string, fleet: FleetShip[]):
   return maxMast;
 }
 
+/**
+ * Crew a consort is assumed to carry when its own count has never been written.
+ *
+ * Most of its berths, but not all — a prize crew is thinner than a ship's own
+ * complement, and a consort has no captain aboard to press more.
+ */
+export const FLEET_CREW_FRACTION = 0.8;
+
+/** Berths aboard a consort. */
+export function consortCrewMax(consort: FleetShip): number {
+  return SHIP_CLASSES[consort.classId]?.crewMax ?? 0;
+}
+
+/**
+ * Men aboard a consort.
+ *
+ * Until v0.17.0 `FleetShip` had no crew at all and every reader derived this
+ * number from the class, which meant a consort walked off a siege beach with
+ * whatever it had walked on with. The field is optional, so this is also the
+ * one place the old behaviour survives: a save written before the field existed
+ * answers exactly what it used to until the ship next takes losses.
+ */
+export function consortCrew(consort: FleetShip): number {
+  return Math.max(0, Math.round(consort.crew ?? consortCrewMax(consort) * FLEET_CREW_FRACTION));
+}
+
+/** Berths standing empty across the consorts. */
+export function consortBerthsFree(fleet: FleetShip[]): number {
+  return fleet.reduce((sum, c) => sum + Math.max(0, consortCrewMax(c) - consortCrew(c)), 0);
+}
+
+/**
+ * Put `men` aboard the consorts, shortest-handed ship first.
+ *
+ * Hiring in a tavern used to stop at the flagship's own berths, which after
+ * v0.17.0 would have left a gutted consort permanently gutted — the same
+ * one-way ratchet a dismasted ship at zero speed would have been. Men go where
+ * they are most needed, and what will not fit is handed back to the caller.
+ */
+export function manConsorts(fleet: FleetShip[], men: number): { fleet: FleetShip[]; placed: number } {
+  let left = Math.max(0, Math.floor(men));
+  if (left <= 0 || fleet.length === 0) return { fleet, placed: 0 };
+
+  const crews = fleet.map(consortCrew);
+  const caps = fleet.map(consortCrewMax);
+  let placed = 0;
+
+  // Round-robin by shortfall rather than in array order: two half-empty
+  // consorts should both be usable, not one full and one skeleton.
+  for (;;) {
+    let worst = -1;
+    let worstShort = 0;
+    for (let i = 0; i < fleet.length; i++) {
+      const short = caps[i] - crews[i];
+      if (short > worstShort) { worstShort = short; worst = i; }
+    }
+    if (worst < 0 || left <= 0) break;
+    crews[worst] += 1;
+    placed += 1;
+    left -= 1;
+  }
+
+  if (placed === 0) return { fleet, placed: 0 };
+  return { fleet: fleet.map((c, i) => ({ ...c, crew: crews[i] })), placed };
+}
+
 /** Total minimum crew needed to operate the entire fleet. */
 export function fleetMinCrew(flagshipClassId: string, fleet: FleetShip[]): number {
   const flagshipClass = SHIP_CLASSES[flagshipClassId];
@@ -95,6 +161,10 @@ export function addToFleet(fleet: FleetShip[], classId: string): FleetShip[] | n
       sailsHp: cls.sailsMax,
       sailsMax: cls.sailsMax,
       cannons: cls.cannons,
+      // A hull joining the fleet is manned by the prize crew that took it, or
+      // by the yard that sold it. Either way it is the notional complement, so
+      // buying and capturing behave the way they did before the field existed.
+      crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
     },
   ];
 }

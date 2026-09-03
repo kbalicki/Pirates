@@ -14,7 +14,7 @@ import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
 import type { AiArchetype } from "../../core/engine/CombatEngine.ts";
 import { changeReputation } from "../../core/systems/ReputationSystem.ts";
-import { addToFleet, canAddToFleet } from "../../core/systems/FleetSystem.ts";
+import { addToFleet, canAddToFleet, consortCrew, consortCrewMax } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
@@ -103,7 +103,6 @@ export class SeaBattleScene extends Phaser.Scene {
     const sideY = Math.sin(playerHeading);
     for (let i = 0; i < fleet.length; i++) {
       const fs = fleet[i];
-      const cls = SHIP_CLASSES[fs.classId];
       const id = ("ally_" + i) as unknown as EntityId;
       const dBack = 60 + i * 40;
       const dSide = (i % 2 === 0 ? -50 : 50);
@@ -122,7 +121,10 @@ export class SeaBattleScene extends Phaser.Scene {
           sailsHp: fs.sailsHp,
           sailsMax: fs.sailsMax,
           cannons: fs.cannons,
-          crew: { current: cls?.crewMax ?? 10, max: cls?.crewMax ?? 10, morale: 0.8 },
+          // v0.17.0: the consort's own people, not a full complement conjured
+          // for the occasion. A ship that came out of a siege short-handed
+          // reloads slower here, and says so.
+          crew: { current: consortCrew(fs), max: consortCrewMax(fs) || 10, morale: 0.8 },
           cooldown: { left: 0, right: 0 },
           ammoType: "round",
         },
@@ -1244,6 +1246,7 @@ export class SeaBattleScene extends Phaser.Scene {
             ...fs,
             hullHp: Math.max(0, ally.ship.hullHp),
             sailsHp: Math.max(0, ally.ship.sailsHp),
+            crew: Math.max(0, Math.round(ally.ship.crew.current)),
           };
         })
         .filter(fs => fs.hullHp > 0);

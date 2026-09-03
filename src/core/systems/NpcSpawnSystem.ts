@@ -18,6 +18,7 @@ import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
+import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
 // ---- Configuration ----
 const MAX_NPC_SHIPS = 30;
@@ -148,10 +149,15 @@ function pickBehavior(factionId: string, roll: number, atWar: boolean): AiData["
 
 /**
  * Main spawn/despawn function. Called every tick from WorldEngine.
+ *
+ * `dtTicks` is how much clock this frame added, and it is needed because the
+ * clock is a float: see `tickBoundaryCrossed`. Gating on `tick % N === 0` meant
+ * this function had not put a single ship on the map since the engine went to a
+ * variable timestep.
  */
-export function updateNpcSpawns(world: WorldState): WorldState {
+export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState {
   const tick = world.time.tick;
-  if (tick % SPAWN_INTERVAL_TICKS !== 0) return world;
+  if (!tickBoundaryCrossed(tick - dtTicks, tick, SPAWN_INTERVAL_TICKS)) return world;
 
   const playerEntity = world.entities[world.player.shipId as string];
   if (!playerEntity) return world;
@@ -165,6 +171,11 @@ export function updateNpcSpawns(world: WorldState): WorldState {
   for (const [id, e] of Object.entries(entities)) {
     if (id === playerShipId) continue;
     if (e.kind !== "ship" || !e.ai) continue;
+    // An invasion squadron is not ordinary traffic: `ExpeditionFleetSystem`
+    // owns its hulls and has to write their losses into the world event before
+    // any of them leaves the chart. Deleted here they would take those losses
+    // with them, and the landing would arrive at full strength.
+    if (e.ai.expedition) continue;
     const dx = e.pos.x - playerPos.x;
     const dy = e.pos.y - playerPos.y;
     if (Math.sqrt(dx * dx + dy * dy) > DESPAWN_DISTANCE) {
@@ -179,6 +190,10 @@ export function updateNpcSpawns(world: WorldState): WorldState {
     if (id === playerShipId) continue;
     if (e.kind !== "ship" || !e.ai) continue;
     if (e.ai.state !== "travel" && e.ai.state !== "patrol") continue;
+    // Same reason as above, plus one of its own: an expedition's target port is
+    // the town it is invading, so docking would have the squadron tie up
+    // alongside the place it came to storm.
+    if (e.ai.expedition) continue;
     const targetPortKey = e.ai.targetPortId as string;
     if (!targetPortKey) continue;
     const targetPort = PORTS[targetPortKey];

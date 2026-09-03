@@ -33,7 +33,11 @@
 | PortWaterPositions | `PortWaterPositions.ts` | Punkty kotwiczenia na wodzie przy portach |
 | Encounter | `EncounterSystem.ts` | Losowe spotkania |
 | EventLog | `EventLogSystem.ts` | Historia zdarzeń |
-| Quest | `QuestSystem.ts` | Log zadań (FSM jeszcze nie zbudowany) |
+| Reconquest | `ReconquestSystem.ts` | Korona odbija zdobyte miasto; jedyne miejsce rozliczenia desantu |
+| CityDefense | `CityDefenseSystem.ts` | Rozgrywalna bitwa obronna z murów |
+| CrownCampaign | `CrownCampaignSystem.ts` | Wojny koron przesuwające flagi |
+| ExpeditionFleet | `ExpeditionFleetSystem.ts` | Wyprawa jako eskadra na mapie, do przechwycenia |
+| DefenseContract | `DefenseContractSystem.ts` | Zlecenie obrony u gubernatora |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -1106,4 +1110,166 @@ kopanie dostawałoby rejestr bez wątku rodzinnego, a odbicie krewnego — rejes
 bez polowań na skarby.
 
 `buildQuestRegistry(world)` odbudowuje wszystko z `questLog`: `treasure_*` z
-`data.map`, `family_search` z `data.chain`, plus ręcznie pisane `QUESTS`.
+`data.map`, `family_search` z `data.chain`, `defense_*` z `data.contract`
+(v0.17.0), plus ręcznie pisane `QUESTS`.
+
+
+---
+
+## ExpeditionFleetSystem (v0.17.0)
+
+`src/core/systems/ExpeditionFleetSystem.ts`, czysty, deterministyczny z `RngState`.
+
+Od v0.15.0 wyprawa korony była nagłówkiem w tawernie i datą przybycia — a między
+jednym a drugim **niczym**. Gracz mógł usłyszeć, że czterystu Hiszpanów jest
+dwanaście dni od Kartageny, i nie mógł z tym zrobić absolutnie nic poza staniem
+na murze, kiedy dopłyną. To dziwny kształt dla gry pirackiej: jedyną rzeczą, jaką
+kapitan na tych wodach mógł z inwazją zrobić, było spotkać ją na morzu.
+
+### Ledger w zdarzeniu, kadłuby na mapie
+
+Źródłem prawdy zostaje `WorldEventState`. Nowe jest to, że **dopóki gracz jest
+blisko pozycji wyprawy**, zdarzenie dostaje 2-4 zwykłe encje NPC oznaczone
+`ai.expedition`, z zapisanym udziałem w desancie:
+
+| Rola | Wiezie | Zachowanie |
+|---|---|---|
+| transportowiec | żołnierzy, zero dział | `trader` — prze do plaży |
+| eskorta | działa, zero żołnierzy | `navy` — zbliża się do każdego, kto się zbliży |
+
+Co tick `vars.soldiers` i `vars.guns` są **przeliczane od nowa** jako suma tego,
+co jeszcze pływa. Zatopiony transportowiec to ludzie wykreśleni z desantu na
+zawsze; zatopione eskorty to desant bez osłony ogniowej.
+
+**Dlaczego przeliczanie, a nie odejmowanie.** Odejmowanie musiałoby wiedzieć,
+*dlaczego* kadłuba nie ma — gracz go zatopił, czy moduł go zdespawnował, bo gracz
+odpłynął. Suma tego, co pływa, liczona **przed** każdym celowym usunięciem, nie
+musi tych dwóch przypadków rozróżniać i nie może się rozjechać. To jedyna reguła,
+na której całość stoi.
+
+### Rozbicie wyprawy
+
+Gdy nie ma już kogo wysadzić na brzeg (`soldiers <= 0`), zdarzenie znika z
+`worldEvents`, a cel dostaje **ten sam okres karencji**, jaki dostałby po
+odparciu desantu na plaży (`RELIEF_COOLDOWN_DAYS` albo `CAMPAIGN_COOLDOWN_DAYS`).
+Bez tego następny dzienny rzut po prostu wystawiłby kolejną eskadrę i rozbicie
+tej pierwszej nic by graczowi nie dało.
+
+### Trasa i woda
+
+Trasa to prosta od najbliższego portu wysyłającej korony do celu, przechodzona
+po dniu. `LANDMASSES` jest ładowane z GeoJSON w runtime, a prosta między dwoma
+portami tego archipelagu **bardzo często idzie po lądzie** — Santa Marta →
+Kartagena jest lądowa na większości długości. Dlatego pozycja jest dosuwana do
+najbliższej wody (`nearestWater`, promień 140), a materializacja jest
+**wszystko-albo-nic**: kadłub, który nie znalazł wody, byłby dla `syncLedger`
+ludźmi wykreślonymi z inwazji bez jednego wystrzału.
+
+### Stałe
+
+| Stała | Wartość | Po co |
+|---|---|---|
+| `MATERIALIZE_RANGE` | 620 | wygodnie wewnątrz 900 despawnu `NpcSpawnSystem` |
+| `EXPEDITION_INTERVAL_TICKS` | 40 | ~2 razy na sekundę |
+| `SOLDIERS_PER_TRANSPORT` | 90 | próg drugiego transportowca |
+| `GUNS_PER_ESCORT` | 26 | próg drugiej eskorty |
+| `MAX_EXPEDITION_HULLS` | 4 | sufit kadłubów na wyprawę |
+| `WATER_SEARCH_RADIUS` | 140 | jak daleko wolno dosunąć kadłub |
+
+---
+
+## DefenseContractSystem (v0.17.0)
+
+`src/core/systems/DefenseContractSystem.ts`, czysty.
+
+v0.16.0 zrobiło cudzą kolonię obronną, ale nie dało żadnego sposobu, żeby gracz
+**został o to poproszony**. Musiał akurat tam być: przeczytać news, zgadnąć datę
+i krążyć. Cała gałąź gry była osiągalna wyłącznie przypadkiem.
+
+### Łańcuch
+
+```
+sail   — dotrzyj do miasta    reach_port        → stand
+                              days_passed(n)    → late   (porażka)
+stand  — utrzymaj je          defense_held_X    → paid   (złoto, reputacja)
+                              defense_lost_X    → fell   (porażka)
+                              days_passed(25)   → late   (porażka)
+```
+
+Dwie spoiny są **celowo różnej natury**. Dotarcie to pozycja, więc `reach_port`.
+Utrzymanie to wynik, więc flaga świata — a `settleRelief` stempluje ją na
+**każdej** ścieżce rozstrzygnięcia desantu, i to dlatego zlecenie płaci
+niezależnie od tego, czy gracz rozegrał bitwę w `CityDefenseScene`, czy odpłynął
+i garnizon zrobił to bez niego.
+
+Rozbicie eskadry na morzu **nie** rozstrzyga desantu, więc żadna flaga nie
+powstaje i zlecenie wygasa na zegarze. Poprawne i lekko okrutne: gubernator płaci
+za obronione miasto, nie za zgubioną flotę.
+
+**Termin jest wypiekany przy podpisaniu.** `days_passed` liczy od dnia wejścia w
+etap, a `QuestDef` instancji jest odbudowywany z `questLog` przy każdym wczytaniu
+(`buildQuestRegistry`). Okno musi więc być liczbą, która się nie rusza —
+`arrivalDay - acceptedDay + ARRIVAL_GRACE_DAYS`, policzone raz i zapisane.
+Liczenie „względem dziś" po cichu przedłużałoby termin przy każdym wczytaniu.
+
+### Bramki oferty
+
+| Bramka | Dlaczego |
+|---|---|
+| `alliedWith(holder)` | gubernator nie oddaje kolonii obcemu |
+| brak innego zlecenia | kapitan nie może być w dwóch portach; dwie wypłaty za jedną bitwę to oczywisty exploit |
+| cel nie jest miastem gracza | zdobył je tej koronie — nie płacą mu za trzymanie |
+| `endDay - dziś >= 2` | oferta, której nie da się przyjąć na czas, jest gorsza niż jej brak |
+
+### Wyzwalacze, które wreszcie ktoś odpala
+
+`reach_port` i `days_passed` były w `QuestSystem` i pokryte testami od v0.12.0, a
+**żadna scena ich nie emitowała**. Teraz: `PortScene.create()` przy wejściu przez
+bramę (nie przy powrocie ze stoczni) i `WorldEngine` przy zmianie dnia.
+
+Doszła też zakładka **Dziennik** w menu SPACE — `activeQuests` istniało od
+v0.12.0 i było wołane znikąd. Zlecenie z terminem, którego gracz nie może
+sprawdzić, to obietnica, której nie może dotrzymać.
+
+---
+
+## Załoga konsorty (v0.17.0)
+
+`FleetShip.crew?` — pole opcjonalne, czytane wyłącznie przez `consortCrew()` z
+`FleetSystem`, z fallbackiem `crewMax × FLEET_CREW_FRACTION`. Ten fallback jest
+powodem, dla którego **nie było potrzebne żadne krok migracji**: stary zapis
+odpowiada dokładnie tą liczbą co zawsze, dopóki statek nie poniesie pierwszych
+strat.
+
+Do v0.17.0 komplet konsorty był przeliczany z klasy przy każdym pytaniu, więc
+statek, który stracił połowę ludzi pod murami, miał ich wszystkich z powrotem
+przy następnym oblężeniu — jedyne miejsce w grze, gdzie ludzie wracali.
+`writeBackForce` dzieli teraz straty w ludziach tym samym mianownikiem co straty
+w kadłubie: siłą, którą oblężenie było prowadzone, a nie tym, co zostało.
+
+Rekrutacja w tawernie liczy koje **całej floty**: najpierw okręt flagowy, reszta
+przez `manConsorts` do najbardziej przetrzebionej konsorty. Bez tego przetrzebiona
+konsorta zostałaby przetrzebiona na zawsze — ta sama jednokierunkowa zapadka, co
+statek bez masztu z prędkością zero.
+
+---
+
+## Ułamkowy zegar a bramki okresowe (v0.17.0)
+
+`TimeSystem.tickBoundaryCrossed(prevTick, nowTick, interval, offset?)`.
+
+Każdy okresowy system bramkował się na `world.time.tick % INTERVAL === 0`. Czyta
+się to jako „co N ticków" i jest **dokładnie poprawne dla całkowitego zegara** —
+ale `MainMapScene` podaje silnikowi **ułamkowy** `dtTicks` proporcjonalny do
+delty klatki (≈0.4 przy 60 fps i normalnej prędkości), więc `tick` jest floatem i
+ta reszta nigdy nie jest dokładnie zerem.
+
+Efekt: `updateNpcSpawns` **nie postawił na mapie ani jednego statku**,
+`updateNpcAi` nie podjął ani jednej decyzji, wymiana newsów nie zadziałała ani
+razu. Świat wyglądał na pusty, bo **był** pusty — a testy jednostkowe tych
+systemów, operujące na całkowitych tickach, przechodziły.
+
+Porównanie, w którym kubełku o rozmiarze interwału leży każdy koniec klatki, jest
+na to odporne, odpala dokładnie raz na granicę niezależnie od długości klatki
+(także gdy klatka przeskoczy cały interwał) i zachowuje się po staremu dla zegara
+całkowitego. `offset` rozsuwa fazę per encja, nie zmieniając okresu.

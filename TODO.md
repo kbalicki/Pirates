@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.16.0.0 · **Branch:** `main`
-**Kod:** 152 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **825 przechodzi, 0 failuje, 0 `todo`** w 19 plikach
+**Stan na:** 2026-09-03 · **Wersja:** v0.17.0.0 · **Branch:** `main`
+**Kod:** 156 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **932 przechodzi, 0 failuje, 0 `todo`** w 22 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.16.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 825/825 zielone; moduł I domknął bitwy lądowe z obu stron (rozgrywalna obrona miasta, wojny przesuwające flagi, obrona sojusznika), a następne w kolejce jest **muzyka**, **zlecenie obrony u gubernatora** albo zadania równoległe z sekcji 4.
+> **Start sesji w jednym zdaniu:** v0.17.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 932/932 zielone; wyprawy koron da się przechwycić na morzu, gubernator zleca obronę kolonii, konsorty mają własną załogę, a przy okazji naprawiono bramkę `tick % N`, przez którą **NPC nie spawnowały się w ogóle** — następne w kolejce jest **muzyka** albo zadania równoległe z sekcji 4.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -31,10 +31,13 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Odbicie miast przez koronę | ✅ | `ReconquestSystem` (~700 l.): eskadry odbijające jako newsy, załoga miasta jako dźwignia, `settleRelief` jako jedyne miejsce zapisu wyniku desantu |
 | Rozgrywalna bitwa obronna | ✅ | `CityDefenseSystem` (~540 l.) + `CityDefenseScene`: wybór celu ostrzału, eskorta zasłaniająca szalupy, ludzie na mury kosztem dział okrętowych |
 | Korona kontra korona | ✅ | `CrownCampaignSystem` (~290 l.): wojny wystawiają wyprawy na najsłabsze kolonie przeciwnika, tą samą siecią newsów |
+| Wyprawa jako eskadra na mapie | ✅ | `ExpeditionFleetSystem` (~470 l.): desant dostaje kadłuby, transportowce wiozą ludzi, ledger przeliczany co tick |
+| Zlecenie obrony u gubernatora | ✅ | `DefenseContractSystem` (~250 l.): pierwszy ręcznie pisany łańcuch questowy, pierwszy odpalacz `reach_port` |
+| Załoga konsorty | ✅ | `FleetShip.crew?` + `consortCrew()`/`manConsorts()`: straty w ludziach wreszcie zostają |
 
 ### Nietknięte
 
-Zlecenie obrony sojusznika u gubernatora (dziś gracz musi sam się nawinąć) · wyprawy koron jako eskadry do przechwycenia na morzu · posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
+Posag i baza w porcie żony · mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
 
 ### Świadome placeholdery (zostawione celowo)
 
@@ -363,19 +366,117 @@ desant w komunikacie.
 - **Sojusznik prosi o pomoc** — dziś gracz musi sam się nawinąć; brak zlecenia „broń Port Royale" u gubernatora, choć `QuestSystem` i `DialogueSystem` mają wszystko, czego to wymaga
 - **Wyprawy korony nie mają floty na mapie** — wyprawa jest newsem i wynikiem, nie eskadrą NPC, którą dałoby się przechwycić na morzu
 
-### v0.17.0 — co dalej
+### ~~v0.17.0 — Inwazja dostaje kadłuby, gubernator prosi~~ ✅ (v0.17.0.0)
 
-Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza:
+Trzy zadania i jeden błąd, który przy okazji wyszedł i okazał się większy od
+całej reszty.
 
-1. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. Najtańsza rzecz
-   o największym wpływie na odbiór, a po v0.16.0 są dwa ekrany bitewne, które
-   wołają o ścieżkę.
-2. **Zlecenie obrony u gubernatora** — domknięcie v0.16.0. Dziś gracz broni cudzej
-   kolonii tylko wtedy, gdy przypadkiem tam jest; gubernator korony, która liczy go
-   za swojego, powinien móc o to poprosić. `QuestSystem` (wyzwalacz `reach_port`,
-   dziś nigdzie nieodpalany) i `DialogueSystem` mają już wszystko, czego to wymaga
-   — to pierwszy quest, który ma sens jako pisany ręcznie łańcuch.
-3. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
+**Wyprawa jako eskadra na morzu** (`ExpeditionFleetSystem.ts`) — od v0.15.0
+wyprawa korony była nagłówkiem w tawernie i datą przybycia, a **między jednym a
+drugim niczym**. Gracz mógł usłyszeć, że czterystu Hiszpanów jest dwanaście dni
+od Kartageny, i nie mógł zrobić nic poza staniem na murze, kiedy dopłyną. Dziwny
+kształt dla gry pirackiej: jedyną rzeczą, jaką kapitan mógł z inwazją zrobić,
+było spotkać ją na morzu.
+
+Dopóki gracz jest w promieniu 620, zdarzenie dostaje 2-4 zwykłe encje NPC z
+zapisanym udziałem w desancie. Transportowce wiozą **wszystkich** żołnierzy i
+zero dział, eskorty odwrotnie — i to jest cała taktyczna treść przechwycenia,
+lustro wyboru „T czy G" z `CityDefenseScene`, tylko z drugiego końca plaży.
+Eskorty to `navy` i wychodzą naprzeciw; transportowce to `trader` i prą do
+brzegu. Zaczepiony kadłub mówi, dokąd płynie — niesie news o własnej wyprawie.
+
+Ledger jest **przeliczany od nowa** co tick jako suma tego, co pływa, a nie
+odejmowany. Odejmowanie musiałoby wiedzieć, *dlaczego* kadłuba nie ma (zatopiony
+czy zdespawnowany, bo gracz odpłynął); suma liczona **przed** każdym celowym
+usunięciem tego nie potrzebuje i nie może się rozjechać. Stąd też jedyna reguła
+całości: zapis wyprzedza despawn, nigdy odwrotnie.
+
+Gdy nie ma kogo wysadzić, wyprawa znika, a cel dostaje **ten sam okres karencji**
+co po odparciu desantu na plaży. Bez tego następny dzienny rzut wystawiłby
+kolejną eskadrę i rozbicie tej pierwszej nie dałoby graczowi nic.
+
+**Pułapka, która to prawie zabiła:** `LANDMASSES` jest puste w testach (ładowane
+z GeoJSON w runtime), więc kontrola wody w vitest zawsze przechodziła — a prosta
+między dwoma portami tego archipelagu bardzo często idzie po lądzie. Santa Marta
+→ Kartagena jest lądowa na większości długości, czyli eskadra na **najczęściej
+atakowane miasto w grze** nie pojawiała się nigdy. Pozycja jest teraz dosuwana do
+najbliższej wody (`nearestWater`, 140), a materializacja jest wszystko-albo-nic:
+kadłub bez wody byłby dla `syncLedger` ludźmi wykreślonymi z inwazji bez wystrzału.
+
+**Zlecenie obrony u gubernatora** (`DefenseContractSystem.ts`) — v0.16.0 zrobiło
+cudzą kolonię obronną i nie dało żadnego sposobu, żeby gracz **został o to
+poproszony**. Cała gałąź gry była osiągalna wyłącznie przypadkiem.
+
+Łańcuch ma dwie spoiny **celowo różnej natury**: dotarcie to pozycja, więc
+`reach_port`; utrzymanie to wynik, więc flaga świata stemplowana przez
+`settleRelief` na **każdej** ścieżce rozstrzygnięcia. Dlatego zlecenie płaci
+niezależnie od tego, czy gracz rozegrał bitwę, czy garnizon zrobił to bez niego.
+Rozbicie eskadry na morzu desantu nie rozstrzyga, więc flaga nie powstaje i
+zlecenie wygasa na zegarze — gubernator płaci za obronione miasto, nie za
+zgubioną flotę.
+
+Termin jest **wypiekany przy podpisaniu**: `QuestDef` instancji jest odbudowywany
+z `questLog` przy każdym wczytaniu, więc okno liczone „względem dziś" po cichu
+przedłużałoby się przy każdym otwarciu zapisu.
+
+To pierwsze miejsce, które odpala `reach_port` (`PortScene.create()`, tylko przy
+wejściu przez bramę) i `days_passed` (`WorldEngine`, zmiana dnia) — oba były w
+`QuestSystem` i pokryte testami od v0.12.0, a żadna scena ich nie emitowała.
+Doszła też zakładka **Dziennik** w menu SPACE: `activeQuests` też istniało od
+v0.12.0 i było wołane znikąd, a zlecenie z terminem, którego gracz nie może
+sprawdzić, to obietnica, której nie może dotrzymać.
+
+**Załoga konsorty** — `FleetShip.crew?`, opcjonalne, czytane przez
+`consortCrew()` z fallbackiem `crewMax × 0.8`; ten fallback jest powodem, dla
+którego migracja nie była potrzebna. Do tej pory komplet konsorty przeliczał się
+z klasy przy każdym pytaniu, więc statek, który stracił połowę ludzi pod murami,
+miał ich wszystkich z powrotem przy następnym oblężeniu — **jedyne miejsce w
+grze, gdzie ludzie wracali**. Rekrutacja w tawernie liczy teraz koje całej floty
+(flagowy najpierw, reszta do najbardziej przetrzebionej konsorty), bo inaczej
+byłaby to jednokierunkowa zapadka.
+
+**Błąd znaleziony przy okazji, i to on jest największą rzeczą w tym wydaniu:**
+każdy okresowy system bramkował się na `world.time.tick % INTERVAL === 0`.
+`MainMapScene` podaje silnikowi **ułamkowy** `dtTicks` (delta klatki ÷ 50 × tempo
+gry, ≈0.4 przy 60 fps), więc `tick` jest floatem i ta reszta **nigdy** nie jest
+zerem. `updateNpcSpawns` nie postawił na mapie ani jednego statku, `updateNpcAi`
+nie podjął ani jednej decyzji, wymiana newsów nie zadziałała ani razu. Świat
+wyglądał na pusty, bo **był** pusty — a testy jednostkowe tych systemów, pisane
+na całkowitych tickach, przechodziły. `tickBoundaryCrossed` porównuje kubełki i
+odpala dokładnie raz na granicę, także gdy klatka przeskoczy cały interwał.
+
+**Weryfikacja w grze:** `?intercept=cartagena` — eskadra materializuje się (2
+transportowce po 100 ludzi, 2 fregaty po 25 dział, `AFLOAT`), zatopienie jednego
+transportowca ścina ledger do 100 z linią `expedition.log_transport`, zatopienie
+obu kasuje wyprawę (`expedition.log_scattered`, +10 sławy, `nextReliefDay` = 46).
+`?commission=port_royal` — oferta gubernatora (180 żołnierzy, 1200 złota, 12
+dni), przyjęcie zakłada `defense_bermuda` na etapie `sail`, Dziennik pokazuje
+termin. `?siege=cartagena` — konsorta schodzi z plaży `hull:92 crew:67` zamiast
+wracać do kompletu.
+
+**Zostało z tego modułu:**
+- **Wyprawa nie ma pozycji na minimapie ani w newsach** — gracz wie, że płynie,
+  ale kurs musi wydedukować z tego, skąd i dokąd. Naturalne rozszerzenie:
+  linia na mapie świata przy zdarzeniu, o którym gracz słyszał
+- **Zlecenie jest jedno na raz i tylko od gubernatora** — informator w tawernie
+  albo list gończy na tablicy dałyby drugie źródło
+- **Konsorty nie mają morale ani wyszkolenia** — dzielą wartości flagowego
+
+### v0.18.0 — co dalej
+
+Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
+
+1. **Kurs wyprawy na mapie świata** — domknięcie v0.17.0. Gracz wie z tawerny, że
+   eskadra płynie, ale kurs musi wydedukować sam z tego, skąd i dokąd. Linia albo
+   znacznik celu na mapie dla zdarzenia, o którym słyszał, zamienia przechwycenie
+   z zagadki geograficznej w decyzję. Mało pracy, dużo czytelności.
+2. **Posag i baza w porcie żony** — domknięcie v0.14.0. Ślub daje dziś reputację
+   i punkty, nic więcej. Własny port macierzysty z darmową naprawą i magazynem
+   byłby pierwszą rzeczą, którą małżeństwo *robi*.
+3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
+   zadanie programistyczne**: brakuje plików audio, nie kodu. Dopóki nie ma
+   ścieżek, agent nie ma tu czego zrobić poza podpięciem gotowych plików.
+4. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
    praca, mały dług.
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
@@ -385,11 +486,14 @@ Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1). Problem „całe ekrany zamiast sprite'ów" **rozwiązany**: 51/51 assetów to pojedynczy obiekt. Nadaje się do użycia: ikony ekwipunku i budynki portu przy sile 0.6-0.75. **Nie** nadaje się: dziewięć klas statków wychodzi identycznych (w projekcie jest jeden sprite statku — retrening tego nie naprawi bez nowego materiału), towary są bezkształtne, portrety nie trzymają wspólnego stylu. Zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). v3 poprawia ujęcie z góry (10% → 32% zbioru) i balans kategorii. Ocena i szczegóły: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
 - **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - **`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.
-- **Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.** Maszyna je obsługuje i pokrywają je testy, ale żadna scena ich nie emituje — wątek rodzinny chodzi na `flag_set`, skarby na `dig_at`. Naturalne miejsca: `PortApproachScene.executeAction("enter")` dla pierwszego i przejście dnia w `WorldEngine` dla drugiego. Nie dodano ich „na zapas" — martwy hak jest tym samym błędem co martwa scena.
+- ~~**Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.**~~ ✅ v0.17.0.0 — `PortScene.create()` (tylko przy wejściu przez bramę) i zmiana dnia w `WorldEngine`; pierwszym konsumentem obu jest zlecenie obrony. Zwłoka była celowa: martwy hak jest tym samym błędem co martwa scena, więc czekały na pierwszy quest, który naprawdę ich potrzebuje.
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
+- **Konsorty nie mają morale ani wyszkolenia.** `FleetShip` ma od v0.17.0 własną załogę, ale morale i drill nadal biorą się z okrętu flagowego. Widać to w bitwie morskiej: konsorta z dziesięcioma ludźmi przeładowuje tak, jakby miała morale kapitana.
+- **Zlecenie obrony jest jedno na raz i tylko od gubernatora.** Informator w tawernie albo tablica w porcie dałyby drugie źródło i drugi typ zlecenia.
+- **`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.** Eskadra istnieje dopiero w promieniu 620; do tego czasu gracz zna tylko port docelowy z newsa.
 - **Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.** `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
-- **Wyprawy koron nie mają kadłubów na mapie.** `CrownCampaignSystem` wystawia news i wynik; między jednym a drugim nie ma niczego, co dałoby się przechwycić na morzu. Naturalne rozszerzenie: `NpcSpawnSystem` stawia eskadrę płynącą do celu, a jej rozbicie przez gracza kasuje zdarzenie.
+- ~~**Wyprawy koron nie mają kadłubów na mapie.**~~ ✅ v0.17.0.0 — `ExpeditionFleetSystem` materializuje eskadrę w promieniu 620 od gracza, a jej rozbicie kasuje zdarzenie i daje celowi karencję.
 
 ---
 
@@ -406,6 +510,8 @@ Nic nie jest jeszcze wybrane. Trzy kandydaci, w kolejności wartości dla gracza
 - `src/core/` nie importuje Phasera. Nigdy.
 - Właściciela portu czytaj **wyłącznie** przez `portFaction(world, portKey)` z `SiegeSystem` — `CityDef.factionId` to mapa z 1680 i nie zmienia się nigdy.
 - Do weryfikacji w grze jest `scripts/drive.mjs` (dowolna sekwencja klawiszy + zrzut stanu). Karta headless dławi `requestAnimationFrame`, więc pętlę Phasera trzeba pompować ręcznie — zamrożony zrzut to prawie zawsze to, a nie błąd gry.
+- **`time.tick` jest ułamkowy.** Nigdy nie bramkuj niczego na `tick % N === 0` — używaj `tickBoundaryCrossed(tick - dtTicks, tick, N)` z `TimeSystem`. Ten jeden wzorzec zabił w v0.16.0 spawn NPC, AI NPC i wymianę newsów naraz, a testy jednostkowe na całkowitych tickach tego nie widziały.
+- **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

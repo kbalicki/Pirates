@@ -3,7 +3,7 @@ import type { FactionId, PortId, ShipClassId } from "../model/ids.ts";
 import type { CitySize } from "../data/cities.ts";
 import { CITIES } from "../data/cities.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
-import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew } from "./FleetSystem.ts";
+import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
@@ -100,8 +100,14 @@ export type RecruitResult = {
 };
 
 /**
- * Recruit crew at the tavern. Free of charge.
- * Limited by port's availableCrew pool.
+ * Recruit crew at the tavern.
+ *
+ * Berths are counted across the whole fleet, not just the flagship (v0.17.0).
+ * Consorts carry their own men now and lose them at a siege, so a hire that
+ * stopped at the flagship's own rail would have left a gutted consort gutted
+ * for the rest of the game. The flagship fills first — it is the one with the
+ * captain aboard — and what will not fit there goes out to the shortest-handed
+ * consort, by `manConsorts`.
  */
 export function recruitCrew(
   world: WorldState,
@@ -116,7 +122,9 @@ export function recruitCrew(
   }
 
   const crew = playerEntity.ship.crew;
-  const shipSpace = crew.max - crew.current;
+  const fleet = world.player.fleet ?? [];
+  const flagSpace = crew.max - crew.current;
+  const shipSpace = flagSpace + consortBerthsFree(fleet);
   const affordable = Math.floor(world.player.gold / RECRUIT_COST_PER_SAILOR);
   const poolAvailable = portState?.availableCrew ?? 0;
   const actual = Math.min(count, shipSpace, affordable, poolAvailable);
@@ -128,25 +136,28 @@ export function recruitCrew(
   }
 
   const cost = actual * RECRUIT_COST_PER_SAILOR;
+  const toFlagship = Math.min(flagSpace, actual);
+  const { fleet: manned } = manConsorts(fleet, actual - toFlagship);
 
   // Fresh recruits are untrained — they dilute the crew's overall training
-  // by a weighted average against rookie value 0.
+  // by a weighted average against rookie value 0. Only the men who actually
+  // walk the flagship's deck count: `training` is the flagship's drill.
   const captain = world.captain;
-  const newTraining = captain
-    ? diluteTraining(captain.training ?? 0.3, crew.current, actual)
+  const newTraining = captain && toFlagship > 0
+    ? diluteTraining(captain.training ?? 0.3, crew.current, toFlagship)
     : undefined;
 
   const newWorld = addLogEntry(
     {
       ...world,
-      player: { ...world.player, gold: world.player.gold - cost },
+      player: { ...world.player, gold: world.player.gold - cost, fleet: manned },
       entities: {
         ...world.entities,
         [world.player.shipId as string]: {
           ...playerEntity,
           ship: {
             ...playerEntity.ship,
-            crew: { ...crew, current: crew.current + actual },
+            crew: { ...crew, current: crew.current + toFlagship },
           },
         },
       },

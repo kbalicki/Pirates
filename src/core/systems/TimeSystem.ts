@@ -23,6 +23,34 @@ export function advanceTime(time: GameTime, dtTicks: number): GameTime {
   return { day, hour, minute, tick };
 }
 
+/**
+ * True when the clock crossed a multiple of `interval` ticks between two frames.
+ *
+ * The bug this exists to kill: every periodic system in the game used to gate
+ * itself on `time.tick % INTERVAL === 0`. That reads as "every N ticks" and is
+ * exactly right for an integer clock — but `MainMapScene` feeds the engine a
+ * *fractional* `dtTicks` proportional to the frame delta (≈0.4 at 60 fps and
+ * normal speed), so `tick` is a float and the remainder is never exactly zero.
+ * Every one of those systems was silently dead: `updateNpcSpawns` put no ships
+ * on the map at all, `updateNpcAi` never took a decision, and the news exchange
+ * never ran. The world looked empty because it *was* empty.
+ *
+ * Comparing which interval-sized bucket each end of the frame falls in is
+ * immune to that, fires exactly once per boundary however big or small the
+ * frame was, and still behaves the old way for an integer clock. `offset`
+ * staggers a per-entity phase without changing the period.
+ */
+export function tickBoundaryCrossed(
+  prevTick: number,
+  nowTick: number,
+  interval: number,
+  offset = 0,
+): boolean {
+  if (interval <= 0) return true;
+  if (!(nowTick > prevTick)) return false;
+  return Math.floor((prevTick + offset) / interval) !== Math.floor((nowTick + offset) / interval);
+}
+
 export function formatTime(time: GameTime): string {
   const hh = String(time.hour).padStart(2, "0");
   const mm = String(time.minute).padStart(2, "0");

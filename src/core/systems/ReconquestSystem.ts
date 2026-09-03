@@ -122,6 +122,16 @@ export const WRECK_GOLD_PER_SOLDIER = 3;
 /** What a town that changed hands can rebuild on its own, as a share of baseline. */
 export const HELD_DEFENSE_SHARE = 0.45;
 
+/**
+ * Flag prefixes stamped by `settleRelief` for every landing it settles.
+ *
+ * Kept here rather than in `DefenseContractSystem` because this is the module
+ * that writes them, and a flag whose name lives somewhere other than its writer
+ * is a flag that quietly stops matching.
+ */
+export const DEFENSE_HELD_FLAG = "defense_held_";
+export const DEFENSE_LOST_FLAG = "defense_lost_";
+
 const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 
 // ── What a town that changed hands can rebuild ────────────
@@ -564,6 +574,21 @@ export function settleRelief(
     soldiers: expedition.soldiers,
   };
 
+  // The outcome as a world flag, both ways round, on every one of the three
+  // paths into this function (v0.17.0). `QuestSystem` has no idea what a
+  // landing is and `CityDefenseScene` has no idea what a quest is; the flag is
+  // the whole of the joint, exactly as `family_step_N` is between the family
+  // thread and the duel screen. Both are written every time so a second
+  // contract for the same town is judged on this landing and not the last one.
+  w = {
+    ...w,
+    worldFlags: {
+      ...w.worldFlags,
+      [`${DEFENSE_HELD_FLAG}${portKey}`]: s.held,
+      [`${DEFENSE_LOST_FLAG}${portKey}`]: !s.held,
+    },
+  };
+
   if (s.held) {
     gold = s.playerFought ? Math.round(expedition.soldiers * WRECK_GOLD_PER_SOLDIER) : 0;
     w = {
@@ -680,6 +705,14 @@ export type ReconquestTick = {
   /** Ports whose flag changed today, for the map to repaint. */
   ownersChanged: string[];
   /**
+   * Ports whose landing was settled today, held or lost.
+   *
+   * `settleRelief` stamps `defense_held_`/`defense_lost_` for each of them; this
+   * is the list the engine turns into `flag_set` quest events, so a defence
+   * commission is paid out by a battle the player never watched.
+   */
+  settled: string[];
+  /**
    * A landing the player is standing in the middle of.
    *
    * Handed up unresolved: the world has already dropped the event, but nothing
@@ -750,6 +783,7 @@ export function tickReconquest(world: WorldState): ReconquestTick {
   let rng = w.rng;
   const events: WorldEvent[] = [];
   const ownersChanged: string[] = [];
+  const settled: string[] = [];
   let playable: PendingDefense | undefined;
 
   // 1. Garrisons bleed men whether or not anyone is shooting at them.
@@ -786,6 +820,7 @@ export function tickReconquest(world: WorldState): ReconquestTick {
     w = result.world;
     rng = next;
     events.push(...result.events);
+    settled.push(result.portKey);
     if (result.townLost) ownersChanged.push(result.portKey);
   }
 
@@ -811,5 +846,5 @@ export function tickReconquest(world: WorldState): ReconquestTick {
     });
   }
 
-  return { world: { ...w, rng }, events, ownersChanged, playable };
+  return { world: { ...w, rng }, events, ownersChanged, settled, playable };
 }

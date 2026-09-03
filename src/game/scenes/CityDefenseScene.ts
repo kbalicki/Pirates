@@ -6,6 +6,9 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import type { AttackForce } from "../../core/systems/SiegeSystem.ts";
 import type { PendingDefense } from "../../core/systems/ReconquestSystem.ts";
+import { DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../../core/systems/ReconquestSystem.ts";
+import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import {
   createDefense,
   defenseRound,
@@ -309,6 +312,7 @@ export class CityDefenseScene extends Phaser.Scene {
       townLeft,
     );
     this.worldState = outcome.world;
+    this.settleContract(held);
     if (outcome.gold > 0) this.pushLog(t("defense.log_gold", { gold: outcome.gold }));
     if (held && this.state.allied) {
       this.pushLog(t("defense.log_ally_reward", {
@@ -317,6 +321,26 @@ export class CityDefenseScene extends Phaser.Scene {
     }
     this.phase = "done";
     this.redraw();
+  }
+
+  /**
+   * Pay off, or fail, a defence commission this battle just decided.
+   *
+   * `applyDefenseOutcome` goes through `settleRelief` like every other landing,
+   * so the outcome flag is already stamped by the time this runs — all that is
+   * left is telling the quest machine a flag moved. The offscreen path does the
+   * same thing from `WorldEngine`; there is one bookkeeper and two messengers.
+   */
+  private settleContract(held: boolean): void {
+    const flag = (held ? DEFENSE_HELD_FLAG : DEFENSE_LOST_FLAG) + this.state.portKey;
+    const advanced = advanceQuests(
+      this.worldState,
+      { type: "flag_set", key: flag },
+      buildQuestRegistry(this.worldState),
+    );
+    if (advanced.advanced.length === 0) return;
+    this.worldState = advanced.world;
+    if (advanced.completed.length > 0) this.pushLog(t("quest.defense_paid_short"));
   }
 
   private onConfirm(): void {

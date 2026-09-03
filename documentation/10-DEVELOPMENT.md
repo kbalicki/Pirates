@@ -278,6 +278,9 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?defend=cartagena` | Rozgrywalna bitwa obronna od razu, bez czekania na eskadrę |
 | `&ally=1` | Bronisz cudzej kolonii (list kaperski dodany), a nie własnego miasta |
 | `&garrison=N` `&soldiers=N` | Ludzie na murach (domyślnie 60) i wielkość wyprawy (domyślnie 140) — razem z `?defend=` |
+| `?intercept=cartagena` | Wyprawa w połowie przeprawy, gracz stoi dokładnie na niej — do przechwycenia na morzu |
+| `&soldiers=N` | Wielkość wyprawy (domyślnie 200) — razem z `?intercept=` |
+| `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 
 ## Deploy produkcyjny
 

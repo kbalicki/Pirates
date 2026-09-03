@@ -114,6 +114,18 @@ const state = await page.evaluate(() => {
     reliefs: w.worldEvents
       .filter(e => e.type === 'reconquest')
       .map(e => `${e.ports[0]} <- ${e.factions[0]}, ${e.endDay - w.time.day}d, ${e.vars.soldiers} men`),
+    // Every landing at sea, whoever is sending it, and whether it currently has
+    // hulls on the chart (v0.17.0). `afloat` on an event with no hulls listed
+    // below it would mean the ledger and the world had come apart.
+    expeditions: w.worldEvents
+      .filter(e => e.type === 'reconquest' || e.type === 'campaign')
+      .map(e => `${e.type} ${e.ports[0]} <- ${e.factions[0]}, ${e.endDay - w.time.day}d, ` +
+                `${e.vars.soldiers} men / ${e.vars.guns} guns${e.vars.afloat ? ' AFLOAT' : ''}`),
+    expeditionHulls: Object.entries(w.entities)
+      .filter(([, e]) => e.ai && e.ai.expedition)
+      .map(([id, e]) => `${id} ${e.ship.classId} men:${e.ai.expedition.soldiers} ` +
+                        `guns:${e.ai.expedition.guns} hull:${Math.round(e.ship.hullHp)}`),
+    consorts: (w.player.fleet || []).map(f => `${f.classId} hull:${Math.round(f.hullHp)} crew:${f.crew}`),
     log: w.eventLog.slice(-8).map(e => e.key),
     // Flags on the map are drawn once and repainted when a town changes hands.
     // Anything listed here is a town whose drawn colours no longer match who

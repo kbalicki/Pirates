@@ -5,6 +5,7 @@ import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { factionId } from "../../core/model/ids.ts";
+import { expeditionPos } from "../../core/systems/ExpeditionFleetSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -177,6 +178,8 @@ export class PreloadScene extends Phaser.Scene {
     //   ?siege=cartagena — jump straight to a city assault, with a ship able to try it
     //   ?relief=cartagena — a town already taken, with a royal squadron arriving today
     //   ?defend=cartagena — the same landing, fought in person (&ally=1 for someone else's town)
+    //   ?intercept=cartagena — the same expedition, met at sea half a passage out
+    //   ?commission=port_royal — the governor there with a colony under threat
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -245,6 +248,24 @@ export class PreloadScene extends Phaser.Scene {
       });
       return;
     }
+    if (params.has("intercept")) {
+      const portKey = params.get("intercept") || "cartagena";
+      const soldiers = params.has("soldiers") ? Number(params.get("soldiers")) : 200;
+      const world = this.createInterceptWorld(
+        portKey,
+        Number.isFinite(soldiers) ? soldiers : 200,
+      );
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("commission")) {
+      const portKey = params.get("commission") || "port_royal";
+      const world = this.createCommissionWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
     if (params.has("skip")) {
       const world = createNewWorldState(Date.now());
       this.registry.set("worldState", world);
@@ -272,7 +293,7 @@ export class PreloadScene extends Phaser.Scene {
       worldFlags: { ...world.worldFlags, letter_of_marque_england: true },
       player: {
         ...world.player,
-        fleet: [{ classId: "frigate", hullHp: 120, hullMax: 120, sailsHp: 90, sailsMax: 90, cannons: 28 }],
+        fleet: [{ classId: "frigate", hullHp: 120, hullMax: 120, sailsHp: 90, sailsMax: 90, cannons: 28, crew: 100 }],
       },
       entities: {
         ...world.entities,
@@ -389,6 +410,135 @@ export class PreloadScene extends Phaser.Scene {
           severity: 3 as const,
           headline: "news.reconquest",
           vars: { port: def.name, faction: def.factionId as string, soldiers, guns: Math.round(soldiers / 4), days: 8 },
+        },
+      ],
+    };
+  }
+
+  /**
+   * An expedition halfway across the map with the player sitting on it, for
+   * `?intercept=`.
+   *
+   * The one part of `ExpeditionFleetSystem` a unit test cannot show is the
+   * thing itself: four sails coming up over the horizon under a Spanish flag,
+   * two of them fat and low in the water. Waiting for that in an ordinary game
+   * means holding a town for two months and then guessing a bearing.
+   *
+   * The passage is set so today is its midpoint, and the player is dropped on
+   * the squadron's computed position, which is what `withinReach` measures. The
+   * event's arrival is still ten days out, so there is time to sink every hull
+   * and watch the landing be struck from the world.
+   */
+  private createInterceptWorld(portKey: string, soldiers: number): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const port = base.ports[portKey];
+    const day = base.time.day;
+
+    const event = {
+      id: `reconquest_${portKey}_debug`,
+      type: "reconquest" as const,
+      startDay: day - 10,
+      endDay: day + 10,
+      ports: [portKey],
+      factions: [def.factionId as unknown as string, "pirates"],
+      severity: 3 as const,
+      headline: "news.reconquest",
+      vars: {
+        port: def.name,
+        faction: def.factionId as unknown as string,
+        soldiers,
+        guns: Math.round(soldiers / 4),
+        days: 20,
+      },
+    };
+
+    const staged: import("../../core/model/WorldState.ts").WorldState = {
+      ...base,
+      ports: port ? {
+        ...base.ports,
+        [portKey]: {
+          ...port,
+          factionId: factionId("pirates"),
+          capturedDay: day - 60,
+          defense: Math.round(port.defense * 0.4),
+          garrison: 80,
+        },
+      } : base.ports,
+      worldEvents: [...base.worldEvents, event],
+    };
+
+    // Where the squadron is today, straight out of the same function the
+    // running game uses — no second copy of the route arithmetic here.
+    const pos = expeditionPos(staged, event) ?? { x: def.pos.x + 200, y: def.pos.y + 200 };
+    const shipId = staged.player.shipId as string;
+    const entity = staged.entities[shipId];
+
+    return {
+      ...staged,
+      player: { ...staged.player, location: { type: "sea", pos: { ...pos } } },
+      entities: entity
+        ? { ...staged.entities, [shipId]: { ...entity, pos: { ...pos } } }
+        : staged.entities,
+    };
+  }
+
+  /**
+   * A governor with a colony under threat and a captain he trusts, for
+   * `?commission=`.
+   *
+   * The offer has four gates on it and one of them is a landing already at sea
+   * against a *different* colony of the same crown, which in an ordinary game
+   * means waiting for two crowns to go to war and then for the roll. This puts
+   * the captain in the audience chamber with a letter of marque in his pocket
+   * and a Spanish expedition twelve days off a neighbouring English town.
+   */
+  private createCommissionWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const here = CITIES[portKey];
+    if (!here) return base;
+    const crown = here.factionId as unknown as string;
+    const day = base.time.day;
+
+    // Another colony of the same crown, as far from this one as possible, so
+    // the offer is never confused with the town the captain is standing in.
+    let target: string | undefined;
+    let best = -1;
+    for (const [key, def] of Object.entries(CITIES)) {
+      if (key === portKey) continue;
+      if ((def.factionId as unknown as string) !== crown) continue;
+      const d = (def.pos.x - here.pos.x) ** 2 + (def.pos.y - here.pos.y) ** 2;
+      if (d > best) { best = d; target = key; }
+    }
+    if (!target) return base;
+
+    return {
+      ...base,
+      worldFlags: { ...base.worldFlags, [`letter_of_marque_${crown}`]: true },
+      player: {
+        ...base.player,
+        location: { type: "port", portId: here.id, pos: { ...here.pos } },
+      },
+      worldEvents: [
+        ...base.worldEvents,
+        {
+          id: `campaign_${target}_debug`,
+          type: "campaign" as const,
+          startDay: day,
+          endDay: day + 12,
+          ports: [target],
+          factions: [crown === "spain" ? "england" : "spain", crown],
+          severity: 3 as const,
+          headline: "news.campaign",
+          vars: {
+            port: CITIES[target].name,
+            faction: crown === "spain" ? "england" : "spain",
+            holder: crown,
+            soldiers: 180,
+            guns: 45,
+            days: 12,
+          },
         },
       ],
     };

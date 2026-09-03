@@ -10,6 +10,11 @@ import {
   addToFleet,
   removeFromFleet,
   fleetSummary,
+  FLEET_CREW_FRACTION,
+  consortCrew,
+  consortCrewMax,
+  consortBerthsFree,
+  manConsorts,
 } from "../FleetSystem.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import type { FleetShip, PlayerState } from "../../model/WorldState.ts";
@@ -108,6 +113,7 @@ describe("addToFleet / removeFromFleet", () => {
       sailsHp: cls.sailsMax,
       sailsMax: cls.sailsMax,
       cannons: cls.cannons,
+      crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
     });
   });
 
@@ -240,5 +246,95 @@ describe("fleetSummary — what the fleet tab renders", () => {
     const rows = fleetSummary("man_o_war", [escort("sloop")]);
     expect(rows).toHaveLength(1);
     expect(rows[0].isEscort).toBe(true);
+  });
+});
+
+// ===========================================================================
+// Consort crews (v0.17.0)
+// ===========================================================================
+
+/**
+ * Before v0.17.0 a consort's complement was recomputed from its class every
+ * time anyone asked, so a ship that lost half its people at a siege had them
+ * all back by the next one. `FleetShip.crew` is optional so that old saves keep
+ * answering the number they always did — that fallback is what these tests
+ * pin down first.
+ */
+describe("consortCrew — the number, and what it falls back to", () => {
+  it("derives the old notional complement when the field was never written", () => {
+    const { crew: _dropped, ...legacy } = escort("barque");
+    expect(consortCrew(legacy)).toBe(
+      Math.round(SHIP_CLASSES.barque.crewMax * FLEET_CREW_FRACTION),
+    );
+  });
+
+  it("reads the ship's own count once it has one", () => {
+    expect(consortCrew({ ...escort("barque"), crew: 7 })).toBe(7);
+  });
+
+  it("never reports a negative complement", () => {
+    expect(consortCrew({ ...escort("barque"), crew: -5 })).toBe(0);
+  });
+
+  it("reports no berths at all for a class that does not exist", () => {
+    expect(consortCrewMax({ ...escort("sloop"), classId: "man_o_war" })).toBe(0);
+  });
+});
+
+describe("consortBerthsFree / manConsorts — putting men back aboard", () => {
+  it("counts every empty berth across the consorts", () => {
+    const a = { ...escort("sloop"), crew: 2 };
+    const b = { ...escort("barque"), crew: 3 };
+    expect(consortBerthsFree([a, b])).toBe(
+      SHIP_CLASSES.sloop.crewMax - 2 + SHIP_CLASSES.barque.crewMax - 3,
+    );
+  });
+
+  it("counts nothing free on a full fleet", () => {
+    const full = { ...escort("sloop"), crew: SHIP_CLASSES.sloop.crewMax };
+    expect(consortBerthsFree([full])).toBe(0);
+  });
+
+  it("fills the shortest-handed consort first, not the first in the array", () => {
+    const nearlyFull = { ...escort("barque"), crew: SHIP_CLASSES.barque.crewMax - 1 };
+    const gutted = { ...escort("sloop"), crew: 1 };
+    const { fleet, placed } = manConsorts([nearlyFull, gutted], 4);
+    expect(placed).toBe(4);
+    // Every man goes to the sloop: it is short by more than four, so the
+    // barque's single empty berth is never the worst gap in the fleet.
+    expect(fleet[0].crew).toBe(SHIP_CLASSES.barque.crewMax - 1);
+    expect(fleet[1].crew).toBe(5);
+  });
+
+  it("places only what fits and says how many that was", () => {
+    const gutted = { ...escort("sloop"), crew: SHIP_CLASSES.sloop.crewMax - 2 };
+    const { fleet, placed } = manConsorts([gutted], 10);
+    expect(placed).toBe(2);
+    expect(fleet[0].crew).toBe(SHIP_CLASSES.sloop.crewMax);
+  });
+
+  it("leaves the array untouched when there is nobody to place", () => {
+    const before = [escort("sloop")];
+    const { fleet, placed } = manConsorts(before, 0);
+    expect(placed).toBe(0);
+    expect(fleet).toBe(before);
+  });
+
+  it("leaves the array untouched when every berth is already taken", () => {
+    const before = [{ ...escort("sloop"), crew: SHIP_CLASSES.sloop.crewMax }];
+    const { fleet, placed } = manConsorts(before, 20);
+    expect(placed).toBe(0);
+    expect(fleet).toBe(before);
+  });
+
+  it("has no consorts to man in a one-ship fleet", () => {
+    expect(manConsorts([], 30)).toEqual({ fleet: [], placed: 0 });
+  });
+});
+
+describe("addToFleet — a hull joins already manned", () => {
+  it("gives a bought or captured hull the notional prize crew", () => {
+    const fleet = addToFleet([], "barque")!;
+    expect(fleet[0].crew).toBe(Math.round(SHIP_CLASSES.barque.crewMax * FLEET_CREW_FRACTION));
   });
 });

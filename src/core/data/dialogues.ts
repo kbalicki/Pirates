@@ -38,6 +38,21 @@ export type GovernorTreeContext = {
   daughterName?: string;
   /** True once the captain is married; the reply disappears for good. */
   married: boolean;
+  /**
+   * A colony of this crown with a landing bearing down on it, when the crown
+   * counts the captain as one of its own and he is not already under contract.
+   *
+   * Absent means the reply is not there at all — a governor with nothing under
+   * threat has nothing to ask, and an option that greys out would only advertise
+   * a mechanic the player cannot reach.
+   */
+  defenseOffer?: {
+    portName: string;
+    enemyName: string;
+    soldiers: number;
+    days: number;
+    reward: number;
+  };
 };
 
 /** Effect id the caller must handle: hands over the letter of marque. */
@@ -55,6 +70,15 @@ export const EFFECT_RETIRE = "retire_captain";
  * it from there.
  */
 export const EFFECT_VISIT_DAUGHTER = "visit_daughter";
+/**
+ * Effect id the caller must handle: the captain takes the defence commission.
+ *
+ * Same reason as the drawing room — the tree can say what is being asked and
+ * what it pays, but the thing it starts is a quest instance with a deadline
+ * baked into it, and `DialogueEffect` is a closed vocabulary of deterministic
+ * changes on purpose. The port scene knows which offer was on the table.
+ */
+export const EFFECT_ACCEPT_DEFENSE = "accept_defense_contract";
 
 export function governorTree(ctx: GovernorTreeContext): DialogueTree {
   const letterFlag = `letter_of_marque_${ctx.factionKey}`;
@@ -109,6 +133,16 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
               ? { type: "reputation", faction: ctx.factionKey, min: 20 }
               : { type: "flag", key: "__never__" },
             effects: [{ type: "custom", id: EFFECT_VISIT_DAUGHTER }],
+          },
+          {
+            id: "ask_defense",
+            textKey: "governor.opt_ask_defense",
+            vars: { port: ctx.defenseOffer?.portName ?? "" },
+            // Built by the caller or not at all: whether a landing is coming
+            // and whether this crown would have the captain on its wall are
+            // both questions the port scene can answer and a condition cannot.
+            when: ctx.defenseOffer ? undefined : { type: "flag", key: "__never__" },
+            next: "defense_offer",
           },
           { id: "ask_rumor", textKey: "governor.opt_ask_news", next: "rumor" },
           {
@@ -170,6 +204,34 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
           },
           { id: "retire_decline", textKey: "governor.opt_retire_decline", next: "greeting" },
         ],
+      },
+
+      defense_offer: {
+        id: "defense_offer",
+        textKey: "governor.defense_offer",
+        vars: {
+          port: ctx.defenseOffer?.portName ?? "",
+          enemy: ctx.defenseOffer?.enemyName ?? "",
+          soldiers: ctx.defenseOffer?.soldiers ?? 0,
+          days: ctx.defenseOffer?.days ?? 0,
+          gold: ctx.defenseOffer?.reward ?? 0,
+        },
+        options: [
+          {
+            id: "defense_accept",
+            textKey: "governor.opt_defense_accept",
+            effects: [{ type: "custom", id: EFFECT_ACCEPT_DEFENSE }],
+            next: "defense_accepted",
+          },
+          { id: "defense_decline", textKey: "governor.opt_decline", next: "greeting" },
+        ],
+      },
+
+      defense_accepted: {
+        id: "defense_accepted",
+        textKey: "governor.defense_accepted",
+        vars: { port: ctx.defenseOffer?.portName ?? "" },
+        options: [{ id: "back", textKey: "governor.opt_back", next: "greeting" }],
       },
 
       rumor: {

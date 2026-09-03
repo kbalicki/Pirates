@@ -633,6 +633,8 @@ export const PL: LocaleData = {
 
   // -- Captain Tab --
   "menu.tab_captain": "Kapitan",
+  "menu.tab_journal": "Dziennik",
+  "journal.empty": "Nikomu nic nie obiecano.",
   "captain.name_label": "Kapitan {{name}}",
   "captain.age_label": "Wiek: {{age}}",
   "captain.experience_label": "Doświadczenie: {{value}}",
@@ -684,6 +686,24 @@ export const PL: LocaleData = {
   // ── Korony odbierają sobie kolonie (v0.16.0) ───────────
   "news.campaign": "{{faction}} zbroi wyprawę na {{port}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
   "campaign.toast_sailing": "Wyprawa ({{faction}}) wypłynęła na {{port}}. {{days}} dni.",
+
+  // ── Wyprawa dostaje kadłuby (v0.17.0) ──────────────────
+  "expedition.log_scattered": "Wyprawa ({{faction}}) na {{port}} rozbita. Nikt nie zejdzie na brzeg.",
+  "expedition.toast_scattered": "Desant na {{port}} nie dotrze.",
+  "expedition.log_transport": "Transportowiec idzie na dno z {{men}} żołnierzami w ładowni.",
+
+  // -- Zlecenie obrony u gubernatora (v0.17.0) --
+  "governor.opt_ask_defense": "Macie kolonię w niebezpieczeństwie — {{port}}?",
+  "governor.defense_offer": "Mam i nie będę udawał, że jest inaczej. {{enemy}} ma {{soldiers}} żołnierzy w szalupach, a mury {{port}} były stare, kiedy tu przypłynąłem. Stańcie na tym murze, gdy przyjdzie desant, a jest w tym dla was {{gold}} złota. Są {{days}} dni drogi stąd.",
+  "governor.opt_defense_accept": "Będę tam.",
+  "governor.defense_accepted": "Zatem Bóg z wami do {{port}}. Mój pisarz odliczy pieniądze.",
+  "quest.defense_title": "Obrona {{port}}",
+  "quest.defense_sail": "Dotrzyj do {{port}} przed desantem ({{enemy}}) — {{days}} dni, {{gold}} zł",
+  "quest.defense_stand": "Utrzymaj {{port}} przeciw {{soldiers}} żołnierzom ({{enemy}})",
+  "quest.defense_paid": "{{port}} obronione. {{faction}} płaci obiecane {{gold}} złota.",
+  "quest.defense_paid_short": "Zlecenie opłacone.",
+  "quest.defense_fell": "{{port}} padło. Nie ma czego odbierać.",
+  "quest.defense_late": "Zlecenie na {{port}} przepadło.",
 
   // ── Miasto się broni (v0.16.0) ─────────────────────────
   "defense.title": "Obrona {{port}}",

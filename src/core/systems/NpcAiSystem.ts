@@ -14,6 +14,7 @@ import type { PortId } from "../model/ids.ts";
 import { vec2Dist, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
+import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
 const PIRATE_CHASE_RADIUS = 200;
@@ -23,8 +24,9 @@ const LOITER_TURN_CHANCE = 0.05;     // chance per AI tick to adjust heading whe
 /**
  * Update AI decisions for all NPC ships.
  */
-export function updateNpcAi(world: WorldState, _dtTicks: number): WorldState {
+export function updateNpcAi(world: WorldState, dtTicks: number): WorldState {
   const tick = world.time.tick;
+  const prevTick = tick - dtTicks;
   const playerShipId = world.player.shipId as string;
   const playerEntity = world.entities[playerShipId];
   if (!playerEntity) return world;
@@ -40,9 +42,11 @@ export function updateNpcAi(world: WorldState, _dtTicks: number): WorldState {
     // Skip AI if ship is in coast avoidance cooldown (let it sail away from land first)
     if (entity.coastAvoidTick && (tick - entity.coastAvoidTick) < 60) continue;
 
-    // Stagger updates across ticks
+    // Stagger updates across ticks. The offset spreads the fleet's decisions
+    // over the interval; the boundary check is what makes the interval fire at
+    // all on a fractional clock (see `tickBoundaryCrossed`).
     const idHash = simpleHash(id);
-    if ((tick + idHash) % AI_UPDATE_INTERVAL !== 0) continue;
+    if (!tickBoundaryCrossed(prevTick, tick, AI_UPDATE_INTERVAL, idHash)) continue;
 
     const result = updateSingleNpc(entity, playerEntity, world, rng);
     if (result.entity !== entity) {

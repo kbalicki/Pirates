@@ -2,7 +2,7 @@ import type { WorldState } from "../model/WorldState.ts";
 import type { WorldCommand } from "../model/Commands.ts";
 import type { WorldEvent, Transition, EngineResult } from "../model/Events.ts";
 import { reduceCommand } from "./reducers.ts";
-import { advanceTime, dayToCalendar, daysInMonth } from "../systems/TimeSystem.ts";
+import { advanceTime, dayToCalendar, daysInMonth, tickBoundaryCrossed } from "../systems/TimeSystem.ts";
 import { updateWeather } from "../systems/WeatherSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
@@ -12,12 +12,16 @@ import { addLogEntry } from "../systems/EventLogSystem.ts";
 import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
-import { tickReconquest } from "../systems/ReconquestSystem.ts";
+import { tickReconquest, DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../systems/ReconquestSystem.ts";
 import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
+import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
 import { applyOverdueMorale } from "../systems/PlunderSystem.ts";
+import { advanceQuests } from "../systems/QuestSystem.ts";
+import { t } from "../i18n/index.ts";
+import { buildQuestRegistry } from "../systems/QuestRegistry.ts";
 
 export class WorldEngine {
   private terrainQuery: TerrainQuery;
@@ -90,6 +94,17 @@ export class WorldEngine {
       const relief = tickReconquest({ ...world, time: newTime });
       world = relief.world;
       allEvents.push(...relief.events);
+      // A landing settled offscreen still pays a defence commission (v0.17.0).
+      // `settleRelief` stamped the outcome flag; the quest machine only ever
+      // hears about a flag when somebody hands it a `flag_set`, so this is that
+      // somebody. Both flags are offered because `triggerMatches` checks the
+      // flag is actually true — only one of them can be.
+      for (const portKey of relief.settled) {
+        for (const flag of [DEFENSE_HELD_FLAG + portKey, DEFENSE_LOST_FLAG + portKey]) {
+          const advanced = advanceQuests(world, { type: "flag_set", key: flag }, buildQuestRegistry(world));
+          world = advanced.world;
+        }
+      }
       // A landing the player is standing in comes back unresolved. Hand it to
       // the scene layer as a transition and stop simulating the day around it —
       // `CityDefenseScene` writes the outcome itself, and letting the economy
@@ -119,6 +134,28 @@ export class WorldEngine {
       // Jury repairs: the carpenter's crew patches what it can while under way,
       // up to a hard cap well short of seaworthy. Proper work needs a shipyard.
       world = repairAtSea(world).world;
+      // A day going by is a quest event like any other (v0.17.0). `days_passed`
+      // has been in `QuestSystem` and covered by tests since v0.12.0 with
+      // nothing emitting it; the governor's defence commission is the first
+      // chain that can be missed, so it is the first that needs a clock. The
+      // engine is the only thing that sees every day change.
+      const questDay = advanceQuests(
+        world,
+        { type: "days_passed", days: 0 },
+        buildQuestRegistry(world),
+      );
+      if (questDay.advanced.length > 0) {
+        const registry = buildQuestRegistry(questDay.world);
+        world = questDay.world;
+        // The line the player sees is the terminal stage's own objective —
+        // "the commission has lapsed" — rather than a quest id. Nothing else
+        // has to know what kind of quest just ran out of time.
+        for (const id of [...questDay.failed, ...questDay.completed]) {
+          const runtime = world.player.questLog.find(q => (q.questId as string) === id);
+          const stage = runtime && registry[id]?.stages[runtime.stage];
+          if (stage) allEvents.push({ type: "Toast", message: t(stage.objectiveKey, stage.vars) });
+        }
+      }
       // Crew gains experience every day spent at sea (not in port)
       if (world.player.location.type === "sea" && world.captain) {
         const prev = world.captain.training ?? 0.3;
@@ -217,14 +254,23 @@ export class WorldEngine {
 
     // 6. NPC spawn/despawn
     world = { ...world, entities: updatedEntities, time: newTime, weather: weatherResult.weather };
-    world = updateNpcSpawns(world);
+    world = updateNpcSpawns(world, dtTicks);
     updatedEntities = { ...world.entities };
+
+    // 6.1 Invasion squadrons (v0.17.0). After the generic spawner, because it
+    // reconciles hulls the spawner is told to keep its hands off — and because
+    // a squadron sunk this tick has to have its losses written into the event
+    // before anything else reads the landing's strength.
+    const expeditionFleets = tickExpeditionFleets(world, dtTicks);
+    world = expeditionFleets.world;
+    updatedEntities = { ...world.entities };
+    allEvents.push(...expeditionFleets.events);
 
     // 6.5 NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);
 
     // 6.5b NPC news exchange — check every ~20 ticks (~1s)
-    if (world.time.tick % 20 === 0) {
+    if (tickBoundaryCrossed(world.time.tick - dtTicks, world.time.tick, 20)) {
       const newsResult = checkNpcNewsExchange(world);
       world = newsResult.world;
       if (newsResult.newNews.length > 0) {

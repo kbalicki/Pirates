@@ -41,7 +41,8 @@ import {
   type DialogueRuntime,
   type DialogueTree,
 } from "../../core/systems/DialogueSystem.ts";
-import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE, EFFECT_VISIT_DAUGHTER } from "../../core/data/dialogues.ts";
+import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE, EFFECT_VISIT_DAUGHTER, EFFECT_ACCEPT_DEFENSE } from "../../core/data/dialogues.ts";
+import { offerFor, acceptDefenseContract, type DefenseContract } from "../../core/systems/DefenseContractSystem.ts";
 import {
   daughterFor,
   courtshipLevel,
@@ -124,6 +125,10 @@ export class PortScene extends Phaser.Scene {
 
   /** Set by the governor's `visit_daughter` effect; consumed on the next redraw. */
   private pendingDaughterVisit = false;
+  /** True for the first `create()` after walking in, false on every return. */
+  private justArrived = false;
+  /** The commission on the table this conversation, if the governor has one. */
+  private pendingDefenseOffer: DefenseContract | undefined;
   /** One line of narration under the courtship menu. */
   private courtshipMessage: string | null = null;
   private garrisonMessage: string | null = null;
@@ -149,12 +154,20 @@ export class PortScene extends Phaser.Scene {
     this.currentPortId = data.portId;
     this.currentView = data.returnToView ?? "menu";
     this.isOnFoot = data.isOnFoot ?? false;
+    // `returnToView` means we are coming back from the shipyard or the duel
+    // screen, not walking through the gate. Only the walk counts as arriving.
+    this.justArrived = data.returnToView === undefined;
   }
 
   create(): void {
     const portKey = this.currentPortId as string;
     const portDef = PORTS[portKey];
     if (!portDef) return;
+
+    if (this.justArrived) {
+      this.justArrived = false;
+      this.announceArrival(portKey);
+    }
 
     const cam = this.cameras.main;
     this.cx = cam.width / 2;
@@ -403,6 +416,27 @@ export class PortScene extends Phaser.Scene {
     this.bindKey("keydown-ESC", () => this.leavePort());
   }
 
+  /**
+   * Tell the quest machine the captain has arrived.
+   *
+   * `reach_port` has been a supported trigger since v0.12.0 and, until v0.17.0,
+   * nothing anywhere emitted it — treasure hunts run on `dig_at` and the family
+   * thread on `flag_set`. The governor's defence commission is the first chain
+   * whose middle stage is simply "be there", so this is where the hook finally
+   * gets connected. It fires on the way in only: coming back from the shipyard
+   * is not arriving.
+   */
+  private announceArrival(portKey: string): void {
+    const result = advanceQuests(
+      this.worldState,
+      { type: "reach_port", portId: portKey },
+      buildQuestRegistry(this.worldState),
+    );
+    if (result.advanced.length === 0) return;
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+  }
+
   // ===== VIEW: Governor =====
 
   /**
@@ -420,6 +454,11 @@ export class PortScene extends Phaser.Scene {
     const level = getReputationLevel(rep);
     const rankIndex = this.worldState.player.ranks?.[factionKey] ?? 0;
 
+    // Held for the length of the conversation: the tree only carries what the
+    // offer *says*, and the effect that signs it needs the offer itself.
+    const offer = offerFor(this.worldState, this.currentPortId as string);
+    this.pendingDefenseOffer = offer;
+
     const tree = governorTree({
       factionKey,
       level,
@@ -435,6 +474,13 @@ export class PortScene extends Phaser.Scene {
         ? daughterFor(this.worldState, this.currentPortId as string)?.name
         : undefined,
       married: isMarried(this.worldState),
+      defenseOffer: offer && {
+        portName: t("port." + offer.portKey + ".name"),
+        enemyName: t("faction." + offer.claimant + ".name"),
+        soldiers: offer.soldiers,
+        days: Math.max(0, offer.arrivalDay - this.worldState.time.day),
+        reward: offer.reward,
+      },
     });
 
     // Keep the place in the conversation across re-renders, but start fresh
@@ -512,6 +558,11 @@ export class PortScene extends Phaser.Scene {
         }
         if (id === EFFECT_RETIRE) return retire(world).world;
         if (id === EFFECT_VISIT_DAUGHTER) { this.pendingDaughterVisit = true; return world; }
+        if (id === EFFECT_ACCEPT_DEFENSE) {
+          return this.pendingDefenseOffer
+            ? acceptDefenseContract(world, { ...this.pendingDefenseOffer, acceptedDay: world.time.day })
+            : world;
+        }
         return world;
       },
     );

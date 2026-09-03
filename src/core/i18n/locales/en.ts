@@ -633,6 +633,8 @@ export const EN: LocaleData = {
 
   // -- Captain Tab --
   "menu.tab_captain": "Captain",
+  "menu.tab_journal": "Journal",
+  "journal.empty": "Nothing promised to anybody.",
   "captain.name_label": "Captain {{name}}",
   "captain.age_label": "Age: {{age}}",
   "captain.experience_label": "Experience: {{value}}",
@@ -684,6 +686,24 @@ export const EN: LocaleData = {
   // ── Crowns take colonies off each other (v0.16.0) ──────
   "news.campaign": "{{faction}} is fitting out against {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
   "campaign.toast_sailing": "A {{faction}} expedition has sailed for {{port}}. {{days}} days.",
+
+  // ── The invasion gets hulls (v0.17.0) ──────────────────
+  "expedition.log_scattered": "The {{faction}} expedition for {{port}} is scattered. Nobody is coming ashore.",
+  "expedition.toast_scattered": "The landing for {{port}} will not arrive.",
+  "expedition.log_transport": "A transport goes down with {{men}} soldiers still in her hold.",
+
+  // -- The governor's defence commission (v0.17.0) --
+  "governor.opt_ask_defense": "You have a colony in danger — {{port}}?",
+  "governor.defense_offer": "I do, and I will not pretend otherwise. {{enemy}} has {{soldiers}} soldiers in the boats and {{port}} has walls that were old when I came out. Stand on that wall when they land and there are {{gold}} Gold in it for you. They are {{days}} days out.",
+  "governor.opt_defense_accept": "I will be there.",
+  "governor.defense_accepted": "Then God speed you to {{port}}. My clerk will have the money counted.",
+  "quest.defense_title": "The defence of {{port}}",
+  "quest.defense_sail": "Reach {{port}} before {{enemy}} lands — {{days}} days, {{gold}} Gold",
+  "quest.defense_stand": "Hold {{port}} against {{soldiers}} soldiers of {{enemy}}",
+  "quest.defense_paid": "{{port}} held. {{faction}} pays the promised {{gold}} Gold.",
+  "quest.defense_paid_short": "The commission is paid.",
+  "quest.defense_fell": "{{port}} has fallen. There is nothing to collect.",
+  "quest.defense_late": "The commission for {{port}} has lapsed.",
 
   // ── The town fights back (v0.16.0) ─────────────────────
   "defense.title": "Defence of {{port}}",

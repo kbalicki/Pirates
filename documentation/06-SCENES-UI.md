@@ -179,7 +179,8 @@ Podgląd miasta bez wchodzenia do portu: populacja, zamożność i obrona z tren
 
 Główne menu gry pod klawiszem SPACE — zakładki:
 - **Kabina** — statystyki kapitana, wiek, umiejętności, wyszkolenie załogi
-- **Flota** — lista statków, sprzedaż i porzucanie
+- **Flota** — lista statków, sprzedaż i porzucanie; od v0.17.0 także załoga każdej konsorty
+- **Dziennik** (v0.17.0) — co kapitan komu obiecał: aktywne zadania i bieżący etap każdego. Pierwszy konsument `activeQuests`, które istniało od v0.12.0 i było wołane znikąd
 - **Ustawienia** — asset pack, zoom, język, mgła wojny, tryb debug
 - **Dźwięk** — 3 kanały (wiatr / mewy / muzyka), skala 0-10, aktualizacja na żywo
 - **Zapis / Odczyt** — 5 slotów IndexedDB z auto-migracją

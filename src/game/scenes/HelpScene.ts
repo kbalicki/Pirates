@@ -183,6 +183,8 @@ export class HelpScene extends Phaser.Scene {
       { title: "Reputacja", desc: "Każda frakcja pamięta twoje czyny. Wrogość = trudniejszy dostęp do portów." },
       { title: "Ekonomia (zakładka obok)", desc: "Miasta żyją: rosną, biednieją, są napadane. Każde wydarzenie zmienia stan portu." },
       { title: "Wyszkolenie załogi", desc: "Pasek w Kabinie (SPACE). Rośnie na morzu i po wygranych. Nowi rekruci obniżają średnią. Wpływa na szybkość reloadu armat w bitwie. Pełny opis: H w czasie bitwy." },
+      { title: "Wyprawy koron", desc: "Kiedy korona szykuje desant na miasto, tawerny mówią o tym na wiele dni wcześniej. Ta eskadra płynie po mapie naprawdę: transportowce wiozą żołnierzy, eskorty działa. Zatop transportowce, a desantu nie będzie wcale." },
+      { title: "Zlecenie obrony", desc: "Gubernator korony, która liczy cię za swojego (list kaperski albo standing „sojusznik”), zapłaci za utrzymanie zagrożonej kolonii. Dotrzyj tam przed desantem. Termin jest w Dzienniku (SPACE)." },
     ];
     for (const { title, desc } of lines) {
       this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);

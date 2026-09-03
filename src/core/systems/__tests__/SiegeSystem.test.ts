@@ -577,6 +577,43 @@ describe("writeBackForce", () => {
     writeBackForce(w, before, { ...before, hullHp: 0, crew: 0 });
     expect(w.entities.player_ship.ship!.hullHp).toBe(SHIP_CLASSES.frigate.hullMax);
   });
+
+  // ── Consort crews (v0.17.0) ─────────────────────────────
+  //
+  // The bug this closes: `FleetShip` had no crew field, so a consort's share of
+  // the dead was written to nowhere and the ship recomputed a full complement
+  // from its class on the way into the next siege.
+
+  it("a squadron splits the casualties by how many men each brought", () => {
+    const w = makeWorld({ fleet: [{ classId: "frigate", hullHp: 120, hullMax: 120, cannons: 28 }] });
+    const before = attackForceFor(w);
+    const after = { ...before, crew: before.crew - 40 };
+    const out = writeBackForce(w, before, after);
+
+    const flagBefore = SHIP_CLASSES.frigate.crewMax;
+    const consortBefore = Math.round(SHIP_CLASSES.frigate.crewMax * FLEET_CREW_FRACTION);
+    // Shares are of the force that fought, so the fuller ship pays more.
+    expect(out.entities.player_ship.ship!.crew.current)
+      .toBe(Math.round(flagBefore - 40 * (flagBefore / before.crew)));
+    expect(out.player.fleet[0].crew)
+      .toBe(Math.round(consortBefore - 40 * (consortBefore / before.crew)));
+  });
+
+  it("the consort's losses are still there at the next siege", () => {
+    const w = makeWorld({ fleet: [{ classId: "frigate", hullHp: 120, hullMax: 120, cannons: 28 }] });
+    const before = attackForceFor(w);
+    const out = writeBackForce(w, before, { ...before, crew: before.crew - 40 });
+    // The whole point: reading the force back out of the world does not restore
+    // the men. Before v0.17.0 `attackForceFor` handed back the full complement.
+    expect(attackForceFor(out).crew).toBe(before.crew - 40);
+  });
+
+  it("never leaves a consort with a negative crew", () => {
+    const w = makeWorld({ fleet: [{ classId: "sloop", hullHp: 40, hullMax: 40, cannons: 8 }] });
+    const before = attackForceFor(w);
+    const out = writeBackForce(w, before, { ...before, crew: 0 }, 9999);
+    expect(out.player.fleet[0].crew).toBe(0);
+  });
 });
 
 // ── Spoils ────────────────────────────────────────────────

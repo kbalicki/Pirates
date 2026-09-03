@@ -25,12 +25,15 @@ import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
+import { consortCrew, consortCrewMax } from "../../core/systems/FleetSystem.ts";
+import { activeQuests } from "../../core/systems/QuestSystem.ts";
+import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
 import { CHANGELOG } from "../../changelog.ts";
 
-type TabId = "cabin" | "captain" | "calendar" | "settings" | "save" | "map";
+type TabId = "cabin" | "captain" | "journal" | "calendar" | "settings" | "save" | "map";
 
-const ALL_TABS: TabId[] = ["cabin", "captain", "calendar", "settings", "save", "map"];
+const ALL_TABS: TabId[] = ["cabin", "captain", "journal", "calendar", "settings", "save", "map"];
 const DLG_W = 672;
 const DLG_H = 528;
 const BORDER = 3;
@@ -95,6 +98,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     const tabs: { id: TabId; labelKey: string }[] = [
       { id: "cabin", labelKey: "menu.tab_cabin" },
       { id: "captain", labelKey: "menu.tab_captain" },
+      { id: "journal", labelKey: "menu.tab_journal" },
       { id: "calendar", labelKey: "menu.tab_calendar" },
       { id: "settings", labelKey: "menu.tab_settings" },
       { id: "save", labelKey: "menu.tab_save" },
@@ -223,10 +227,44 @@ export class OptionsMenuScene extends Phaser.Scene {
     switch (tab) {
       case "cabin": this.renderCabin(); break;
       case "captain": this.renderCaptain(); break;
+      case "journal": this.renderJournal(); break;
       case "calendar": this.renderCalendar(); break;
       case "save": this.renderSave(); break;
       case "map": this.renderMap(); break;
       case "settings": this.renderSettings(); break;
+    }
+  }
+
+  /**
+   * The captain's own list of what he has agreed to do.
+   *
+   * `activeQuests` has existed since v0.12.0 and was called from nowhere: the
+   * treasure hunts, the family thread and now the governor's defence commission
+   * all lived entirely in the log lines they printed as they moved. That was
+   * survivable while every quest was a place to dig; a commission with a
+   * deadline that the player cannot look up is a promise he cannot keep.
+   */
+  private renderJournal(): void {
+    const x = this.dlgX + PAD;
+    let y = 0;
+
+    const open = activeQuests(this.worldState, buildQuestRegistry(this.worldState));
+    if (open.length === 0) {
+      this.contentContainer.add(
+        this.add.text(x, y, t("journal.empty"), txt(12, { color: "#666666" })),
+      );
+      return;
+    }
+
+    for (const { def, stage } of open) {
+      const title = this.add.text(x, y, t(def.titleKey, stage.vars), txt(13, { bold: true }));
+      this.contentContainer.add(title);
+      y += title.height + 2;
+
+      const line = this.add.text(x + 12, y, t(stage.objectiveKey, stage.vars),
+        { ...txt(11, { color: "#444444" }), wordWrap: { width: DLG_W - PAD * 2 - 12 } });
+      this.contentContainer.add(line);
+      y += line.height + 12;
     }
   }
 
@@ -336,7 +374,8 @@ export class OptionsMenuScene extends Phaser.Scene {
           `${i + 2}. ${fsClassName}\n` +
           `   ${t("hud.hull", { current: Math.round(fs.hullHp), max: fs.hullMax })}` +
           `  |  ${t("hud.sails", { current: Math.round(fs.sailsHp), max: fs.sailsMax })}` +
-          `  |  ${t("cabin.cannons", { count: fs.cannons })}`,
+          `  |  ${t("cabin.cannons", { count: fs.cannons })}` +
+          `  |  ${t("hud.crew", { current: consortCrew(fs), max: consortCrewMax(fs) })}`,
           { ...txt(11), lineSpacing: 4 });
         this.contentContainer.add(fsInfo);
 
