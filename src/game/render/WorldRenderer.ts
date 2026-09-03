@@ -8,6 +8,8 @@ const FLAG_SCREEN_SCALE = 0.8;
 /** Where the ensign sits relative to the hull, in flag-sized units. */
 const FLAG_OFFSET_X = 7;
 const FLAG_OFFSET_Y = 5;
+/** Clearance between the top of the ensign and the war streamer above it. */
+const PENNANT_GAP = 13;
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 // FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
@@ -69,6 +71,15 @@ export class WorldRenderer {
    * texture the port markers already fly.
    */
   private flagSprites: Map<string, Phaser.GameObjects.Image> = new Map();
+  /**
+   * A red streamer above the ensign on anything that fights.
+   *
+   * The ensign answers "whose"; this answers "what". Every hull on this map is
+   * drawn from one sprite sheet, so a merchantman and a frigate of the same
+   * crown were, until v0.20.0, indistinguishable until you were close enough to
+   * hail — by which time the frigate has decided what it thinks of you.
+   */
+  private pennantSprites: Map<string, Phaser.GameObjects.Image> = new Map();
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
   /** Track mode per entity to detect mode changes. */
   private entityModes: Map<string, string> = new Map();
@@ -267,6 +278,8 @@ export class WorldRenderer {
         if (anchor) { anchor.destroy(); this.anchorSprites.delete(id); }
         const flag = this.flagSprites.get(id);
         if (flag) { flag.destroy(); this.flagSprites.delete(id); }
+        const pennant = this.pennantSprites.get(id);
+        if (pennant) { pennant.destroy(); this.pennantSprites.delete(id); }
       }
     }
   }
@@ -309,6 +322,37 @@ export class WorldRenderer {
     flag.setDepth(hull.depth + 1);
     flag.setAlpha(hull.alpha);
     flag.setVisible(hull.visible && hull.alpha > 0.05);
+
+    this.syncPennant(scene, id, entity, flag, scale);
+  }
+
+  /** The war streamer, flown only by hulls that will fight. */
+  private syncPennant(
+    scene: Phaser.Scene,
+    id: string,
+    entity: EntityState,
+    flag: Phaser.GameObjects.Image,
+    scale: number,
+  ): void {
+    const behavior = entity.ai?.behavior;
+    const fights = behavior === "navy" || behavior === "pirate" || behavior === "pirate_hunter";
+    let pennant = this.pennantSprites.get(id);
+
+    if (!fights || !scene.textures.exists("pennant_war")) {
+      if (pennant) { pennant.destroy(); this.pennantSprites.delete(id); }
+      return;
+    }
+
+    if (!pennant) {
+      pennant = scene.add.image(flag.x, flag.y, "pennant_war");
+      pennant.setOrigin(0, 1);
+      this.pennantSprites.set(id, pennant);
+    }
+    pennant.setScale(scale);
+    pennant.setPosition(flag.x, flag.y - PENNANT_GAP * scale);
+    pennant.setDepth(flag.depth);
+    pennant.setAlpha(flag.alpha);
+    pennant.setVisible(flag.visible);
   }
 
   applyEvents(scene: Phaser.Scene, events: WorldEvent[]): void {

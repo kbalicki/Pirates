@@ -1,12 +1,12 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-03 · **Wersja:** v0.19.0.0 · **Branch:** `main`
-**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **977 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.20.0.0 · **Branch:** `main`
+**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **979 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.19.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 977/977 zielone; statki NPC wywieszają bandery, zdobyte miasto przestaje odbudowywać się w kolonię, a konsorty mają własne morale — lista kandydatów na v0.20.0 jest niżej, a muzyka wciąż czeka na pliki audio, nie na kod.
+> **Start sesji w jednym zdaniu:** v0.20.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 979/979 zielone; naprawiony został model, w którym **każdy port po cichu głodował** (towary, których miasto nie produkuje, nigdy do niego nie docierały), a statki NPC wywieszają banderę i proporzec wojenny — lista kandydatów na v0.21.0 jest niżej.
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -39,6 +39,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Bandery statków NPC | ✅ | `WorldRenderer.syncFlag`: mała bandera przy kadłubie, idzie za alfą mgły, stały rozmiar ekranowy |
 | Ekonomia miast pirackich | ✅ | `heldEconomyCeiling`: ludzie i pieniądze przestają dryfować ku liczbom kolonii |
 | Morale konsorty | ✅ | `FleetShip.morale?` + `fleetMorale()`: własne morale, ważone ludźmi w oblężeniu |
+| Import do portów | ✅ | `EconomyTickSystem` krok 3.5: kolonia dostaje, czego nie produkuje; czarna bandera tylko przemytników |
 
 ### Nietknięte
 
@@ -596,19 +597,76 @@ statkiem pod mgłą.
   osiada na 353 z 600 baseline'u. Nie jest to błąd wprowadzony teraz, ale wyszło
   przy pomiarach i warto to kiedyś przejrzeć razem z `EconomyTickSystem`
 
-### v0.20.0 — co dalej
+### ~~v0.20.0 — Każdy port w tej grze po cichu głodował~~ ✅ (v0.20.0.0)
+
+**Import licencjonowany** (`EconomyTickSystem` krok 3.5) — to jest naprawa
+dziury w modelu, a nie nowa mechanika, i wyszła wprost z pomiarów zrobionych do
+v0.19.0.
+
+Port konsumuje `def.demands` **z własnego magazynu**, a nic tych towarów tam nie
+wkładało. Nie ma symulacji handlu między portami, więc każdy towar, którego
+miasto potrzebuje i nie produkuje, był brakujący **codziennie, na zawsze**, i
+kosztował płaski punkt bogactwa. Port Royale potrzebuje cukru, kakao i tytoniu i
+nie produkuje żadnego z nich: krwawił −3 bogactwa dziennie **od dnia stworzenia
+świata** i osiadał na 353 przy baseline 600. Każdy inny port tak samo, w swojej
+proporcji. `getPortBaseline()` było fikcją, do której nic nie mogło dojść.
+
+Stary człon bogactwa czynił w pełni zaopatrzone miasto **niemożliwym**: `+drained
+× 0.3` plus płaskie `−1` za jakikolwiek niedobór, więc kara odpalała nawet przy
+99% pokrycia. Nowy jest zerowy przy pełnym pokryciu i rośnie w miarę braku.
+Kolonia w pokoju osiada dokładnie na swoim baseline — czyli na tym, co baseline
+miał zawsze znaczyć.
+
+| Kto | `IMPORT_SHARE` | Równowaga Port Royale |
+|---|---|---|
+| kolonia korony | `1.0` | **600** (baseline) |
+| czarna bandera | `0.35` | **263** |
+
+**Dlatego `HELD_WEALTH_SHARE` z v0.19.0 zniknęło.** Czarna bandera kosztuje
+teraz miasto **import**, a nie modyfikator w księgach: jeden mechanizm zamiast
+dwóch, i taki, który da się opowiedzieć zdaniem. Został `heldPopulationCeiling`,
+bo ludzie to inna wielkość i nie mają przeciwwagi w dół.
+
+**Skutek dla balansu, warto wiedzieć:** wartość łupu na dzień 1 **bez zmian**
+(Kartagena dalej 3200 złota). Zmieniło się to, że miasta przestają z czasem
+usychać — Kartagena, do której wracasz po pięciu latach, jest tą samą Kartageną,
+a nie jej cieniem. Jeśli po dłuższej rozgrywce świat okaże się za bogaty,
+strojenie zaczyna się od `IMPORT_SHARE_CROWN`, nie od baseline'ów.
+
+**Proporzec wojenny** (`WorldRenderer.syncPennant`) — bandera z v0.19.0 mówi
+**czyj** to statek, ale nie **jaki**. Wszystkie kadłuby rysują się z jednego
+arkusza, więc kupiec i fregata tej samej korony byli nie do odróżnienia, dopóki
+nie podpłynęło się na odległość zawołania — a wtedy fregata zdążyła już wyrobić
+sobie zdanie. Czerwona wstęga nad banderą dla `navy`, `pirate` i
+`pirate_hunter`; kupcy jej nie mają.
+
+**Weryfikacja w grze:** `?intercept=cartagena` — 9 NPC, 5 okrętów wojennych, 5
+proporczyków, kupcy bez. `?siege=cartagena` — łup dalej 3200.
+
+**Zostało z tego modułu:**
+- **Import jest abstrakcją, nie handlem** — nic nie płynie między portami, nie da
+  się przerwać dostaw blokadą konkretnej trasy ani na tym zarobić jako
+  przewoźnik. Prawdziwe szlaki handlowe to `Pathfinding.ts` i przebudowa
+  `NpcAiSystem`
+- **`IMPORT_SHARE` nie reaguje na wojnę** poza `productionMul`. Wojna dwóch koron
+  powinna dusić żeglugę mocniej niż zbiory
+
+### v0.21.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
 
 1. **Wyszkolenie konsorty** — morale ma już własne (v0.19.0), `training` wciąż
    bierze z kapitana. Domknięcie tej samej myśli, ale wymaga decyzji, czym drill
    konsorty w ogóle jest: załoga pryzowa uczy się osobno czy razem z flotą?
-2. **Bandera nie mówi nic o zachowaniu** — kupiec i okręt wojenny tej samej
-   korony wyglądają identycznie. Drugi znacznik albo kształt banderoli dałby
-   „kto" i „co" naraz. Mała praca, duża czytelność mapy.
-3. **Równowaga bogactwa portów** — nawet kolonia królewska osiada na 353 z 600
-   baseline'u, bo człon handlowy stale ciągnie w dół. Nie jest to nowy błąd, ale
-   wyszedł przy pomiarach v0.19.0 i wygląda na przeoczenie w `EconomyTickSystem`.
+2. **Wojna powinna dusić żeglugę** — `IMPORT_SHARE` nie reaguje dziś na wojnę
+   poza `productionMul`. Wojna dwóch koron albo blokada powinna obcinać dostawy
+   mocniej niż zbiory; to najtańszy sposób, żeby wojna była czuć w każdym
+   porcie, a nie tylko na tablicy newsów.
+3. **Prawdziwe szlaki handlowe** — import jest abstrakcją; nic nie płynie między
+   portami, więc nie da się przerwać dostaw blokadą konkretnej trasy ani na tym
+   zarobić jako przewoźnik. To `Pathfinding.ts` (wciąż pusty hak) plus
+   przebudowa `NpcAiSystem`. Duża praca, ale to jedyna droga do handlu, który
+   jest czymś więcej niż różnicą cen.
 4. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu.
 5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
@@ -625,11 +683,13 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
 - ~~**Konsorty nie mają morale.**~~ ✅ v0.19.0.0 — `FleetShip.morale?` + `fleetMorale()`. **`training` wciąż jest wspólne** i bierze się z kapitana; domknięcie wymaga decyzji, czym drill załogi pryzowej w ogóle jest.
+- **Import nie reaguje na wojnę.** `IMPORT_SHARE` jest stały poza `productionMul`; wojna dwóch koron powinna dusić żeglugę mocniej niż zbiory.
+- **Import jest abstrakcją, nie handlem.** Nic nie płynie między portami, więc blokada konkretnej trasy nic nie znaczy, a gracz nie może zarobić jako przewoźnik. Prawdziwe szlaki to `Pathfinding.ts` + przebudowa `NpcAiSystem`.
 - **Magazyn jest jeden, tylko w porcie żony.** Wynajęty skład w dowolnym mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla ekonomii: gracz mógłby magazynować pod każdą górkę cenową.
 - **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Prawdziwa trasa wymaga `Pathfinding.ts`, który wciąż jest pustym hakiem.
 - **Zlecenie obrony jest jedno na raz i tylko od gubernatora.** Informator w tawernie albo tablica w porcie dałyby drugie źródło i drugi typ zlecenia.
 - ~~**`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.**~~ ✅ v0.18.0.0 — `ExpeditionCourseRenderer` rysuje kreskowany kurs każdej wyprawy, o której gracz słyszał; sama eskadra dalej materializuje się dopiero w promieniu 620.
-- ~~**Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.**~~ ✅ v0.19.0.0 — `heldEconomyCeiling`. Uwaga na przyszłość: **sufit to nie równowaga** — `wealth` ma stałą presję w dół z członu handlowego, więc udział 0.42 dał bogactwo **5**, a nie „mniej zamożne miasto". Historycznie: `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
+- ~~**Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.**~~ ✅ v0.19.0.0, przerobione w v0.20.0.0 — ludzie mają sufit (`heldPopulationCeiling`), pieniądze załatwia brak importu. Uwaga na przyszłość: **sufit to nie równowaga** — `wealth` ma stałą presję w dół, więc udział 0.42 dał bogactwo **5**, a nie „mniej zamożne miasto". Historycznie: `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
 - ~~**Wyprawy koron nie mają kadłubów na mapie.**~~ ✅ v0.17.0.0 — `ExpeditionFleetSystem` materializuje eskadrę w promieniu 620 od gracza, a jej rozbicie kasuje zdarzenie i daje celowi karencję.
 
 ---

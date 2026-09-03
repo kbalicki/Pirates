@@ -18,6 +18,7 @@ import { CITIES } from "../data/cities.ts";
 import { ITEMS } from "../data/items.ts";
 import { getBasePrice } from "../data/prices.ts";
 import {
+  getPortBaseline,
   baselineProductionRate,
   baselineConsumptionRate,
   inventoryCap,
@@ -26,7 +27,38 @@ import {
   getAggregatedEffects,
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
-import { heldDefenseCeiling, heldEconomyCeiling } from "./ReconquestSystem.ts";
+import { heldDefenseCeiling, heldPopulationCeiling, playerHolds } from "./ReconquestSystem.ts";
+
+/**
+ * Share of a town's daily need that the trade it does not control brings in.
+ *
+ * The hole this fills, found while measuring v0.19.0: a port consumes
+ * `def.demands` out of its own inventory, and **nothing ever put them there**.
+ * There is no inter-port trade simulation, so every good a town demands but
+ * does not produce was short every single day, for ever. Port Royale demands
+ * sugar, cocoa and tobacco and produces neither, so it took a flat -3 wealth a
+ * day from the day the world was made and settled at 353 against a baseline of
+ * 600. Every port in the game was quietly starving.
+ *
+ * Licensed trade is the abstraction that fixes it: a colony under a crown is on
+ * somebody's shipping routes and gets what it needs. It is not a fudge — it is
+ * the thing the rest of the module has been talking about all along, and it
+ * gives the black flag a *mechanism* rather than a modifier: a town nobody's
+ * merchants will call at gets smugglers, and smugglers bring a third of what a
+ * packet would.
+ */
+const IMPORT_SHARE_CROWN = 1.0;
+const IMPORT_SHARE_BLACK_FLAG = 0.35;
+/**
+ * Wealth lost per demanded good per day when the town cannot get all of it.
+ *
+ * Scaled by how much of the need went unmet, and **zero when the need is met**.
+ * The old form was `+drained * 0.3` and a flat `-1` for any shortfall at all,
+ * which made a fully supplied town impossible: the penalty fired even at 99%.
+ * Now a supplied town sits at its target and a starved one falls below it,
+ * which is what the target was always supposed to mean.
+ */
+const SHORTAGE_WEALTH_PER_ITEM = 2;
 
 const RECOVERY_WEALTH = 0.01;     // 1% per day toward baseline
 const RECOVERY_POPULATION = 0.005; // 0.5% per day
@@ -73,15 +105,29 @@ export function economyDailyTick(world: WorldState): WorldState {
         inventory[item] = Math.min(cap, (inventory[item] ?? 0) + produced);
       }
 
+      // 3.5 Imports — the trade the town does not control (v0.20.0)
+      //
+      // Only for goods it demands and does not make itself; a producer supplies
+      // its own. Inside the `tradingPaused` guard on purpose: a blockaded or
+      // closed port is exactly one that is not being supplied.
+      const importShare = playerHolds(w, portKey) ? IMPORT_SHARE_BLACK_FLAG : IMPORT_SHARE_CROWN;
+      for (const item of def.demands) {
+        if (allProduces.includes(item)) continue;
+        const need = baselineConsumptionRate(portKey, item, port.population);
+        const cap = inventoryCap(portKey, item);
+        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + need * importShare * effects.productionMul);
+      }
+
       // 4. Consumption
       for (const item of def.demands) {
         const need = baselineConsumptionRate(portKey, item, port.population) * effects.consumptionMul;
         const have = inventory[item] ?? 0;
         const drained = Math.min(need, have);
         inventory[item] = have - drained;
-        // Selling demanded goods generates wealth; shortage hurts
-        wealth += drained * 0.3;
-        if (drained < need) wealth -= 1;
+        // A town that gets what it needs is neither better nor worse off for
+        // it; one that goes short pays, in proportion to how short it went.
+        const met = need > 0 ? Math.min(1, drained / need) : 1;
+        wealth -= (1 - met) * SHORTAGE_WEALTH_PER_ITEM;
       }
     }
 
@@ -106,15 +152,14 @@ export function economyDailyTick(world: WorldState): WorldState {
 
     // 7. Recovery toward baseline (modulated by event recoveryMul)
     //
-    // Toward the *held* ceiling, not the founding colony's numbers. A town
-    // under the black flag has no governor, no garrison budget and no place on
-    // anybody's trade route, and until v0.19.0 it rebuilt itself into the
-    // colony it used to be anyway — the prize regenerated under the flag that
-    // guaranteed none of it.
+    // Population is pulled toward the *held* ceiling — a town under the black
+    // flag keeps fewer people. Wealth is pulled toward the plain baseline and
+    // is held down instead by what it cannot import, which is a mechanism
+    // rather than a second modifier on the same quantity.
     const rmul = effects.recoveryMul;
-    const ceiling = heldEconomyCeiling(w, portKey);
-    wealth     += (ceiling.wealth     - wealth)     * RECOVERY_WEALTH * rmul;
-    population += (ceiling.population - population) * RECOVERY_POPULATION * rmul;
+    const baseline = getPortBaseline(portKey);
+    wealth     += (baseline.wealth - wealth) * RECOVERY_WEALTH * rmul;
+    population += (heldPopulationCeiling(w, portKey) - population) * RECOVERY_POPULATION * rmul;
     // A town that changed hands rebuilds only toward what its own people will
     // raise for whoever holds the fort — no crown is paying for a garrison any
     // more. Without this the player would never have to defend a conquest.

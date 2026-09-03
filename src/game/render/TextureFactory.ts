@@ -92,6 +92,22 @@ export function generateFlagTextures(scene: Phaser.Scene): void {
     g.generateTexture("flag_pirates", W, H);
     g.destroy();
   }
+
+  // A fighting ship's pennant, flown above the ensign.
+  //
+  // The ensign says whose hull that is; on its own it does not say whether the
+  // thing coming at you is a merchantman or a frigate, and every hull in the
+  // game is drawn from the same sprite sheet. A red streamer answers that in
+  // three pixels, which is all there is to spare at map scale.
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(0xdd2222, 1);
+    g.fillRect(0, 0, 10, 3);
+    g.fillStyle(0x881111, 1);
+    g.fillRect(8, 0, 2, 3);
+    g.generateTexture("pennant_war", 10, 3);
+    g.destroy();
+  }
 }
 
 /** Generate a simple 4-direction crew party spritesheet (24x16 per frame, 4 frames). */

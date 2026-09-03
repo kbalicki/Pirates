@@ -6,6 +6,38 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.20.0.0",
+    date: "2026-09-04",
+    changes: [
+      "EVERY PORT IN THE GAME WAS QUIETLY STARVING",
+      "  A town consumed the goods it demands out of its own inventory, and",
+      "  nothing ever put them there. There is no inter-port trade simulation, so",
+      "  every good a town needed but did not produce was short every single day,",
+      "  for ever, and cost it a flat point of wealth for the failure",
+      "  Port Royale demands sugar, cocoa and tobacco and produces neither. It",
+      "  bled three wealth a day from the moment the world was made and settled",
+      "  at 353 against a baseline of 600 — as did every other port, in its own",
+      "  proportion. The baselines were a fiction nothing could reach",
+      "  Licensed trade now brings a colony what it needs. A port at peace under",
+      "  a crown settles exactly at its baseline, which is what a baseline was",
+      "  always supposed to mean",
+      "  Loot on day one is unchanged. What changes is that towns no longer",
+      "  wither: a Cartagena you come back to in five years is the Cartagena you",
+      "  left, not a shadow of it",
+      "  And the black flag now costs a town its imports rather than a modifier",
+      "  on its books — no merchant will call, smugglers bring a third of what a",
+      "  packet would, and the shortage does the rest. One mechanism instead of",
+      "  two, and the wealth cap added in v0.19.0 is gone",
+      "A WAR PENNANT — the ensign says whose, this says what",
+      "  Every hull on the map is drawn from one sprite sheet, so a merchantman",
+      "  and a frigate of the same crown were indistinguishable until you were",
+      "  close enough to hail — by which time the frigate has decided what it",
+      "  thinks of you",
+      "  Navy, pirates and pirate hunters now fly a red streamer above the",
+      "  ensign. Traders do not",
+    ],
+  },
+  {
     version: "0.19.0.0",
     date: "2026-09-03",
     changes: [

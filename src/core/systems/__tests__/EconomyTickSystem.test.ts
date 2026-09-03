@@ -199,12 +199,36 @@ describe("production and consumption", () => {
     expect(starving).toBeGreaterThan(flooded);
   });
 
-  it("a port that cannot feed itself grows poorer", () => {
+  it("a port nobody supplies grows poorer", () => {
+    // Emptying the shelves is no longer enough: since v0.20.0 the licensed
+    // trade restocks a colony every day, which is the whole point of it. A town
+    // under the black flag is one no merchant will call at, and that is what
+    // being unable to feed itself now means.
     const world = makeWorld();
+    world.ports.port_royal.factionId = factionId("pirates");
+    world.ports.port_royal.capturedDay = 1;
     for (const need of CITIES.port_royal.demands) world.ports.port_royal.inventory[need] = 0;
     world.ports.port_royal.wealth = 500;
-    const after = runDays(world, 5).ports.port_royal.wealth;
-    expect(after).toBeLessThan(500);
+    expect(runDays(world, 5).ports.port_royal.wealth).toBeLessThan(500);
+  });
+
+  it("a supplied colony is not punished for demanding anything at all", () => {
+    // The bug this pins: a port consumed `demands` out of its own inventory and
+    // nothing ever put them there, so every good it did not produce cost it a
+    // flat point of wealth a day, for ever. Port Royale demands sugar, cocoa
+    // and tobacco and produces neither, so it bled 3/day from the day the world
+    // was made and settled at 353 against a baseline of 600.
+    const settled = runDays(makeWorld(), 600).ports.port_royal.wealth;
+    expect(settled).toBe(getPortBaseline("port_royal").wealth);
+  });
+
+  it("keeps the shelves stocked with what the town cannot make", () => {
+    const world = makeWorld();
+    for (const need of CITIES.port_royal.demands) world.ports.port_royal.inventory[need] = 0;
+    const after = runDays(world, 30).ports.port_royal;
+    // Consumed the same day it arrives, so the shelf is not *full* — but the
+    // town is fed, which is what the wealth term measures.
+    expect(after.wealth).toBeGreaterThanOrEqual(world.ports.port_royal.wealth);
   });
 });
 
@@ -456,4 +480,5 @@ describe("port closure and war helpers", () => {
     expect(warSpawnMultipliers(makeWorld())).toEqual({});
   });
 });
+
 

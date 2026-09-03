@@ -1426,3 +1426,66 @@ Dwie reguły: bandera **idzie za alfą kadłuba** (statek gasnący na skraju
 widoczności zabiera ją ze sobą — inaczej mgła zdradzałaby się flagą wiszącą nad
 pustą wodą) i ma **stały rozmiar ekranowy**, bo proporcjonalna przy oddaleniu
 jest dwoma pikselami błota, a cały jej sens to czytelność jednym rzutem oka.
+
+
+---
+
+## Import licencjonowany (v0.20.0)
+
+`EconomyTickSystem` krok 3.5 — i to jest **naprawa dziury w modelu**, nie nowa
+mechanika.
+
+Port konsumuje `def.demands` **z własnego magazynu**, a nic tam tych towarów nie
+wkładało. Nie ma symulacji handlu między portami, więc każdy towar, którego
+miasto potrzebuje, a nie produkuje, był brakujący **codziennie, na zawsze**, i
+kosztował płaski punkt bogactwa za to niepowodzenie.
+
+Port Royale potrzebuje cukru, kakao i tytoniu, a nie produkuje żadnego z nich.
+Krwawił **-3 bogactwa dziennie od dnia stworzenia świata** i osiadał na 353 przy
+baseline 600. Każdy inny port tak samo, w swojej proporcji. `getPortBaseline()`
+było fikcją, do której nic nie mogło dojść.
+
+### Co się zmieniło
+
+```
+3.5 Import   towary, których miasto nie produkuje, dowozi handel:
+             need × IMPORT_SHARE, przycięte do inventoryCap
+4.  Konsumpcja   wealth -= (1 − pokrycie) × SHORTAGE_WEALTH_PER_ITEM
+```
+
+Stary człon bogactwa (`+drained × 0.3` oraz płaskie `−1` za **jakikolwiek**
+niedobór) czynił w pełni zaopatrzone miasto niemożliwym: kara odpalała nawet
+przy 99% pokrycia. Nowy jest **zerowy przy pełnym pokryciu** i rośnie w miarę
+braku. Kolonia w pokoju osiada dokładnie na swoim baseline.
+
+| Kto | `IMPORT_SHARE` | Skutek |
+|---|---|---|
+| kolonia korony | `1.0` | dostaje, czego potrzebuje; równowaga = baseline |
+| czarna bandera | `0.35` | tylko przemytnicy; Port Royale osiada na ~263 z 600 |
+
+Import siedzi **wewnątrz** gałęzi `!tradingPaused`: port zablokowany albo
+zamknięty to dokładnie ten, do którego nikt nie dowozi. Skaluje się też
+`effects.productionMul`, bo huragan czy wojna psują żeglugę tak samo jak zbiory.
+
+**Dlatego `HELD_WEALTH_SHARE` zniknęło.** Czarna bandera kosztuje teraz miasto
+**import**, a nie modyfikator w księgach — jeden mechanizm zamiast dwóch, i taki,
+który da się opowiedzieć. Został `heldPopulationCeiling`, bo ludzie to inna
+wielkość i nie mają przeciwwagi.
+
+**Skutek dla łupów:** wartość na dzień 1 bez zmian (Kartagena dalej 3200). To, co
+się zmieniło, to że miasta **przestają z czasem usychać** — Kartagena, do której
+wracasz po pięciu latach, jest tą samą Kartageną, a nie jej cieniem.
+
+---
+
+## Proporzec wojenny (v0.20.0)
+
+`WorldRenderer.syncPennant` + tekstura `pennant_war` (10×3).
+
+Bandera z v0.19.0 mówi **czyj** to statek. Nie mówi **jaki**: wszystkie kadłuby
+na mapie rysują się z jednego arkusza, więc kupiec i fregata tej samej korony
+byli nie do odróżnienia, dopóki nie podpłynęło się na odległość zawołania — a
+wtedy fregata zdążyła już wyrobić sobie zdanie.
+
+Czerwona wstęga nad banderą dla `navy`, `pirate` i `pirate_hunter`; kupcy jej nie
+mają. Idzie za alfą i skalą bandery, więc pod mgłą znika razem ze statkiem.

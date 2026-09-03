@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   heldDefenseCeiling,
-  heldEconomyCeiling,
+  heldPopulationCeiling,
   garrisonCapacity,
   garrisonAt,
   maxStationable,
@@ -34,7 +34,6 @@ import {
   ESCALATION_DAYS,
   HELD_DEFENSE_SHARE,
   HELD_POPULATION_SHARE,
-  HELD_WEALTH_SHARE,
   PRESENCE_RANGE,
   WRECK_GOLD_PER_SOLDIER,
   ROYAL_QUALITY,
@@ -223,33 +222,17 @@ describe("heldDefenseCeiling", () => {
   });
 });
 
-describe("heldEconomyCeiling", () => {
+describe("heldPopulationCeiling", () => {
   it("leaves a royal colony drifting toward its own numbers", () => {
     const world = makeWorld({ ports: { [FORT]: makePort(FORT) } });
-    const baseline = getPortBaseline(FORT);
-    expect(heldEconomyCeiling(world, FORT)).toEqual({
-      population: baseline.population,
-      wealth: baseline.wealth,
-    });
+    expect(heldPopulationCeiling(world, FORT)).toBe(getPortBaseline(FORT).population);
   });
 
-  it("cuts both when the town flies the black flag", () => {
+  it("cuts the people a town keeps when it flies the black flag", () => {
     const world = makeWorld();
-    const baseline = getPortBaseline(FORT);
-    const ceiling = heldEconomyCeiling(world, FORT);
-    expect(ceiling.population).toBe(Math.round(baseline.population * HELD_POPULATION_SHARE));
-    expect(ceiling.wealth).toBe(Math.round(baseline.wealth * HELD_WEALTH_SHARE));
-  });
-
-  it("keeps both targets meaningfully below the colony's own numbers", () => {
-    // Deliberately not "wealth is cut harder than population": these are
-    // targets for two quantities with different dynamics. Wealth also carries a
-    // constant downward trade pressure, so its *equilibrium* falls much further
-    // than its target does — see the constant's own comment, and the
-    // black-flag tests in EconomyTickSystem for the settled numbers.
-    expect(HELD_WEALTH_SHARE).toBeLessThan(1);
-    expect(HELD_POPULATION_SHARE).toBeLessThan(1);
-    expect(HELD_WEALTH_SHARE).toBeGreaterThan(0.5);
+    const baseline = getPortBaseline(FORT).population;
+    expect(heldPopulationCeiling(world, FORT))
+      .toBe(Math.round(baseline * HELD_POPULATION_SHARE));
   });
 
   it("is unchanged for a colony one crown took off another", () => {
@@ -260,8 +243,13 @@ describe("heldEconomyCeiling", () => {
       ...world,
       ports: { ...world.ports, [FORT]: { ...world.ports[FORT], factionId: factionId("france") } },
     };
-    const baseline = getPortBaseline(FORT);
-    expect(heldEconomyCeiling(french, FORT).wealth).toBe(baseline.wealth);
+    expect(heldPopulationCeiling(french, FORT)).toBe(getPortBaseline(FORT).population);
+  });
+
+  it("says nothing about wealth, which imports handle instead", () => {
+    // Capping wealth here as well was double counting, and the first attempt at
+    // it settled a captured Port Royale at a wealth of 5. See the constant.
+    expect(typeof heldPopulationCeiling(makeWorld(), FORT)).toBe("number");
   });
 });
 

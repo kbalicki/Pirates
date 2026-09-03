@@ -122,27 +122,19 @@ export const WRECK_GOLD_PER_SOLDIER = 3;
 /** What a town that changed hands can rebuild on its own, as a share of baseline. */
 export const HELD_DEFENSE_SHARE = 0.45;
 /**
- * What a town under the black flag holds in people and money, as a share of
- * what it held as a royal colony (v0.19.0).
+ * What a town under the black flag holds in people, as a share of what it held
+ * as a royal colony (v0.19.0).
  *
- * Until now only `defense` was capped. Population and wealth went on drifting
- * up toward the numbers the place had as somebody's colony, which meant a
- * conquered town quietly rebuilt itself into exactly the prize it had been —
- * subsidised shipping, a resident governor, colonists arriving on the packet —
- * while flying a flag that guarantees none of those things.
- *
- * These are the values the daily drift pulls *toward*, not the values a town
- * settles at, and for wealth the difference is most of the story. Wealth is
- * also pushed down every day by the trade term — goods that find no buyer,
- * demand that goes unmet — and that pressure is roughly constant, so cutting
- * the target by a quarter costs the equilibrium far more than a quarter. The
- * first cut of this used 0.42 and pinned a captured Port Royale at a wealth of
- * **5**: the town did not decline, it evaporated. Population has no such
- * counter-pressure and settles near its target, which is why the two numbers
- * are so far apart and must not be "tidied up" to match.
+ * Population only. Wealth used to be capped here too, and it was the wrong
+ * tool: the number a town settles at is the target minus whatever steady
+ * pressure is on it, so cutting the target by more than half pinned a captured
+ * Port Royale at a wealth of **5** — it did not decline, it evaporated. Since
+ * v0.20.0 the black flag costs a town its *imports* instead, which is a
+ * mechanism rather than a modifier and lands where it should: no merchant will
+ * call, so the goods the place needs arrive at a third of the rate and the
+ * shortage does the rest.
  */
 export const HELD_POPULATION_SHARE = 0.62;
-export const HELD_WEALTH_SHARE = 0.75;
 
 /**
  * Flag prefixes stamped by `settleRelief` for every landing it settles.
@@ -191,25 +183,18 @@ export function heldDefenseCeiling(world: WorldState, portKey: string): number {
 }
 
 /**
- * The `population` and `wealth` a port is pulled toward.
+ * The `population` a port is pulled toward.
  *
  * Same rule and the same reasoning as `heldDefenseCeiling`, and deliberately
  * next to it: a colony under *any* crown — including one that took it off
  * another crown — has a governor, a garrison budget and a place on the trade
  * routes. A town under the black flag has none of the three.
  */
-export function heldEconomyCeiling(
-  world: WorldState,
-  portKey: string,
-): { population: number; wealth: number } {
-  const baseline = getPortBaseline(portKey);
-  if (!playerHolds(world, portKey)) {
-    return { population: baseline.population, wealth: baseline.wealth };
-  }
-  return {
-    population: Math.round(baseline.population * HELD_POPULATION_SHARE),
-    wealth: Math.round(baseline.wealth * HELD_WEALTH_SHARE),
-  };
+export function heldPopulationCeiling(world: WorldState, portKey: string): number {
+  const baseline = getPortBaseline(portKey).population;
+  return playerHolds(world, portKey)
+    ? Math.round(baseline * HELD_POPULATION_SHARE)
+    : baseline;
 }
 
 // ── Stationing men ────────────────────────────────────────
