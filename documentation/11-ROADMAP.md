@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.28.0.0
+**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.29.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.28)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.29)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -69,6 +69,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.26.0.0 | **Ładunek wychodzi z czyjegoś magazynu** — port, który przejmuje cudze kursy, drenuje własne szopy i bogaci się na tym; drugie źródło jest skończone. **Zlecenie na dostawę** u informatora | ✅ |
 | 0.27.0.0 | **Głód ma twarz** — miasto zapisuje, czego mu wczoraj zabrakło; ludzie wyjeżdżają, a ci, co zostają, zaciągają się za chleb. **Miejski spichlerz**: gubernator kupuje z ładowni na miejscu i płaci reputacją | ✅ |
 | 0.28.0.0 | **Zdarzenia świata zaczęły się dziać** — jedna linijka (`roll % length` na ułamku) sprawiała, że żadne nigdy nie trafiało w port; tabela efektów zmierzona i przeskalowana. **Plotki w tawernie mówią, co się naprawdę dzieje** w promieniu 1300 | ✅ |
+| 0.29.0.0 | **Zdarzenie, które gracz spotyka** — zamknięty port naprawdę nie wpuszcza, zaraza opróżnia tawernę, a odkryte złoto jest towarem, po który się płynie (pierwszy towar `rare`) | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -84,6 +85,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 - **Handel, który ma skąd brać** — dostawa szlakiem ubywa z magazynu eksportera, więc zdobycie miasta wypycha jego klientów na sąsiada, sąsiad drenuje własne szopy przez dwa tygodnie i bogaci się na cenie, a potem oba końce zaczynają głodować
 - **Głód, który widać i którym można grać** — miasto zapisuje, czego mu zabrakło; traci ludzi, zapełnia tawernę chętnymi na koję i posiłek, a jego gubernator kupi z ładowni wszystko, czego brakuje, płacąc po części reputacją
 - **Świat, o którym się słyszy** — tawerna opowiada o głodzie, blokadzie, przeciętym szlaku i czarnej banderze w promieniu 1300, a zdarzenia świata po raz pierwszy naprawdę trafiają w miasta, których dotyczą
+- **Zdarzenia, które się spotyka** — huragan zamyka port przed graczem, zaraza opróżnia ławę w tawernie, a miasto z odkrytym złotem staje się punktem na mapie, po który warto płynąć
 
 ---
 

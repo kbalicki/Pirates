@@ -44,6 +44,7 @@ import { baselineConsumptionRate } from "../data/economyBaselines.ts";
 import { townHunger, townIsHungry, reroutedOnto, supplierShutIn } from "./EconomyTickSystem.ts";
 import { disruptions, tradeRoutes } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
+import { isPortClosed } from "./EventEffectsSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
 import { tradeIncome } from "./TradeLedgerSystem.ts";
 
@@ -146,7 +147,17 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     out.push({ key: "tavern.rumor_blockade", vars: { port: CITIES[key]?.name ?? key } });
   }
 
-  // 3. A quay carrying somebody else's runs: bare shelves and high prices.
+  // 3. A harbour nobody can enter. Since v0.29.0 a shut port really is shut to
+  //    the player, and its own news board is behind the door he cannot open —
+  //    so the tavern next door is the only place he can be told before he wastes
+  //    the passage.
+  for (const key of neighbours) {
+    if (!isPortClosed(world, key)) continue;
+    out.push({ key: "tavern.rumor_shut", vars: { port: CITIES[key]?.name ?? key } });
+    break;
+  }
+
+  // 4. A quay carrying somebody else's runs: bare shelves and high prices.
   for (const key of neighbours) {
     const covering = reroutedOnto(world, key);
     if (covering.length === 0) continue;
@@ -164,7 +175,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     break;                                   // one is a story, four is a ledger
   }
 
-  // 4. A run nobody will insure. Usually his own work, told back to him.
+  // 5. A run nobody will insure. Usually his own work, told back to him.
   const ledger = disruptions(world);
   for (const lane of tradeRoutes()) {
     const d = ledger[lane.id];
@@ -180,14 +191,14 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     break;
   }
 
-  // 5. A town flying no crown's colours.
+  // 6. A town flying no crown's colours.
   for (const key of neighbours) {
     if (!playerHolds(world, key)) continue;
     out.push({ key: "tavern.rumor_black_flag", vars: { port: CITIES[key]?.name ?? key } });
     break;
   }
 
-  // 6. Where the money is crossing a quay. The slowest fact, told last.
+  // 7. Where the money is crossing a quay. The slowest fact, told last.
   let busiest: string | null = null;
   let best = RUMOR_BUSY_QUAY;
   for (const key of neighbours) {

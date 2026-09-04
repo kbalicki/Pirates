@@ -8,6 +8,7 @@ import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { tradeIncome } from "../../core/systems/TradeLedgerSystem.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
+import { isPortClosed } from "../../core/systems/EventEffectsSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
@@ -137,8 +138,21 @@ export class PortApproachScene extends Phaser.Scene {
     y += 12;
 
     // --- Build action list ---
+    // A harbour under a hurricane or a quarantine is shut, and until v0.29.0 it
+    // was shut only to the simulation: `isPortClosed` gated the daily economy
+    // and nothing else, so the captain sailed into a town that was officially
+    // not there and traded across a counter nobody was standing behind. The
+    // storming reply stays — a closed harbour is a weak harbour, and that is a
+    // real decision rather than a bug.
+    const shut = isPortClosed(this.worldState, portKey);
     this.actions = [];
-    if (isHostile) {
+    if (shut) {
+      this.add.text(infoX, y, t("approach.closed"), {
+        ...txt(12, { color: "#aa3333", bold: true }),
+        wordWrap: { width: DLG_W - PAD * 2 },
+      });
+      y += 34;
+    } else if (isHostile) {
       this.actions.push({ label: t("approach.sneak"), action: "sneak" });
     } else {
       this.actions.push({ label: t("approach.enter"), action: "enter" });
@@ -364,6 +378,9 @@ export class PortApproachScene extends Phaser.Scene {
   private executeAction(action: PortAction): void {
     switch (action) {
       case "enter": {
+        // Belt and braces: the reply is not drawn for a shut harbour, but a
+        // stale key binding must not be able to walk through the door either.
+        if (isPortClosed(this.worldState, this.portId as string)) return;
         const enterWorld = generateAvailableCrew(this.worldState, this.portId);
         this.scene.stop();
         this.scene.stop("MainMapScene");

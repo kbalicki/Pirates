@@ -45,7 +45,10 @@ export function initPortInventory(portKey: string): Record<string, number> {
   const inv: Record<string, number> = {};
   const port = PORTS[portKey];
   const wealthMult = WEALTH_MULTIPLIER[port?.wealth ?? "modest"] ?? 1.0;
-  for (const itemKey of Object.keys(ITEMS)) {
+  for (const [itemKey, def] of Object.entries(ITEMS)) {
+    // A rare good is not stocked anywhere at the start of the world: it exists
+    // where something puts it, and nowhere else (v0.29.0).
+    if (def.rare) { inv[itemKey] = 0; continue; }
     const base = port?.produces.includes(itemKey) ? 30 : 10;
     inv[itemKey] = Math.round(base * wealthMult);
   }

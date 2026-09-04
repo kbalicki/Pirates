@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.28.0.0 · **Branch:** `main`
-**Kod:** 186 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1309 przechodzi, 0 failuje, 0 `todo`** w 37 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.29.0.0 · **Branch:** `main`
+**Kod:** 186 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1320 przechodzi, 0 failuje, 0 `todo`** w 37 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.28.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1309/1309 zielone; ta wersja daje tawernie **głos o świecie** (plotka mówi, gdzie brakuje chleba, gdzie stoi eskadra i którego szlaku nikt nie ubezpieczy, w promieniu 1300) — i przy okazji naprawia rzecz znacznie większą: **zdarzenia świata nigdy nie trafiały w żaden port**, przez jedną linijkę `roll % length` na ułamku, więc piętnaście typów zdarzeń było przez cały czas dekoracją; lista kandydatów na v0.29.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.29.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1320/1320 zielone; ta wersja robi ze zdarzeń świata coś, co gracz **spotyka**: zamknięty port naprawdę go nie wpuszcza, zaraza opróżnia ławę w tawernie, a odkryte złoto jest wreszcie towarem, po który się płynie — trzy rzeczy, które zdarzenia deklarowały, a których **nic w grze nie czytało**; lista kandydatów na v0.30.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04E.md](documentation/SESSION-2026-09-04E.md) — jak przeczytanie tablicy ogłoszeń na zrzucie ekranu odkryło, że **losowa połowa żywego świata nigdy nie działała**, dlaczego tabela efektów musiała zostać zmierzona i przeskalowana zaraz po włączeniu, i dlaczego plotka jest lokalna. Poprzednia: [SESSION-2026-09-04D.md](documentation/SESSION-2026-09-04D.md).
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04F.md](documentation/SESSION-2026-09-04F.md) — audyt „co z tego, co zdarzenie deklaruje, jest w ogóle czytane" (trzy pola bez odbiorcy), dlaczego złoto musiało zostać towarem **rzadkim**, i dlaczego test złota spadł, mając rację. Poprzednia: [SESSION-2026-09-04E.md](documentation/SESSION-2026-09-04E.md).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -75,6 +75,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Miejski spichlerz | ✅ | `grainOffer` / `sellGrain`: gubernator kupuje z ładowni na miejscu, płaci ceną korony **i reputacją**, luka zamyka się po wyładunku |
 | Zdarzenia świata naprawdę działają | ✅ | `WorldEventSystem`: `Math.floor(v × n)` zamiast `v % n`, jedno zdarzenie danego typu na miasto, tabela efektów zmierzona i przeskalowana do `EVENT_WEALTH_CEILING` |
 | Plotka mówi, co się dzieje | ✅ | `RumorSystem`: sześć faktów ze świata w promieniu 1300, jeden dziennie, rotujący; stare opowieści tylko przy spokojnym świecie |
+| Zdarzenie, które gracz spotyka | ✅ | `isPortClosed` w `PortApproachScene` (zamknięty port nie wpuszcza), `crewMul` w `generateAvailableCrew` (zaraza opróżnia tawernę), `ITEMS.gold` jako pierwszy towar `rare` |
 
 ### Nietknięte
 
@@ -1084,7 +1085,53 @@ głodu), więc v0.27.0 i v0.28.0 zazębiają się bez dokładania czegokolwiek.
 
 ---
 
-### v0.29.0 — co dalej
+### ~~v0.29.0 — Zdarzenie, które gracz spotyka~~ ✅ (v0.29.0.0)
+
+Kandydat **3** z poprzedniej listy. v0.28.0 sprawiła, że zdarzenia w ogóle
+trafiają w miasta; ta wersja sprawdza, **co gracz ma z nimi zrobić** — i zaczęła
+się od audytu: które z dziesięciu pól `EventDailyEffects` jest w ogóle czytane.
+
+Trzy deklaracje bez odbiorcy:
+
+1. **`portClosed`** był konsumowany w `EconomyTickSystem` i `BlockadeSystem`, a
+   **nigdzie w `src/game`** — kapitan wpływał do miasta, którego oficjalnie nie
+   było. `PortApproachScene` czyta to teraz i nie proponuje drzwi; **szturm
+   zostaje**, bo port zamknięty to port słaby.
+2. **`crewMul`** nie był czytany **przez nic**. Zaraza (0.5) i klęska głodu (0.7)
+   wchodzą teraz do tego samego iloczynu co reputacja (v0.24.0) i głód (v0.27.0).
+3. **`gold`** nie było pozycją w `ITEMS`, więc lada listująca `Object.keys(ITEMS)`
+   nigdy go nie pokazała, a `executeBuy` odrzucał jako nieznany towar. Jedyne
+   zdarzenie, którego sensem jest to, co zostawia, zostawiało coś nietykalnego.
+
+Złoto jest teraz **pierwszym towarem `rare`**: nie dostaje go żaden port przy
+tworzeniu świata, a lada pokazuje go tylko tam, gdzie go wykopano, gdzie leży w
+magazynie albo **gdzie kapitan ma go w ładowni** (bez tego dałoby się przewieźć
+złoto przez całe Karaiby i nie znaleźć lady, która by je odkupiła). Ekonomia
+wychodzi sama z `PricingSystem`, bez nowej stałej: kupno ~108 w mieście z
+kopalnią, sprzedaż ~206 gdzie indziej.
+
+Plus siódmy fakt w `RumorSystem`: sąsiednia tawerna mówi, że port jest zamknięty
+— to jedyna informacja, której gracz nie może sobie sam przeczytać, bo tablica
+ogłoszeń zamkniętego portu jest **za drzwiami, których nie otworzy**.
+
+Nowy parametr debugowania **`?event=<typ>&port=<klucz>`** — stempluje dowolne z
+piętnastu zdarzeń na dowolnym mieście i stawia statek tak, żeby dialog zbliżania
+otworzył się sam.
+
+**Pułapki z tej sesji:**
+
+1. **Test złota spadł i miał rację**: `initPortPrices` daje wszystkim tę samą
+   statyczną cenę bazową, a kwotowanie zależne od zapasu powstaje dopiero przy
+   **dziennym przeliczeniu** — w świeżym świecie złoto było *droższe* w kopalni.
+2. **`findNearPort` ma promień 6 px** wokół pozycji przyciągniętej do brzegu, a
+   `getPortWaterPos` zwraca kafel wody dalej niż to: świat debugowy stawiający
+   statek „na redzie" nigdy nie otwierał dialogu zbliżania.
+3. **`applyOneShotEffects` odpala się tylko w dniu wystąpienia**, więc świat
+   debugowy musi dosypać skutek jednorazowy sam.
+
+---
+
+### v0.30.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1094,12 +1141,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    trzeba rozstrzygnąć zanim ktokolwiek narysuje pierwszą klatkę
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Zdarzenia świata dopiero co ożyły i nikt ich jeszcze nie rozegrał.** Teraz,
-   gdy naprawdę trafiają w miasta, warto przejść je po kolei od strony gracza:
-   huragan zamyka port (czy da się to zobaczyć na mapie?), odkrycie złota tworzy
-   miasto warte odwiedzenia, klęska głodu i najazd tubylców tworzą okazję dla
-   spichlerza z v0.27.0. Kilka z nich pewnie nie ma jeszcze żadnej reprezentacji
-   poza newsem
+3. **Zdarzenia na mapie.** v0.29.0 daje im skutki w porcie, ale mapa świata dalej
+   o nich milczy: huragan, zaraza czy odkrycie złota nie mają żadnego znacznika
+   przy mieście. Ikona przy etykiecie portu (dla zdarzeń, o których gracz
+   **słyszał** — `knownEventIds` już istnieje) byłaby tanim domknięciem i
+   pierwszym powodem, żeby patrzeć na mapę inaczej niż jako na siatkę kursów
 4. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
    (`importMul`), ale sojusz nie daje żadnej symetrycznej korzyści
 5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
@@ -1153,6 +1199,8 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - **Cena kupna i sprzedaży to widełki wokół jednej liczby, nie jeden mnożnik w obie strony.** Mnożnik „taniej dla przyjaciela” zastosowany do obu kierunków odwraca spread i robi drukarkę pieniędzy (v0.24.0: 14 za cukier, 16 za cukier, przy tej samej ladzie). `PortAccessSystem.buyPrice/sellPrice` to jedyne miejsce, gdzie wolno to liczyć.
 - **Cokolwiek rusza stan powoli, musi mieć gdzie trzymać ułamek — i zdarzyło się to już DWA razy.** `PortRuntimeState.wealth` jest trzymane z dokładnością do 0,1 właśnie dlatego: pół punktu dziennego obrotu zaokrąglane co północ do pełnych punktów znikało, a ledger równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu. To ten sam błąd co „sufit to nie równowaga”, tylko o piętro niżej. **Druga instancja, v0.27.0: `population`.** Wioska pięciuset ludzi przy `hunger` 0,23 traci jedną piątą człowieka dziennie, a zaokrąglanie do pełnych ludzi co północ wyrzucało to w całości — małe miasta były na głód odporne, duże nie, i populacja po prostu nigdy nie drgnęła. Trzymana teraz z dokładnością do 0,1; `CityInfoScene` zaokrągla przy wyświetlaniu.
+- **Pole w kontrakcie bez odbiorcy to ten sam błąd co martwa scena.** `EventDailyEffects.crewMul` nie był czytany **przez nic** od napisania systemu zdarzeń; `isPortClosed` był czytany w rdzeniu i nigdzie w `src/game`; `gold` był produkowany, wyceniany i niemożliwy do kupienia, bo nie było go w `ITEMS`. Przy dokładaniu pola do wspólnego typu efektów sprawdź `grep`-em, kto je konsumuje — z obu stron kod wygląda na kompletny (v0.29.0).
+- **Cena zależna od zapasu powstaje dopiero przy dziennym przeliczeniu.** `initPortPrices` daje każdemu portowi tę samą statyczną cenę bazową × poziom rynku, więc pomiar w świeżym świecie potrafi pokazać coś odwrotnego do prawdy (v0.29.0: złoto wychodziło *droższe* w mieście z kopalnią). Mierz po `runDays(world, 1)`.
 - **`X % length` na wyniku `rngNext` to zawsze błąd.** `rngNext` zwraca ułamek z [0,1), więc modulo oddaje ten ułamek i indeks wychodzi `arr[0.37]` → `undefined`. Indeks losowy to `Math.floor(value * length)` albo `rngNextInt`. Ta jedna linijka trzymała **całą losową połowę żywego świata** martwą przez kilkanaście wydań (v0.28.0).
 - **Zdarzenie jest zaburzeniem, nie nowym baseline'em.** `wealthDelta` czyta się naprzeciw `RECOVERY_WEALTH = 0.01`: punkt dziennie to **sto punktów** osiadłego przesunięcia. `EVENT_WEALTH_CEILING = 150` (czyli 1.5/dzień) jest sufitem dla pojedynczego zdarzenia, a strażniki przed stakowaniem muszą liczyć **pokrycie portów**, nie liczbę zdarzeń — dekret królewski obejmuje 24 porty naraz.
 - **Gdy dev serwer Vite zawiesi loader assetów** (postęp staje, kilka żądań „w locie" nigdy się nie kończy, zero błędów w konsoli, a `curl` pobiera te pliki natychmiast) — nie debuguj gry, tylko zweryfikuj **zbudowany pakiet**: `npm run build` i `npx vite preview --port 3000`. Testuje dokładnie to, co idzie na produkcję.
@@ -1165,7 +1213,7 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Etykieta pozycji w menu portu urywa się wizualnie powyżej ~64 znaków.** Wychodzi poza ramkę okna i nic o tym nie mówi — `setupActionList` nie zawija. Długie oferty (fracht, informator) trzeba skracać, a szczegóły przenosić do komunikatu potwierdzenia albo do Dziennika.
 - **Sufit bogactwa dla miasta pod czarną banderą był próbowany trzy razy i trzy razy jest błędem** (v0.19.0 udział 0.42 → bogactwo 5; v0.25.0 udział 0.62 → 0; v0.25.0 stały upkeep → 0). Osiadła wartość = `cel − presja / RECOVERY_WEALTH`, a presja z niedoborów zjada już całą lukę 380. **Nie próbuj czwarty raz** — dźwignią jest to, co dociera na nabrzeże (`blackFlagImportShare`), nie cel.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`) (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

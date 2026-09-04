@@ -2607,3 +2607,84 @@ spokojne Karaiby plotkują o statkach widmach, ruchliwe o cenie chleba.
 Nowe klucze i18n mają test pokrycia w obu językach — plotka złożona z faktów
 świata podstawia zmienne, a brakujący klucz albo nieużyta zmienna wyglądają jak
 błąd w świecie, nie w tabeli napisów.
+
+
+---
+
+## Zdarzenie, które gracz spotyka (v0.29.0)
+
+`EventEffectsSystem.isPortClosed` → `PortApproachScene`,
+`EventDailyEffects.crewMul` → `generateAvailableCrew`,
+`ITEMS.gold` (`rare`) → lada kupca.
+
+v0.28.0 odkryła, że żadne losowe zdarzenie nigdy nie przyczepiło się do portu.
+Kiedy wreszcie zaczęły lądować, wyszło, że **trzy z rzeczy, które deklarują,
+były deklaracjami** — nic w grze ich nie czytało. To jest ta sama kategoria co
+martwa scena albo martwy hak: pole w kontrakcie, którego nie konsumuje żaden
+odbiorca.
+
+### 1. Zamknięty port jest zamknięty
+
+`isPortClosed` był wołany w `EconomyTickSystem` (pauza handlu w symulacji) i w
+`BlockadeSystem.portShutIn` (szlak zatrzymany u źródła) — i **nigdzie w
+`src/game`**. Kapitan wpływał więc do miasta, którego oficjalnie nie było, i
+handlował przy ladzie, za którą nikt nie stał.
+
+Ekran zbliżania czyta to teraz przed zaproponowaniem drzwi: „Port jest
+zamknięty. Żadna łódź nie wypłynie ci naprzeciw…". Zostaje **szturm** — port
+zamknięty to port słaby, i to jest decyzja, a nie błąd. Wejście przez klawisz
+jest dodatkowo zabezpieczone w `executeAction`.
+
+### 2. Zaraza opróżnia tawernę
+
+`EventDailyEffects.crewMul` istniał od napisania systemu zdarzeń (epidemia 0.5,
+klęska głodu 0.7) i **nie był czytany przez nic**. Teraz wchodzi do tego samego
+iloczynu co reputacja (v0.24.0) i głód (v0.27.0):
+
+```
+willing = floor(rzut × crewMul(reputacja) × (1 + głód) × crewMul(zdarzenia))
+```
+
+Mnożniki mnożą się celowo — a rzut kością odbywa się tak czy inaczej, zgodnie z
+zasadą z v0.24.0.
+
+### 3. Odkrycie złota jest czymś, po co się płynie
+
+`gold_discovery` dokładał „gold" do `bonusProduces` od v0.9.7, a dzienny tick
+liczył mu cenę — ale **`gold` nie było pozycją w `ITEMS`**, więc lada kupca
+listowała wyłącznie `Object.keys(ITEMS)` i nigdy go nie pokazała, a `executeBuy`
+odrzucał je jako nieznany towar. Jedyne zdarzenie w tabeli, którego sensem jest
+to, co po sobie zostawia, zostawiało coś, czego nikt w grze nie mógł tknąć.
+
+Złoto jest teraz towarem — i pierwszym **rzadkim** (`ItemDef.rare`):
+
+- `initPortInventory` **nie daje go nikomu** przy tworzeniu świata (zwykłe towary
+  dostaje każdy port, po to lada jest rynkiem, a nie półką);
+- lada listuje towar rzadki tylko tam, gdzie coś go położyło: `bonusProduces`,
+  zapas w magazynie **albo ładownia kapitana** — bez tego ostatniego dałoby się
+  przewieźć złoto przez całe Karaiby i nie znaleźć lady, która by je odkupiła.
+
+Ekonomia wychodzi sama z `PricingSystem`: w mieście z kopalnią magazyn jest
+pełny, więc kwotowanie jest niskie; gdziekolwiek indziej zapas to zero, więc
+`spotPrice` bije w sufit `RATIO_MAX`. Zmierzone po jednym ticku: kupno ~108 w
+mieście z odkryciem, sprzedaż ~206 gdzie indziej.
+
+**Uwaga na pomiar:** `initPortPrices` daje wszystkim tę samą statyczną cenę
+bazową, dopóki nie minie doba — pierwsza wersja testu porównywała właśnie ją i
+wychodziło, że złoto jest **droższe** w kopalni. Kwotowanie zależne od zapasu
+powstaje dopiero przy dziennym przeliczeniu.
+
+### 4. I plotka o zamkniętym porcie
+
+Newsy zdarzenia trafiają na tablicę **w miastach, których dotyczy** — a tablica
+zamkniętego portu jest za drzwiami, których gracz nie otworzy. Dlatego
+`RumorSystem` dostał siódmy fakt: sąsiednia tawerna mówi, że port jest zamknięty,
+zanim zmarnuje się na to przeprawę.
+
+### Parametr debugowania
+
+`?event=<typ>&port=<klucz>` — stempluje zdarzenie na mieście i stawia statek
+dokładnie na nim, na tyle blisko, że dialog zbliżania otwiera się sam
+(`findNearPort` ma promień **6 px** wokół pozycji przyciągniętej do brzegu, więc
+najbliższy kafel wody to za daleko). Dla `gold_discovery` dosypuje tygodniowy
+urobek do magazynu, bo `applyOneShotEffects` odpala się tylko w dniu wystąpienia.

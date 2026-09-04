@@ -8,6 +8,7 @@ export const PL: LocaleData = {
   "item.rum.name": "Rum",
   "item.food.name": "Jedzenie",
   "item.water.name": "Woda",
+  "item.gold.name": "Z\u0142oto",
 
   // -- Ports (45 cities) --
   "port.havana.name": "Havana",
@@ -126,6 +127,7 @@ export const PL: LocaleData = {
 
   // -- Port Approach --
   "approach.enter": "WEJDŹ DO PORTU",
+  "approach.closed": "Port jest zamkni\u0119ty. \u017badna \u0142\u00f3d\u017a nie wyp\u0142ynie ci naprzeciw i \u017caden pilot nie wprowadzi ci\u0119 do \u015brodka.",
   "approach.enter_desc": "Zacumuj i odwiedź port.",
   "approach.sneak": "WKRADNIJ SIĘ",
   "approach.sneak_desc_fort": "Spróbuj wejść niezauważenie. Ryzyko wykrycia.",
@@ -530,6 +532,7 @@ export const PL: LocaleData = {
   "tavern.rumor_ghost_ship": "\"Podobno statek-widmo nawiedza wody koło Bermudów nocą...\"",
   "tavern.rumor_hunger": "\u201eW {{port}} nie ma {{item}} za \u017cadne pieni\u0105dze \u2014 brakuje im {{pct}}% tego, czego potrzebuj\u0105, a gubernator p\u0142aci ponad stawk\u0119 za wszystko, co wp\u0142ynie.\u201d",
   "tavern.rumor_blockade": "\u201ePod {{port}} sta\u0142a eskadra. Nic tam nie wchodzi ani nie wychodzi, dop\u00f3ki tam jest.\u201d",
+  "tavern.rumor_shut": "\u201eZamkn\u0119li port w {{port}}. \u017baden pilot nie wprowadzi tam kad\u0142uba, dop\u00f3ki nie odpu\u015bci.\u201d",
   "tavern.rumor_covering": "\u201e{{port}} karmi p\u00f3\u0142 wybrze\u017ca, odk\u0105d {{other}} zamkn\u0119\u0142o nabrze\u017ce. U siebie maj\u0105 pusto i wida\u0107 to po cenie {{item}}.\u201d",
   "tavern.rumor_lane": "\u201e\u017baden ubezpieczyciel nie tknie w tym sezonie szlaku {{from}}\u2013{{to}}. Kto\u015b tam si\u0119 nagimna\u0142.\u201d",
   "tavern.rumor_black_flag": "\u201e{{port}} nie nosi dzi\u015b barw \u017cadnej korony. Przemytnikom podobno nie\u017ale si\u0119 przy tym powodzi.\u201d",

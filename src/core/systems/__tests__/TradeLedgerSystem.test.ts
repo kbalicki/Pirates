@@ -403,3 +403,73 @@ describe("the player is an economic actor now", () => {
     expect(before - after).toBeLessThanOrEqual(MAX_TRADE_WEALTH_PER_DAY + 3);
   });
 });
+
+
+// ===========================================================================
+// Gold — a good that exists only where it is struck (v0.29.0)
+// ===========================================================================
+
+/**
+ * `gold_discovery` has put "gold" in a town's `bonusProduces` since v0.9.7 and
+ * the daily tick has priced it ever since, but it was not in `ITEMS` — so the
+ * merchant's counter never listed it and `executeBuy` turned it away as an
+ * unknown item. The one event in the table whose point is that it leaves
+ * something behind left something nobody in the game could touch.
+ */
+
+describe("gold", () => {
+  it("is a real good, and a rare one", () => {
+    expect(ITEMS.gold).toBeDefined();
+    expect(ITEMS.gold.rare).toBe(true);
+  });
+
+  it("is in nobody's warehouse when the world is made", () => {
+    for (const key of Object.keys(CITIES)) {
+      expect(initPortInventory(key).gold, key).toBe(0);
+    }
+  });
+
+  it("can be bought where it has been struck", () => {
+    const base = makeWorld();
+    const world: WorldState = {
+      ...base,
+      ports: {
+        ...base.ports,
+        havana: {
+          ...base.ports.havana,
+          bonusProduces: ["gold"],
+          inventory: { ...base.ports.havana.inventory, gold: 40 },
+        },
+      },
+    };
+    const bought = executeBuy(world, portId("havana"), itemId("gold"), 10);
+    expect(bought.error).toBeUndefined();
+    const hold = bought.world.entities.player_ship.ship!.cargo.gold ?? 0;
+    expect(hold).toBe(10);
+  });
+
+  it("is worth carrying: dear where there is none, cheap where they dig it", () => {
+    // The whole reason the event is worth sailing to. A strike town's warehouse
+    // is full, so its quote is low; anywhere else has none at all.
+    const base = makeWorld();
+    const struck: WorldState = {
+      ...base,
+      ports: {
+        ...base.ports,
+        havana: {
+          ...base.ports.havana,
+          bonusProduces: ["gold"],
+          inventory: { ...base.ports.havana.inventory, gold: 40 },
+        },
+      },
+    };
+    // After a day, which is when the world quotes anything: `initPortPrices`
+    // hands every town the same static base price for a good none of them has
+    // ever seen, and it is the daily requote that turns an empty warehouse into
+    // a high quote and a full one into a low one.
+    const priced = runDays(struck, 1);
+    const ask = playerBuyPrice(priced, "havana", "gold");
+    const bid = playerSellPrice(priced, "tortuga", "gold");
+    expect(bid).toBeGreaterThan(ask * 1.5);
+  });
+});

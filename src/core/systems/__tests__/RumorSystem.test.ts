@@ -139,6 +139,28 @@ describe("what the tavern knows", () => {
     expect(said?.vars?.port).toBe(CITIES[NEAR].name);
   });
 
+  it("reports a harbour that has been shut", () => {
+    // The one fact the player cannot go and read for himself: a closed port's
+    // own news board is behind the door he is being refused at.
+    const base = makeWorld();
+    const world: WorldState = {
+      ...base,
+      worldEvents: [{
+        id: "ev_hurricane",
+        type: "hurricane",
+        startDay: 1,
+        endDay: 999,
+        ports: [NEAR],
+        factions: ["france"],
+        severity: 3,
+        headline: "news.hurricane",
+        vars: {},
+      }],
+    } as unknown as WorldState;
+    const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_shut");
+    expect(said?.vars?.port).toBe(CITIES[NEAR].name);
+  });
+
   it("reports a town flying no crown's colours", () => {
     const base = makeWorld();
     const world: WorldState = {

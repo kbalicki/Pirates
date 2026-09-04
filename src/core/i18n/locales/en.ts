@@ -8,6 +8,7 @@ export const EN: LocaleData = {
   "item.rum.name": "Rum",
   "item.food.name": "Food",
   "item.water.name": "Water",
+  "item.gold.name": "Gold",
 
   // -- Ports (45 cities) --
   "port.havana.name": "Havana",
@@ -126,6 +127,7 @@ export const EN: LocaleData = {
 
   // -- Port Approach --
   "approach.enter": "ENTER PORT",
+  "approach.closed": "The harbour is shut. No boat will come out to you and no pilot will take you in.",
   "approach.enter_desc": "Dock and visit the port.",
   "approach.sneak": "SNEAK IN",
   "approach.sneak_desc_fort": "Attempt to enter undetected. Risk of being caught.",
@@ -530,6 +532,7 @@ export const EN: LocaleData = {
   "tavern.rumor_ghost_ship": "\"They say a ghost ship haunts the waters near Bermuda at night...\"",
   "tavern.rumor_hunger": "\"There is no {{item}} to be had in {{port}} \u2014 short by {{pct}}% of what they need, and the governor paying over the odds for any that comes in.\"",
   "tavern.rumor_blockade": "\"There is a squadron lying off {{port}}. Nothing goes in or out while she stays there.\"",
+  "tavern.rumor_shut": "\"They have shut the harbour at {{port}}. No pilot will take a hull in until it lifts.\"",
   "tavern.rumor_covering": "\"{{port}} has been feeding half the coast since {{other}} shut its wharves. Their own shelves are bare and their {{item}} shows it.\"",
   "tavern.rumor_lane": "\"No underwriter will touch the {{from}}\u2013{{to}} run this season. Somebody has been busy out there.\"",
   "tavern.rumor_black_flag": "\"{{port}} flies no crown\u0027s colours these days. The smugglers do well enough out of it, I hear.\"",

@@ -6,6 +6,36 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.29.0.0",
+    date: "2026-09-04",
+    changes: [
+      "THE EVENTS ARE SOMETHING YOU MEET NOW",
+      "  v0.28.0 discovered that no world event had ever attached itself to a",
+      "  town. With them finally landing, three of the things they claim to do",
+      "  turned out to be claims: nothing in the game read them",
+      "  A SHUT HARBOUR IS SHUT. A hurricane or a quarantine closed a port for",
+      "  the daily economy and for nobody else — you sailed in and traded",
+      "  across a counter nobody was standing behind. Now the approach says so",
+      "  and the door is not offered. Storming the town still is: a closed",
+      "  harbour is a weak harbour, and that is a decision rather than a bug",
+      "  A PLAGUE EMPTIES THE TAVERN. Every event has carried a recruiting",
+      "  multiplier since the system was written and nothing had ever read it.",
+      "  An epidemic now halves the men who will sign, a famine takes a third",
+      "  — on top of what the town thinks of you and how hungry it is",
+      "  A GOLD STRIKE IS WORTH SAILING TO. Gold has been produced by boom",
+      "  towns since v0.9.7 and was not a tradeable item, so the merchant never",
+      "  listed it and the counter refused it as unknown goods. It is a good",
+      "  now — a rare one: no port holds a grain of it, and it appears on a",
+      "  counter only where it has been struck, or in your own hold",
+      "  Buy it where they dig it and it is cheap; anywhere else has none and",
+      "  quotes accordingly. A boom town is finally a place on the chart worth",
+      "  a passage",
+      "  And the tavern will tell you a harbour is shut before you waste the",
+      "  voyage — the one fact you cannot go and read for yourself, because the",
+      "  news board is behind the door you are being refused at",
+    ],
+  },
+  {
     version: "0.28.0.0",
     date: "2026-09-04",
     changes: [

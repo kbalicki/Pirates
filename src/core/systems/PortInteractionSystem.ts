@@ -12,6 +12,7 @@ import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
 import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
+import { getAggregatedEffects } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { diluteTraining } from "../model/CaptainState.ts";
 
@@ -108,7 +109,14 @@ export function generateAvailableCrew(
   if (!portState) return world;
 
   const hungry = 1 + townHunger(world, portKey) * HUNGER_CREW_BONUS;
-  const willing = Math.floor(crewCount * portAccess(world, portKey).crewMul * hungry);
+  // And what is happening in the town this week (v0.29.0). `EventDailyEffects`
+  // has carried a `crewMul` since the event system was written — a plague halves
+  // the men who will sign, a famine takes a third — and nothing had ever read
+  // it. A declared effect nobody consumes is the same bug as a dead scene.
+  const afflicted = getAggregatedEffects(world, portKey).crewMul;
+  const willing = Math.floor(
+    crewCount * portAccess(world, portKey).crewMul * hungry * afflicted,
+  );
 
   return {
     ...world,

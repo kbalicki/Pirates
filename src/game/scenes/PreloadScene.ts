@@ -188,6 +188,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?commission=port_royal — the governor there with a colony under threat
     //   ?home=port_royal — married into that town, with a battered fleet and a full hold
     //   ?blockade=havana — lying off that harbour with guns enough to shut it
+    //   ?event=hurricane&port=havana — that event running on that town, ship lying off it
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -287,6 +288,15 @@ export class PreloadScene extends Phaser.Scene {
     if (params.has("blockade")) {
       const portKey = params.get("blockade") || "havana";
       const world = this.createBlockadeWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("event")) {
+      const world = this.createEventWorld(
+        params.get("event") || "hurricane",
+        params.get("port") || "havana",
+      );
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -636,6 +646,77 @@ export class PreloadScene extends Phaser.Scene {
         ...base.ports,
         [portKey]: { ...port, blockadeDays: BLOCKADE_ONSET_DAYS - 1 },
       },
+    };
+  }
+
+  /**
+   * One named world event, running on one named town, for `?event=` (v0.29.0).
+   *
+   * v0.28.0 found that no random event had ever attached itself to a port, so
+   * the whole layer had never been *played*. Reaching a particular one in an
+   * ordinary game means waiting for a weighted roll and then finding the town it
+   * chose, which is no way to look at fifteen of them. This stamps the event on
+   * the town and puts the ship on the water outside it, close enough that the
+   * approach dialogue opens by itself.
+   */
+  private createEventWorld(
+    type: string,
+    portKey: string,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    loadLandmassesFromCache(this);
+
+    const day = base.time.day;
+    const staged: import("../../core/model/WorldState.ts").WorldState = {
+      ...base,
+      worldEvents: [
+        ...base.worldEvents,
+        {
+          id: `debug_${type}_${portKey}`,
+          type: type as import("../../core/model/WorldState.ts").WorldEventType,
+          startDay: day,
+          endDay: day + 60,
+          ports: [portKey],
+          factions: [def.factionId as unknown as string],
+          severity: 2 as const,
+          headline: `news.${type}`,
+          vars: { port: def.name, faction: def.factionId as unknown as string, duration: 60 },
+        },
+      ],
+    };
+
+    // A gold strike is the one event whose point is what it leaves in the
+    // warehouse, and `applyOneShotEffects` only fires on the day it lands — so
+    // the debug world hands the town a week's diggings to have on the counter.
+    const port = staged.ports[portKey];
+    const withStock = type === "gold_discovery" && port
+      ? {
+          ...staged,
+          ports: {
+            ...staged.ports,
+            [portKey]: {
+              ...port,
+              bonusProduces: [...port.bonusProduces, "gold"],
+              inventory: { ...port.inventory, gold: 25 },
+            },
+          },
+        }
+      : staged;
+
+    // Right on top of the town, not out on the water: `findNearPort` fires
+    // within six pixels of the coast-snapped position, and the nearest water
+    // tile is further out than that — the approach would never open by itself.
+    const at = { x: def.pos.x, y: def.pos.y };
+    const shipId = withStock.player.shipId as string;
+    const entity = withStock.entities[shipId];
+    return {
+      ...withStock,
+      player: { ...withStock.player, location: { type: "sea", pos: { ...at } } },
+      entities: entity
+        ? { ...withStock.entities, [shipId]: { ...entity, mode: "sailing", pos: { ...at }, vel: { x: 0, y: 0 } } }
+        : withStock.entities,
     };
   }
 

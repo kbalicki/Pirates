@@ -7,6 +7,7 @@ import {
   GRANARY_REPUTATION,
 } from "../PortInteractionSystem.ts";
 import { baselineConsumptionRate } from "../../data/economyBaselines.ts";
+import { isPortClosed } from "../EventEffectsSystem.ts";
 import { ITEMS } from "../../data/items.ts";
 import { initPortPrices } from "../../data/prices.ts";
 import { spotPrice } from "../PricingSystem.ts";
@@ -342,5 +343,79 @@ describe("the public granary", () => {
     const base = (ITEMS[ITEM]?.basePrice ?? 0) * offer.qty;
     expect(offer.gold).toBeGreaterThan(base);
     expect(offer.gold).toBeLessThan(base * 2);
+  });
+});
+
+
+// ===========================================================================
+// What an event does to a town the captain is standing in (v0.29.0)
+// ===========================================================================
+
+/**
+ * v0.28.0 found that no world event had ever attached itself to a port, so
+ * nobody had ever noticed that two of the effects they declare were not read by
+ * anything at all. `crewMul` — a plague halves the men who will sign — was
+ * consumed nowhere in the codebase; `portClosed` gated the daily economy and
+ * nothing else, so a captain sailed into a harbour that was officially shut and
+ * traded across a counter nobody was standing behind.
+ */
+
+function withEvent(world: WorldState, type: string, severity: 1 | 2 | 3 = 2): WorldState {
+  return {
+    ...world,
+    worldEvents: [{
+      id: `ev_${type}`,
+      type,
+      startDay: 1,
+      endDay: 999,
+      ports: [PORT],
+      factions: ["england"],
+      severity,
+      headline: `news.${type}`,
+      vars: {},
+    }],
+  } as unknown as WorldState;
+}
+
+describe("a plague empties the tavern", () => {
+  it("puts fewer men on the bench than the same town in good health", () => {
+    const well = generateAvailableCrew(hungryWorld(0), portId(PORT)).ports[PORT].availableCrew;
+    const sick = generateAvailableCrew(
+      withEvent(hungryWorld(0), "epidemic"), portId(PORT),
+    ).ports[PORT].availableCrew;
+    expect(sick).toBeLessThan(well);
+  });
+
+  it("takes a smaller bite for a famine than for a plague", () => {
+    const plague = generateAvailableCrew(
+      withEvent(hungryWorld(0), "epidemic"), portId(PORT),
+    ).ports[PORT].availableCrew;
+    const famine = generateAvailableCrew(
+      withEvent(hungryWorld(0), "famine"), portId(PORT),
+    ).ports[PORT].availableCrew;
+    expect(famine).toBeGreaterThan(plague);
+  });
+
+  it("rolls the same dice either way", () => {
+    const well = generateAvailableCrew(hungryWorld(0), portId(PORT)).rng;
+    const sick = generateAvailableCrew(withEvent(hungryWorld(0), "epidemic"), portId(PORT)).rng;
+    expect(sick).toEqual(well);
+  });
+});
+
+describe("a shut harbour", () => {
+  it("is shut while the hurricane is over it", () => {
+    // The contract `PortApproachScene` reads before it offers the door.
+    expect(isPortClosed(withEvent(hungryWorld(0), "hurricane"), PORT)).toBe(true);
+  });
+
+  it("is open in a town where nothing is happening", () => {
+    expect(isPortClosed(hungryWorld(0), PORT)).toBe(false);
+  });
+
+  it("is open again once the storm has blown out", () => {
+    const past = withEvent(hungryWorld(0), "hurricane");
+    const later = { ...past, time: { ...past.time, day: 2000 } } as WorldState;
+    expect(isPortClosed(later, PORT)).toBe(false);
   });
 });

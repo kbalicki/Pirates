@@ -1708,7 +1708,19 @@ export class PortScene extends Phaser.Scene {
     y += 16;
 
     // Table rows with keyboard navigation
-    const itemKeys = Object.keys(ITEMS);
+    // Every ordinary good, whether he has any or not — that is what makes this
+    // a market rather than a shelf. A rare good only where something put it
+    // there: gold appears on the counter of a town that has struck it and
+    // nowhere else (v0.29.0).
+    const itemKeys = Object.keys(ITEMS).filter(key => {
+      if (!ITEMS[key].rare) return true;
+      // Where it is struck, where some of it is standing on the quay — and
+      // where the captain has it in his hold, or he could carry gold across
+      // the Caribbean and find no counter that would take it off him.
+      return (portState?.bonusProduces.includes(key) ?? false)
+        || (portState?.inventory[key] ?? 0) > 0
+        || (playerShip?.ship?.cargo[key] ?? 0) > 0;
+    });
     const barW = DLG_W - PAD * 2;
 
     // Selection bar
