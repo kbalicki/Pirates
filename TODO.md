@@ -1,12 +1,16 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.21.0.0 · **Branch:** `main`
-**Kod:** 161 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **990 przechodzi, 0 failuje, 0 `todo`** w 23 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.22.0.0 · **Branch:** `main`
+**Kod:** 166 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1066 przechodzi, 0 failuje, 0 `todo`** w 28 plikach
+
+**Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
+Stare firmowe repo zostało jako remote `websystems` (websystemspl/PiratesChronicles).
+**W commitach i PR-ach nie wymieniamy Claude'a** — żadnego `Co-Authored-By`, żadnej stopki.
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.21.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 990/990 zielone; wojna wreszcie dociera na nabrzeże (osobny człon żeglugowy zdarzeń), a konsorta ma własne wyszkolenie, więc drugi statek jest decyzją, nie darmowymi działami — lista kandydatów na v0.22.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.22.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1066/1066 zielone; handel przestał być liczbą — każde miasto ma nazwanego dostawcę i realny kurs morzem (`Pathfinding` to wreszcie A\*, nie pusty hak), gracz może ten kurs przeciąć blokadą portu, a zdobyty kupiec ma wreszcie ładownię wartą zabrania — lista kandydatów na v0.23.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
@@ -44,6 +48,10 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Import do portów | ✅ | `EconomyTickSystem` krok 3.5: kolonia dostaje, czego nie produkuje; czarna bandera tylko przemytników |
 | Wojna na nabrzeżu | ✅ | `EventDailyEffects.importMul`: wojna zabiera 30% dostaw, pokój oddaje |
 | Wyszkolenie konsorty | ✅ | `FleetShip.training?` + `fleetTraining()`: zielona załoga pryzowa, ważona ludźmi |
+| Szlaki handlowe | ✅ | `TradeRouteSystem` (81 szlaków): nazwany dostawca per towar, kurs liczony morzem |
+| Pathfinding morski | ✅ | `Pathfinding.ts`: A\* po siatce 40 px, kara przybrzeżna, sznurkowanie kursu |
+| Blokada portu | ✅ | `BlockadeSystem`: kordon przez *bycie tam*, głód, topniejący garnizon, wściekła korona |
+| Ładownia pryzu | ✅ | `PrizeSystem`: kupiec wiezie towar swojego szlaku; kiesa z tonażu, nie z kostki |
 
 ### Nietknięte
 
@@ -54,7 +62,7 @@ Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski India
 | Plik | Po co zostaje |
 |---|---|
 | `src/core/data/quests.ts` | Pusta mapa `QUESTS` — miejsce na questy pisane ręcznie. Skarby **i** wątek rodzinny są instancjami odbudowywanymi z `questLog` przez `buildQuestRegistry()`, więc tu ich nie ma |
-| `src/core/services/Pathfinding.ts` | Hak pod A\*; NPC sterują dziś reaktywnie |
+| — | `Pathfinding.ts` **przestał** być placeholderem w v0.22.0. Zostały same questy |
 
 W v0.9.8.1 usunięto trzy pliki, do których nic nie prowadziło: `SaveLoadScene`, `DialogueScene`, `PalmRenderer.backup.ts`.
 
@@ -699,28 +707,81 @@ ufa.
 - **Drill konsorty rośnie tylko na morzu** — tak samo jak kapitana, więc flota
   stojąca miesiącami w porcie nie nadrabia. Zgodne z resztą, ale warto wiedzieć
 
-### v0.22.0 — co dalej
+### ~~v0.22.0 — Szlaki, blokada, ładownia pryzu~~ ✅ (v0.22.0.0)
 
-Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gracza:
+Trzy rzeczy naraz, bo każda następna była bez sensu bez poprzedniej.
 
-1. **Prawdziwe szlaki handlowe** — import jest abstrakcją; nic nie płynie między
-   portami, więc nie da się przerwać dostaw blokadą konkretnej trasy ani na tym
-   zarobić jako przewoźnik. To `Pathfinding.ts` (wciąż pusty hak) plus
-   przebudowa `NpcAiSystem`. Duża praca, ale to jedyna droga do handlu, który
-   jest czymś więcej niż różnicą cen.
-2. **Blokada portu jako czyn gracza** — `importMul` istnieje, `portClosed`
-   istnieje, a gracz nie ma jak żadnego z nich wywołać. Krążenie pod obcym
-   portem powinno dusić jego dostawy; to pierwsza rzecz, jaką pirat robił
-   naprawdę, i cała maszyneria już czeka.
-3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
-   zadanie programistyczne**: brakuje plików audio, nie kodu.
-4. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe; duża
-   praca, mały dług.
+**Prawdziwe szlaki handlowe** (`TradeRouteSystem` + `Pathfinding`) — import z
+v0.20.0 był liczbą: kolonia dostawała, czego nie produkuje, znikąd i przez
+nikogo. Teraz każdy towar, którego miasto żąda i nie uprawia, ma **nazwanego
+dostawcę** (najbliższy producent liczony morzem, z rabatem 0.7 dla własnej
+korony) i **realny kurs** wokół wysp. Na aktualnej mapie 81 szlaków, mediana
+579 jednostek, 28 z zakrętami.
+
+`Pathfinding.ts` — pusty hak od pierwszego commita — to teraz A\* po siatce
+40 px z karą przybrzeżną i sznurkowaniem wyniku. Kupcy NPC dostają `ai.lane` i
+płyną od narożnika do narożnika, zamiast celować w port i odbijać się od
+półwyspu. Klawisz **T** rysuje szlaki na mapie.
+
+Dwa towary celowo nie mają szlaku: **woda** (nikt jej nie produkuje — jest ze
+studni) i wszystko, czego najbliższy producent leży dalej niż 1500 (to pakiet
+z Sewilli). Oba dostają pełną dostawę — i to jest powód, dla którego blokada
+głodzi miasto z jedzenia i rumu, a nie z pragnienia.
+
+**Blokada portu** (`BlockadeSystem`) — `portClosed` istniał od v0.9.7,
+`importMul` od v0.21.0, i nic w rękach gracza nie umiało odpalić żadnego.
+Blokuje się przez **bycie tam**: leż w promieniu 320 od obcego portu z dość
+dużą liczbą dział (4 + obrona/10), a po dwóch dniach kordon gryzie — szlaki
+wpuszczają 15%, obrona spada 1/dzień i **przestaje się odbudowywać**,
+reputacja −2/dzień, notoriety +1. Odpłynięcie rozluźnia kordon dzień po dniu,
+nie kasuje go. Kontra: port zablokowany ma potrójną wagę spawnu i wystawia
+okręty wojenne zamiast kupców.
+
+Zmierzone w grze (30 dni pod Hawaną): obrona 60 → 30, jedzenie 15 → 0,
+reputacja Hiszpanii 0 → −60. Zagłodzone miasto jest miastem do wzięcia — to
+powolna połowa oblężenia z v0.13.0.
+
+**Ładownia pryzu** (`PrizeSystem`) — pobicie statku dawało losowe 50-150 złota,
+obojętnie czy to galeon, czy pinasa, a ładownia zawsze była pusta. Kupcy ładują
+się teraz ze szlaku, który płyną (55-90% ładowni), towar przechodzi **od
+najdroższego** do wyczerpania miejsca w twojej ładowni, a czego nie zmieścisz —
+ekran mówi wprost, że zostało w wodzie. Kiesa to tonaż × 0.55 × udział ocalenia
+(0.5 zatopiony / 0.85 poddany / 1.0 przejęty), bez kostki. Zdobycie kupca
+dokłada zakłócenie **jego szlakowi**, więc miasto na drugim końcu czuje to w
+ciągu tygodnia, a mapa rysuje ten szlak cieplejszym kolorem.
+
+**Zostało z tego modułu:**
+- **Kupiec nie handluje naprawdę** — ładownia jest generowana przy spawnie, a
+  nie kupowana w porcie wyjścia i sprzedawana w docelowym. Zadokowanie kupca
+  nie dokłada towaru do inwentarza portu. Następny krok, jeśli ekonomia ma
+  domykać pętlę
+- **Blokada jest tylko przeciwko miastom** — nie da się blokować szlaku w
+  cieśninie ani wystawić kordonu z konsort na dwóch wyjściach
+- **Szlak wybiera jednego dostawcę na zawsze** — sieć jest przeliczana z mapy,
+  nie z tego, kto ma dziś zapas. Zablokowanie Hawany nie przekierowuje jej
+  klientów do Santiago, tylko obcina im dostawy do 30%
+- **Zakłócenie nie rozróżnia, kto zatopił** — pirat NPC topiący kupca nie robi
+  nic; tylko gracz zostawia ślad w ledgerze
+
+### v0.23.0 — co dalej
+
+Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
+
+1. **Kupiec, który naprawdę handluje** — hull wychodzący z portu kupuje towar
+   z jego inwentarza, a zadokowanie wsypuje ładunek do inwentarza celu.
+   Domyka pętlę: gracz mógłby zarobić jako przewoźnik, a zatopienie konwoju
+   miałoby skutek widoczny w cenach, nie tylko w abstrakcyjnym ledgerze
+2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
+   zadanie programistyczne**: brakuje plików audio, nie kodu
+3. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe;
+   duża praca, mały dług
+4. **Sprite'y statków w pixel arcie** — 9 klas × 8 klatek = 72 klatki, patrz
+   sekcja 6. To odblokowuje retrening LoRA v3
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
 
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
-- **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
+- ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1), zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). **Nie trenuj v3, dopóki nie ma nowego materiału** — patrz sekcja 6. Ocena: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
 - **Assety AI — kolejny krok wymaga materiału, nie GPU.** Kierunek artystyczny jest rozstrzygnięty (pixel art, sekcja 6) i to on wyznacza pracę: dziewięć klas statków po osiem klatek kierunkowych, nowe sprite'y miast, ~15 ikon towarów. Klatki uszkodzeń są **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - ~~**`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.~~ ✅ v0.19.0.0 — `syncFlag`. Bandera mówi **kto**, ale nie **co**: kupiec i okręt wojenny tej samej korony wyglądają identycznie.
@@ -729,10 +790,10 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - ~~**Toasty z `CrewConsumptionSystem` wyświetlają surowe klucze i18n.**~~ ✅ v0.16.0.0 — trzy komunikaty przechodzą teraz przez `t()` w miejscu tworzenia zdarzenia, a ten o śmierci załogi dostał brakujące `{{count}}`.
 - ~~**Konsorty nie mają morale ani wyszkolenia.**~~ ✅ v0.19.0.0 (morale) i v0.21.0.0 (drill) — `FleetShip.morale?` / `.training?`, obie ważone ludźmi przez `fleetMorale()` / `fleetTraining()`. Drill konsorty rośnie **tylko na morzu**, tak jak kapitana.
 - ~~**Import nie reaguje na wojnę.**~~ ✅ v0.21.0.0 — `EventDailyEffects.importMul`. Został brak geografii: wojna obcina dostawy każdemu portowi wojującej korony jednakowo, bo bez szlaków nie ma czego przeciąć.
-- **Gracz nie może zablokować portu.** `importMul` i `portClosed` istnieją, a nic w rękach gracza ich nie wywołuje. Krążenie pod obcym portem powinno dusić jego dostawy — pierwsza rzecz, jaką pirat robił naprawdę, i cała maszyneria już czeka.
-- **Import jest abstrakcją, nie handlem.** Nic nie płynie między portami, więc blokada konkretnej trasy nic nie znaczy, a gracz nie może zarobić jako przewoźnik. Prawdziwe szlaki to `Pathfinding.ts` + przebudowa `NpcAiSystem`.
+- ~~**Gracz nie może zablokować portu.**~~ ✅ v0.22.0.0 — `BlockadeSystem`. Blokada działa tylko przeciwko **miastu**; szlaku w cieśninie wciąż nie da się przeciąć.
+- ~~**Import jest abstrakcją, nie handlem.**~~ ✅ v0.22.0.0 — `TradeRouteSystem`: 81 nazwanych szlaków z kursem morzem. Zostało jednak sedno: **kupiec nie kupuje i nie sprzedaje**. Ładownia powstaje przy spawnie, a zadokowanie nie dosypuje niczego do inwentarza portu — dopóki tak jest, gracz nie zarobi jako przewoźnik.
 - **Magazyn jest jeden, tylko w porcie żony.** Wynajęty skład w dowolnym mieście za czynsz byłby naturalnym rozszerzeniem, ale i realnym ryzykiem dla ekonomii: gracz mógłby magazynować pod każdą górkę cenową.
-- **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Prawdziwa trasa wymaga `Pathfinding.ts`, który wciąż jest pustym hakiem.
+- **Kurs wyprawy jest prostą** — rysuje zliczenie, nie trasę omijającą ląd, więc bywa poprowadzony przez półwysep. Grot jest dosuwany do wody, linia nie. Od v0.22.0 `findSeaPath` istnieje i umie policzyć prawdziwą trasę — `ExpeditionCourseRenderer` po prostu jeszcze z niej nie korzysta. Tanie do domknięcia.
 - **Zlecenie obrony jest jedno na raz i tylko od gubernatora.** Informator w tawernie albo tablica w porcie dałyby drugie źródło i drugi typ zlecenia.
 - ~~**`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.**~~ ✅ v0.18.0.0 — `ExpeditionCourseRenderer` rysuje kreskowany kurs każdej wyprawy, o której gracz słyszał; sama eskadra dalej materializuje się dopiero w promieniu 620.
 - ~~**Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.**~~ ✅ v0.19.0.0, przerobione w v0.20.0.0 — ludzie mają sufit (`heldPopulationCeiling`), pieniądze załatwia brak importu. Uwaga na przyszłość: **sufit to nie równowaga** — `wealth` ma stałą presję w dół, więc udział 0.42 dał bogactwo **5**, a nie „mniej zamożne miasto". Historycznie: `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). Do przemyślenia razem z ekonomią portów pirackich.
@@ -756,7 +817,9 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - **`time.tick` jest ułamkowy.** Nigdy nie bramkuj niczego na `tick % N === 0` — używaj `tickBoundaryCrossed(tick - dtTicks, tick, N)` z `TimeSystem`. Ten jeden wzorzec zabił w v0.16.0 spawn NPC, AI NPC i wymianę newsów naraz, a testy jednostkowe na całkowitych tickach tego nie widziały.
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
+- **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
+- **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
 
 ---

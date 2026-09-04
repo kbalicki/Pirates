@@ -144,6 +144,16 @@ export type PortRuntimeState = {
   /** Earliest day a relief expedition may sail again. Set after each attempt. */
   nextReliefDay?: number;
   /**
+   * Days the player's squadron has been standing off this harbour (v0.22.0).
+   *
+   * Counts up while he lies within `BLOCKADE_RADIUS` with guns enough to
+   * matter, and back down when he leaves — so it is a measure of pressure, not
+   * a flag. It bites at `BLOCKADE_ONSET_DAYS`. Optional, read through
+   * `blockadeDays()`, and absent means the harbour is open: exactly what every
+   * save written before this release means.
+   */
+  blockadeDays?: number;
+  /**
    * Earliest day a rival crown may fit out a campaign against this town (v13+).
    *
    * Stamped when an expedition sails rather than when it lands, so a colony is
@@ -198,6 +208,15 @@ export type WorldState = {
   worldEvents: WorldEventState[];
   /** IDs of world events player has already been notified about */
   knownEventIds: string[];
+  /**
+   * How badly each shipping lane has been preyed upon (v0.22.0).
+   *
+   * Keyed by `TradeRoute.id`, which is derived from the map and never stored,
+   * so this survives a change to the lane network by simply going stale and
+   * decaying out. Optional and read through `disruptions()`; a save from before
+   * this release has quiet seas, which is what it had.
+   */
+  routeDisruption?: Record<string, { severity: number; until: number }>;
   playerName: string;
   eraId: string;
   startYear: number;

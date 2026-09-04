@@ -5,7 +5,10 @@ import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { factionId } from "../../core/model/ids.ts";
-import { expeditionPos } from "../../core/systems/ExpeditionFleetSystem.ts";
+import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
+import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
+import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
+import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -181,6 +184,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?intercept=cartagena — the same expedition, met at sea half a passage out
     //   ?commission=port_royal — the governor there with a colony under threat
     //   ?home=port_royal — married into that town, with a battered fleet and a full hold
+    //   ?blockade=havana — lying off that harbour with guns enough to shut it
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -272,6 +276,13 @@ export class PreloadScene extends Phaser.Scene {
       const world = this.createHomePortWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("blockade")) {
+      const portKey = params.get("blockade") || "havana";
+      const world = this.createBlockadeWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
       return;
     }
     if (params.has("skip")) {
@@ -551,6 +562,66 @@ export class PreloadScene extends Phaser.Scene {
           },
         },
       ],
+    };
+  }
+
+  /**
+   * A squadron already on station off a harbour, for `?blockade=`.
+   *
+   * Pressing a blockade in an ordinary game means finding a town, bringing
+   * guns enough to matter and then *staying there* for days of game time.
+   * What the screen has to show is the day the cordon bites, so this puts a
+   * heavily gunned ship on the water position off the port with the counter
+   * one short of onset — the next day change closes it.
+   */
+  private createBlockadeWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    const port = base.ports[portKey];
+    if (!def || !port) return base;
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity) return base;
+    // Standing *off* the harbour, not in its mouth: the water position is a
+    // ship's length from the quay and trips the approach dialogue. The station
+    // also has to be nearer this harbour than any other, or the cordon presses
+    // the neighbour — Havana and the Florida Keys are two hundred units apart
+    // on this chart and the first naive offset pressed the wrong one.
+    loadLandmassesFromCache(this);
+    const water = getPortWaterPos(portKey);
+    const nearestTo = (at: { x: number; y: number }): string => {
+      let best = portKey;
+      let bestDist = Infinity;
+      for (const key of Object.keys(base.ports)) {
+        const w = getPortWaterPos(key);
+        const d = Math.hypot(w.x - at.x, w.y - at.y);
+        if (d < bestDist) { bestDist = d; best = key; }
+      }
+      return best;
+    };
+    let station = water;
+    for (let dist = 160; dist <= 240 && station === water; dist += 40) {
+      for (let a = 0; a < 16; a++) {
+        const angle = (a / 16) * Math.PI * 2;
+        const at = { x: water.x + Math.cos(angle) * dist, y: water.y + Math.sin(angle) * dist };
+        if (nearestWater(at) !== at) continue;      // land, or nudged off it
+        if (nearestTo(at) !== portKey) continue;    // that is somebody else's harbour
+        station = at;
+        break;
+      }
+    }
+
+    return {
+      ...base,
+      player: { ...base.player, location: { type: "sea", pos: { ...station } } },
+      entities: {
+        ...base.entities,
+        [shipId]: { ...entity, mode: "sailing", pos: { ...station }, vel: { x: 0, y: 0 } },
+      },
+      ports: {
+        ...base.ports,
+        [portKey]: { ...port, blockadeDays: BLOCKADE_ONSET_DAYS - 1 },
+      },
     };
   }
 

@@ -10,6 +10,8 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
+import { blockadeDays, blockadeEffective, BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
+import { routeSupplying, laneThroughput } from "../../core/systems/TradeRouteSystem.ts";
 
 export class CityInfoScene extends Phaser.Scene {
   private portKey!: string;
@@ -38,7 +40,10 @@ export class CityInfoScene extends Phaser.Scene {
 
     // Panel sizing
     const panelW = Math.min(380, cam.width - 40);
-    const panelH = Math.min(400, cam.height - 40);
+    // 400 was enough while the imports were one comma-separated line; naming a
+    // supplier per good (v0.22.0) pushed reputation and last-visit out of the
+    // frame.
+    const panelH = Math.min(470, cam.height - 40);
 
     this.add.rectangle(cx, cy, panelW + 4, panelH + 4, 0x1a1a2e).setDepth(1);
     const panel = this.add.rectangle(cx, cy, panelW, panelH, 0x0a0a1a, 0.95).setDepth(2);
@@ -113,6 +118,19 @@ export class CityInfoScene extends Phaser.Scene {
     addRow(t("cityinfo.defense") ?? "Obrona",
       `${defVal}/100${trendArrow(defVal, baseline.defense)}`, defColor);
 
+    // A cordon is the loudest thing about a town, so it goes with the numbers
+    // it is wrecking rather than down with the world events (v0.22.0).
+    const cordonDays = blockadeDays(this.worldState, this.portKey);
+    if (cordonDays > 0) {
+      addRow(
+        t("cityinfo.blockade") ?? "Blokada",
+        blockadeEffective(this.worldState, this.portKey)
+          ? t("blockade.status", { days: cordonDays })
+          : t("blockade.tightening_short", { days: cordonDays, onset: BLOCKADE_ONSET_DAYS }),
+        blockadeEffective(this.worldState, this.portKey) ? "#cc4444" : "#cc8844",
+      );
+    }
+
     // Fort info
     if (this.portDef.type === "fort") {
       addRow(t("cityinfo.type") ?? "Typ", t("cityinfo.fort") ?? "Fort obronny", "#cc8844");
@@ -144,13 +162,30 @@ export class CityInfoScene extends Phaser.Scene {
     }
 
     if (this.portDef.demands.length > 0) {
-      const items = this.portDef.demands.map(id => t("item." + id + ".name")).join(", ");
       this.add.text(left, y, t("cityinfo.imports") ?? "Import", {
         ...txt(13, { color: "#888888" }),
       }).setDepth(5);
       y += 20;
-      this.add.text(left + 10, y, items, { ...txt(12, { color: "#cc8888" }) }).setDepth(5);
-      y += 22;
+      // Where each good actually comes from (v0.22.0). A good with no lane is
+      // one nobody ships here — water out of a well, or an ocean import — and
+      // says so by having no source named, which is the honest answer.
+      for (const id of this.portDef.demands) {
+        if (this.portDef.produces.includes(id)) continue;
+        const lane = routeSupplying(this.portKey, id);
+        const name = t("item." + id + ".name");
+        const source = lane
+          ? t("trade.lane_from", { port: t("port." + lane.from + ".name") })
+          : "";
+        const thin = lane && laneThroughput(this.worldState, lane.id) < 1;
+        const line = source
+          ? `${name} — ${source}${thin ? ` (${t("trade.lane_disrupted")})` : ""}`
+          : name;
+        this.add.text(left + 10, y, line, {
+          ...txt(12, { color: thin ? "#cc8844" : "#cc8888" }),
+        }).setDepth(5);
+        y += 18;
+      }
+      y += 6;
     }
 
     y += 4;

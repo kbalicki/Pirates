@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { Transition } from "../../core/model/Events.ts";
 import { WorldEngine } from "../../core/engine/WorldEngine.ts";
@@ -19,6 +20,19 @@ import {
   clearExpeditionCourses,
   type ExpeditionCourseResult,
 } from "../render/ExpeditionCourseRenderer.ts";
+import {
+  drawTradeLanes,
+  lanesStale,
+  clearTradeLanes,
+  type TradeLaneResult,
+} from "../render/TradeLaneRenderer.ts";
+import {
+  harbourInReach,
+  blockadeDays,
+  blockadeEffective,
+  blockadeReadiness,
+  BLOCKADE_ONSET_DAYS,
+} from "../../core/systems/BlockadeSystem.ts";
 import { WaterRenderer } from "../render/WaterRenderer.ts";
 import { CartographicGrid } from "../render/CartographicGrid.ts";
 import { CirrusRenderer } from "../render/CirrusRenderer.ts";
@@ -41,10 +55,8 @@ import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import type { PortDef } from "../../core/data/ports.ts";
-import { LANDMASSES, setLandmasses } from "../../core/data/geography.ts";
-import type { LandmassDef, LandmassBbox } from "../../core/data/geography.ts";
+import { LANDMASSES } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass, chaikinSmooth } from "../../core/services/Geometry.ts";
-import { buildPortWaterCache } from "../../core/systems/PortWaterPositions.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -114,6 +126,9 @@ export class MainMapScene extends Phaser.Scene {
   private ownersDrawnDay = -1;
   /** The invasion courses pencilled on the chart, redrawn when they go stale. */
   private expeditionCourses: ExpeditionCourseResult | null = null;
+  private tradeLanes: TradeLaneResult | null = null;
+  /** Chart the shipping lanes? Toggled with T, remembered across sessions. */
+  private lanesVisible = localStorage.getItem("pc_lanes") !== "0";
   private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
 
   constructor() {
@@ -239,6 +254,19 @@ export class MainMapScene extends Phaser.Scene {
         this.toggleLandMode();
       });
 
+      this.input.keyboard.on("keydown-T", () => {
+        this.lanesVisible = !this.lanesVisible;
+        localStorage.setItem("pc_lanes", this.lanesVisible ? "1" : "0");
+        clearTradeLanes(this.tradeLanes);
+        this.tradeLanes = this.lanesVisible
+          ? drawTradeLanes(this, this.worldState, this.cameras.main.zoom)
+          : null;
+        this.worldRenderer.applyEvents(this, [{
+          type: "Toast",
+          message: t(this.lanesVisible ? "lanes.shown" : "lanes.hidden"),
+        }]);
+      });
+
       this.input.keyboard.on("keydown-X", () => {
         this.digForTreasure();
       });
@@ -348,41 +376,53 @@ export class MainMapScene extends Phaser.Scene {
     this.cityGraphics = portMarkers.cityGraphics;
     this.flagImages = portMarkers.flagImages;
     this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
+    if (this.lanesVisible) {
+      this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
 
+  /**
+   * Tell the player what his presence off this harbour is doing, if anything
+   * (v0.22.0). A blockade is pressed by *being there*, so the only way he can
+   * learn the rule is by being told while he is.
+   */
+  private updateBlockadeHud(): void {
+    const harbour = harbourInReach(this.worldState);
+    if (!harbour) {
+      this.uiOverlay?.updateBlockade("", false);
+      return;
+    }
+    const name = t("port." + harbour + ".name");
+    const days = blockadeDays(this.worldState, harbour);
+    const readiness = blockadeReadiness(this.worldState, harbour);
+    if (!readiness.ready) {
+      this.uiOverlay?.updateBlockade(
+        t("blockade.need_guns", { guns: readiness.guns, required: readiness.required }),
+        false,
+      );
+      return;
+    }
+    const effective = blockadeEffective(this.worldState, harbour);
+    this.uiOverlay?.updateBlockade(
+      effective
+        ? t("blockade.pressing", { port: name, days })
+        : t("blockade.tightening", { port: name, days, onset: BLOCKADE_ONSET_DAYS }),
+      effective,
+    );
+  }
+
   private initGeoData(): void {
-    if (!this.cache.json.exists("caribbean_geo")) {
+    const cities = loadLandmassesFromCache(this);
+    if (!cities) {
       console.warn("caribbean_geo.json not loaded — using fallback polygons");
       return;
     }
-
-    const raw = this.cache.json.get("caribbean_geo") as {
-      landmasses: Array<{
-        id: string;
-        polygon: number[][];
-        bbox: [number, number, number, number];
-      }>;
-      osmCities: Array<{ name: string; x: number; y: number }>;
-    };
-
-    const parsed: LandmassDef[] = raw.landmasses.map((lm) => ({
-      id: lm.id,
-      polygon: lm.polygon.map(([x, y]) => ({ x, y })),
-      bbox: {
-        minX: lm.bbox[0],
-        minY: lm.bbox[1],
-        maxX: lm.bbox[2],
-        maxY: lm.bbox[3],
-      } as LandmassBbox,
-    }));
-
-    setLandmasses(parsed);
-    buildPortWaterCache(); // Pre-compute water positions near ports for NPC navigation
-    this.osmCities = raw.osmCities ?? [];
-    console.log(`Loaded ${parsed.length} landmasses, ${this.osmCities.length} OSM cities`);
+    this.osmCities = cities;
+    console.log(`Loaded ${LANDMASSES.length} landmasses, ${this.osmCities.length} OSM cities`);
   }
+
 
   private createTilemap(): void {
     // All packs use OSM procedural rendering for now
@@ -821,6 +861,14 @@ export class MainMapScene extends Phaser.Scene {
       this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
     }
 
+    // A lane that has just been preyed upon, or one whose harbour has just been
+    // shut, changes colour — and every line's width is in screen pixels, so a
+    // zoom redraws them all.
+    if (this.lanesVisible && lanesStale(this.tradeLanes, this.worldState, this.cameras.main.zoom)) {
+      clearTradeLanes(this.tradeLanes);
+      this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
+
     if (result.transitions) {
       for (const t of result.transitions) {
         this.handleTransition(t);
@@ -918,6 +966,7 @@ export class MainMapScene extends Phaser.Scene {
     this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
     this.uiOverlay?.updateFleet(this.worldState.player.fleet?.length ?? 0);
+    this.updateBlockadeHud();
     // Check if sailing into wind (dead zone)
     const pe3 = this.worldState.entities[this.worldState.player.shipId as string];
     const psc = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;

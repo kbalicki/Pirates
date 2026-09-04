@@ -282,6 +282,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `&soldiers=N` | Wielkość wyprawy (domyślnie 200) — razem z `?intercept=` |
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 | `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
+| `?blockade=havana` | Fregata na stanowisku pod tym portem, kordon dzień przed zaciśnięciem |
 
 ## Deploy produkcyjny
 

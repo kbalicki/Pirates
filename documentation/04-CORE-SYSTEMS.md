@@ -39,6 +39,9 @@
 | ExpeditionFleet | `ExpeditionFleetSystem.ts` | Wyprawa jako eskadra na mapie, do przechwycenia |
 | DefenseContract | `DefenseContractSystem.ts` | Zlecenie obrony u gubernatora |
 | HomePort | `HomePortSystem.ts` | Port macierzysty po ślubie: klarowanie i magazyn |
+| TradeRoute | `TradeRouteSystem.ts` | Szlaki handlowe: kto kogo zaopatruje i jaką wodą |
+| Blockade | `BlockadeSystem.ts` | Blokada portu przez gracza |
+| Prize | `PrizeSystem.ts` | Ładownia i kiesa zdobytego statku |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -1544,3 +1547,136 @@ we wtorek pogarsza szturm na fort w środę i poprawia go do wiosny.
 Pole jest opcjonalne z fallbackiem na drill flagowego — czyli dokładnie tym, co
 konsorty miały wcześniej. Bez migracji. Stary dwuargumentowy `addToFleet(fleet,
 classId)` nadal znaczy to, co znaczył, i **nie** zapisuje pola.
+
+
+---
+
+## Szlaki handlowe (v0.22.0)
+
+`src/core/systems/TradeRouteSystem.ts` (czysty) + `src/core/services/Pathfinding.ts`.
+
+Do v0.21.0 handel między portami był **liczbą**: krok 3.5 `EconomyTickSystem`
+dosypywał koloniom to, czego nie produkują, znikąd i przez nikogo. To załatało
+głód z v0.20.0, ale zostawiło dziurę, którą sama dokumentacja przyznawała:
+**nie było czego przeciąć**. Wojna zabierała 30% każdemu portowi wojującej
+korony, niezależnie od tego, czy leży na cieśninie, czy w zatoce.
+
+### Skąd się bierze szlak
+
+Dla każdego portu i każdego towaru, którego **żąda i nie produkuje**:
+
+1. kandydaci = wszystkie porty produkujące ten towar,
+2. koszt = długość kursu **morzem** (`findSeaPath`), z rabatem
+   `SAME_CROWN_DISCOUNT = 0.7` dla portu tej samej korony,
+3. najtańszy wygrywa; powyżej `MAX_LANE_LENGTH = 1500` **szlaku nie ma** — to
+   już nie kabotaż, tylko import zza oceanu,
+4. szlaki do tego samego portu z tego samego portu **scalają się** w jeden bieg
+   z kilkoma towarami.
+
+Sieć jest czystą funkcją `CITIES` + linii brzegowej, memoizowaną na
+`landmassGeneration()`. Na aktualnej mapie: **81 szlaków**, mediana długości
+579, 28 z nich ma zakręty.
+
+**Dwa towary celowo nie mają szlaku i mieć nie będą:**
+
+| Przypadek | Dlaczego |
+|---|---|
+| `water` | nikt jej nie produkuje — jest ze studni, nie z ładowni |
+| najbliższy producent > 1500 | to pakiet z Sewilli, nie kabotaż |
+
+Oba dostają pełną dostawę. To **nie** jest fudge dla utrzymania liczb: to powód,
+dla którego blokada Port Royale głodzi go z jedzenia i rumu, a nie z pragnienia.
+
+### Przepustowość i zakłócenia
+
+`world.routeDisruption?: Record<routeId, {severity, until}>` — opcjonalne, więc
+bez migracji. Zdobyty kupiec dokłada `DISRUPTION_PER_PRIZE = 0.3` do sufitu
+`0.85`, ubytek schodzi `0.12/dzień` i wpis znika. `laneSupplyShare()` mnoży:
+
+```
+share = laneThroughput(szlak) × (dostawca zamknięty ? 0.3 : 1)
+```
+
+a `EconomyTickSystem` mnoży to jeszcze przez banderę (1.0 korona / 0.35 czarna),
+kordon blokady (0.15) i `effects.importMul` (wojna 0.7).
+
+### Pathfinding
+
+`Pathfinding.ts` był pustym hakiem od pierwszego commita. Teraz to A\* po siatce
+`SEA_CELL = 40` (80×60 komórek), z karą `COAST_PENALTY = 1.6` w promieniu dwóch
+komórek od brzegu (bez niej kurs przykleja się do każdej plaży), sznurkowaniem
+wyniku do kilku narożników i binarnym kopcem na kolejkę.
+
+**Pułapka:** przy pustym `LANDMASSES` — czyli **zawsze w vitest** — każde
+zapytanie to otwarta woda, a każdy kurs prostą. Test „jest kurs" nie mówi więc
+nic o geografii. Kurs wokół Kuby weryfikuje się na `getFallbackLandmasses()`.
+
+NPC-kupiec dostaje `ai.lane = { routeId, wp }` i płynie **od narożnika do
+narożnika** zamiast celować w port i odbijać się od półwyspu. W zapisie leży
+tylko id szlaku — kurs jest pochodną mapy.
+
+Klawisz **T** rysuje szlaki na mapie (`TradeLaneRenderer`, `pc_lanes`, domyślnie
+włączone). Szlak zakłócony albo wychodzący z zamkniętego portu jest cieplejszy
+i grubszy.
+
+---
+
+## Blokada portu (v0.22.0)
+
+`src/core/systems/BlockadeSystem.ts` (czysty), tick w `WorldEngine` **przed**
+`economyDailyTick`.
+
+`portClosed` istniał od v0.9.7, `importMul` od v0.21.0 — i nic w rękach gracza
+nie umiało odpalić żadnego z nich. Blokada to ten czasownik i celowo **nie jest
+poleceniem z menu**: blokuje się przez *bycie tam*, dzień po dniu.
+
+| Stała | Wartość | Znaczenie |
+|---|---|---|
+| `BLOCKADE_RADIUS` | 320 | jak blisko trzeba leżeć |
+| `BLOCKADE_ONSET_DAYS` | 2 | po ilu dniach kordon gryzie |
+| `BLOCKADE_SUPPLY_SHARE` | 0.15 | ile ze szlaków wciąż się przeciska |
+| `BASE_GUNS_REQUIRED` | 4 (+1 na 10 obrony) | próg dział |
+| drain obrony | −1/dzień | garnizon bez żołdu topnieje |
+| reputacja / notoriety | −2 / +1 na dzień | korona pamięta |
+
+`PortRuntimeState.blockadeDays?` liczy w górę na stanowisku i **w dół** po
+odpłynięciu — kordon się rozluźnia, a nie pęka, więc wypad po wodę nie kasuje
+dwóch tygodni pracy. Komunikaty wiszą na progu *gryzienia*, nie na zerze:
+„blokada zdjęta" pada, gdy przestaje działać, a nie tydzień później.
+
+Pod blokadą `EconomyTickSystem` ustawia `rmul = 0` — miasto **nic** nie
+odbudowuje. To druga połowa mechaniki: zagłodzone miasto jest miastem do wzięcia,
+czyli powolna połowa oblężenia z v0.13.0.
+
+Kontra: `NpcSpawnSystem` mnoży wagę zablokowanego portu przez
+`BLOCKADE_SPAWN_WEIGHT = 3` i traktuje jego koronę jak wojującą (spawn okrętów
+wojennych zamiast kupców).
+
+Zmierzone w grze (30 dni pod Hawaną, fregata + fregata): obrona 60 → 30, zapas
+jedzenia 15 → 0, reputacja Hiszpanii 0 → −60, notoriety 0 → 30.
+
+---
+
+## Ładownia pryzu (v0.22.0)
+
+`src/core/systems/PrizeSystem.ts` (czysty), wywoływany z `SeaBattleScene`.
+
+Pobicie statku dawało losowe 50-150 złota — obojętnie, czy to galeon flot
+srebrnych, czy pinasa rybacka — a jego ładownia zawsze była pusta, mimo że pole
+`ShipData.cargo` istniało od zawsze.
+
+| Wynik | `salvageShare` |
+|---|---|
+| `win` (zatonął) | 0.5 |
+| `surrender` (opuścił banderę) | 0.85 |
+| `captured` (przejęty) | 1.0 |
+
+Towary przechodzą **od najdroższego**, do wyczerpania wolnego miejsca liczonego
+w sztukach (tak jak w `Validation`); reszta jest wypisana graczowi jako
+zostawiona w wodzie. Kiesa to `tonnage × 0.55 × salvageShare`, clamp 40-900 —
+duży pryz płaci jak duży pryz nawet z pustą ładownią, i nic tu nie losuje.
+
+Kupcy ładują się ze szlaku, który płyną (`NpcSpawnSystem.loadHold`, 55-90%
+ładowni), więc merchantman na biegu z Hawany wiezie cukier i rum. Zdobycie
+kupca dokłada zakłócenie **jego szlakowi** — miasto na drugim końcu czuje to w
+ciągu tygodnia.

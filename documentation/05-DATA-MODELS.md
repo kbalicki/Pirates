@@ -259,6 +259,28 @@ Nowy typ wydarzenia świata:
 wymienia wszystkie porty korony (żeby news dojechał do tawern), a jakikolwiek
 efekt na port rozlałby się wtedy na całe imperium.
 
+### Blokada i szlaki (v0.22.0, bez migracji)
+
+```typescript
+// PortRuntimeState
+/** Dni, ile eskadra gracza stoi pod tym portem. Gryzie od BLOCKADE_ONSET_DAYS. */
+blockadeDays?: number;
+
+// WorldState
+/** Ile oberwał każdy szlak, kluczowane TradeRoute.id (pochodne mapy, nie zapisu). */
+routeDisruption?: Record<string, { severity: number; until: number }>;
+
+// AiData
+/** Szlak, którym płynie ten kupiec, i który narożnik kursu ma przed dziobem. */
+lane?: { routeId: string; wp: number };
+```
+
+Wszystkie trzy są **opcjonalne i czytane przez funkcje z fallbackiem**
+(`blockadeDays()`, `disruptions()`), więc migracja jest zbędna — stary zapis
+znaczy „port otwarty, morze spokojne", co jest prawdą o nim. `TradeRoute.id`
+nigdy nie trafia do zapisu jako klucz trwały: gdy sieć szlaków się zmieni,
+nieaktualne wpisy po prostu wygasną z ledgera.
+
 ## RNG Service (`src/core/services/RNG.ts`)
 
 ```typescript

@@ -18,6 +18,8 @@ import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
+import { routesFrom, type TradeRoute } from "./TradeRouteSystem.ts";
+import { blockadeEffective } from "./BlockadeSystem.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
 // ---- Configuration ----
@@ -25,6 +27,7 @@ const MAX_NPC_SHIPS = 30;
 const SPAWN_INTERVAL_TICKS = 60;    // check spawn every 3s
 const DESPAWN_DISTANCE = 900;        // remove NPCs this far from player
 const DOCK_RADIUS = 55;              // when NPC is this close to port water pos, it "docks" (disappears)
+const BLOCKADE_SPAWN_WEIGHT = 3;     // how much busier a blockaded harbour is
 
 /** Population → max concurrent ships that can depart from this port */
 const POP_SHIP_WEIGHT: Record<string, number> = {
@@ -133,6 +136,57 @@ function pickDestinationPort(
 }
 
 /**
+ * A trader leaving this port sails a lane, not a whim (v0.22.0).
+ *
+ * `TradeRouteSystem` already knows which town supplies which, so a merchantman
+ * out of Havana is bound somewhere Havana actually supplies. When no lane
+ * leaves this port — a place that grows nothing anybody else needs — she falls
+ * back to the old weighted guess, which is the right answer for a ship in
+ * ballast.
+ */
+function pickLane(
+  originKey: string,
+  rng: { seed: number; state: number },
+): { lane: TradeRoute | null; rng: typeof rng } {
+  const lanes = routesFrom(originKey);
+  if (lanes.length === 0) return { lane: null, rng };
+  let idx: number;
+  ({ value: idx, state: rng } = rngNextInt(rng, 0, lanes.length - 1));
+  return { lane: lanes[idx], rng };
+}
+
+/** Share of a trader's hold that is full when she sails a lane. */
+const LANE_LOAD_MIN = 0.55;
+const LANE_LOAD_MAX = 0.9;
+
+/**
+ * Load a hold from the lane she is sailing.
+ *
+ * Split evenly across the goods the run carries, in whole units, so the prize
+ * the player takes reads as a cargo — "sugar and rum out of Havana" — rather
+ * than as a number.
+ */
+function loadHold(
+  lane: TradeRoute,
+  cargoCap: number,
+  rng: { seed: number; state: number },
+): { cargo: Record<string, number>; rng: typeof rng } {
+  let fill: number;
+  ({ value: fill, state: rng } = rngNextFloat(rng, LANE_LOAD_MIN, LANE_LOAD_MAX));
+  const total = Math.floor(cargoCap * fill);
+  const cargo: Record<string, number> = {};
+  if (total <= 0 || lane.items.length === 0) return { cargo, rng };
+  const each = Math.floor(total / lane.items.length);
+  let left = total;
+  for (const item of lane.items) {
+    const qty = Math.min(each, left);
+    if (qty > 0) { cargo[item] = qty; left -= qty; }
+  }
+  if (left > 0) cargo[lane.items[0]] = (cargo[lane.items[0]] ?? 0) + left;
+  return { cargo, rng };
+}
+
+/**
  * Determine NPC behavior based on faction. European factions produce traders + navy.
  * Pirates faction produces pirates. 10% chance of pirate_hunter from European factions.
  *
@@ -226,10 +280,14 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     for (let s = 0; s < spawnsToAttempt; s++) {
       // Weight port selection by population × war multiplier (bigger city + at war = more ships)
       const portEntries = Object.entries(PORTS);
-      const weights = portEntries.map(([, p]) => {
+      const weights = portEntries.map(([key, p]) => {
         const pop = POP_SHIP_WEIGHT[p.population] ?? 1;
         const war = warMul[p.factionId as string] ?? 1;
-        return pop * war;
+        // A blockaded harbour is the busiest water in the Caribbean: the crown
+        // is fitting out to break the cordon and everybody else is trying to
+        // slip through it (v0.22.0).
+        const cordon = blockadeEffective(world, key) ? BLOCKADE_SPAWN_WEIGHT : 1;
+        return pop * war * cordon;
       });
       const totalWeight = weights.reduce((a, b) => a + b, 0);
 
@@ -244,7 +302,9 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
 
       const [portKey, port] = portEntries[chosenIdx];
       const factionKey = port.factionId as string;
-      const factionAtWar = (warMul[factionKey] ?? 1) > 1;
+      // A cordon puts a crown on a war footing at that harbour whether or not
+      // it is at war with anybody: the ships that come out are men-of-war.
+      const factionAtWar = (warMul[factionKey] ?? 1) > 1 || blockadeEffective(world, portKey);
 
       // Find valid water spawn position near this port
       const spawnPoint = findWaterNearPort(port, rng);
@@ -265,7 +325,13 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
 
       // Pick destination port
       let destPortKey: string;
-      if (behavior === "pirate" || behavior === ("pirate_hunter" as string)) {
+      let lane: TradeRoute | null = null;
+      if (behavior === "trader") {
+        ({ lane, rng } = pickLane(portKey, rng));
+      }
+      if (lane) {
+        destPortKey = lane.to;
+      } else if (behavior === "pirate" || behavior === ("pirate_hunter" as string)) {
         // Pirates/hunters: pick a wealthy port's vicinity as patrol target
         const wealthyPorts = Object.entries(PORTS)
           .filter(([k, p]) => k !== portKey && (p.wealth === "prosperous" || p.wealth === "wealthy" || p.population === "capital"));
@@ -294,6 +360,13 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
       let aggression: number;
       ({ value: aggression, state: rng } = rngNextFloat(rng, template.aggression[0], template.aggression[1]));
 
+      // What she is carrying, if she is carrying anything (v0.22.0). Only
+      // traders on a lane load a hold; a patrol sails in ballast.
+      let laneCargo: Record<string, number> = {};
+      if (lane) {
+        ({ cargo: laneCargo, rng } = loadHold(lane, shipClass.cargoCap, rng));
+      }
+
       const npcId = entityId(`npc_${tick}_${s}_${classId}`);
       const npcEntity: EntityState = {
         id: npcId,
@@ -312,7 +385,7 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
           sailsHp: shipClass.sailsMax,
           sailsMax: shipClass.sailsMax,
           cannons: shipClass.cannons,
-          cargo: {},
+          cargo: laneCargo,
           cargoCap: shipClass.cargoCap,
           crew: {
             current: Math.round(shipClass.crewMax * 0.7),
@@ -327,6 +400,7 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
           aggression,
           awarenessRadius: template.awarenessRadius,
           news: getPortNews(world, portKey).slice(0, 5),
+          lane: lane ? { routeId: lane.id, wp: 1 } : undefined,
           lastPortVisited: portKey,
         },
       };

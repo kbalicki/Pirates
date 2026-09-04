@@ -19,6 +19,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private sailText!: Phaser.GameObjects.Text;
   private speedText!: Phaser.GameObjects.Text;
   private fleetText!: Phaser.GameObjects.Text;
+  private blockadeText!: Phaser.GameObjects.Text;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -98,6 +99,16 @@ export class UIOverlayScene extends Phaser.Scene {
     this.fleetText.setOrigin(1, 0);
     this.fleetText.setDepth(30);
 
+    // Blockade — under the fleet line. Silent unless the player is actually
+    // standing off a harbour, which is the only time it has anything to say.
+    this.blockadeText = this.add.text(cam.width - MARGIN, sailY + 54, "", {
+      ...txt(11, { color: "#cc8844" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.blockadeText.setOrigin(1, 0);
+    this.blockadeText.setDepth(30);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -117,6 +128,7 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY);
     if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
     if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 36);
+    if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + 54);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -162,6 +174,20 @@ export class UIOverlayScene extends Phaser.Scene {
         this.fleetText.setText("");
       }
     }
+  }
+
+  /**
+   * Called from MainMapScene with the state of any cordon the player is
+   * pressing (v0.22.0).
+   *
+   * Three things can be true and each needs saying: he is near a harbour but
+   * has not the guns to shut it, the cordon is tightening but has not bitten
+   * yet, or the port is shut. Anything else and the line is blank.
+   */
+  updateBlockade(line: string, effective: boolean): void {
+    if (!this.blockadeText) return;
+    this.blockadeText.setText(line);
+    this.blockadeText.setColor(effective ? "#dd5544" : "#cc8844");
   }
 
   /** Called from MainMapScene each frame with current zoom level */

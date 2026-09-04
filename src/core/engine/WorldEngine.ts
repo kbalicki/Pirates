@@ -16,6 +16,8 @@ import { tickReconquest, DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../systems
 import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
 import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
+import { tickBlockades } from "../systems/BlockadeSystem.ts";
+import { tickRouteDisruption } from "../systems/TradeRouteSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
 import { applyOverdueMorale } from "../systems/PlunderSystem.ts";
@@ -126,6 +128,12 @@ export class WorldEngine {
       allEvents.push(...campaigns.events);
       // Generate/expire world events once per day
       world = updateWorldEvents(world);
+      // The cordon is settled before the economy runs, so the day a blockade
+      // closes is the first day the town goes short — and the shippers' nerve
+      // comes back on the same clock it was lost on.
+      const cordon = tickBlockades(world);
+      world = tickRouteDisruption(cordon.world);
+      allEvents.push(...cordon.events);
       // Daily economy simulation (production, consumption, price update, recovery)
       world = economyDailyTick(world);
       // An unpaid crew grumbles. Morale already drives reload speed, boarding

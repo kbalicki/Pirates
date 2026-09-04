@@ -55,6 +55,20 @@ export type AiData = {
     /** Guns this hull adds to the landing's covering fire. */
     guns: number;
   };
+  /**
+   * The shipping lane this trader is sailing, and how far along it she is
+   * (v0.22.0).
+   *
+   * Before this, every NPC steered straight at its destination and bounced off
+   * whatever headland was in the way. A trader on a lane follows the course
+   * `Pathfinding` worked out for it, corner by corner, which is why traffic now
+   * goes *round* Cuba instead of into it.
+   *
+   * Only the route id is kept, never the course itself: the course is derived
+   * from the map and would be dead weight in every save. Optional, so a patrol
+   * — which still steers reactively — carries nothing.
+   */
+  lane?: { routeId: string; wp: number };
   /** Last port visited — determines when NPC gets fresh news. */
   lastPortVisited?: string;
 };

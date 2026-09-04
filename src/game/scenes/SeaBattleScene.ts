@@ -28,6 +28,8 @@ import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
 import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
+import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
+import { ITEMS } from "../../core/data/items.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import {
@@ -1156,39 +1158,47 @@ export class SeaBattleScene extends Phaser.Scene {
     text.setOrigin(0.5);
     text.setDepth(10000);
 
-    // Loot summary on win / surrender
-    if (outcome === "win") {
-      const loot = 50 + Math.floor(Math.random() * 100); // 50-150 gold sunk
+    // What she was carrying (v0.22.0). The purse is her tonnage broken up; the
+    // cargo is whatever the lane she was sailing had her load, as much of it as
+    // there is room for in the hold. A hold that will not take it is shown as
+    // such — leaving a fortune in the water is a decision, not a bug.
+    let resultLine = this.cameras.main.height / 2 + 30;
+    if (outcome === "win" || outcome === "surrender" || outcome === "captured") {
+      const prize = computePrize(
+        this.worldState.entities[this.combatState.enemyShipId as string]?.ship,
+        this.worldState.entities[this.worldState.player.shipId as string]?.ship,
+        outcome,
+      );
+      const note = outcome === "captured" ? ` + ${t("battle.capture_note")}` : "";
       this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2 + 30,
-        `+ ${loot} ${t("hud.gold")}`,
+        this.cameras.main.width / 2, resultLine,
+        `+ ${prize.gold} ${t("hud.gold")}${note}`,
         { ...txt(16, { color: "#ffee88" }) },
       ).setOrigin(0.5).setDepth(10000);
-      this.pendingLoot = loot;
-    } else if (outcome === "surrender") {
-      const loot = 80 + Math.floor(Math.random() * 120);
-      this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2 + 30,
-        `+ ${loot} ${t("hud.gold")}`,
-        { ...txt(16, { color: "#ffee88" }) },
-      ).setOrigin(0.5).setDepth(10000);
-      this.pendingLoot = loot;
-    } else if (outcome === "captured") {
-      const loot = 150 + Math.floor(Math.random() * 150); // capture = best payout
-      this.add.text(
-        this.cameras.main.width / 2,
-        this.cameras.main.height / 2 + 30,
-        `+ ${loot} ${t("hud.gold")} + ${t("battle.capture_note")}`,
-        { ...txt(14, { color: "#ffee88" }) },
-      ).setOrigin(0.5).setDepth(10000);
-      this.pendingLoot = loot;
+      resultLine += 24;
+
+      const taken = this.describeCargo(prize.taken);
+      if (taken) {
+        this.add.text(
+          this.cameras.main.width / 2, resultLine, taken,
+          { ...txt(14, { color: "#cceeaa" }) },
+        ).setOrigin(0.5).setDepth(10000);
+        resultLine += 22;
+      }
+      const spilled = this.describeCargo(prize.spilled);
+      if (spilled) {
+        this.add.text(
+          this.cameras.main.width / 2, resultLine,
+          t("battle.hold_full", { cargo: spilled }),
+          { ...txt(13, { color: "#cc8866" }) },
+        ).setOrigin(0.5).setDepth(10000);
+        resultLine += 22;
+      }
     }
 
     const continueText = this.add.text(
       this.cameras.main.width / 2,
-      this.cameras.main.height / 2 + 60,
+      resultLine + 14,
       t("battle.continue"),
       txt(14, { color: "#aaaaaa" }),
     );
@@ -1209,7 +1219,13 @@ export class SeaBattleScene extends Phaser.Scene {
     }
   }
 
-  private pendingLoot = 0;
+  /** "sugar 30, rum 24" — empty string for nothing at all. */
+  private describeCargo(cargo: Record<string, number>): string {
+    const parts = Object.entries(cargo)
+      .filter(([, qty]) => qty > 0)
+      .map(([item, qty]) => `${ITEMS[item]?.name ?? item} ${qty}`);
+    return parts.join(", ");
+  }
 
   /**
    * Take the final combat state and push relevant changes back to the world:
@@ -1285,14 +1301,14 @@ export class SeaBattleScene extends Phaser.Scene {
     }
 
     if (outcome === "win" || outcome === "surrender") {
-      // Remove enemy entity and grant loot
+      // Her hold and her purse first — `applyPrize` reads the enemy off the
+      // world, so it has to run before she is removed from it. It also tells
+      // the shippers' ledger that this lane just lost a hull.
+      const prize = applyPrize(w, enemyWorldEntity, outcome);
+      w = prize.world;
       const { [enemyId]: _, ...remaining } = w.entities;
-      w = {
-        ...w,
-        entities: remaining,
-        player: { ...w.player, gold: w.player.gold + this.pendingLoot },
-      };
-      w = addLogEntry(w, "battle.log_won", { gold: this.pendingLoot });
+      w = { ...w, entities: remaining };
+      w = addLogEntry(w, "battle.log_won", { gold: prize.prize.gold });
       // A sunk ship leaves men in the water. Boats are scarce right after a
       // fight, so only a fraction come aboard — and only as far as berths go.
       const enemyCombat = this.combatState.entities[enemyId];
@@ -1301,8 +1317,10 @@ export class SeaBattleScene extends Phaser.Scene {
       }
     } else if (outcome === "captured") {
       // Loot + add ship to fleet if slot available
+      const prize = applyPrize(w, enemyWorldEntity, outcome);
+      w = prize.world;
       const { [enemyId]: _captured, ...remaining } = w.entities;
-      let player = { ...w.player, gold: w.player.gold + this.pendingLoot };
+      let player = w.player;
       if (enemyWorldEntity?.ship && canAddToFleet(player)) {
         const newFleet = addToFleet(
           player.fleet ?? [],
@@ -1311,12 +1329,12 @@ export class SeaBattleScene extends Phaser.Scene {
         );
         if (newFleet) {
           player = { ...player, fleet: newFleet };
-          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_captured", { gold: this.pendingLoot });
+          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_captured", { gold: prize.prize.gold });
         } else {
-          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: this.pendingLoot });
+          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: prize.prize.gold });
         }
       } else {
-        w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: this.pendingLoot });
+        w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: prize.prize.gold });
       }
     } else if (outcome === "lose") {
       // The hold goes down with the ship (v0.9.9). A crew that still has hands

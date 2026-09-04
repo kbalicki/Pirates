@@ -15,11 +15,13 @@ import { vec2Dist, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
+import { tradeRoutes } from "./TradeRouteSystem.ts";
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
 const PIRATE_CHASE_RADIUS = 200;
 const HUNTER_CHASE_RADIUS = 250;
 const LOITER_TURN_CHANCE = 0.05;     // chance per AI tick to adjust heading when loitering
+const WAYPOINT_RADIUS = 70;          // how close counts as "rounded that corner"
 
 /**
  * Update AI decisions for all NPC ships.
@@ -113,6 +115,22 @@ function updatePortToPort(
       entity: { ...entity, ai: { ...ai, targetPortId: undefined } },
       rng,
     };
+  }
+
+  // A trader on a lane steers for the next corner of her course rather than
+  // straight at the harbour — that is the whole point of having a course
+  // (v0.22.0). Everything else still steers at the destination and bounces off
+  // whatever land is in the way, which is fine for a patrol with no schedule.
+  if (ai.lane) {
+    const route = tradeRoutes().find(r => r.id === ai.lane!.routeId);
+    if (route) {
+      let wp = ai.lane.wp;
+      while (wp < route.path.length - 1 && vec2Dist(entity.pos, route.path[wp]) < WAYPOINT_RADIUS) wp++;
+      const mark = route.path[Math.min(wp, route.path.length - 1)];
+      const heading = headingToward(entity.pos, mark);
+      const lane = wp === ai.lane.wp ? ai.lane : { ...ai.lane, wp };
+      return { entity: { ...entity, heading, ai: { ...ai, lane } }, rng };
+    }
   }
 
   // Navigate toward water position near target port (not the land position!)

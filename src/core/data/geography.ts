@@ -38,6 +38,23 @@ export const LANDMASSES: LandmassDef[] = [];
 export function setLandmasses(data: LandmassDef[]): void {
   LANDMASSES.length = 0;
   LANDMASSES.push(...data);
+  generation++;
+}
+
+/**
+ * Bumped every time `setLandmasses` runs.
+ *
+ * Anything that precomputes over the coastline — the sea grid in
+ * `Pathfinding.ts`, the trade lanes derived from it — caches its work and has
+ * to know when the map underneath it changed. Counting the swaps is cheaper
+ * and more honest than comparing polygon arrays, and it catches the one case
+ * that actually happens: an empty `LANDMASSES` (tests, boot) being filled in
+ * once the GeoJSON arrives.
+ */
+let generation = 0;
+
+export function landmassGeneration(): number {
+  return generation;
 }
 
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));

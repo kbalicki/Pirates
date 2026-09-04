@@ -28,6 +28,8 @@ import {
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
 import { heldDefenseCeiling, heldPopulationCeiling, playerHolds } from "./ReconquestSystem.ts";
+import { laneSupplyShare } from "./TradeRouteSystem.ts";
+import { blockadeEffective, portShutIn, BLOCKADE_SUPPLY_SHARE } from "./BlockadeSystem.ts";
 
 /**
  * Share of a town's daily need that the trade it does not control brings in.
@@ -110,12 +112,20 @@ export function economyDailyTick(world: WorldState): WorldState {
       // Only for goods it demands and does not make itself; a producer supplies
       // its own. Inside the `tradingPaused` guard on purpose: a blockaded or
       // closed port is exactly one that is not being supplied.
-      const importShare = playerHolds(w, portKey) ? IMPORT_SHARE_BLACK_FLAG : IMPORT_SHARE_CROWN;
+      // Since v0.22.0 the share is no longer flat. Three things multiply:
+      // whose flag flies here, whether the lane that carries this particular
+      // good is still sailing (`laneSupplyShare` — a good with no producer
+      // anywhere, such as water, has no lane and cannot be cut), and whether
+      // somebody is standing off the harbour with the guns run out.
+      const flagShare = playerHolds(w, portKey) ? IMPORT_SHARE_BLACK_FLAG : IMPORT_SHARE_CROWN;
+      const cordon = blockadeEffective(w, portKey) ? BLOCKADE_SUPPLY_SHARE : 1;
       for (const item of def.demands) {
         if (allProduces.includes(item)) continue;
         const need = baselineConsumptionRate(portKey, item, port.population);
         const cap = inventoryCap(portKey, item);
-        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + need * importShare * effects.importMul);
+        const lane = laneSupplyShare(w, portKey, item, p => portShutIn(w, p));
+        const arriving = need * flagShare * lane * cordon * effects.importMul;
+        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + arriving);
       }
 
       // 4. Consumption
@@ -156,7 +166,10 @@ export function economyDailyTick(world: WorldState): WorldState {
     // flag keeps fewer people. Wealth is pulled toward the plain baseline and
     // is held down instead by what it cannot import, which is a mechanism
     // rather than a second modifier on the same quantity.
-    const rmul = effects.recoveryMul;
+    // A blockaded town rebuilds nothing: the crown's money is not getting in
+    // either. This is the half of the cordon that makes it worth keeping —
+    // `tickBlockades` thins the garrison, and this stops it growing back.
+    const rmul = blockadeEffective(w, portKey) ? 0 : effects.recoveryMul;
     const baseline = getPortBaseline(portKey);
     wealth     += (baseline.wealth - wealth) * RECOVERY_WEALTH * rmul;
     population += (heldPopulationCeiling(w, portKey) - population) * RECOVERY_POPULATION * rmul;
