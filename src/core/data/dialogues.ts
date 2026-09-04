@@ -53,6 +53,33 @@ export type GovernorTreeContext = {
     days: number;
     reward: number;
   };
+  /**
+   * What the governor would buy out of the hold, when his town is short and the
+   * captain happens to be carrying the answer (v0.27.0).
+   *
+   * Absent means the reply is not on the screen at all. A governor with full
+   * granaries has nothing to ask, and a captain in ballast has nothing to sell;
+   * an option that greyed out would only advertise a mechanic he cannot reach.
+   */
+  grainOffer?: {
+    itemName: string;
+    qty: number;
+    gold: number;
+    reputation: number;
+  };
+  /**
+   * The sale that has just gone through, for the reply that confirms it.
+   *
+   * Separate from `grainOffer` because the offer is recomputed the instant the
+   * cargo lands, and by then it describes the *next* shelf that needs filling —
+   * so a confirmation built from it told the captain he had landed something he
+   * had not. Caught by looking at the screen, not by a test.
+   */
+  grainSold?: {
+    itemName: string;
+    qty: number;
+    gold: number;
+  };
 };
 
 /** Effect id the caller must handle: hands over the letter of marque. */
@@ -79,6 +106,15 @@ export const EFFECT_VISIT_DAUGHTER = "visit_daughter";
  * changes on purpose. The port scene knows which offer was on the table.
  */
 export const EFFECT_ACCEPT_DEFENSE = "accept_defense_contract";
+/**
+ * Effect id the caller must handle: the hold is emptied into the town granary.
+ *
+ * Unlike every other custom effect in this tree, what it starts is over
+ * immediately — gold, standing and the goods all move at once, because nothing
+ * about a spot sale is a promise. It is a custom effect all the same, since
+ * `DialogueEffect` cannot move cargo and the port scene is what holds the offer.
+ */
+export const EFFECT_SELL_GRAIN = "sell_grain_to_granary";
 
 export function governorTree(ctx: GovernorTreeContext): DialogueTree {
   const letterFlag = `letter_of_marque_${ctx.factionKey}`;
@@ -144,6 +180,19 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
             when: ctx.defenseOffer ? undefined : { type: "flag", key: "__never__" },
             next: "defense_offer",
           },
+          {
+            id: "ask_grain",
+            textKey: "governor.opt_sell_grain",
+            vars: {
+              item: ctx.grainOffer?.itemName ?? "",
+              qty: ctx.grainOffer?.qty ?? 0,
+            },
+            // Built by the caller or not at all, like the defence commission:
+            // whether the town is short and whether the hold has the answer are
+            // both questions the port scene can answer and a condition cannot.
+            when: ctx.grainOffer ? undefined : { type: "flag", key: "__never__" },
+            next: "grain_offer",
+          },
           { id: "ask_rumor", textKey: "governor.opt_ask_news", next: "rumor" },
           {
             id: "ask_retire",
@@ -204,6 +253,37 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
           },
           { id: "retire_decline", textKey: "governor.opt_retire_decline", next: "greeting" },
         ],
+      },
+
+      grain_offer: {
+        id: "grain_offer",
+        textKey: "governor.grain_offer",
+        vars: {
+          item: ctx.grainOffer?.itemName ?? "",
+          qty: ctx.grainOffer?.qty ?? 0,
+          gold: ctx.grainOffer?.gold ?? 0,
+          rep: ctx.grainOffer?.reputation ?? 0,
+        },
+        options: [
+          {
+            id: "grain_accept",
+            textKey: "governor.opt_grain_accept",
+            effects: [{ type: "custom", id: EFFECT_SELL_GRAIN }],
+            next: "grain_landed",
+          },
+          { id: "grain_decline", textKey: "governor.opt_decline", next: "greeting" },
+        ],
+      },
+
+      grain_landed: {
+        id: "grain_landed",
+        textKey: "governor.grain_landed",
+        vars: {
+          item: ctx.grainSold?.itemName ?? ctx.grainOffer?.itemName ?? "",
+          qty: ctx.grainSold?.qty ?? ctx.grainOffer?.qty ?? 0,
+          gold: ctx.grainSold?.gold ?? ctx.grainOffer?.gold ?? 0,
+        },
+        options: [{ id: "back", textKey: "governor.opt_back", next: "greeting" }],
       },
 
       defense_offer: {

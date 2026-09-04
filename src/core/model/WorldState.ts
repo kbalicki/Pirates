@@ -187,6 +187,21 @@ export type PortRuntimeState = {
   tradeBalance?: number;
   /** Yesterday's total through `tradeBalance`, kept so the port screen can show it. */
   tradeIncome?: number;
+  // ── What the town went without (v0.27.0) ──────────────────
+  /**
+   * Share of yesterday's needs the town could not meet, 0..1.
+   *
+   * **Recorded at the event, never derived afterwards.** The daily tick already
+   * works out `met` per demanded good when it drains the warehouse, and that is
+   * the only moment the answer is true: an hour later the prices have moved, a
+   * convoy has landed, and a figure recomputed from today's shelves would be
+   * telling a different day's story. Deriving it would be the same mistake
+   * `capturedDay` exists to avoid.
+   *
+   * Optional and read through `townHunger()`, so a save from before this
+   * release says "nobody went hungry", which is what it knows.
+   */
+  hunger?: number;
 };
 
 export type GameEventEntry = {

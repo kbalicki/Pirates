@@ -1,5 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { recruitCrew } from "../PortInteractionSystem.ts";
+import {
+  recruitCrew,
+  generateAvailableCrew,
+  grainOffer,
+  sellGrain,
+  GRANARY_REPUTATION,
+} from "../PortInteractionSystem.ts";
+import { baselineConsumptionRate } from "../../data/economyBaselines.ts";
+import { ITEMS } from "../../data/items.ts";
+import { initPortPrices } from "../../data/prices.ts";
+import { spotPrice } from "../PricingSystem.ts";
 import { consortCrew, FLEET_CREW_FRACTION } from "../FleetSystem.ts";
 import type { WorldState, PortRuntimeState, FleetShip } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
@@ -185,5 +195,152 @@ describe("recruitCrew — berths across the fleet, not just the flagship", () =>
     recruitCrew(w, portId(PORT), 20);
     expect(w.entities.player_ship.ship!.crew.current).toBe(10);
     expect(w.player.fleet[0].crew).toBe(1);
+  });
+});
+
+
+// ===========================================================================
+// A hungry town: men for bread, and the public granary (v0.27.0)
+// ===========================================================================
+
+/**
+ * Hunger stopped being only a number on the port record in v0.27.0. It does two
+ * things a captain can act on, and they point in opposite directions: it fills
+ * the tavern with men who will take a berth and a meal, and it puts a governor
+ * in front of him who will pay gold *and standing* for whatever is in the hold.
+ *
+ * The second is the interesting one to test, because the obvious way to write
+ * it is farmable — a governor who buys the same forty tons every afternoon.
+ */
+
+const HUNGRY = 0.6;
+
+/** The town's own runtime record, short of everything and stocked with prices. */
+function hungryWorld(hunger: number, cargo: Record<string, number> = {}): WorldState {
+  const base = makeWorld();
+  const ship = base.entities.player_ship.ship!;
+  return {
+    ...base,
+    ports: {
+      ...base.ports,
+      [PORT]: { ...base.ports[PORT], hunger, prices: initPortPrices(PORT), inventory: {} },
+    },
+    entities: {
+      ...base.entities,
+      player_ship: { ...base.entities.player_ship, ship: { ...ship, cargo } },
+    },
+  } as WorldState;
+}
+
+describe("the tavern in a hungry town", () => {
+  it("puts more men on the bench than the same town fed", () => {
+    const fed = generateAvailableCrew(hungryWorld(0), portId(PORT)).ports[PORT].availableCrew;
+    const starving = generateAvailableCrew(hungryWorld(1), portId(PORT)).ports[PORT].availableCrew;
+    expect(starving).toBeGreaterThan(fed);
+  });
+
+  it("rolls the same dice either way", () => {
+    // The v0.24.0 rule, restated: what the town has eaten scales the result,
+    // never the roll. A shortage must not silently reshuffle every other random
+    // thing in the game.
+    const fed = generateAvailableCrew(hungryWorld(0), portId(PORT)).rng;
+    const starving = generateAvailableCrew(hungryWorld(1), portId(PORT)).rng;
+    expect(starving).toEqual(fed);
+  });
+});
+
+describe("the public granary", () => {
+  const ITEM = CITIES[PORT].demands[0];
+
+  it("has nothing to say in a town that is eating", () => {
+    expect(grainOffer(hungryWorld(0, { [ITEM]: 100 }), PORT)).toBeNull();
+  });
+
+  it("has nothing to say to a captain in ballast", () => {
+    expect(grainOffer(hungryWorld(HUNGRY), PORT)).toBeNull();
+  });
+
+  it("asks for what the town has fewest days of", () => {
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    expect(offer.item).toBe(ITEM);
+    expect(offer.qty).toBeGreaterThan(0);
+  });
+
+  it("takes no more than the hold holds", () => {
+    const offer = grainOffer(hungryWorld(HUNGRY, { [ITEM]: 5 }), PORT)!;
+    expect(offer.qty).toBeLessThanOrEqual(5);
+  });
+
+  it("never bids above what the town's own famine quote would fetch", () => {
+    // A crown relieving its own colony is not bidding against itself. If the
+    // granary paid the famine price the merchant's counter would be pointless
+    // in exactly the towns worth sailing to.
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    const counter = (world.ports[PORT].prices[ITEM] ?? 0) * offer.qty;
+    expect(offer.gold).toBeLessThanOrEqual(counter);
+  });
+
+  it("lands the cargo, pays the gold and mends the standing", () => {
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    const after = sellGrain(world, offer).world;
+    const crown = CITIES[PORT].factionId as unknown as string;
+
+    expect(after.entities.player_ship.ship!.cargo[ITEM] ?? 0).toBe(100 - offer.qty);
+    expect(after.ports[PORT].inventory[ITEM]).toBeCloseTo(offer.qty, 5);
+    expect(after.player.gold).toBe(world.player.gold + offer.gold);
+    expect(after.player.reputation[crown] ?? 0).toBe(offer.reputation);
+    expect(after.eventLog.some(e => e.key === "event.granary_relieved")).toBe(true);
+  });
+
+  it("requotes the shelf it just filled", () => {
+    // Not "the price falls": the fixture starts from a base quote on an empty
+    // shed, which is not what an empty shed is worth. What must be true is that
+    // the quote is the one the *new* stock earns, the same afternoon — so it
+    // sits below what the town would have asked with nothing on the shelf.
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    const after = sellGrain(world, offer).world;
+    const pop = world.ports[PORT].population;
+    expect(after.ports[PORT].prices[ITEM])
+      .toBe(spotPrice(PORT, ITEM, offer.qty, pop));
+    expect(after.ports[PORT].prices[ITEM])
+      .toBeLessThan(spotPrice(PORT, ITEM, 0, pop));
+  });
+
+  it("cannot be sold to twice — the gap is what it is asking about", () => {
+    // The farm this would otherwise be: land forty tons, turn round, land forty
+    // more. Landing raises the stock, the gap closes and the reply is gone
+    // until the town has eaten its way back down to short.
+    const world = hungryWorld(HUNGRY, { [ITEM]: 400 });
+    const first = grainOffer(world, PORT)!;
+    const after = sellGrain(world, first).world;
+    expect(grainOffer(after, PORT)).toBeNull();
+  });
+
+  it("pays the full standing only for closing the whole gap", () => {
+    const need = baselineConsumptionRate(PORT, CITIES[PORT].demands[0], makeWorld().ports[PORT].population);
+    expect(need).toBeGreaterThan(0);
+    const full = grainOffer(hungryWorld(HUNGRY, { [ITEM]: 1000 }), PORT)!;
+    const part = grainOffer(hungryWorld(HUNGRY, { [ITEM]: 5 }), PORT)!;
+    expect(full.reputation).toBe(GRANARY_REPUTATION);
+    expect(part.reputation).toBeLessThan(full.reputation);
+  });
+
+  it("refuses a sale the hold cannot cover", () => {
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    const empty = hungryWorld(HUNGRY, {});
+    expect(sellGrain(empty, offer).error).toBe("granary.no_cargo");
+  });
+
+  it("is priced off the good's base, not the town's quote", () => {
+    const world = hungryWorld(HUNGRY, { [ITEM]: 100 });
+    const offer = grainOffer(world, PORT)!;
+    const base = (ITEMS[ITEM]?.basePrice ?? 0) * offer.qty;
+    expect(offer.gold).toBeGreaterThan(base);
+    expect(offer.gold).toBeLessThan(base * 2);
   });
 });

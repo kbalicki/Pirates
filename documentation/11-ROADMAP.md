@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.26.0.0
+**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.27.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.26)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.27)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -67,6 +67,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.24.0.0 | **Pętla pieniężna handlu**, wycena przy każdym ruchu towaru, **reputacja przy ladzie**, magazyn na wynajem | ✅ |
 | 0.25.0.0 | **Czym naładowany jest kupiec** (proporczyk ładunku, manifest przy spotkaniu); **informator w tawernie** jako trzecie źródło zleceń; przemyt do miasta pod czarną banderą płynie na nazwisko kapitana | ✅ |
 | 0.26.0.0 | **Ładunek wychodzi z czyjegoś magazynu** — port, który przejmuje cudze kursy, drenuje własne szopy i bogaci się na tym; drugie źródło jest skończone. **Zlecenie na dostawę** u informatora | ✅ |
+| 0.27.0.0 | **Głód ma twarz** — miasto zapisuje, czego mu wczoraj zabrakło; ludzie wyjeżdżają, a ci, co zostają, zaciągają się za chleb. **Miejski spichlerz**: gubernator kupuje z ładowni na miejscu i płaci reputacją | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -80,6 +81,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 - **Reputacja, która coś znaczy** — opinia korony o graczu rozstrzyga spread u kupca, werbunek w tawernie, dostęp do frachtu i najmu oraz rachunek stoczni
 - **Sława, która coś daje** — notoriety przestało być wyłącznie kosztem: przemytnicy płyną do przystani znanego kapitana, więc miasto pod jego czarną banderą dostaje 35–75% tego, co kolonia
 - **Handel, który ma skąd brać** — dostawa szlakiem ubywa z magazynu eksportera, więc zdobycie miasta wypycha jego klientów na sąsiada, sąsiad drenuje własne szopy przez dwa tygodnie i bogaci się na cenie, a potem oba końce zaczynają głodować
+- **Głód, który widać i którym można grać** — miasto zapisuje, czego mu zabrakło; traci ludzi, zapełnia tawernę chętnymi na koję i posiłek, a jego gubernator kupi z ładowni wszystko, czego brakuje, płacąc po części reputacją
 
 ---
 

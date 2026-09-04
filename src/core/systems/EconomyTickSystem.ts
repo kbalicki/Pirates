@@ -213,6 +213,43 @@ export function reroutedOnto(
     .sort((a, b) => b.tons - a.tons);
 }
 
+/**
+ * Share of a starving town's people who leave, per day, at total famine.
+ *
+ * Read against `RECOVERY_POPULATION` (0.5% a day toward the ceiling), which is
+ * what it fights: a town that meets none of its needs settles at
+ * `0.005 / (0.005 + 0.002)` — a little over seven-tenths of its people — and
+ * one going half short at about five-sixths. Small on purpose. Hunger should
+ * make a town visibly poorer, thinner and easier to recruit out of; it should
+ * not depopulate the Caribbean while the player is somewhere else.
+ */
+const HUNGER_EXODUS = 0.002;
+
+/**
+ * Below this a town is merely inconvenienced, and nothing in the game says so.
+ *
+ * A shortfall of a few percent is a convoy running a day late; the screens and
+ * the recruiting pool should not react to it, or every port in the Caribbean
+ * would permanently look like it was starving.
+ */
+export const HUNGER_VISIBLE = 0.08;
+
+/**
+ * How much of what this town needed yesterday it went without, 0..1.
+ *
+ * Read through here everywhere: the figure is stamped by the daily tick, so a
+ * save from before v0.27.0 — or a port on the day the world was made — simply
+ * answers "nothing", which is true of both.
+ */
+export function townHunger(world: WorldState, portKey: string): number {
+  return world.ports[portKey]?.hunger ?? 0;
+}
+
+/** Is the town short enough for anybody to remark on it? */
+export function townIsHungry(world: WorldState, portKey: string): boolean {
+  return townHunger(world, portKey) >= HUNGER_VISIBLE;
+}
+
 const RECOVERY_WEALTH = 0.01;     // 1% per day toward baseline
 const RECOVERY_POPULATION = 0.005; // 0.5% per day
 const RECOVERY_DEFENSE = 0.02;    // 2% per day
@@ -274,6 +311,8 @@ export function economyDailyTick(world: WorldState): WorldState {
     wealth: number;
     population: number;
     defense: number;
+    /** Share of the day's needs the town went without, filled in pass 4. */
+    hunger: number;
   };
   const books: Record<string, Books> = {};
 
@@ -376,6 +415,7 @@ export function economyDailyTick(world: WorldState): WorldState {
       wealth,
       population,
       defense,
+      hunger: 0,
     };
   }
 
@@ -433,6 +473,8 @@ export function economyDailyTick(world: WorldState): WorldState {
     const effects = b.effects;
     const inventory = b.inventory;
     let wealth = b.wealth;
+    let population = b.population;
+    let hunger = 0;
 
     if (!b.tradingPaused) {
       // What went down the lanes leaves the shed, and only now is the cap
@@ -445,6 +487,8 @@ export function economyDailyTick(world: WorldState): WorldState {
       }
 
       // 4. Consumption
+      let shortOf = 0;
+      let wanted = 0;
       for (const item of def.demands) {
         const need = baselineConsumptionRate(portKey, item, port.population) * effects.consumptionMul;
         const have = inventory[item] ?? 0;
@@ -454,7 +498,19 @@ export function economyDailyTick(world: WorldState): WorldState {
         // it; one that goes short pays, in proportion to how short it went.
         const met = need > 0 ? Math.min(1, drained / need) : 1;
         wealth -= (1 - met) * SHORTAGE_WEALTH_PER_ITEM;
+        shortOf += 1 - met;
+        wanted += 1;
       }
+      // What the town went without today, kept on the port (v0.27.0). This is
+      // the only moment it is true — see `PortRuntimeState.hunger`.
+      hunger = wanted > 0 ? shortOf / wanted : 0;
+
+      // And what that does to the people in it. Wealth has paid for a shortage
+      // since v0.20.0; nobody left. They leave now, and the arithmetic is
+      // deliberately gentle: at the pull toward the ceiling of 0.5% a day, a
+      // town that never eats settles around seven-tenths of its people rather
+      // than emptying. A famine should be a town in trouble, not a ruin.
+      population -= population * hunger * HUNGER_EXODUS;
     }
 
     // 5. Price recompute. The arithmetic lives in `PricingSystem` since
@@ -485,8 +541,8 @@ export function economyDailyTick(world: WorldState): WorldState {
     const baseline = getPortBaseline(portKey);
     // Wealth is pulled toward the *royal* baseline even under the black flag,
     // and that is measured, not an oversight — see `blackFlagImportShare`.
-    wealth       += (baseline.wealth - wealth) * RECOVERY_WEALTH * rmul;
-    b.population += (heldPopulationCeiling(w, portKey) - b.population) * RECOVERY_POPULATION * rmul;
+    wealth     += (baseline.wealth - wealth) * RECOVERY_WEALTH * rmul;
+    population += (heldPopulationCeiling(w, portKey) - population) * RECOVERY_POPULATION * rmul;
     // A town that changed hands rebuilds only toward what its own people will
     // raise for whoever holds the fort — no crown is paying for a garrison any
     // more. Without this the player would never have to defend a conquest.
@@ -498,6 +554,8 @@ export function economyDailyTick(world: WorldState): WorldState {
     }
 
     b.wealth = wealth;
+    b.population = population;
+    b.hunger = hunger;
     b.inventory = inventory;
     (b as Books & { prices?: Record<string, number> }).prices = newPrices;
   }
@@ -525,10 +583,18 @@ export function economyDailyTick(world: WorldState): WorldState {
       // above it instead of the fifty the arithmetic actually says. Anything
       // that moves wealth slowly needs somewhere for the fraction to live.
       wealth: Math.max(0, Math.min(1000, Math.round(wealth * 10) / 10)),
-      population: Math.max(0, Math.round(b.population)),
+      // Kept to one decimal, for the reason `wealth` is (v0.24.0) and this
+      // release found the second instance of: the hunger exodus takes a
+      // fraction of a person a day out of a village of five hundred, and
+      // rounding the total at every midnight threw all of it away — a town
+      // going a quarter short lost nobody at all, for ever, while a city of
+      // ten thousand lost people normally. Anything that moves a stock slowly
+      // needs somewhere for the fraction to live.
+      population: Math.max(0, Math.round(b.population * 10) / 10),
       defense: Math.max(0, Math.min(100, Math.round(b.defense))),
       tradeBalance: 0,
       tradeIncome: Math.round(gold),
+      hunger: Math.round(b.hunger * 100) / 100,
     };
   }
 

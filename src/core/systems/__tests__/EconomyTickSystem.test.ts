@@ -4,6 +4,9 @@ import {
   blackFlagImportShare,
   supplierShutIn,
   reroutedOnto,
+  townHunger,
+  townIsHungry,
+  HUNGER_VISIBLE,
 } from "../EconomyTickSystem.ts";
 import {
   getAggregatedEffects,
@@ -797,5 +800,77 @@ describe("an exporter's warehouse — a second source is a finite one", () => {
     const quiet = runDays(makeFullWorld(), 200).ports.santiago.wealth;
     const cut = runDays(heldIn(makeFullWorld(), "port_royal"), 200).ports.santiago.wealth;
     expect(cut).toBeLessThan(quiet);
+  });
+});
+
+
+// ===========================================================================
+// What the town went without, and who left because of it (v0.27.0)
+// ===========================================================================
+
+/**
+ * A shortage has cost a town *wealth* since v0.20.0 and nothing else. Nobody
+ * left, no screen said so, and the tavern was as full in a famine as in a good
+ * year — so the thing the player could now cause deliberately (v0.22.0 blockade,
+ * v0.25.0 conquest, v0.26.0 a dry second source) was invisible from inside the
+ * town it happened to.
+ *
+ * Two things are worth pinning down, and they pull against each other: the
+ * figure must be **zero everywhere in a world that is running**, or every port
+ * in the Caribbean would permanently look starved; and it must be large enough,
+ * where it is real, to move people off the quay.
+ */
+
+describe("hunger — what the town went without", () => {
+  it("is nothing at all in a Caribbean that is running", () => {
+    const w = runDays(makeFullWorld(), 200);
+    for (const key of ALL_PORTS) {
+      expect(townHunger(w, key)).toBe(0);
+      expect(townIsHungry(w, key)).toBe(false);
+    }
+  });
+
+  it("answers nothing for a save written before it existed", () => {
+    const w = makeFullWorld();
+    expect(w.ports.port_royal.hunger).toBeUndefined();
+    expect(townHunger(w, "port_royal")).toBe(0);
+  });
+
+  it("rises in a town whose supplier has been taken", () => {
+    const held = runDays(heldIn(makeFullWorld(), "port_royal"), 200);
+    expect(townHunger(held, "port_royal")).toBeGreaterThan(HUNGER_VISIBLE);
+    expect(townIsHungry(held, "tortuga")).toBe(true);
+  });
+});
+
+describe("hunger — the people leave", () => {
+  it("costs a hungry town people, and a fed one none", () => {
+    const quiet = runDays(makeFullWorld(), 200);
+    const held = runDays(heldIn(makeFullWorld(), "port_royal"), 200);
+    expect(quiet.ports.tortuga.population).toBe(getPortBaseline("tortuga").population);
+    expect(held.ports.tortuga.population).toBeLessThan(quiet.ports.tortuga.population);
+  });
+
+  it("thins a town without emptying it, however long the famine runs", () => {
+    const held = runDays(heldIn(makeFullWorld(), "port_royal"), 800);
+    const settled = held.ports.tortuga.population;
+    expect(settled).toBeGreaterThan(getPortBaseline("tortuga").population * 0.5);
+    expect(settled).toBeLessThan(getPortBaseline("tortuga").population * 0.98);
+  });
+
+  it("keeps the fraction, or a village would never lose anybody at all", () => {
+    // The trap `wealth` fell into in v0.24.0, one floor down. A town of five
+    // hundred going a quarter short loses a fifth of a person a day; rounding
+    // the total to whole people every midnight threw all of it away, so small
+    // towns were immune to famine and cities were not. Nothing in the numbers
+    // said so — the population simply never moved.
+    // 120 days: long enough for the town's own shelves to run out behind the
+    // cut lane, short enough that the whole drain is a handful of people —
+    // which is exactly the regime integer rounding used to swallow.
+    const held = runDays(heldIn(makeFullWorld(), "port_royal"), 120);
+    const baseline = getPortBaseline("tortuga").population;
+    const pop = held.ports.tortuga.population;
+    expect(pop).toBeLessThan(baseline);
+    expect(pop).toBeGreaterThan(baseline * 0.9);
   });
 });

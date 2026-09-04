@@ -8,6 +8,7 @@ import { factionId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
 import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
+import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
@@ -189,6 +190,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?blockade=havana — lying off that harbour with guns enough to shut it
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
+    //                    the town is already a fortnight hungry and the hold is full
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -668,6 +670,22 @@ export class PreloadScene extends Phaser.Scene {
       ports[lane.from] = { ...from, factionId: "pirates" as unknown as typeof from.factionId };
     }
 
+    // A famine that is already a fortnight old, so the screens have something
+    // to show on the first frame (v0.27.0). Stamping `hunger` and emptying the
+    // shelves is exactly what a run of daily ticks would have left behind, and
+    // it saves the tester a hundred days of game time — the tick itself is
+    // covered by `EconomyTickSystem.test.ts`, not by looking at it.
+    const shortDef = CITIES[portKey];
+    const short = ports[portKey];
+    if (short && shortDef) {
+      const inventory = { ...short.inventory };
+      for (const item of shortDef.demands) {
+        if (shortDef.produces.includes(item)) continue;
+        inventory[item] = 0;
+      }
+      ports[portKey] = { ...short, inventory, hunger: 0.45 };
+    }
+
     const starved = { ...base, ports };
     let standing = portKey;
     if (standInCover) {
@@ -676,13 +694,57 @@ export class PreloadScene extends Phaser.Scene {
     }
     const stand = CITIES[standing];
 
-    return {
+    // And a hold with the answer in it, or the governor's reply is not on the
+    // screen to be looked at.
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    const carrying = shortDef?.demands.find(i => !shortDef.produces.includes(i));
+    const entities = entity?.ship && carrying
+      ? {
+          ...base.entities,
+          [shipId]: {
+            ...entity,
+            ship: {
+              ...entity.ship,
+              cargo: {
+                ...entity.ship.cargo,
+                [carrying]: Math.max(
+                  0,
+                  entity.ship.cargoCap
+                    - Object.values(entity.ship.cargo).reduce((sum, q) => sum + q, 0),
+                ),
+              },
+            },
+          },
+        }
+      : base.entities;
+
+    // Short-handed, and with the tavern's bench filled the way walking in
+    // through the gate would fill it — `PortApproachScene` does that, and a
+    // debug world that jumps straight to the port menu never passes through it.
+    // Without both, the one thing hunger does to a tavern is invisible here.
+    const manned = entities[shipId];
+    const shorthanded = manned?.ship
+      ? {
+          ...entities,
+          [shipId]: {
+            ...manned,
+            ship: {
+              ...manned.ship,
+              crew: { ...manned.ship.crew, current: Math.floor(manned.ship.crew.max * 0.5) },
+            },
+          },
+        }
+      : entities;
+
+    return generateAvailableCrew({
       ...starved,
+      entities: shorthanded,
       player: {
         ...base.player,
         location: { type: "port", portId: stand.id, pos: { ...stand.pos } },
       },
-    };
+    }, stand.id);
   }
 
   /**

@@ -36,7 +36,12 @@ import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { portAccess } from "../../core/systems/PortAccessSystem.ts";
 import { playerBuyPrice, playerSellPrice } from "../../core/systems/EconomySystem.ts";
-import { repairRate } from "../../core/systems/PortInteractionSystem.ts";
+import {
+  repairRate,
+  grainOffer,
+  sellGrain,
+  type GrainOffer,
+} from "../../core/systems/PortInteractionSystem.ts";
 import {
   startDialogue,
   currentNode,
@@ -45,7 +50,14 @@ import {
   type DialogueRuntime,
   type DialogueTree,
 } from "../../core/systems/DialogueSystem.ts";
-import { governorTree, EFFECT_GRANT_LETTER, EFFECT_RETIRE, EFFECT_VISIT_DAUGHTER, EFFECT_ACCEPT_DEFENSE } from "../../core/data/dialogues.ts";
+import {
+  governorTree,
+  EFFECT_GRANT_LETTER,
+  EFFECT_RETIRE,
+  EFFECT_VISIT_DAUGHTER,
+  EFFECT_ACCEPT_DEFENSE,
+  EFFECT_SELL_GRAIN,
+} from "../../core/data/dialogues.ts";
 import { offerFor, acceptDefenseContract, type DefenseContract } from "../../core/systems/DefenseContractSystem.ts";
 import {
   daughterFor,
@@ -81,7 +93,7 @@ import {
 } from "../../core/systems/CargoContractSystem.ts";
 import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
-import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
+import { reroutedOnto, townHunger, townIsHungry } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
   raidOffer, acceptRaid, activeRaids, raidProgress, raidVictim,
@@ -160,6 +172,15 @@ export class PortScene extends Phaser.Scene {
 
   /** One-shot line under the tavern actions, e.g. "nothing to divide". */
   private tavernMessage: string | null = null;
+
+  /** What the governor would buy out of the hold, held across the conversation. */
+  private pendingGrainOffer: GrainOffer | null = null;
+
+  /** The sale that has just gone through, so the reply can describe it. */
+  private lastGrainSale: GrainOffer | null = null;
+
+  /** The header's purse, kept so a sale inside a conversation can update it. */
+  private goldText: Phaser.GameObjects.Text | null = null;
 
   /** The informer's relief order as drawn this pass, for the same reason. */
   private reliefOnOffer: ReliefCommission | null = null;
@@ -274,7 +295,10 @@ export class PortScene extends Phaser.Scene {
     const player = this.worldState.player;
     const playerShip = this.worldState.entities[player.shipId as string];
 
-    this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(12, { bold: true }));
+    // Held: the governor's granary moves gold without leaving the view, and a
+    // header drawn once in `create` went on reporting the purse the captain had
+    // walked in with.
+    this.goldText = this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(12, { bold: true }));
     if (playerShip?.ship) {
       const totalCargo = Math.floor(Object.values(playerShip.ship.cargo).reduce<number>((s, q) => s + q, 0));
       this.add.text(this.infoX + 120, y,
@@ -425,7 +449,23 @@ export class PortScene extends Phaser.Scene {
   // ===== VIEW: Main Menu =====
 
   private renderMainMenu(): void {
-    const y = this.contentStartY;
+    let y = this.contentStartY;
+
+    // What the town had to eat yesterday, when the answer is "not enough"
+    // (v0.27.0). It goes above the doors rather than inside one of them
+    // because it decides what is behind three of them at once: the merchant's
+    // prices, the tavern's recruiting pool, and whether the governor has
+    // anything civil to say.
+    const portKeyHere = this.currentPortId as string;
+    if (townIsHungry(this.worldState, portKeyHere)) {
+      const line = this.add.text(
+        this.infoX, y,
+        t("port.hungry", { pct: Math.round(townHunger(this.worldState, portKeyHere) * 100) }),
+        { ...txt(11, { color: "#996633" }), wordWrap: { width: DLG_W - PAD * 2 } },
+      );
+      this.contentContainer.add(line);
+      y += line.height + 6;
+    }
 
     const actions = [
       { label: t("port.visit_governor"), key: "governor" },
@@ -555,6 +595,11 @@ export class PortScene extends Phaser.Scene {
     const offer = offerFor(this.worldState, this.currentPortId as string);
     this.pendingDefenseOffer = offer;
 
+    // The same discipline for the granary: the tree carries what the offer
+    // *says*, and the effect that lands the cargo needs the offer itself.
+    const grain = grainOffer(this.worldState, this.currentPortId as string);
+    this.pendingGrainOffer = grain;
+
     const tree = governorTree({
       factionKey,
       level,
@@ -570,6 +615,17 @@ export class PortScene extends Phaser.Scene {
         ? daughterFor(this.worldState, this.currentPortId as string)?.name
         : undefined,
       married: isMarried(this.worldState),
+      grainSold: this.lastGrainSale ? {
+        itemName: t("item." + this.lastGrainSale.item + ".name"),
+        qty: this.lastGrainSale.qty,
+        gold: this.lastGrainSale.gold,
+      } : undefined,
+      grainOffer: grain ? {
+        itemName: t("item." + grain.item + ".name"),
+        qty: grain.qty,
+        gold: grain.gold,
+        reputation: grain.reputation,
+      } : undefined,
       defenseOffer: offer && {
         portName: t("port." + offer.portKey + ".name"),
         enemyName: t("faction." + offer.claimant + ".name"),
@@ -654,6 +710,11 @@ export class PortScene extends Phaser.Scene {
         }
         if (id === EFFECT_RETIRE) return retire(world).world;
         if (id === EFFECT_VISIT_DAUGHTER) { this.pendingDaughterVisit = true; return world; }
+        if (id === EFFECT_SELL_GRAIN) {
+          if (!this.pendingGrainOffer) return world;
+          this.lastGrainSale = this.pendingGrainOffer;
+          return sellGrain(world, this.pendingGrainOffer).world;
+        }
         if (id === EFFECT_ACCEPT_DEFENSE) {
           return this.pendingDefenseOffer
             ? acceptDefenseContract(world, { ...this.pendingDefenseOffer, acceptedDay: world.time.day })
@@ -666,6 +727,7 @@ export class PortScene extends Phaser.Scene {
 
     this.worldState = step.world;
     this.registry.set("worldState", this.worldState);
+    this.goldText?.setText(`${t("hud.gold")}: ${this.worldState.player.gold}`);
     this.governorDialogue = { tree: dialogue.tree, runtime: step.runtime };
 
     // Retiring ends the game rather than the conversation.
@@ -694,6 +756,7 @@ export class PortScene extends Phaser.Scene {
 
   private leaveGovernor(): void {
     this.governorDialogue = null;
+    this.lastGrainSale = null;
     this.switchView("menu");
   }
 
@@ -1693,6 +1756,16 @@ export class PortScene extends Phaser.Scene {
       }
 
       y += 22;
+    }
+
+    // And what that did to the town's table (v0.27.0). Above the covering line
+    // because it is the consequence and the covering line is the cause.
+    if (townIsHungry(this.worldState, portKey)) {
+      this.contentContainer.add(this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 80,
+        t("port.hungry", { pct: Math.round(townHunger(this.worldState, portKey) * 100) }),
+        { ...txt(11, { color: "#aa3333" }), wordWrap: { width: DLG_W - PAD * 2 } },
+      ));
     }
 
     // Why the shelves are bare and the prices doubled, when they are (v0.26.0).

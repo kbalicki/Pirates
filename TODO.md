@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.26.0.0 · **Branch:** `main`
-**Kod:** 182 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1262 przechodzi, 0 failuje, 0 `todo`** w 35 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.27.0.0 · **Branch:** `main`
+**Kod:** 182 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1281 przechodzi, 0 failuje, 0 `todo`** w 35 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.26.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1262/1262 zielone; ta wersja sprawia, że **dostawa szlakiem ubywa z magazynu eksportera** — port przejmujący cudze kursy drenuje własne szopy, bogaci się na cenie i w końcu nie ma czym pokrywać, więc drugie źródło jest **skończone** — a informator dostał drugi typ zlecenia (**dostarcz towar do głodującego miasta**, cena z góry, towar twój problem); lista kandydatów na v0.27.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.27.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1281/1281 zielone; ta wersja daje głodowi **twarz i cenę** — miasto zapisuje, czego mu wczoraj zabrakło, traci przez to ludzi, zapełnia tawernę chętnymi na koję i posiłek, a jego gubernator kupi z ładowni wszystko, czego brakuje, płacąc po części **reputacją**; lista kandydatów na v0.28.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04C.md](documentation/SESSION-2026-09-04C.md) — dlaczego zobowiązanie szlaku musiało wejść do **produkcji**, żeby osiadły świat nie drgnął, dlaczego sufit magazynu przycina się **po** wysyłce a nie przed, i dlaczego drugie zlecenie informatora jest **zamówieniem, a nie frachtem** (fracht za kordon jest w grze od v0.23.0). Poprzednia: [SESSION-2026-09-04B.md](documentation/SESSION-2026-09-04B.md).
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04D.md](documentation/SESSION-2026-09-04D.md) — dlaczego `hunger` jest **stemplowane a nie wyliczane**, **druga instancja** błędu „stan, który rusza się powoli, musi mieć gdzie trzymać ułamek" (tym razem populacja), dlaczego werbunek w głodującym mieście jest **lepszy** a nie gorszy niż w TODO, i dlaczego spichlerz jest transakcją, nie kontraktem. Poprzednia: [SESSION-2026-09-04C.md](documentation/SESSION-2026-09-04C.md).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -71,6 +71,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Przystań żyje z przemytu | ✅ | `blackFlagImportShare`: 0.35 → 0.75 wraz z notoriety; `supplierShutIn` odcina ją jako dostawcę cudzych szlaków |
 | Dostawa ubywa z magazynu | ✅ | `EconomyTickSystem` (4 przebiegi) + `laneCommitment`: stand-in pokrywa cudze kursy z własnego zapasu, a gdy wyschnie — racjonuje pro rata |
 | Zlecenie na dostawę | ✅ | `InformantSystem.reliefOffer`: cena z góry za ładownię do głodującego miasta, towar kapitan znajduje sam |
+| Głód widać w mieście | ✅ | `PortRuntimeState.hunger` stemplowane przez tick: linia w menu portu i na ladzie, ubytek ludności, pełniejsza ława w tawernie |
+| Miejski spichlerz | ✅ | `grainOffer` / `sellGrain`: gubernator kupuje z ładowni na miejscu, płaci ceną korony **i reputacją**, luka zamyka się po wyładunku |
 
 ### Nietknięte
 
@@ -989,7 +991,52 @@ czego migrować.
 
 ---
 
-### v0.27.0 — co dalej
+### ~~v0.27.0 — Głód ma twarz; miejski spichlerz~~ ✅ (v0.27.0.0)
+
+Kandydat **3** z poprzedniej listy, wzięty w całości: samo *pokazanie* głodu
+byłoby ozdobnikiem, więc razem z nim weszły jego skutki i wyjście z niego.
+
+**Fakt stemplowany, nie wyliczany.** `PortRuntimeState.hunger?` — udział
+wczorajszych potrzeb, których miasto nie pokryło. Tick i tak liczy `met` per
+towar, gdy opróżnia magazyn, i to jedyny moment, w którym odpowiedź jest
+prawdziwa. Warunek wstępny sprawdzony pomiarem: w spokojnym świecie **żaden port
+nie ma głodu** i wszystkie stoją na baseline'ie populacji.
+
+**Ludzie wyjeżdżają** (`HUNGER_EXODUS` 0.002 naprzeciw `RECOVERY_POPULATION`
+0.005): 71% ludzi przy pełnym głodzie, 92% przy 0,23 (Tortuga 500 → 468 po
+zajęciu Port Royale). **Ludzie zaciągają się za chleb** — ława w tawernie do
+dwóch razy pełniejsza, bo niedobór, który gracz potrafi wywołać, ma być
+niedoborem, z którego potrafi zwerbować. To **odwrotnie** niż mówiła ta pozycja
+(„gorszy werbunek") i świadomie: kara, której nie da się użyć, to liczba na
+ekranie.
+
+**Miejski spichlerz** (`grainOffer` / `sellGrain`) — trzeci raz z rzędu
+pilnowane, żeby nie zbudować drugi raz czegoś, co już jest. Zlecenie informatora
+to papier podpisany w jednym mieście o innym, z góry, za złoto; spichlerz to
+transakcja **na miejscu**, bez questa, terminu i wpisu w zapisie, w której połowa
+zapłaty to **reputacja** — jedyna waluta, której gubernator ma pod dostatkiem.
+Nie jest bramkowany reputacją celowo: to jedyna droga wyjścia z wrogości, jaką
+gra daje. Niefarmowalny bez licznika, bo wyładunek zamyka lukę, o którą oferta pyta.
+
+**Pułapki z tej sesji:**
+
+1. **Druga instancja „ułamek musi mieć gdzie mieszkać".** Wioska 500 ludzi przy
+   `hunger` 0,23 traci 1/5 człowieka dziennie; zaokrąglanie populacji do pełnych
+   ludzi co północ wyrzucało to w całości — małe miasta były na głód odporne,
+   duże nie, i nic w liczbach tego nie mówiło. Populacja jest teraz trzymana z
+   dokładnością do 0,1, jak `wealth` od v0.24.0.
+2. **Potwierdzenie w dialogu opisywało następną ofertę, nie sprzedaną** —
+   konteksty drzewa są przeliczane po każdym wyborze. Wyłapane okiem na zrzucie
+   ekranu, nie testem.
+3. **Nagłówek portu rysuje się raz w `create()`** — pierwsza transakcja zawierana
+   *wewnątrz* widoku pokazała, że kiesa w nim kłamie do wyjścia z portu.
+4. **Świat debugowy musi robić to, co robi przejście przez bramę.** `?famine=`
+   omijał `PortApproachScene`, więc ława w tawernie była pusta i skutek głodu dla
+   werbunku był niewidoczny.
+
+---
+
+### v0.28.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -998,12 +1045,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    też retrening LoRA v3. Dwie pułapki techniczne (rozdzielczość, `roundPixels`)
    trzeba rozstrzygnąć zanim ktokolwiek narysuje pierwszą klatkę
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
-   zadanie programistyczne**: brakuje plików audio, nie kodu. Ścieżki dla portu
-   i bitwy dałyby najwięcej
-3. **Niedobór nie ma twarzy w mieście** — v0.26.0 daje głód, ceny i pustą ladę,
-   ale gubernator, tawerna i newsy o tym nie mówią. Miasto, które je resztki,
-   powinno mieć inny nagłówek w porcie, gorszy werbunek i wątek u gubernatora
-   („przywieź nam zboże, a zapomnimy, czyja to była robota")
+   zadanie programistyczne**: brakuje plików audio, nie kodu
+3. **Głód nie ma jeszcze głosu** — v0.27.0 daje mu twarz (linia w porcie, ceny,
+   ława w tawernie, ubytek ludności), ale newsy i plotki w tawernie dalej są
+   listą rotowaną po dniu (`getRumorKey`) i nie wiedzą, że miasto przymiera.
+   Plotka wyliczana ze stanu świata byłaby tanim domknięciem — i pierwszym
+   miejscem, w którym gracz **usłyszy** o cudzym niedoborze, zamiast zobaczyć go
+   dopiero na miejscu
 4. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
    (`importMul`), ale sojusz nie daje żadnej symetrycznej korzyści
 5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
@@ -1015,6 +1063,7 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
 ## 4. Zadania równoległe (można wpleść w każdy release)
 
+- ~~**Niedobór nie ma twarzy w mieście.**~~ ✅ v0.27.0.0 — `PortRuntimeState.hunger` stemplowane przez dzienny tick: linia w menu portu i na ladzie kupca, ubytek ludności (71% ludzi przy pełnym głodzie), pełniejsza ława w tawernie i spichlerz u gubernatora. Zostały **newsy i plotki**, które dalej nie wiedzą, że miasto przymiera.
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1), zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). **Nie trenuj v3, dopóki nie ma nowego materiału** — patrz sekcja 6. Ocena: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
@@ -1054,10 +1103,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **`time.tick` jest ułamkowy.** Nigdy nie bramkuj niczego na `tick % N === 0` — używaj `tickBoundaryCrossed(tick - dtTicks, tick, N)` z `TimeSystem`. Ten jeden wzorzec zabił w v0.16.0 spawn NPC, AI NPC i wymianę newsów naraz, a testy jednostkowe na całkowitych tickach tego nie widziały.
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - **Cena kupna i sprzedaży to widełki wokół jednej liczby, nie jeden mnożnik w obie strony.** Mnożnik „taniej dla przyjaciela” zastosowany do obu kierunków odwraca spread i robi drukarkę pieniędzy (v0.24.0: 14 za cukier, 16 za cukier, przy tej samej ladzie). `PortAccessSystem.buyPrice/sellPrice` to jedyne miejsce, gdzie wolno to liczyć.
-- **Cokolwiek rusza `wealth` powoli, musi mieć gdzie trzymać ułamek.** `PortRuntimeState.wealth` jest trzymane z dokładnością do 0,1 właśnie dlatego: pół punktu dziennego obrotu zaokrąglane co północ do pełnych punktów znikało, a ledger równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu. To ten sam błąd co „sufit to nie równowaga”, tylko o piętro niżej.
+- **Cokolwiek rusza stan powoli, musi mieć gdzie trzymać ułamek — i zdarzyło się to już DWA razy.** `PortRuntimeState.wealth` jest trzymane z dokładnością do 0,1 właśnie dlatego: pół punktu dziennego obrotu zaokrąglane co północ do pełnych punktów znikało, a ledger równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu. To ten sam błąd co „sufit to nie równowaga”, tylko o piętro niżej. **Druga instancja, v0.27.0: `population`.** Wioska pięciuset ludzi przy `hunger` 0,23 traci jedną piątą człowieka dziennie, a zaokrąglanie do pełnych ludzi co północ wyrzucało to w całości — małe miasta były na głód odporne, duże nie, i populacja po prostu nigdy nie drgnęła. Trzymana teraz z dokładnością do 0,1; `CityInfoScene` zaokrągla przy wyświetlaniu.
 - **Dwa widoki `PortScene` rysują komunikat identycznym kodem, różnym tylko kolorem** (`#8a3a3a` w menu portu, `#6a4a1a` w tawernie). Podmiana skryptem bez koloru w kotwicy trafia w pierwszy z nich i wygląda jak brak efektu. Komunikat idzie **pod ostatnią pozycją listy**, a podpowiedź klawiszy chowa się, gdy komunikat jest — przy dziewięciu pozycjach miejsca starcza na jedno z dwóch.
 - **Sufit magazynu przycinaj PO wysyłce, nie przed** (`EconomyTickSystem` krok 4). Przycięcie produkcji do sufitu przed odjęciem eksportu sprawia, że zapas dużego eksportera piłuje o ćwiartkę dziennie, a `spotPrice` razem z nim — cena skacze o 33% z dnia na dzień bez żadnego powodu w świecie.
 - **Ekonomiczną zmianę mierz PRZED napisaniem jej.** Tabela „ile ten port ma wysłać kontra ile produkuje" przesądziła kształt v0.26.0 w pięć minut: naiwne odjęcie dostawy od magazynu zagłodziłoby cały region, bo dziewięć z dwudziestu najruchliwszych par ma zapotrzebowanie większe niż produkcja. To ta sama lekcja co „sufit to nie równowaga", tylko od strony przepływu.
+- **Konteksty drzewa dialogowego są przeliczane po KAŻDYM wyborze**, więc węzeł potwierdzający transakcję dostaje stan **po** niej — potwierdzenie spichlerza opisywało następną ofertę zamiast sprzedanej. Co ma opisać zdarzenie, trzyma się osobno (`ctx.grainSold`).
+- **Nagłówek `PortScene` rysuje się raz w `create()`.** Każda transakcja zawierana *wewnątrz* widoku (dialog gubernatora) musi sama odświeżyć `goldText`, bo `scene.restart` w takim przepływie zgubiłby rozmowę.
+- **Świat debugowy musi robić to, co robi normalne wejście.** `?famine=` startuje `PortScene` wprost i omija `PortApproachScene`, która zapełnia ławę w tawernie (`generateAvailableCrew`) — bez dołożenia tego ręcznie mechanika była na ekranie niewidoczna, choć w kodzie działała.
 - **Etykieta pozycji w menu portu urywa się wizualnie powyżej ~64 znaków.** Wychodzi poza ramkę okna i nic o tym nie mówi — `setupActionList` nie zawija. Długie oferty (fracht, informator) trzeba skracać, a szczegóły przenosić do komunikatu potwierdzenia albo do Dziennika.
 - **Sufit bogactwa dla miasta pod czarną banderą był próbowany trzy razy i trzy razy jest błędem** (v0.19.0 udział 0.42 → bogactwo 5; v0.25.0 udział 0.62 → 0; v0.25.0 stały upkeep → 0). Osiadła wartość = `cel − presja / RECOVERY_WEALTH`, a presja z niedoborów zjada już całą lukę 380. **Nie próbuj czwarty raz** — dźwignią jest to, co dociera na nabrzeże (`blackFlagImportShare`), nie cel.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.

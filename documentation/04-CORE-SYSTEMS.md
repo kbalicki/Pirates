@@ -2351,3 +2351,144 @@ płaciłoby dwa razy.
 Dwa zlecenia informatora ciągną w **przeciwne strony na tej samej osi**: rajd
 kosztuje 14 punktów reputacji i daje 8 notoriety, dostawa oddaje 6 punktów
 reputacji i daje 3 notoriety. Po to się ma oba.
+
+
+---
+
+## Głód ma twarz (v0.27.0)
+
+`PortRuntimeState.hunger` + `EconomyTickSystem` (stempel i eksodus),
+`townHunger` / `townIsHungry`, `PortInteractionSystem.generateAvailableCrew`,
+linia w menu portu i na ladzie kupca.
+
+### Dziura, którą to zatyka
+
+Niedobór kosztował miasto **pieniądze** od v0.20.0 i nic poza tym. Nikt nie
+wyjeżdżał, żaden ekran o tym nie mówił, a tawerna była w czasie głodu tak samo
+pełna jak w dobry rok. Rzecz, którą gracz od v0.22.0 potrafi wywołać celowo
+(blokada), od v0.25.0 zdobyciem miasta, a od v0.26.0 wysuszeniem drugiego
+źródła, była **niewidoczna od środka miasta, którego dotyczyła**.
+
+### Fakt stemplowany, nie wyliczany
+
+```ts
+PortRuntimeState.hunger?: number   // udział wczorajszych potrzeb, których nie pokryto
+```
+
+Dzienny tick i tak liczy `met` per towar, kiedy opróżnia magazyn, i **to jest
+jedyny moment, w którym odpowiedź jest prawdziwa** — godzinę później ceny się
+ruszyły, przypłynął konwój, a liczba przeliczona z dzisiejszych półek
+opowiadałaby o innym dniu. To ta sama zasada co `capturedDay`
+([derived vs recorded facts](../TODO.md)). Pole jest opcjonalne i czytane przez
+`townHunger()`, więc zapis sprzed tej wersji odpowiada „nikt nie głodował", co
+jest prawdą o nim.
+
+`HUNGER_VISIBLE = 0.08` — niżej to konwój spóźniony o dzień, i żaden ekran nie
+powinien na to reagować.
+
+### Ludzie wyjeżdżają
+
+```
+population -= population * hunger * HUNGER_EXODUS        HUNGER_EXODUS = 0.002
+```
+
+Czytane naprzeciw `RECOVERY_POPULATION = 0.005` (dziennego ciągnięcia ku
+sufitowi), z którym walczy. Osiadła wartość:
+
+```
+p = P * 0.005 / (0.005 + 0.002 * hunger)
+
+hunger 1.0  → 71% mieszkańców
+hunger 0.5  → 83%
+hunger 0.23 → 92%     (Tortuga po zajęciu Port Royale: 500 → 468)
+```
+
+Zmierzone: w spokojnym świecie **żaden port nie ma głodu** i wszystkie stoją
+dokładnie na baseline'ie populacji, więc eksodus nie odpala się nigdy bez
+przyczyny. Port Royale pod czarną banderą: `hunger` 0.65, populacja 2500 → 1336
+(razem z `heldPopulationCeiling`).
+
+### Pułapka: populacja też potrzebuje miejsca na ułamek
+
+To **druga instancja** tego samego błędu co `wealth` w v0.24.0, piętro niżej.
+Wioska pięciuset ludzi przy `hunger` 0.23 traci **jedną piątą człowieka
+dziennie**; zaokrąglanie sumy do pełnych ludzi co północ wyrzucało to w całości,
+więc małe miasta były na głód **odporne**, a duże nie — i nic w liczbach tego nie
+mówiło, populacja po prostu nigdy nie drgnęła. `PortRuntimeState.population` jest
+teraz trzymana z dokładnością do 0,1, a `CityInfoScene` zaokrągla przy
+wyświetlaniu.
+
+### Ludzie zaciągają się za chleb
+
+```
+willing = floor(rzut × crewMul × (1 + hunger × HUNGER_CREW_BONUS))   HUNGER_CREW_BONUS = 1.0
+```
+
+Głodne miasto to miasto pełne ludzi, którzy wezmą koję i posiłek — więc niedobór,
+który gracz potrafi **wywołać**, jest niedoborem, z którego potrafi **zwerbować**.
+Ta sama dźwignia od drugiej strony, i właściwy powód, żeby głód w ogóle
+modelować, a nie tylko wyświetlać.
+
+Mnożniki mnożą się celowo: głodujące miasto, które go nienawidzi, dalej nie
+wysyła nikogo. Chleb nie jest aż tak przekonujący. Rzut kością odbywa się tak czy
+inaczej — zasada z v0.24.0: **to, co miasto zjadło, skaluje wynik, nigdy rzut.**
+
+---
+
+## Miejski spichlerz (v0.27.0)
+
+`PortInteractionSystem.grainOffer` / `sellGrain`, `EFFECT_SELL_GRAIN` w drzewie
+gubernatora.
+
+### Dlaczego to transakcja, a nie kolejny kontrakt
+
+Zlecenie informatora (v0.26.0) to papier podpisany w **jednym** mieście o
+**innym**, z góry, za złoto. To jest człowiek stojący przed kapitanem w mieście,
+któremu brakuje, i patrzący na ładownię, w której odpowiedź już jest:
+
+> wyładuj teraz, a zapłacę cenę korony i zapomnę, czyja to była robota
+
+Rozlicza się **na miejscu**: żadnego questa, terminu, wpisu w rejestrze, niczego
+w zapisie. Połowa zapłaty to **reputacja**, czyli jedyna waluta, której gubernator
+ma pod dostatkiem, a kupiec nie ma wcale. Kapitan, który zagłodził kolonię
+zabierając jej dostawcę, może wkupić się z powrotem ładunkiem — i ta pętla jest
+całym sensem rzeczy: niedobór, który wywołał, sprzedaje mu się **dwa razy**.
+
+Oferta **nie** jest bramkowana reputacją. Gubernator kupujący zboże od
+człowieka, którego nie znosi, to jedyna droga wyjścia z wrogości, jaką gra daje.
+
+### Liczby
+
+```
+GRANARY_DAYS = 30            luka = min(potrzeba × 30 − zapas, sufit magazynu − zapas)
+GRANARY_RATE = 1.2           cena od BAZOWEJ, nigdy od głodowego kwotowania
+GRANARY_REPUTATION = 8       skalowane przez qty / luka
+GRANARY_MIN_TONS = 4
+```
+
+W praktyce wiąże **sufit magazynu**, nie kalendarz: towar importowany mieści się
+w każdym mieście Karaibów po 30 ton, więc gubernator prosi o ładunek slupa, nigdy
+o konwój. To właściwa skala dla czegoś płaconego głównie życzliwością.
+
+Cena od bazowej, a nie od lokalnego kwotowania, z tego samego powodu co przy
+zleceniu informatora: **korona ratująca własną kolonię nie licytuje sama ze
+sobą**, a gubernator płacący potrójnie byłby lepszym klientem niż kupiec obok —
+co czyniłoby ladę bezużyteczną dokładnie w tych miastach, do których warto
+płynąć.
+
+### Dlaczego się tego nie da farmić
+
+Wyładunek **zamyka lukę**, o którą oferta pyta: zapas rośnie, `grainOffer`
+zwraca `null` i wraca dopiero, gdy miasto zje się z powrotem do niedoboru.
+Żadnego licznika, żadnego cooldownu — to ten sam wzorzec co „zlecenie mierzy się
+liczbą, którą świat już prowadzi".
+
+### Pułapka wyłapana okiem, nie testem
+
+Potwierdzenie sprzedaży jest budowane z kontekstu drzewa dialogowego, a ten jest
+**przeliczany zaraz po wyładunku** — więc opisywało *następną* półkę do
+uzupełnienia, nie tę właśnie zapełnioną („13 ton wody" po sprzedaniu 10 ton
+żywności). Stąd osobne `ctx.grainSold`, trzymane przez `PortScene` do końca
+rozmowy. Drugi z tej samej pary: nagłówek portu rysuje się raz w `create()`,
+więc kiesa w nim kłamała po transakcji zawartej **wewnątrz** widoku — pierwszej
+takiej w grze. `goldText` jest teraz trzymany i odświeżany.

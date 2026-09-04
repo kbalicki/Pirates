@@ -97,7 +97,9 @@ export class CityInfoScene extends Phaser.Scene {
       return diff > 0 ? "#88cc88" : "#cc8866";
     };
 
-    const popVal = runtime?.population ?? baseline.population;
+    // Rounded for the eye: the runtime figure carries a decimal so that a
+    // slow drain is not lost at every midnight (see `EconomyTickSystem`).
+    const popVal = Math.round(runtime?.population ?? baseline.population);
     addRow(t("approach.population", { size: "" }).replace(/[: ]+$/, ""),
       popVal.toLocaleString() + trendArrow(popVal, baseline.population),
       trendColor(popVal, baseline.population));

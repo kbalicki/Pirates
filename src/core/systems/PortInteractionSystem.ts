@@ -2,11 +2,16 @@ import type { WorldState } from "../model/WorldState.ts";
 import type { FactionId, PortId, ShipClassId } from "../model/ids.ts";
 import type { CitySize } from "../data/cities.ts";
 import { CITIES } from "../data/cities.ts";
+import { ITEMS } from "../data/items.ts";
+import { baselineConsumptionRate, inventoryCap } from "../data/economyBaselines.ts";
+import { repriceItem } from "./PricingSystem.ts";
+import { portFaction } from "./SiegeSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
+import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { diluteTraining } from "../model/CaptainState.ts";
 
@@ -56,6 +61,9 @@ export function requestLetterOfMarque(
 
 // ── Crew Recruitment Pool ─────────────────────────────────
 
+/** How many more men a town that ate nothing yesterday puts in the tavern. */
+const HUNGER_CREW_BONUS = 1.0;
+
 const CREW_RANGE: Record<CitySize, [number, number]> = {
   small:   [2, 10],
   medium:  [5, 15],
@@ -74,6 +82,16 @@ const CREW_RANGE: Record<CitySize, [number, number]> = {
  * felt different from a friendly one from the inside. The roll happens either
  * way, so the world's RNG advances identically whatever his standing: a
  * reputation must not silently reshuffle every other random thing in the game.
+ *
+ * And scaled again by what the town had to eat yesterday (v0.27.0). A hungry
+ * town is a town full of men who will take a berth and a meal, so the shortage
+ * the player can now *cause* — by taking a supplier, by shutting a harbour, by
+ * making a run uninsurable — is also a shortage he can crew out of. It is the
+ * same lever from the other end, and the reason hunger is worth modelling at
+ * all rather than merely displaying.
+ *
+ * The two multipliers compound on purpose: a starving town that hates him
+ * still sends nobody. Bread is not that persuasive.
  */
 export function generateAvailableCrew(
   world: WorldState,
@@ -89,7 +107,8 @@ export function generateAvailableCrew(
   const portState = world.ports[portKey];
   if (!portState) return world;
 
-  const willing = Math.floor(crewCount * portAccess(world, portKey).crewMul);
+  const hungry = 1 + townHunger(world, portKey) * HUNGER_CREW_BONUS;
+  const willing = Math.floor(crewCount * portAccess(world, portKey).crewMul * hungry);
 
   return {
     ...world,
@@ -581,4 +600,161 @@ const RUMOR_KEYS = [
 export function getRumorKey(world: WorldState): string {
   const index = (world.time.day + world.time.hour) % RUMOR_KEYS.length;
   return RUMOR_KEYS[index];
+}
+
+
+// ── The public granary ────────────────────────────────────────────────────
+
+/**
+ * Selling a hungry town's governor what it cannot get (v0.27.0).
+ *
+ * v0.26.0 made a shortage real and v0.27.0 gave it a face; this is the door out
+ * of one, and it is deliberately **not** another contract. The informer's
+ * relief order is a paper signed in one town about another, in advance, for
+ * gold. This is a man standing in front of the captain in the town that is
+ * short, looking at a hold that already has the answer in it:
+ *
+ *     land it now, and I will pay the crown's price and forget whose work it was
+ *
+ * So it settles on the spot — no quest, no deadline, no registry entry, nothing
+ * in the save — and half of what it pays is **standing**, which is the only
+ * currency a governor has that a merchant does not. A captain who starved a
+ * colony by taking its supplier can buy his way back into it with a cargo, and
+ * that loop is the whole point: the shortage the player causes is a shortage he
+ * can then sell into, twice.
+ *
+ * The price is struck against the item's base, not the famine quote. A crown
+ * relieving its own colony is not bidding against itself, and a governor paying
+ * three times over the odds would be a better customer than the merchant next
+ * door — which would make the merchant's counter pointless in exactly the towns
+ * the player most wants to visit.
+ */
+
+/**
+ * Days of supply the granary is trying to put back on the shelf.
+ *
+ * Thirty, the same horizon `PricingSystem` calls a balanced market — and in
+ * practice the shed is the binding constraint, not the calendar: an imported
+ * good caps at thirty tons in any town in the Caribbean, large or small, so
+ * what the governor asks for is a sloop-load and never a convoy. That is the
+ * right scale for something paid mostly in goodwill.
+ */
+const GRANARY_DAYS = 30;
+
+/** What the crown pays per ton, as a multiple of the good's base price. */
+const GRANARY_RATE = 1.2;
+
+/** Standing for relieving the whole of what the granary asked for. */
+export const GRANARY_REPUTATION = 8;
+
+/** Below this there is nothing to talk about. */
+const GRANARY_MIN_TONS = 4;
+
+export type GrainOffer = {
+  portKey: string;
+  item: string;
+  /** Tons the governor will take — what he needs, or what is aboard. */
+  qty: number;
+  gold: number;
+  /** Standing this covers, already scaled by how much of the gap it closes. */
+  reputation: number;
+};
+
+/**
+ * What the governor of this town would buy out of the captain's hold today.
+ *
+ * Derived, never stored, and recomputed after every sale — which is what stops
+ * it being farmed: landing the cargo raises the stock, the gap closes, and the
+ * reply is gone until the town has eaten its way back down. The good chosen is
+ * the one the town has fewest days of, so a captain carrying two of them is
+ * asked for the one that is actually killing people.
+ */
+export function grainOffer(world: WorldState, portKey: string): GrainOffer | null {
+  const def = CITIES[portKey];
+  const port = world.ports[portKey];
+  if (!def || !port) return null;
+  if (!townIsHungry(world, portKey)) return null;
+
+  const cargo = world.entities[world.player.shipId as string]?.ship?.cargo ?? {};
+
+  let best: GrainOffer | null = null;
+  let worstDays = Infinity;
+  for (const item of def.demands) {
+    const aboard = Math.floor(cargo[item] ?? 0);
+    if (aboard < GRANARY_MIN_TONS) continue;
+    const need = baselineConsumptionRate(portKey, item, port.population);
+    if (need <= 0) continue;
+    const stock = port.inventory[item] ?? 0;
+    const days = stock / need;
+    if (days >= GRANARY_DAYS) continue;              // that shelf is fine
+    // What he can actually put away: the shelf holds what it holds.
+    const room = inventoryCap(portKey, item) - stock;
+    const gap = Math.floor(Math.min(need * GRANARY_DAYS - stock, room));
+    if (gap < GRANARY_MIN_TONS) continue;
+    if (days >= worstDays) continue;
+
+    const qty = Math.min(aboard, gap);
+    worstDays = days;
+    best = {
+      portKey,
+      item,
+      qty,
+      gold: Math.round((ITEMS[item]?.basePrice ?? 10) * qty * GRANARY_RATE),
+      reputation: Math.max(1, Math.round(GRANARY_REPUTATION * Math.min(1, qty / gap))),
+    };
+  }
+  return best;
+}
+
+export type GrainResult = { world: WorldState; error?: string };
+
+/**
+ * Land it. Gold, standing and the goods all move here, because nothing about
+ * this is a promise — unlike every other agreement in the game, it is over
+ * before the captain leaves the room.
+ */
+export function sellGrain(world: WorldState, offer: GrainOffer): GrainResult {
+  const shipId = world.player.shipId as string;
+  const entity = world.entities[shipId];
+  const port = world.ports[offer.portKey];
+  if (!entity?.ship || !port) return { world, error: "granary.not_here" };
+  if ((entity.ship.cargo[offer.item] ?? 0) < offer.qty) return { world, error: "granary.no_cargo" };
+
+  const cargo = { ...entity.ship.cargo };
+  cargo[offer.item] = (cargo[offer.item] ?? 0) - offer.qty;
+  if (cargo[offer.item] <= 0) delete cargo[offer.item];
+
+  const inventory = { ...port.inventory };
+  inventory[offer.item] = (inventory[offer.item] ?? 0) + offer.qty;
+
+  const factionKey = portFaction(world, offer.portKey) as string;
+  const landed: WorldState = {
+    ...world,
+    player: {
+      ...world.player,
+      gold: world.player.gold + offer.gold,
+      reputation: {
+        ...world.player.reputation,
+        [factionKey]: (world.player.reputation[factionKey] ?? 0) + offer.reputation,
+      },
+    },
+    entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
+    ports: { ...world.ports, [offer.portKey]: { ...port, inventory } },
+  };
+
+  // The shelf moved, so the quote moves with it — the same afternoon, not at
+  // midnight (`PricingSystem`, v0.24.0).
+  const repriced = repriceItem(landed, offer.portKey, offer.item);
+  const withPrice: WorldState = repriced
+    ? { ...landed, ports: { ...landed.ports, [offer.portKey]: repriced } }
+    : landed;
+
+  return {
+    world: addLogEntry(withPrice, "event.granary_relieved", {
+      qty: offer.qty,
+      item: ITEMS[offer.item]?.name ?? offer.item,
+      port: CITIES[offer.portKey]?.name ?? offer.portKey,
+      gold: offer.gold,
+    }),
+  };
 }
