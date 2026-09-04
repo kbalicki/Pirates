@@ -36,6 +36,7 @@ import { FACTIONS } from "../data/factions.ts";
 import { routesFrom, disruptions } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
+import { portAccess } from "./PortAccessSystem.ts";
 
 /** Quest ids for a charter all start with this. */
 export const CARGO_QUEST_PREFIX = "cargo_";
@@ -143,6 +144,13 @@ export function freightFor(
  * tonight pays better tomorrow morning.
  */
 export function cargoOffers(world: WorldState, portKey: string): CargoContract[] {
+  // A merchant hands over forty tons of somebody else's cocoa on a promise,
+  // and he will not hand it to a man his own crown has a price on (v0.24.0).
+  // This is the freight office's half of reputation finally mattering: below
+  // neutral the book is closed, and the captain who spent the year raiding
+  // Spain finds no Spanish work.
+  if (!portAccess(world, portKey).canCharter) return [];
+
   const stock = world.ports[portKey]?.inventory ?? {};
   const taken = new Set(activeCharters(world).map(c => c.id));
   const offers: CargoContract[] = [];

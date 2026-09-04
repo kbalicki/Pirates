@@ -104,6 +104,11 @@ export const PL: LocaleData = {
   // -- Port Scene --
   "port.trade_goods": "TOWARY HANDLOWE",
   "port.price": "{{price}} Złoto",
+  "port.standing": "Twoje notowania tutaj: {{level}} ({{value}})",
+  "port.closed_to_you": "— zamknięty dla ciebie",
+  "port.col_buy_sell": "Kup/Sprzedaj",
+  "port.spread": "To miasto jest {{level}}: {{pct}}% różnicy między ceną kupna a sprzedaży.",
+  "port.trade_income": "Obrót przez to nabrzeże: {{gold}} złota dziennie",
   "port.stock": "Zapas: {{qty}}",
   "port.own": "Własne: {{qty}}",
   "port.buy": "[Kup]",
@@ -331,6 +336,7 @@ export const PL: LocaleData = {
   "charter.carrying": "Wzięty fracht",
   "charter.on_offer": "Do wzięcia",
   "charter.nothing": "Dziś nie ma stąd nic do przewiezienia.",
+  "charter.refused": "Żaden tutejszy kupiec nie powierzy ci swojego ładunku.",
   "charter.offer": "{{qty}} {{item}} do {{port}} — {{gold}} zł, {{days}} dni",
   "charter.en_route": "{{qty}} {{item}} dla {{port}} — {{gold}} zł przy wydaniu",
   "charter.deliver": "WYDAJ {{qty}} {{item}} — {{gold}} zł",
@@ -454,6 +460,7 @@ export const PL: LocaleData = {
   // -- Tavern --
   "tavern.title": "TAWERNA",
   "tavern.recruit_crew": "Zwerbuj załogę (za darmo)",
+  "tavern.nobody_signs": "— nikt tu z tobą nie popłynie",
   "tavern.hear_rumors": "Posłuchaj plotek",
   "tavern.buy_drinks": "Postaw kolejkę ({{cost}} Złoto)",
   "tavern.back": "[ WRÓĆ DO PORTU ]",
@@ -508,6 +515,7 @@ export const PL: LocaleData = {
   "shipyard.repair": "[ NAPRAW KADŁUB: {{damage}} PŻ ({{cost}} Złoto) ]",
   "shipyard.no_damage": "Kadłub w doskonałym stanie.",
   "shipyard.ships_for_sale": "STATKI NA SPRZEDAŻ",
+  "shipyard.no_hulls_for_you": "TA STOCZNIA NIC CI NIE SPRZEDA",
   "shipyard.col_name": "Statek",
   "shipyard.col_speed": "Prędkość",
   "shipyard.col_hull": "Kadłub",
@@ -728,7 +736,16 @@ export const PL: LocaleData = {
 
   // ── Wyprawa dostaje kadłuby (v0.17.0) ──────────────────
   // -- Port macierzysty (v0.18.0) --
-  "port.warehouse": "Magazyn rodzinny",
+  "port.warehouse": "Magazyn",
+  "port.rent_warehouse": "Wynajmij magazyn ({{gold}} zł)",
+  "warehouse.lease_days": "Najem: zostało {{days}} dni   \u00b7   kliknij, by przedłużyć za {{gold}} zł",
+  "warehouse.offer": "Tutejszy kupiec ma pustą szopę przy nabrzeżu: {{cap}} ton, {{gold}} złota na {{days}} dni.",
+  "warehouse.offer_note": "Towar złożony tutaj jest twój, nie miasta — nie karmi go i nie rusza jego cen. Gdy najem wygaśnie, właściciel wystawi zawartość na licytację i odeśle ci połowę tego, co uzyskał.",
+  "warehouse.take_lease": "Bierz ({{gold}} zł)",
+  "warehouse.cannot_afford": "Nie stać cię na czynsz",
+  "storehouse.log_rented": "Wynajęto magazyn w {{port}} — {{gold}} złota na {{days}} dni.",
+  "storehouse.log_auctioned": "Najem w {{port}} wygasł. Zawartość poszła pod młotek; dotarło do ciebie {{gold}} złota.",
+  "storehouse.log_lapsed": "Pusty magazyn w {{port}} wrócił do właściciela.",
   "warehouse.title": "Magazyn w {{port}}",
   "warehouse.capacity": "Na brzegu: {{used}} / {{cap}} ton   \u00b7   Miejsce w ładowni: {{hold}}",
   "warehouse.col_item": "Towar",

@@ -295,6 +295,32 @@ Doszedł jeden wariant efektu dialogowego:
 | { type: "notoriety"; amount: number }
 ```
 
+### Ledger handlu i magazyny (v0.24.0, bez migracji)
+
+```typescript
+// PortRuntimeState
+/** Złoto, które dziś przeszło przez to nabrzeże i nie zostało jeszcze zamienione
+ *  na bogactwo. Tick dobowy przelicza sumę raz, po GOLD_PER_WEALTH. */
+tradeBalance?: number;
+/** Wczorajsza suma — ekran podejścia do portu ją pokazuje. */
+tradeIncome?: number;
+
+// PlayerState
+/** Magazyny wynajęte w zwykłych miastach. Magazyn rodzinny dalej siedzi
+ *  osobno, w `warehouse`, bo ma inne zasady. */
+storehouses?: Record<string, { paidUntil: number; goods: Record<string, number> }>;
+```
+
+Wszystkie cztery **opcjonalne i czytane przez `?? 0` / `?? {}`**, więc migracja
+jest zbędna: stary zapis znaczy „żadnego obrotu, żadnych najmów", co jest o nim
+prawdą. Łańcuch migracji stoi dalej na **v12**.
+
+Jedna zmiana, która **nie jest** nowym polem, a i tak dotyczy zapisu:
+`PortRuntimeState.wealth` jest teraz trzymane z dokładnością **do 0,1** zamiast
+do pełnych punktów. Powód w `04-CORE-SYSTEMS.md` — bez miejsca na ułamek ledger
+handlu równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu.
+Stary zapis z całkowitym `wealth` jest poprawnym przypadkiem tego samego pola.
+
 
 ## RNG Service (`src/core/services/RNG.ts`)
 

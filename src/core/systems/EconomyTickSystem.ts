@@ -13,10 +13,9 @@
  *   7. Natural recovery toward baseline (slow drift)
  */
 
-import type { WorldState } from "../model/WorldState.ts";
+import type { WorldState, PortRuntimeState } from "../model/WorldState.ts";
 import { CITIES } from "../data/cities.ts";
 import { ITEMS } from "../data/items.ts";
-import { getBasePrice } from "../data/prices.ts";
 import {
   getPortBaseline,
   baselineProductionRate,
@@ -28,8 +27,10 @@ import {
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
 import { heldDefenseCeiling, heldPopulationCeiling, playerHolds } from "./ReconquestSystem.ts";
-import { laneSupplyShare } from "./TradeRouteSystem.ts";
+import { laneSupplyShare, routeSupplying } from "./TradeRouteSystem.ts";
 import { blockadeEffective, portShutIn, BLOCKADE_SUPPLY_SHARE } from "./BlockadeSystem.ts";
+import { spotPrice } from "./PricingSystem.ts";
+import { deliveryValue, settleDailyLedger } from "./TradeLedgerSystem.ts";
 
 /**
  * Share of a town's daily need that the trade it does not control brings in.
@@ -72,10 +73,32 @@ const RECOVERY_DEFENSE = 0.02;    // 2% per day
  */
 export function economyDailyTick(world: WorldState): WorldState {
   // 1. One-shot event hits (raid/hurricane/strike etc.)
-  let w = applyOneShotEffects(world);
+  const w = applyOneShotEffects(world);
 
   const newPorts = { ...w.ports };
   const itemKeys = Object.keys(ITEMS);
+
+  /**
+   * Gold each port earns or spends on the lanes today (v0.24.0).
+   *
+   * Filled during the pass and settled after it, because a delivery pays the
+   * port at the *other* end of the lane — a port the loop may have finished
+   * with an hour ago, or may not have reached yet. Accumulating it and
+   * settling once is the only order that gives the same answer whichever way
+   * `Object.keys` happens to come out.
+   */
+  const laneGold: Record<string, number> = {};
+
+  /** A port's books, worked out but not yet clamped, rounded or written back. */
+  type Books = {
+    port: PortRuntimeState;
+    inventory: Record<string, number>;
+    prices: Record<string, number>;
+    wealth: number;
+    population: number;
+    defense: number;
+  };
+  const books: Record<string, Books> = {};
 
   for (const portKey of Object.keys(newPorts)) {
     const port = newPorts[portKey];
@@ -90,7 +113,7 @@ export function economyDailyTick(world: WorldState): WorldState {
     // Active produces = base + bonus (e.g. "gold" from gold_discovery)
     const allProduces = [...def.produces, ...port.bonusProduces];
 
-    let inventory = { ...port.inventory };
+    const inventory = { ...port.inventory };
     let wealth = port.wealth + effects.wealthDelta;
     let population = port.population + effects.popDelta;
     let defense = port.defense + effects.defenseDelta;
@@ -125,7 +148,25 @@ export function economyDailyTick(world: WorldState): WorldState {
         const cap = inventoryCap(portKey, item);
         const lane = laneSupplyShare(w, portKey, item, p => portShutIn(w, p));
         const arriving = need * flagShare * lane * cordon * effects.importMul;
-        inventory[item] = Math.min(cap, (inventory[item] ?? 0) + arriving);
+        const had = inventory[item] ?? 0;
+        inventory[item] = Math.min(cap, had + arriving);
+
+        // Money follows goods (v0.24.0). What the warehouse would not take is
+        // not delivered and is not paid for, so the landed quantity is the one
+        // that settles — not the quantity that set out.
+        const landed = inventory[item] - had;
+        const route = landed > 0 ? routeSupplying(portKey, item) : undefined;
+        if (route) {
+          // Yesterday's quotes at both ends: the exporter's, because that is
+          // what he was paid, and this town's, because that is what his cargo
+          // fetches here. Today's are still being worked out.
+          const origin = w.ports[route.from];
+          const paid = (origin?.prices[item] ?? ITEMS[item]?.basePrice ?? 0) * landed;
+          const soldFor = (port.prices[item] ?? ITEMS[item]?.basePrice ?? 0) * landed;
+          const value = deliveryValue(paid, soldFor);
+          laneGold[route.from] = (laneGold[route.from] ?? 0) + value.paid;
+          laneGold[portKey] = (laneGold[portKey] ?? 0) + value.margin;
+        }
       }
 
       // 4. Consumption
@@ -141,17 +182,13 @@ export function economyDailyTick(world: WorldState): WorldState {
       }
     }
 
-    // 5. Price recompute
+    // 5. Price recompute. The arithmetic lives in `PricingSystem` since
+    // v0.24.0, because every hand that moves goods now requotes with it — the
+    // merchant's counter and a docking convoy as well as this loop.
     const newPrices: Record<string, number> = {};
     for (const item of itemKeys) {
-      const itemDef = ITEMS[item];
-      if (!itemDef) continue;
-      const supply = (inventory[item] ?? 0) + 1;
-      const demand = (baselineConsumptionRate(portKey, item, port.population) || 1) * 30;
-      const ratio = Math.max(0.4, Math.min(3.0, demand / supply));
-      const base = getBasePrice(portKey, item);
-      const raw = base * ratio * effects.priceMul;
-      newPrices[item] = Math.max(1, Math.round(raw));
+      if (!ITEMS[item]) continue;
+      newPrices[item] = spotPrice(portKey, item, inventory[item] ?? 0, port.population, effects.priceMul);
     }
     // Bonus produce "gold" has its own price (very valuable)
     if (port.bonusProduces.includes("gold")) {
@@ -178,23 +215,41 @@ export function economyDailyTick(world: WorldState): WorldState {
     // more. Without this the player would never have to defend a conquest.
     defense    += (heldDefenseCeiling(w, portKey) - defense) * RECOVERY_DEFENSE * rmul;
 
-    // Clamp + round
-    const finalWealth = Math.max(0, Math.min(1000, Math.round(wealth)));
-    const finalPopulation = Math.max(0, Math.round(population));
-    const finalDefense = Math.max(0, Math.min(100, Math.round(defense)));
-
     // Round inventory values (avoid float drift in saves)
     for (const k of Object.keys(inventory)) {
       inventory[k] = Math.max(0, Math.round(inventory[k] * 10) / 10);
     }
 
+    books[portKey] = { port, inventory, prices: newPrices, wealth, population, defense };
+  }
+
+  // 8. Settle the day's ledger (v0.24.0).
+  //
+  // Everything that crossed a quay since midnight — the lane deliveries just
+  // worked out above, and whatever the player and the traffic on the map put
+  // through `tradeBalance` during the day — becomes wealth here, once, at one
+  // rate. Then the slate is wiped and the total is filed where the port screen
+  // can read it back to him.
+  for (const portKey of Object.keys(books)) {
+    const b = books[portKey];
+    const gold = (b.port.tradeBalance ?? 0) + (laneGold[portKey] ?? 0);
+    const wealth = b.wealth + settleDailyLedger(gold);
+
     newPorts[portKey] = {
-      ...port,
-      inventory,
-      prices: newPrices,
-      wealth: finalWealth,
-      population: finalPopulation,
-      defense: finalDefense,
+      ...b.port,
+      inventory: b.inventory,
+      prices: b.prices,
+      // Kept to one decimal rather than whole points (v0.24.0). A day's honest
+      // trade through a busy quay is worth about half a point, and rounding
+      // the running total to an integer every midnight threw that half away —
+      // the ledger balanced against the pull toward baseline at four points
+      // above it instead of the fifty the arithmetic actually says. Anything
+      // that moves wealth slowly needs somewhere for the fraction to live.
+      wealth: Math.max(0, Math.min(1000, Math.round(wealth * 10) / 10)),
+      population: Math.max(0, Math.round(b.population)),
+      defense: Math.max(0, Math.min(100, Math.round(b.defense))),
+      tradeBalance: 0,
+      tradeIncome: Math.round(gold),
     };
   }
 

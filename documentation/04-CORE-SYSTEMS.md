@@ -43,6 +43,10 @@
 | Blockade | `BlockadeSystem.ts` | Blokada portu przez gracza |
 | Prize | `PrizeSystem.ts` | Ładownia i kiesa zdobytego statku |
 | CargoContract | `CargoContractSystem.ts` | Fracht: gracz jako przewoźnik na szlakach |
+| Pricing | `PricingSystem.ts` | Jedna wycena, wołana wszędzie tam, gdzie rusza się towar |
+| TradeLedger | `TradeLedgerSystem.ts` | Pieniądz idący za towarem; bogactwo portu z handlu |
+| PortAccess | `PortAccessSystem.ts` | Co miasto zrobi dla gracza: reputacja przy ladzie |
+| Storehouse | `StorehouseSystem.ts` | Wynajęty magazyn w dowolnym mieście |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -1800,3 +1804,198 @@ odcinka, na którym stoi marker.
 Pod vitestem `LANDMASSES` jest puste, więc `findSeaPath` zwraca prostą i całe
 zachowanie jest identyczne jak przed zmianą — dlatego żaden istniejący test
 `ExpeditionFleetSystem` nie drgnął.
+
+---
+
+## Wycena — jedna, wszędzie tam, gdzie rusza się towar (v0.24.0)
+
+`src/core/systems/PricingSystem.ts` (czysty).
+
+Do v0.23.0 cena towaru była przeliczana **w jednym miejscu, raz na dobę**, na
+dole `EconomyTickSystem`. Wszystko inne, co ruszało towarem — kupiec w porcie,
+kupiec NPC ładujący się z magazynu, konwój wysypujący ładownię — ruszało
+**zapasem** i zostawiało notowanie w spokoju do północy. Dwa widoczne skutki:
+
+- **ładownia nie miała dna rynku** — 200 ton cukru sprzedane do rybackiej wioski
+  szło po cenie pierwszej tony, a cała gra handlowa sprowadzała się do „znajdź
+  największy spread i powtarzaj";
+- **żegluga nie było widać w notowaniach** — konwój z osiemdziesięcioma tonami
+  kakao nie ruszał ceny kakao do następnego poranka.
+
+Teraz wzór mieszka tutaj i woła go **każda ręka dotykająca magazynu**:
+
+```
+spotPrice(portKey, item, stock, population, priceMul)
+  supply = stock + 1
+  demand = baselineConsumptionRate(...) × 30
+  ratio  = clamp(demand / supply, 0.4, 3.0)
+  → max(1, round(getBasePrice(port, item) × ratio × priceMul))
+```
+
+To **ekstrakcja, nie przeprojektowanie** — arytmetyka jest ta sama, którą tick
+miał od zawsze (test `„is the same arithmetic the daily tick uses"` to pilnuje).
+Zmieniło się tylko to, że liczba nie może się już zestarzeć między północami.
+
+`repriceItem` / `repricePort` czytają `getAggregatedEffects().priceMul`, bo
+miasto pod ostrzeżeniem huraganowym liczy żywność podwójnie, a przecena bez
+tego mnożnika po cichu kasowałaby zdarzenie do północy.
+
+---
+
+## Ledger handlu — pieniądz idzie za towarem (v0.24.0)
+
+`src/core/systems/TradeLedgerSystem.ts` (czysty) + krok 8 w `EconomyTickSystem`.
+
+v0.23.0 sprawiła, że towar naprawdę wędruje. **Nikt za nic nie płacił.** Bogactwo
+portu było funkcją produkcji, niedoborów i dryfu do baseline'u, więc miasto na
+skrzyżowaniu sześciu szlaków było warte dokładnie tyle, co identyczne miasto na
+końcu żadnego.
+
+Zasada modułu jest jedna: **gdziekolwiek rusza się towar, w drugą stronę rusza
+się pieniądz.** Stąd dokładnie dwa rozliczenia:
+
+| Rozliczenie | Kto płaci | Kto dostaje |
+|---|---|---|
+| dostawa szlakiem (raz dziennie, `EconomyTickSystem`) | — | eksporter dostaje `paid` (wartość ładunku po swojej cenie), importer połowę marży (`soldFor − paid`, do sufitu `paid`) |
+| handel gracza (przy ladzie, `EconomySystem`) | gracz albo miasto | drugie z nich, bez marży — gracz zatrzymuje ją sam |
+
+Oba końce szlaku **zyskują**, i to nie jest fudge: to cały powód, dla którego
+handel istnieje — beczka kakao jest warta więcej tam, gdzie nikt go nie uprawia.
+Konsekwencja: przecięcie szlaku kosztuje oba miasta pieniądze **bez ani jednej
+dodatkowej linijki księgowania**.
+
+### Gdzie ledger celowo NIE stoi
+
+**Na kadłubach.** Kupiec dobijający na oczach gracza wysypuje ładunek i rusza
+lokalnym rynkiem (to prawda i to widać), ale **nie rozlicza pieniędzy** — szlak,
+do którego należy, został już opłacony w całości przez tick dobowy. Statki na
+mapie to *próbka* handlu; płacenie także im liczyłoby każdy rejs dwa razy i, co
+gorsza, po cichu bogaciłoby miasto, przy którym gracz akurat stoi na kotwicy.
+
+### Dlaczego ledger, a nie zapis wprost
+
+`wealth` to mała liczba na skali 0..1000, a dzień uczciwego handlu jest wart jej
+ułamek. Zapisywany wprost zaokrągliłby się do zera. Dlatego rozliczenia
+narastają w złocie na `PortRuntimeState.tradeBalance`, a tick dobowy przelicza
+sumę **raz**, po kursie `GOLD_PER_WEALTH = 200`, i odkłada ją do `tradeIncome`
+(ekran podejścia do portu ją pokazuje).
+
+**`wealth` jest teraz trzymane z dokładnością do 0,1.** To nie kosmetyka:
+zaokrąglanie sumy bieżącej do pełnych punktów co północ wyrzucało dzienny
+przyrost i ledger równoważył się **4 punkty** nad baseline'em zamiast
+pięćdziesięciu, które wychodzą z arytmetyki. Cokolwiek rusza bogactwem powoli,
+musi mieć gdzie trzymać ułamek.
+
+Bezpiecznik: `MAX_TRADE_WEALTH_PER_DAY = 6` — barierka, nie mechanika. Ceny i tak
+zjeżdżają w trakcie sprzedaży, więc zrzucenie ładowni samo się ogranicza dużo
+wcześniej.
+
+Kalibracja (pomiar, nie zgadywanie): po 400 dniach bez ingerencji Port Royale
+kręci ~102 złota dziennie i siada **+46** nad baseline'em, gran_granada +24,
+santiago +17, a miasto na końcu żadnego szlaku — dokładnie tam, gdzie było.
+
+---
+
+## Reputacja wreszcie dociera do nabrzeża (v0.24.0)
+
+`src/core/systems/PortAccessSystem.ts` (czysty).
+
+Jedenaście wydań zapisywało, co każda korona sądzi o graczu, po czym gracz
+mijał fort i **żadna z tych liczb nie miała już znaczenia**. Cartagena, którą
+palił od roku, sprzedawała mu proch po cenie Port Royale, podpisywała fracht i
+puszczała z nim swoich synów.
+
+Wszystko siedzi w **jednej tabeli**, żeby pytanie „co znaczy hostile" miało
+dokładnie jedną odpowiedź, a czytelnik mógł jednym spojrzeniem sprawdzić, że
+`unfriendly` leży między `hostile` a `neutral` w każdej kolumnie:
+
+| poziom | spread | crewMul | canCharter | canRentStore | canBuyShips | serviceMul |
+|---|---|---|---|---|---|---|
+| hostile | 0.30 | 0 | ✗ | ✗ | ✗ | 2.0 |
+| unfriendly | 0.20 | 0.4 | ✗ | ✗ | ✓ | 1.3 |
+| neutral | 0.12 | 1.0 | ✓ | ✓ | ✓ | 1.0 |
+| friendly | 0.08 | 1.25 | ✓ | ✓ | ✓ | 0.9 |
+| allied | 0.05 | 1.5 | ✓ | ✓ | ✓ | 0.8 |
+
+Czytane **zawsze** przez `portFaction(world, portKey)` — flaga z dziś, nie mapa
+z 1680.
+
+### Dlaczego widełki, a nie mnożnik
+
+Oczywisty kształt — podbić cenę wrogowi, obniżyć przyjacielowi, tym samym
+mnożnikiem w obie strony — jest **drukarką pieniędzy**, i pierwszy zrzut ekranu
+to udowodnił: przyjazne Port Royale żądało 14 za cukier i dawało 16, więc dało
+się stać przy ladzie i kupować-sprzedawać tę samą beczkę do skutku. Bid i ask
+wokół **jednej** ceny nie potrafią tego z konstrukcji:
+
+```
+ask = max(1, round(posted × (1 + spread)))
+bid = min(ask, max(1, round(posted × (1 − spread))))
+```
+
+Test przechodzi wszystkie ceny 1..400 na wszystkich pięciu poziomach.
+
+### Gdzie to działa
+
+| Lada | Co się dzieje |
+|---|---|
+| kupiec (`EconomySystem`) | `playerBuyPrice` / `playerSellPrice` — spread |
+| tawerna (`generateAvailableCrew`, `recruitCrew`) | pula ×`crewMul`; hostile = nikt. **Rzut RNG dzieje się i tak** — reputacja nie może po cichu przetasować całej reszty losowości w grze |
+| kantor frachtowy (`cargoOffers`) | poniżej `neutral` książka jest zamknięta |
+| stocznia (`repairRate`, `buyShip`, `buyShipToFleet`) | rachunek ×`serviceMul`; hostile nie kupi kadłuba |
+| magazyn (`StorehouseSystem.canRent`, `rentFor`) | poniżej `neutral` nikt nie wynajmie, czynsz ×`serviceMul` |
+
+`reputationPriceModifier` — martwy od jedenastu wydań — został usunięty; jego
+rola jest teraz kolumną `spread` w tej tabeli.
+
+---
+
+## Wynajęty magazyn w dowolnym mieście (v0.24.0)
+
+`src/core/systems/StorehouseSystem.ts` (czysty) + widok `warehouse` w `PortScene`,
+tick w `WorldEngine` **przed** `economyDailyTick`.
+
+Do tej pory kapitan miał dokładnie jedno miejsce, gdzie mógł odłożyć towar:
+magazyn rodzinny z małżeństwa, w jednym mieście (`HomePortSystem`). Wszędzie
+indziej jego ładownia była całym majątkiem — 40 ton na startowym slupie — więc
+cała warstwa rynkowa z trzech ostatnich wydań dawała się grać wyłącznie po
+jednej ładowni naraz.
+
+| Wielkość miasta | Pojemność |
+|---|---|
+| small | 100 t |
+| medium | 200 t |
+| large | 350 t |
+| capital | 500 t |
+
+Czynsz: `cap × 1.5 × (0.8 + wealth/1000 × 0.6) × serviceMul` za **30 dni**;
+trafia na `tradeBalance` miasta, bo to pieniądz przechodzący przez to nabrzeże.
+
+### Dlaczego to nie psuje ekonomii
+
+Notatka, która odkładała tę funkcję przez dwa wydania, miała rację co do ryzyka:
+kapitan, który może magazynować wszędzie, wykupi każdą tanią beczkę na Karaibach
+i na niej usiądzie. Zatrzymują to trzy rzeczy, z czego **nowa jest tylko trzecia**:
+
+1. **Ceny jadą w trakcie handlu** (`PricingSystem`) — wykupywanie magazynu samo
+   podbija notowanie pod ręką. To jest ta ważna: to się zmieniło i dlatego
+   funkcję można było wreszcie zbudować.
+2. **Złożony towar jest jego, nie miasta** — leży poza `port.inventory`, więc
+   nie podpiera po cichu podaży, a wypuszczenie zapasu to zwykła sprzedaż.
+3. **Czynsz biegnie, czy gracz tam jest, czy nie**, a wygasły najem idzie pod
+   młotek. Magazynowanie ma koszt nośny — i to robi z niego decyzję.
+
+### Wygaśnięcie
+
+`tickStorehouses` (dzień > `paidUntil`): właściciel sprzedaje zawartość po cenie
+lokalnej, towar **ląduje na półkach miasta** i notowania się przeliczają
+(licytacja to dostawa jak każda inna), kapitan dostaje `AUCTION_SHARE = 0.5`
+wartości, a ta kwota schodzi z `tradeBalance` miasta. Wpis do logu zawsze —
+zniknięty po cichu zapas czytałby się jak zepsuty save, nie jak przegrany zakład.
+
+Pola stanu: `player.storehouses?: Record<portKey, { paidUntil, goods }>` —
+**opcjonalne**, więc bez kroku migracji. Magazyn rodzinny dalej siedzi w
+`player.warehouse` i ma swoje zasady (za darmo, większy, przepada przy zmianie
+korony); `goodsAshore` / `storageCap` / `storeAt` / `withdrawAt` czytają to,
+co akurat obowiązuje w danym mieście, więc `PortScene` nie musi wiedzieć,
+w którym z dwóch rodzajów magazynu stoi.

@@ -21,6 +21,7 @@ import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
 import { inventoryCap } from "../data/economyBaselines.ts";
 import { routesFrom, type TradeRoute } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
+import { repricePort } from "./PricingSystem.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
 // ---- Configuration ----
@@ -297,7 +298,23 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
           // not be quietly emptied by a delivery arriving.
           inventory[item] = Math.max(have, Math.min(cap, have + qty));
         }
-        ports = { ...ports, [targetPortKey]: { ...port, inventory } };
+        // The stock is written in and the goods are requoted against it
+        // (v0.24.0), so a convoy making port moves the market the moment she
+        // ties up rather than at the following midnight.
+        //
+        // She settles no *money*, deliberately. The hulls on the chart are a
+        // sample of the trade and the ledger sits one level up, on the lane
+        // itself, where `EconomyTickSystem` pays for the whole of it. Paying
+        // here as well would count the same voyage twice — and, worse, would
+        // pay a town extra for the accident of the player happening to be
+        // anchored off it. Taking this convoy still costs both ends: her cargo
+        // is gone out of one warehouse and never reaches the other, and
+        // `disruptRoute` thins the lane that pays them.
+        ports = {
+          ...ports,
+          [targetPortKey]: repricePort({ ...world, ports }, targetPortKey, Object.keys(hold), inventory)
+            ?? { ...port, inventory },
+        };
       }
       // Ship docks — remove from map
       const copy = { ...entities };
@@ -416,7 +433,14 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
           for (const [item, qty] of Object.entries(taken)) {
             inventory[item] = Math.max(0, (inventory[item] ?? 0) - qty);
           }
-          ports = { ...ports, [portKey]: { ...origin, inventory } };
+          // The warehouse is lighter, so the quay quotes higher. Loading a
+          // convoy out of a small town is visible in its market the same
+          // afternoon.
+          ports = {
+            ...ports,
+            [portKey]: repricePort({ ...world, ports }, portKey, Object.keys(taken), inventory)
+              ?? { ...origin, inventory },
+          };
         }
       }
 

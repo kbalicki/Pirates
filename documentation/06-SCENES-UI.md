@@ -196,6 +196,33 @@ do czytania magazynu jako drugiego rynku.
 
 Te same klawisze co u kupca — W/S wybór, Q na brzeg, E na statek, po 10 ton.
 
+### PortScene — magazyn na wynajem (v0.24.0)
+
+Od v0.24.0 ta sama pozycja menu prowadzi także do **wynajętego** magazynu w
+dowolnym mieście, które zechce go wydzierżawić (`neutral` w górę). Gdy kapitan
+nie ma tu jeszcze nic, ekran jest ofertą właściciela — pojemność, czynsz za 30
+dni, i wprost napisane, co się stanie, gdy najem wygaśnie. Gdy ma, jest to ta
+sama tabela transferu co w magazynie rodzinnym, plus linijka z pozostałymi
+dniami najmu (na czerwono od pięciu dni w dół), klikalna, żeby przedłużyć.
+
+Celowo **jeden widok**, nie dwa: „wynajmij szopę" i „użyj szopy" to jedno
+miejsce w mieście, a pozycja menu prowadząca gdzie indziej zależnie od stanu
+byłaby gorsza niż ta sama izba z innym człowiekiem w środku.
+
+### PortScene — co reputacja zmienia na ekranie (v0.24.0)
+
+Nagłówek portu ma trzecią linijkę: **„Twoje notowania tutaj: <poziom> (<liczba>)"**,
+czerwoną przy `hostile`. Jest w nagłówku, a nie przy każdej ladzie, bo to jeden
+fakt rozstrzygający pięć różnych rzeczy — gracz ma go przeczytać raz, wchodząc.
+
+| Ekran | Co widać |
+|---|---|
+| kupiec | kolumna **Kup/Sprzedaj** zamiast jednej ceny + linijka ze spreadem w procentach |
+| tawerna | „— nikt tu z tobą nie popłynie" zamiast liczby chętnych |
+| kantor frachtowy | pozycja menu z dopiskiem „— zamknięty dla ciebie"; w środku „Żaden tutejszy kupiec nie powierzy ci ładunku" (inny komunikat niż „dziś nic nie ma") |
+| stocznia | nagłówek „TA STOCZNIA NIC CI NIE SPRZEDA", rachunek za naprawę wg `serviceMul` |
+| podejście do portu | „Obrót przez to nabrzeże: N złota dziennie" — liczba, która spada, gdy blokada działa |
+
 ### HelpScene / BattleHelpScene
 
 `HelpScene` (klawisz H na mapie) — 5 zakładek: Sterowanie, Statki, Żeglowanie, Świat, Ekonomia.

@@ -34,6 +34,9 @@ import {
 import { canAddToFleet, fleetSize } from "../../core/systems/FleetSystem.ts";
 import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
+import { portAccess } from "../../core/systems/PortAccessSystem.ts";
+import { playerBuyPrice, playerSellPrice } from "../../core/systems/EconomySystem.ts";
+import { repairRate } from "../../core/systems/PortInteractionSystem.ts";
 import {
   startDialogue,
   currentNode,
@@ -82,14 +85,22 @@ import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
   isHomePort,
   careen,
-  warehouseOf,
-  warehouseUsed,
-  warehouseFree,
   holdFree,
-  storeGoods,
-  withdrawGoods,
-  WAREHOUSE_CAP,
 } from "../../core/systems/HomePortSystem.ts";
+import {
+  goodsAshore,
+  storageUsed,
+  storageFree,
+  storageCap,
+  hasStorage,
+  canRent,
+  rentFor,
+  rentStorehouse,
+  daysLeft,
+  storeAt,
+  withdrawAt,
+  LEASE_DAYS,
+} from "../../core/systems/StorehouseSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { captainAge } from "../../core/systems/AgingSystem.ts";
@@ -226,13 +237,27 @@ export class PortScene extends Phaser.Scene {
     this.add.text(this.cx, y, t("port." + portKey + ".name"), txt(20, { bold: true })).setOrigin(0.5, 0);
     y += 26;
 
-    // Faction & type
+    // Faction & type, and — since v0.24.0 — what that flag thinks of him.
+    // It belongs in the header rather than on each counter because it is one
+    // fact that decides five different things inside; the player should read
+    // it once on the way in and know what kind of afternoon he is having.
+    const access = portAccess(this.worldState, portKey);
+    const repHex = access.level === "hostile" ? "#aa2222"
+      : access.level === "unfriendly" ? "#996633"
+      : access.level === "allied" ? "#227722"
+      : factionHex;
     this.add.text(
       this.cx, y,
       `${t("port_type." + portDef.type)} \u2014 ${t("faction." + factionKey + ".name")}`,
       txt(12, { color: factionHex }),
     ).setOrigin(0.5, 0);
-    y += 20;
+    y += 16;
+    this.add.text(
+      this.cx, y,
+      t("port.standing", { level: t("rep." + access.level), value: access.reputation }),
+      txt(11, { color: repHex, bold: access.level === "hostile" }),
+    ).setOrigin(0.5, 0);
+    y += 18;
 
     // Player info bar
     const player = this.worldState.player;
@@ -395,7 +420,12 @@ export class PortScene extends Phaser.Scene {
       { label: t("port.visit_governor"), key: "governor" },
       { label: t("port.visit_tavern"), key: "tavern" },
       { label: t("port.visit_merchant"), key: "merchant" },
-      { label: t("port.visit_charter"), key: "charter" },
+      {
+        label: portAccess(this.worldState, this.currentPortId as string).canCharter
+          ? t("port.visit_charter")
+          : t("port.visit_charter") + "  " + t("port.closed_to_you"),
+        key: "charter",
+      },
       { label: t("port.visit_shipyard"), key: "shipyard" },
     ];
 
@@ -405,11 +435,19 @@ export class PortScene extends Phaser.Scene {
       actions.push({ label: t("port.garrison"), key: "garrison" });
     }
 
-    // The family storehouse, and only in the town he married into while her
-    // father still holds it. `isHomePort` is the whole gate: a colony that has
-    // changed hands has a different owner in the warehouse.
-    if (isHomePort(this.worldState, this.currentPortId as string)) {
-      actions.push({ label: t("port.warehouse"), key: "warehouse" });
+    // Somewhere to put cargo down. The family storehouse in the town he
+    // married into (free, and only while her father still holds it), a shed he
+    // is already renting here, or the offer of one (v0.24.0). `isHomePort` is
+    // still the whole gate on the *family's* store: a colony that has changed
+    // hands has a different owner in the warehouse.
+    const here = this.currentPortId as string;
+    if (hasStorage(this.worldState, here) || canRent(this.worldState, here)) {
+      actions.push({
+        label: hasStorage(this.worldState, here)
+          ? t("port.warehouse")
+          : t("port.rent_warehouse", { gold: rentFor(this.worldState, here) }),
+        key: "warehouse",
+      });
     }
 
     actions.push({
@@ -671,10 +709,13 @@ export class PortScene extends Phaser.Scene {
       price: offeredDef.price,
     });
 
+    const willing = portAccess(this.worldState, this.currentPortId as string).crewMul > 0;
     const actions = [
       {
-        label: t("tavern.recruit_crew")
-          + ` (${t("tavern.crew_available", { count: availableCrew, berths: crewSpace })})`,
+        label: willing
+          ? t("tavern.recruit_crew")
+            + ` (${t("tavern.crew_available", { count: availableCrew, berths: crewSpace })})`
+          : t("tavern.recruit_crew") + "  " + t("tavern.nobody_signs"),
         key: "recruit",
       },
       { label: t("tavern.hear_rumors"), key: "rumors" },
@@ -1232,10 +1273,33 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(title);
     y += 20;
 
-    const used = warehouseUsed(this.worldState);
+    // Nothing here yet — the screen is the landlord's offer instead (v0.24.0).
+    if (!hasStorage(this.worldState, portKey)) {
+      this.renderRentOffer(portKey, y);
+      return;
+    }
+
+    const used = storageUsed(this.worldState, portKey);
     this.contentContainer.add(this.add.text(this.infoX, y,
-      t("warehouse.capacity", { used, cap: WAREHOUSE_CAP, hold: holdFree(this.worldState) }),
+      t("warehouse.capacity", {
+        used,
+        cap: storageCap(this.worldState, portKey),
+        hold: holdFree(this.worldState),
+      }),
       txt(11, { color: "#555555" })));
+    y += 16;
+
+    // A rented shed runs on a clock and the clock is the whole cost of the
+    // feature, so it is on the screen, in red when it is nearly out.
+    const left = daysLeft(this.worldState, portKey);
+    if (!isHomePort(this.worldState, portKey)) {
+      const renew = this.add.text(this.infoX, y,
+        t("warehouse.lease_days", { days: left, gold: rentFor(this.worldState, portKey) }),
+        txt(11, { color: left <= 5 ? "#aa3333" : "#555555", bold: left <= 5 }));
+      renew.setInteractive({ useHandCursor: true });
+      renew.on("pointerdown", () => this.handleRentStorehouse());
+      this.contentContainer.add(renew);
+    }
     y += 22;
 
     const colName = this.infoX;
@@ -1249,7 +1313,7 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(this.add.text(colAshore, y, t("warehouse.col_ashore"), txt(10, { bold: true, color: "#666666" })));
     y += 16;
 
-    const store = warehouseOf(this.worldState);
+    const store = goodsAshore(this.worldState, portKey);
     const rows = Object.keys(ITEMS).filter(
       key => (ship?.cargo?.[key] ?? 0) > 0 || (store[key] ?? 0) > 0,
     );
@@ -1278,7 +1342,7 @@ export class PortScene extends Phaser.Scene {
       this.contentContainer.add(this.add.text(colAboard, y, String(aboard), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colAshore, y, String(ashore), txt(11, { color: "#555555" })));
 
-      if (aboard > 0 && warehouseFree(this.worldState) > 0) {
+      if (aboard > 0 && storageFree(this.worldState, portKey) > 0) {
         const btn = this.add.text(colStore, y, t("warehouse.store"), txt(10, { bold: true, color: "#2266aa" }));
         btn.setInteractive({ useHandCursor: true });
         btn.on("pointerdown", () => this.moveGoods(key, 10, true));
@@ -1322,13 +1386,66 @@ export class PortScene extends Phaser.Scene {
   }
 
   private moveGoods(itemId: string, qty: number, ashore: boolean): void {
+    const portKey = this.currentPortId as string;
     const result = ashore
-      ? storeGoods(this.worldState, itemId, qty)
-      : withdrawGoods(this.worldState, itemId, qty);
+      ? storeAt(this.worldState, portKey, itemId, qty)
+      : withdrawAt(this.worldState, portKey, itemId, qty);
     if (result.moved <= 0) return;
     this.worldState = result.world;
     this.registry.set("worldState", this.worldState);
     this.switchView("warehouse");
+  }
+
+  /**
+   * The landlord's offer, when the captain has nowhere to put anything down.
+   *
+   * Deliberately the same screen rather than a separate view: "rent a shed"
+   * and "use the shed" are one place in the town, and a menu entry that led
+   * somewhere different depending on state would be worse than one that leads
+   * to the same room with a different man standing in it.
+   */
+  private renderRentOffer(portKey: string, top: number): void {
+    let y = top;
+    const cost = rentFor(this.worldState, portKey);
+    const cap = storageCap(this.worldState, portKey);
+
+    this.contentContainer.add(this.add.text(
+      this.infoX, y,
+      t("warehouse.offer", { cap, gold: cost, days: LEASE_DAYS }),
+      { ...txt(12), wordWrap: { width: DLG_W - PAD * 2 } },
+    ));
+    y += 46;
+
+    this.contentContainer.add(this.add.text(
+      this.infoX, y, t("warehouse.offer_note"),
+      { ...txt(11, { color: "#666666" }), wordWrap: { width: DLG_W - PAD * 2 } },
+    ));
+    y += 62;
+
+    const afford = this.worldState.player.gold >= cost;
+    this.setupActionList(
+      [
+        { label: afford ? t("warehouse.take_lease", { gold: cost }) : t("warehouse.cannot_afford"), key: "rent" },
+        { label: t("governor.back"), key: "back" },
+      ],
+      y,
+      (key) => {
+        if (key === "rent" && afford) this.handleRentStorehouse();
+        else this.switchView("menu");
+      },
+    );
+  }
+
+  private handleRentStorehouse(): void {
+    const result = rentStorehouse(this.worldState, this.currentPortId as string);
+    if (!result.rented) return;
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.scene.restart({
+      worldState: this.worldState,
+      portId: this.currentPortId,
+      returnToView: "warehouse" as PortView,
+    });
   }
 
   private renderMerchant(): void {
@@ -1351,7 +1468,7 @@ export class PortScene extends Phaser.Scene {
     const colSell = this.infoX + 390;
 
     this.contentContainer.add(this.add.text(colName, y, "Item", txt(10, { bold: true, color: "#666666" })));
-    this.contentContainer.add(this.add.text(colPrice, y, "Price", txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colPrice, y, t("port.col_buy_sell"), txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colStock, y, "Stock", txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colOwn, y, "Own", txt(10, { bold: true, color: "#666666" })));
     y += 16;
@@ -1371,15 +1488,18 @@ export class PortScene extends Phaser.Scene {
 
     for (let ri = 0; ri < itemKeys.length; ri++) {
       const key = itemKeys[ri];
-      const item = ITEMS[key];
-      const price = portState?.prices[key] ?? item.basePrice;
+      // Two numbers now, not one: what the counter asks and what it offers.
+      // The spread between them is his standing, and printing both is the only
+      // way he can see it without doing arithmetic (v0.24.0).
+      const ask = playerBuyPrice(this.worldState, portKey, key);
+      const bid = playerSellPrice(this.worldState, portKey, key);
       const stock = portState?.inventory[key] ?? 0;
       const owned = playerShip?.ship?.cargo[key] ?? 0;
       const isFocused = ri === this.selectedIndex;
       const rowColor = isFocused ? "#000000" : "#1a1a1a";
 
       this.contentContainer.add(this.add.text(colName, y, t("item." + key + ".name"), txt(12, { color: rowColor, bold: isFocused })));
-      this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price }), txt(12, { bold: true, color: rowColor })));
+      this.contentContainer.add(this.add.text(colPrice, y, `${ask} / ${bid}`, txt(12, { bold: true, color: rowColor })));
       this.contentContainer.add(this.add.text(colStock, y, String(stock), txt(12, { color: "#555555" })));
       this.contentContainer.add(
         this.add.text(colOwn, y, String(Math.floor(owned)),
@@ -1407,6 +1527,20 @@ export class PortScene extends Phaser.Scene {
 
       y += 22;
     }
+
+    // What his standing is costing him at this counter, in plain percent. The
+    // number that matters is the round trip — the gap between the two columns
+    // above — because that is what he loses on every barrel he handles twice.
+    const access = portAccess(this.worldState, portKey);
+    const wide = access.spread > 0.12;
+    this.contentContainer.add(this.add.text(
+      this.infoX, this.dlgY + DLG_H - PAD - 48,
+      t("port.spread", {
+        level: t("rep." + access.level),
+        pct: Math.round(access.spread * 200),
+      }),
+      txt(11, { color: wide ? "#aa3333" : access.spread < 0.12 ? "#227722" : "#666666" }),
+    ));
 
     // Hint
     const hint = this.add.text(
@@ -1524,8 +1658,16 @@ export class PortScene extends Phaser.Scene {
     y += 12;
 
     if (offers.length === 0) {
+      // "Nothing today" and "not to you" are different answers and the player
+      // is owed the second one (v0.24.0) — otherwise a closed book looks like
+      // a quiet week and he never learns what his standing cost him.
+      const shut = !portAccess(this.worldState, portKey).canCharter;
       this.contentContainer.add(
-        this.add.text(this.infoX + 8, y + 14, t("charter.nothing"), txt(11, { color: "#886655" })),
+        this.add.text(
+          this.infoX + 8, y + 14,
+          shut ? t("charter.refused") : t("charter.nothing"),
+          txt(11, { color: shut ? "#aa3333" : "#886655" }),
+        ),
       );
       y += 20;
     }
@@ -1638,7 +1780,10 @@ export class PortScene extends Phaser.Scene {
       const home = isHomePort(this.worldState, this.currentPortId as string);
       const damage = repairableDamage(this.worldState);
       if (damage > 0) {
-        const repairCost = home ? 0 : damage * 2;
+        // The yard's rate carries the town's opinion since v0.24.0 — double for
+        // an enemy, a shilling off for an ally — so the quoted bill has to ask
+        // the same function the work will be charged at.
+        const repairCost = home ? 0 : Math.round(damage * repairRate(this.worldState, this.currentPortId));
         const repairLabel = home
           ? t("shipyard.careen", { damage })
           : t("shipyard.repair", { damage, cost: repairCost });
@@ -1667,7 +1812,12 @@ export class PortScene extends Phaser.Scene {
     y += 8;
 
     // Ships for sale header
-    const header = this.add.text(this.infoX, y, t("shipyard.ships_for_sale"), txt(13, { bold: true }));
+    const yardWelcome = portAccess(this.worldState, portKey).canBuyShips;
+    const header = this.add.text(
+      this.infoX, y,
+      yardWelcome ? t("shipyard.ships_for_sale") : t("shipyard.no_hulls_for_you"),
+      txt(13, { bold: true, color: yardWelcome ? "#1a1a1a" : "#aa3333" }),
+    );
     this.contentContainer.add(header);
     y += 18;
 
@@ -1725,7 +1875,8 @@ export class PortScene extends Phaser.Scene {
       this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price: cls.buyPrice }), txt(11, { bold: true })));
 
       if (!isCurrent) {
-        const canAfford = this.worldState.player.gold >= cls.buyPrice;
+        const welcome = portAccess(this.worldState, portKey).canBuyShips;
+        const canAfford = welcome && this.worldState.player.gold >= cls.buyPrice;
         const buyBtnColor = canAfford ? "#2a7a2a" : "#999999";
         const buyBtn = this.add.text(colPrice + 55, y, t("shipyard.buy"), txt(11, { bold: true, color: buyBtnColor }));
         if (canAfford) {
@@ -1835,7 +1986,7 @@ export class PortScene extends Phaser.Scene {
       const careened = careen(this.worldState);
       result = { world: careened.world, repaired: careened.restored };
     } else {
-      result = repairShip(this.worldState);
+      result = repairShip(this.worldState, this.currentPortId);
     }
     if (result.repaired > 0) {
       this.worldState = result.world;
@@ -1845,7 +1996,7 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleBuyShip(classKey: string): void {
-    const result = buyShip(this.worldState, shipClassId(classKey));
+    const result = buyShip(this.worldState, shipClassId(classKey), this.currentPortId);
     if (result.bought) {
       this.worldState = result.world;
       this.registry.set("worldState", this.worldState);
@@ -1854,7 +2005,7 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleBuyToFleet(classKey: string): void {
-    const result = buyShipToFleet(this.worldState, shipClassId(classKey));
+    const result = buyShipToFleet(this.worldState, shipClassId(classKey), this.currentPortId);
     if (result.bought) {
       this.worldState = result.world;
       this.registry.set("worldState", this.worldState);

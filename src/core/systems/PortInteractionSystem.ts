@@ -6,6 +6,7 @@ import { SHIP_CLASSES } from "../data/ships.ts";
 import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
+import { portAccess } from "./PortAccessSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { diluteTraining } from "../model/CaptainState.ts";
 
@@ -66,6 +67,13 @@ const CREW_RANGE: Record<CitySize, [number, number]> = {
  * Generate available crew for a port based on city size.
  * Called when entering a port. Returns updated world with
  * the port's availableCrew set and RNG advanced.
+ *
+ * Scaled by the town's opinion of the captain since v0.24.0. Men sign on with
+ * somebody their families do not hate, and in a town he has been burning they
+ * do not sign on at all — which is the first place a hostile port has ever
+ * felt different from a friendly one from the inside. The roll happens either
+ * way, so the world's RNG advances identically whatever his standing: a
+ * reputation must not silently reshuffle every other random thing in the game.
  */
 export function generateAvailableCrew(
   world: WorldState,
@@ -81,12 +89,14 @@ export function generateAvailableCrew(
   const portState = world.ports[portKey];
   if (!portState) return world;
 
+  const willing = Math.floor(crewCount * portAccess(world, portKey).crewMul);
+
   return {
     ...world,
     rng: newRng,
     ports: {
       ...world.ports,
-      [portKey]: { ...portState, availableCrew: crewCount },
+      [portKey]: { ...portState, availableCrew: willing },
     },
   };
 }
@@ -119,6 +129,10 @@ export function recruitCrew(
   const playerEntity = world.entities[world.player.shipId as string];
   if (!playerEntity?.ship) {
     return { world, recruited: 0, error: "no_ship" };
+  }
+
+  if (!portAccess(world, portKey).crewMul) {
+    return { world, recruited: 0, error: "no_crew_available" };
   }
 
   const crew = playerEntity.ship.crew;
@@ -263,7 +277,7 @@ export function repairableDamage(world: WorldState): number {
  * Worst first, so a captain who cannot afford the whole bill buys the thing
  * most likely to sink him rather than whatever happens to be first in an array.
  */
-export function repairShip(world: WorldState): RepairResult {
+export function repairShip(world: WorldState, portId?: PortId): RepairResult {
   const playerEntity = world.entities[world.player.shipId as string];
   if (!playerEntity?.ship) {
     return { world, repaired: 0, cost: 0, error: "no_ship" };
@@ -274,11 +288,16 @@ export function repairShip(world: WorldState): RepairResult {
     return { world, repaired: 0, cost: 0, error: "no_damage" };
   }
 
-  let budget = Math.min(damage, Math.floor(world.player.gold / REPAIR_COST_PER_HP));
+  // A shipwright is not a patriot — he will mend anybody's hull — but he
+  // charges an enemy double and an ally a discount (v0.24.0). The port is
+  // optional because `ShipRepairSystem` and the tests both call this without
+  // one, and a yard with no town around it charges the standing rate.
+  const rate = repairRate(world, portId);
+  let budget = Math.min(damage, Math.floor(world.player.gold / rate));
   if (budget <= 0) {
     return { world, repaired: 0, cost: 0, error: "not_enough_gold" };
   }
-  const cost = budget * REPAIR_COST_PER_HP;
+  const cost = Math.round(budget * rate);
 
   // Every damaged part of the fleet as one list, worst first.
   type Part = { get: () => number; put: (v: number) => void; missing: number };
@@ -328,7 +347,13 @@ export function repairShip(world: WorldState): RepairResult {
     { gold: cost },
   );
 
-  return { world: newWorld, repaired: cost / REPAIR_COST_PER_HP, cost };
+  return { world: newWorld, repaired: Math.round(cost / rate), cost };
+}
+
+/** What this yard asks per point of damage, the town's opinion included. */
+export function repairRate(world: WorldState, portId?: PortId): number {
+  if (!portId) return REPAIR_COST_PER_HP;
+  return REPAIR_COST_PER_HP * portAccess(world, portId as string).serviceMul;
 }
 
 export type BuyShipResult = {
@@ -344,9 +369,16 @@ export type BuyShipResult = {
 export function buyShip(
   world: WorldState,
   newShipClassId: ShipClassId,
+  portId?: PortId,
 ): BuyShipResult {
   const classDef = SHIP_CLASSES[newShipClassId as string];
   if (!classDef) return { world, bought: false, error: "unknown_ship_class" };
+
+  // A hull is a weapon, and a town he is at war with knows where he would sail
+  // it (v0.24.0). Repairs are still on offer; a new ship is not.
+  if (portId && !portAccess(world, portId as string).canBuyShips) {
+    return { world, bought: false, error: "not_welcome" };
+  }
 
   if (world.player.gold < classDef.buyPrice) {
     return { world, bought: false, error: "not_enough_gold" };
@@ -420,9 +452,14 @@ export type FleetBuyResult = {
 export function buyShipToFleet(
   world: WorldState,
   newShipClassId: ShipClassId,
+  portId?: PortId,
 ): FleetBuyResult {
   if (!canAddToFleet(world.player)) {
     return { world, bought: false, error: "fleet_full" };
+  }
+
+  if (portId && !portAccess(world, portId as string).canBuyShips) {
+    return { world, bought: false, error: "not_welcome" };
   }
 
   const classDef = SHIP_CLASSES[newShipClassId as string];

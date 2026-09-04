@@ -12,7 +12,10 @@ export function changeReputation(
   };
 }
 
-export function getReputationLevel(rep: number): "hostile" | "unfriendly" | "neutral" | "friendly" | "allied" {
+/** The five bands standing is read in. Exported so callers can key tables on it. */
+export type ReputationLevel = "hostile" | "unfriendly" | "neutral" | "friendly" | "allied";
+
+export function getReputationLevel(rep: number): ReputationLevel {
   if (rep <= -60) return "hostile";
   if (rep <= -20) return "unfriendly";
   if (rep < 20) return "neutral";
@@ -20,12 +23,8 @@ export function getReputationLevel(rep: number): "hostile" | "unfriendly" | "neu
   return "allied";
 }
 
-// Price modifier based on reputation with port's faction
-export function reputationPriceModifier(rep: number): number {
-  // hostile: +30% prices, allied: -15% prices
-  if (rep <= -60) return 1.3;
-  if (rep <= -20) return 1.15;
-  if (rep < 20) return 1.0;
-  if (rep < 60) return 0.95;
-  return 0.85;
-}
+// The price a standing costs at the counter used to live here, as
+// `reputationPriceModifier`, and was never called by anything for eleven
+// releases. It moved into `PortAccessSystem` in v0.24.0, where it sits in one
+// table beside the other four things a town's opinion of you decides — so that
+// "what does hostile mean" has a single answer a reader can check at a glance.

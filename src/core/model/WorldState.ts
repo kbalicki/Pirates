@@ -96,6 +96,17 @@ export type PlayerState = {
    */
   warehouse?: Record<string, number>;
   /**
+   * Warehouses rented in ordinary towns, keyed by port (v0.24.0).
+   *
+   * Separate from `warehouse` above, which is the family's storehouse at the
+   * home port and has its own rules — free, larger, and forfeit if the town
+   * changes crowns. `StorehouseSystem` reads whichever of the two applies to
+   * the town being asked about, so nothing above it has to know the
+   * difference. Optional, so a save from before this release simply holds no
+   * leases, which is the truth about it.
+   */
+  storehouses?: Record<string, { paidUntil: number; goods: Record<string, number> }>;
+  /**
    * The crown his wife's father served, recorded at the wedding (v0.18.0).
    *
    * `daughterFor` derives a governor's daughter from whoever holds the town
@@ -160,6 +171,22 @@ export type PortRuntimeState = {
    * not queued up for a second invasion while the first is still at sea.
    */
   nextCampaignDay?: number;
+  // ── The trade ledger (v0.24.0) ────────────────────────────
+  /**
+   * Gold that has crossed this quay today and not yet been turned into wealth.
+   *
+   * Every settlement — a lane delivery, a hold sold over the merchant's
+   * counter — is worth a fraction of a point on the 0..1000 wealth scale, so
+   * writing it straight to `wealth` would round it away and the whole money
+   * loop would be invisible. It accrues here in gold instead and
+   * `EconomyTickSystem` converts the day's total once, at `GOLD_PER_WEALTH`.
+   *
+   * Optional and read through `?? 0`: a save from before this release has no
+   * ledger, which is the truth about it.
+   */
+  tradeBalance?: number;
+  /** Yesterday's total through `tradeBalance`, kept so the port screen can show it. */
+  tradeIncome?: number;
 };
 
 export type GameEventEntry = {

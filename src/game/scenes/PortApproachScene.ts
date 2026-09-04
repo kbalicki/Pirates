@@ -5,6 +5,7 @@ import type { PortDef } from "../../core/data/ports.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
+import { tradeIncome } from "../../core/systems/TradeLedgerSystem.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { t } from "../../core/i18n/index.ts";
@@ -106,6 +107,15 @@ export class PortApproachScene extends Phaser.Scene {
     const wealthLabel = t("city.wealth_" + this.portDef.wealth);
     this.add.text(infoX, y, t("approach.wealth", { level: wealthLabel }), txt(12));
     y += 16;
+
+    // What the lanes are actually worth to this town (v0.24.0). It is the one
+    // number that moves when the player blockades the place or sinks its
+    // convoys, so it is the one that tells him his campaign is working.
+    const turnover = tradeIncome(this.worldState, portKey);
+    if (turnover > 0) {
+      this.add.text(infoX, y, t("port.trade_income", { gold: turnover }), txt(12));
+      y += 16;
+    }
 
     // --- Exports ---
     if (this.portDef.produces.length > 0) {

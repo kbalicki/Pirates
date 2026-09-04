@@ -154,7 +154,14 @@ describe("economyDailyTick — shape and purity", () => {
     for (const key of PORT_KEYS) {
       const p = w.ports[key];
       expect(Number.isInteger(p.population)).toBe(true);
-      expect(Number.isInteger(p.wealth)).toBe(true);
+      // Wealth is the one exception, and it is deliberate (v0.24.0): a day's
+      // trade through a quay is worth a fraction of a point, and rounding the
+      // running total to a whole number every midnight threw that fraction
+      // away — the trade ledger balanced four points above baseline instead of
+      // the fifty the arithmetic says. One decimal is enough room for it and
+      // still bounded, so saves do not drift.
+      expect(Number.isInteger(Math.round(p.wealth * 10))).toBe(true);
+      expect(Math.abs(p.wealth * 10 - Math.round(p.wealth * 10))).toBeLessThan(1e-6);
       expect(Number.isInteger(p.defense)).toBe(true);
       for (const price of Object.values(p.prices)) expect(Number.isInteger(price)).toBe(true);
     }
@@ -218,8 +225,16 @@ describe("production and consumption", () => {
     // flat point of wealth a day, for ever. Port Royale demands sugar, cocoa
     // and tobacco and produces neither, so it bled 3/day from the day the world
     // was made and settled at 353 against a baseline of 600.
+    //
+    // Since v0.24.0 a supplied colony does better than merely break even: the
+    // lanes that feed it also pay it, so Port Royale — where a dozen of them
+    // end — settles some way *above* its baseline. What must stay true is the
+    // thing this test was written for, that a town which demands goods is not
+    // punished for demanding them.
+    const baseline = getPortBaseline("port_royal").wealth;
     const settled = runDays(makeWorld(), 600).ports.port_royal.wealth;
-    expect(settled).toBe(getPortBaseline("port_royal").wealth);
+    expect(settled).toBeGreaterThanOrEqual(baseline);
+    expect(settled).toBeLessThan(baseline * 1.2);
   });
 
   it("keeps the shelves stocked with what the town cannot make", () => {

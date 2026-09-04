@@ -18,6 +18,7 @@ import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { tickBlockades } from "../systems/BlockadeSystem.ts";
 import { tickRouteDisruption } from "../systems/TradeRouteSystem.ts";
+import { tickStorehouses } from "../systems/StorehouseSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
 import { applyOverdueMorale } from "../systems/PlunderSystem.ts";
@@ -134,6 +135,10 @@ export class WorldEngine {
       const cordon = tickBlockades(world);
       world = tickRouteDisruption(cordon.world);
       allEvents.push(...cordon.events);
+      // A lease that has run out is auctioned off before the market runs, so
+      // the goods it dumps on the quay are on the shelves when the day's
+      // prices are worked out (v0.24.0).
+      world = tickStorehouses(world);
       // Daily economy simulation (production, consumption, price update, recovery)
       world = economyDailyTick(world);
       // An unpaid crew grumbles. Morale already drives reload speed, boarding

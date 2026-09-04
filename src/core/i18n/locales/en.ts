@@ -104,6 +104,11 @@ export const EN: LocaleData = {
   // -- Port Scene --
   "port.trade_goods": "TRADE GOODS",
   "port.price": "{{price}} Gold",
+  "port.standing": "Standing here: {{level}} ({{value}})",
+  "port.closed_to_you": "— closed to you",
+  "port.col_buy_sell": "Buy/Sell",
+  "port.spread": "This town is {{level}}: {{pct}}% between what it asks and what it offers.",
+  "port.trade_income": "Trade through this quay: {{gold}} gold a day",
   "port.stock": "Stock: {{qty}}",
   "port.own": "Own: {{qty}}",
   "port.buy": "[Buy]",
@@ -331,6 +336,7 @@ export const EN: LocaleData = {
   "charter.carrying": "Under charter",
   "charter.on_offer": "On offer",
   "charter.nothing": "Nothing wants shifting from here today.",
+  "charter.refused": "No merchant here will trust you with his cargo.",
   "charter.offer": "{{qty}} {{item}} to {{port}} — {{gold}} gold, {{days}} days",
   "charter.en_route": "{{qty}} {{item}} for {{port}} — {{gold}} gold on delivery",
   "charter.deliver": "HAND OVER {{qty}} {{item}} — {{gold}} gold",
@@ -454,6 +460,7 @@ export const EN: LocaleData = {
   // -- Tavern --
   "tavern.title": "THE TAVERN",
   "tavern.recruit_crew": "Recruit Crew (Free)",
+  "tavern.nobody_signs": "— nobody here will sail with you",
   "tavern.hear_rumors": "Hear Rumors",
   "tavern.buy_drinks": "Buy Round of Drinks ({{cost}} Gold)",
   "tavern.back": "[ BACK TO PORT ]",
@@ -508,6 +515,7 @@ export const EN: LocaleData = {
   "shipyard.repair": "[ REPAIR HULL: {{damage}} HP ({{cost}} Gold) ]",
   "shipyard.no_damage": "Hull is in perfect condition.",
   "shipyard.ships_for_sale": "SHIPS FOR SALE",
+  "shipyard.no_hulls_for_you": "THIS YARD SELLS YOU NOTHING",
   "shipyard.col_name": "Ship",
   "shipyard.col_speed": "Speed",
   "shipyard.col_hull": "Hull",
@@ -728,7 +736,16 @@ export const EN: LocaleData = {
 
   // ── The invasion gets hulls (v0.17.0) ──────────────────
   // -- The home port (v0.18.0) --
-  "port.warehouse": "The family storehouse",
+  "port.warehouse": "The storehouse",
+  "port.rent_warehouse": "Rent a storehouse ({{gold}}g)",
+  "warehouse.lease_days": "Lease: {{days}} days left   \u00b7   click to renew for {{gold}}g",
+  "warehouse.offer": "A merchant here has an empty shed on the quay: {{cap}} tons, {{gold}} gold for {{days}} days.",
+  "warehouse.offer_note": "Goods left here are yours, not the town's — they do not feed it and they do not move its prices. If the rent runs out, the landlord auctions what is inside and sends on half of what it fetched.",
+  "warehouse.take_lease": "Take the lease ({{gold}}g)",
+  "warehouse.cannot_afford": "You cannot pay the rent",
+  "storehouse.log_rented": "Rented a storehouse at {{port}} — {{gold}} gold for {{days}} days.",
+  "storehouse.log_auctioned": "The lease at {{port}} ran out. What was inside was auctioned; {{gold}} gold reached you.",
+  "storehouse.log_lapsed": "The empty storehouse at {{port}} went back to its landlord.",
   "warehouse.title": "The storehouse at {{port}}",
   "warehouse.capacity": "Ashore: {{used}} / {{cap}} tons   ·   Room in the hold: {{hold}}",
   "warehouse.col_item": "Goods",
