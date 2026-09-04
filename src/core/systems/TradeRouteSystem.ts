@@ -315,3 +315,30 @@ export function laneSupplyShare(
   const open = alternateSuppliers(portKey, item).some(port => !shutIn(port));
   return throughput * (open ? REROUTE_SHARE : SUPPLIER_SHUT_SHARE);
 }
+
+/**
+ * Who is actually paid for today's delivery of `item` into `portKey`.
+ *
+ * The lane names one supplier for ever, because the lane is a fact about the
+ * map. Who gets the money is a fact about *this week*, and v0.24.0 conflated
+ * the two: with the usual supplier shut in, `EconomyTickSystem` still credited
+ * him for goods he plainly had not shipped, so a blockaded Havana went on being
+ * paid for sugar that came from Santiago — and, once the player could take a
+ * town, a den under the black flag drew a licensed trader's income from crowns
+ * whose merchants would not go near it.
+ *
+ * So: the named supplier if he is open, otherwise the nearest alternate who is,
+ * and otherwise nobody. That last case is the smugglers' share — it still
+ * lands, because `laneSupplyShare` says a third of it does, but no counting
+ * house anywhere books it.
+ */
+export function effectiveSupplier(
+  portKey: string,
+  item: string,
+  shutIn: (port: string) => boolean,
+): string | undefined {
+  const route = routeSupplying(portKey, item);
+  if (!route) return undefined;
+  if (!shutIn(route.from)) return route.from;
+  return alternateSuppliers(portKey, item).find(port => !shutIn(port));
+}

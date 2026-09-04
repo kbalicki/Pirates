@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.24.0.0
+**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.25.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.24)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.25)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -65,6 +65,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.22.0.0 | **Szlaki handlowe** (81), prawdziwy **pathfinding A\***, blokada portu, ładownia pryzu | ✅ |
 | 0.23.0.0 | **Fracht dla gracza** (kantor frachtowy); towar naprawdę wędruje z magazynu do magazynu; przekierowanie dostaw | ✅ |
 | 0.24.0.0 | **Pętla pieniężna handlu**, wycena przy każdym ruchu towaru, **reputacja przy ladzie**, magazyn na wynajem | ✅ |
+| 0.25.0.0 | **Czym naładowany jest kupiec** (proporczyk ładunku, manifest przy spotkaniu); **informator w tawernie** jako trzecie źródło zleceń; przemyt do miasta pod czarną banderą płynie na nazwisko kapitana | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
@@ -76,6 +77,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 - **Ruchoma mapa polityczna** — korony odbijają utracone kolonie i biją się między sobą, wyprawy płyną realną wodą i dają się przechwycić, zdobyte miasto trzeba obronić
 - **Warstwa handlowa** — 81 szlaków wyliczonych z geografii, towar fizycznie wędrujący między magazynami, pieniądz idący za tym towarem, fracht na zlecenie i trzy sposoby zaatakowania cudzej żeglugi (blokada, pryz, zakłócenie szlaku)
 - **Reputacja, która coś znaczy** — opinia korony o graczu rozstrzyga spread u kupca, werbunek w tawernie, dostęp do frachtu i najmu oraz rachunek stoczni
+- **Sława, która coś daje** — notoriety przestało być wyłącznie kosztem: przemytnicy płyną do przystani znanego kapitana, więc miasto pod jego czarną banderą dostaje 35–75% tego, co kolonia
 
 ---
 

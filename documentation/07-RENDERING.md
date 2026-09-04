@@ -183,3 +183,27 @@ depthSort(entity: EntityState): number
 - `water_anim.png`: 8×5 siatka, 128×128 per klatka, 40 klatek
 - Overlay na kafelkach morskich
 - Płynna animacja falowania
+
+## Bandery, proporce i proporczyki przy kadłubie NPC
+
+Trzy osobne obrazki nad i pod każdym kadłubem NPC, wszystkie generowane
+proceduralnie w `TextureFactory` i wszystkie o **stałym rozmiarze ekranowym**
+(`FLAG_SCREEN_SCALE / zoom`) — proporcjonalna flaga przy małym zoomie to dwa
+piksele błota, a cały sens tych trzech rzeczy to czytelność z rzutu oka.
+
+| Obiekt | Tekstura | Gdzie | Co mówi | Od |
+|---|---|---|---|---|
+| bandera | `flag_<faction>` (16×12) | przy kadłubie, `+7/-5` | czyj to statek | v0.19.0 |
+| proporzec wojenny | `pennant_war` (10×3, czerwony) | `PENNANT_GAP = 13` **nad** banderą | będzie się bił (`navy`, `pirate`, `pirate_hunter`) | v0.20.0 |
+| proporczyk ładunku | `pennant_cargo` (6×2) / `pennant_cargo_rich` (12×3) | `CARGO_GAP = 5` **pod** banderą | jak głęboko siedzi (`ladenTier` 1 / 2) | v0.25.0 |
+
+Wszystkie trzy idą za alfą kadłuba, więc statek gasnący na krawędzi
+widoczności zabiera je ze sobą i mgła nie jest zdradzana przez flagę wiszącą
+w pustej wodzie. Proporczyk ładunku ma dodatkowy warunek: **znika poza
+`CARGO_READ_SHARE = 0.55` zasięgu lunety**, bo z daleka nie widać, jak statek
+siedzi w wodzie.
+
+**Dlaczego to są osobne sprite'y, a nie tint kadłuba.** Arkusz `sailship` nie ma
+alfy — tint rysował niebieskie prostokąty wokół każdego kadłuba. To był powód
+usunięcia tintu frakcyjnego w v0.19.0 i nie zmieni się, dopóki arkusz statków
+nie zostanie przerysowany (sekcja 6 w TODO.md).

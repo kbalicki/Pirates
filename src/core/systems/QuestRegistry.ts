@@ -15,6 +15,7 @@
  *   family_search   from the `FamilyChain` in the entry's own data
  *   defense_*       from the `DefenseContract` in the entry's own data
  *   cargo_*         from the `CargoContract` in the entry's own data
+ *   raid_*          from the `RaidCommission` in the entry's own data
  *   QUESTS          hand-authored definitions, if there ever are any
  */
 
@@ -25,6 +26,7 @@ import { treasureQuest, type TreasureMap } from "./TreasureSystem.ts";
 import { familyQuest, FAMILY_QUEST_ID, type FamilyChain } from "./FamilyQuestSystem.ts";
 import { defenseQuest, DEFENSE_QUEST_PREFIX, type DefenseContract } from "./DefenseContractSystem.ts";
 import { cargoQuest, CARGO_QUEST_PREFIX, type CargoContract } from "./CargoContractSystem.ts";
+import { raidQuest, RAID_QUEST_PREFIX, type RaidCommission } from "./InformantSystem.ts";
 
 /**
  * Every definition the world can currently act on.
@@ -48,6 +50,12 @@ export function buildQuestRegistry(world: WorldState): QuestRegistry {
     if (id.startsWith(CARGO_QUEST_PREFIX)) {
       const contract = runtime.data.contract as CargoContract | undefined;
       if (contract) registry[id] = cargoQuest(contract);
+      continue;
+    }
+
+    if (id.startsWith(RAID_QUEST_PREFIX)) {
+      const commission = runtime.data.commission as RaidCommission | undefined;
+      if (commission) registry[id] = raidQuest(commission);
       continue;
     }
 

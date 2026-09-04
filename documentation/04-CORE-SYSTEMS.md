@@ -1370,7 +1370,10 @@ dnia, zmianie zestawu znanych wypraw albo zmianie zoomu.
 
 ## Miasto pod czarną banderą (v0.19.0)
 
-`ReconquestSystem.heldEconomyCeiling` + `EconomyTickSystem` krok 7.
+`ReconquestSystem.heldPopulationCeiling` / `heldDefenseCeiling` + `EconomyTickSystem`
+krok 7. **Uwaga:** sufit bogactwa (`0.75`, opisany niżej) **nie istnieje w kodzie od
+v0.20.0** — został wycofany i zastąpiony brakiem importu. Powód i pomiary: sekcja
+„Przemyt płynie na nazwisko" (v0.25.0).
 
 Do v0.19.0 sufit miał wyłącznie `defense`. `population` i `wealth` dryfowały ku
 liczbom, które miasto miało jako **czyjaś kolonia** — więc zdobyte miasto po
@@ -1999,3 +2002,161 @@ Pola stanu: `player.storehouses?: Record<portKey, { paidUntil, goods }>` —
 korony); `goodsAshore` / `storageCap` / `storeAt` / `withdrawAt` czytają to,
 co akurat obowiązuje w danym mieście, więc `PortScene` nie musi wiedzieć,
 w którym z dwóch rodzajów magazynu stoi.
+
+---
+
+## Jak głęboko siedzi kupiec (v0.25.0)
+
+`PrizeSystem.holdFill` / `ladenTier` / `manifest` + `WorldRenderer.syncCargoBurgee`.
+
+Od v0.23.0 kupiec ładuje się z prawdziwego magazynu i **bywa pusty**, bo nabrzeże
+było wymiecione. Na mapie nie było tego jak zobaczyć: dwa hiszpańskie
+merchantmany na tym samym szlaku wyglądały identycznie, a pogoń za niewłaściwym
+kosztowała dzień dobrego wiatru.
+
+```
+holdFill(ship) = suma jednostek w ładowni / cargoCap      (0..1)
+
+ladenTier:  fill >= 0.5  → 2   pełny ładunek     pennant_cargo_rich (12x3, jasne złoto)
+            fill >= 0.1  → 1   część ładunku     pennant_cargo      (6x2, przygaszone)
+            inaczej      → 0   pod balastem      brak proporczyka
+```
+
+Progi stoją po obu stronach tego, co szlak faktycznie ładuje (`LANE_LOAD_MIN`
+0.55 – `LANE_LOAD_MAX` 0.9, potem przycięte tym, co magazyn mógł oddać), więc
+pełna partia czyta się jako „pełna", zeskrobana resztka jako „część", a kadłub,
+który niczego nie znalazł, jako to, czym jest.
+
+**Proporczyk widać dopiero z `CARGO_READ_SHARE = 0.55` zasięgu lunety.** Na
+krawędzi widoczności kadłub to żagiel i nic więcej. Podejście, żeby ją odczytać,
+jest decyzją — i to jest drugi raz, kiedy najwyższy maszt we flocie ma wartość,
+bo połowa długiego zasięgu jest dalej niż połowa krótkiego.
+
+Proporczyk wisi **pod** banderą (`CARGO_GAP = 5` jednostek flagi), czerwony
+proporzec wojenny nad nią (`PENNANT_GAP = 13`), więc uzbrojony transportowiec
+może nieść oba naraz. Skala jest ekranowa, jak u bandery: `FLAG_SCREEN_SCALE /
+zoom`, żeby przy małym zoomie nie zostały z tego dwa piksele błota.
+
+Na ekranie spotkania (`ShipEncounterScene`) doszła linia manifestu:
+`Laden: 80 tons — Sugar Cane` albo `In ballast`. Towary są wymienione w tej
+samej kolejności, w jakiej `computePrize` przenosiłby je na pokład (wartość
+łączna malejąco), więc pierwsza nazwa to pierwsza rzecz, która przejdzie.
+
+---
+
+## Informator w tawernie (v0.25.0)
+
+`InformantSystem` — trzecie źródło zleceń, obok gubernatora (obrona, v0.17.0)
+i kantoru frachtowego (przewóz, v0.23.0). Pierwsze, które **nie jest robotą
+korony**: kompania kupiecka płaci za to, żeby szlak konkurencji przestał się
+opłacać.
+
+### Dlaczego zlecenie mierzy się `routeDisruption`, a nie liczbą kadłubów
+
+Bo `TradeRouteSystem` już to liczy od v0.22.0: `severity` rośnie o
+`DISRUPTION_PER_PRIZE = 0.3` z każdym wziętym kupcem na danym szlaku i opada
+`DISRUPTION_DECAY = 0.12` dziennie, z sufitem 0.85. Zlecenie prosi więc o
+**liczbę, którą świat i tak prowadzi** — gracz wykonuje je robiąc rzecz, a nie
+odhaczając licznik. Nie trzeba było ani nowego pola w zapisie, ani haka w
+`applyPrize`.
+
+```
+RAID_SEVERITY = 0.6      trzy kadłuby w dwa tygodnie; dwa nie wystarczą
+RAID_DAYS     = 30
+reward        = 250 + 900 * min(1, długość szlaku / 1200)     → 250..1150
+RAID_REPUTATION = -14 (poszkodowana korona)   RAID_NOTORIETY = +8
+MAX_ACTIVE_RAIDS = 1
+```
+
+Zwłoka jest częścią mechaniki: kto się ociąga, patrzy jak jego własna robota
+się rozchodzi. To termin z powodem, a nie zegar.
+
+### Oferta
+
+`raidOffer(world, portKey)` — **wyliczana, nigdy nie zapisywana**, jedna na
+miasto (informator ma jedną rzecz wartą usłyszenia, lista czytałaby się jak
+tablica ogłoszeń). Bierze szlaki przechodzące w promieniu `RAID_REACH = 700` od
+portu, odrzuca te należące do **własnej korony miasta**, te, których miasto jest
+końcem, i te już rozbite. Z reszty wybiera najlepiej płacący.
+
+### Wypłata
+
+`tickRaidCommissions(world)` w `WorldEngine`, **przed** `tickRouteDisruption`,
+żeby informator oceniał szlak takim, jaki był o zachodzie słońca, a nie po
+dziennym opadzie strachu. Zwraca flagi, nie płaci sam — płaci maszyna questów,
+gdy silnik poda jej `flag_set` (ten sam kształt co `settleRelief` przy obronie
+rozstrzygniętej poza ekranem). Quest odbudowuje `buildQuestRegistry` z
+`runtime.data.commission`, więc przeładowanie zapisu nie przedłuża terminu.
+
+---
+
+## Przemyt płynie na nazwisko (v0.25.0)
+
+`EconomyTickSystem.blackFlagImportShare` + `supplierShutIn`,
+`TradeRouteSystem.effectiveSupplier`.
+
+### Czego celowo NIE zrobiono, i dlaczego
+
+TODO od v0.19.0 nosiło zarzut: „`wealth` miasta pod czarną banderą jest dalej
+ciągnięte ku baseline'owi kolonii królewskiej". Zarzut jest prawdziwy co do
+**celu**, i mimo to obniżenie celu jest błędem. Arytmetyka:
+
+```
+osiadła wartość = cel - stała presja / RECOVERY_WEALTH        (RECOVERY_WEALTH = 0.01)
+
+Port Royale pod czarną banderą: presja z niedoborów ≈ 3.8 pkt/dzień
+                                → luka = 380
+cel 600 (królewski)  → osiada na 223
+cel 372 (0.62)       → osiada na 0
+cel 600 + upkeep 2.4 → osiada na 0
+```
+
+Obie alternatywy zmierzono w tej sesji na 400-500 dniach i obie **opróżniły
+miasto do zera w rok** — dokładnie tak, jak udział 0.42 w v0.19.0 dał bogactwo
+5. Cel nie jest dźwignią. Dźwignią jest to, co dociera na nabrzeże.
+
+### Co się zmieniło
+
+**1. Czarna bandera zamyka port jako dostawcę.**
+
+```ts
+supplierShutIn(world, port) = portShutIn(world, port) || playerHolds(world, port)
+```
+
+`portShutIn` odpowiada na pytanie fizyczne (kordon, `portClosed`). Czarna
+bandera to drugi rodzaj zamknięcia: woda jest otwarta, nabrzeże pracuje, i żaden
+licencjonowany kupiec nie załaduje towaru na kadłub wychodzący z pirackiej
+przystani. Oba zatrzymują szlak u źródła, więc oba należą do odpowiedzi, którą
+dostaje `laneSupplyShare`. **To pierwszy strategiczny skutek zdobycia miasta,
+który gracz czuje z drugiego końca mapy**: Havana zaopatruje cztery kolonie w
+cukier — zdobądź Havanę, a tamte cztery szukają innego plantatora albo głodują
+(zmierzone: Tortuga 300 → 236 po zajęciu Port Royale).
+
+**2. Ledger płaci temu, kto naprawdę wysłał.**
+
+```ts
+effectiveSupplier(portKey, item, shutIn)
+  = nazwany dostawca, jeśli otwarty
+  | najbliższy alternatywny producent, który jest otwarty
+  | undefined  → przemytnicy, nikt tego nie księguje
+```
+
+v0.24.0 kredytowała nazwanego dostawcę zawsze, więc zablokowana Havana wciąż
+dostawała pieniądze za cukier, który przyszedł z Santiago.
+
+**3. Przemyt reaguje na sławę kapitana.**
+
+```
+share = 0.35 + min(1, notoriety / 100) * 0.4          → 0.35 .. 0.75
+```
+
+Zmierzone bogactwo osiadłe zdobytej Port Royale (baseline 600):
+
+| notoriety | 0 | 25 | 50 | 100+ |
+|---|---|---|---|---|
+| `wealth` | 223 | 283 | 344 | 465 |
+
+Przystań nieznanego kapitana przymiera głodem; przystań kogoś, o kim słyszały
+całe Karaiby, trzyma się powyżej czterystu, bo ludzie, którzy nie sprzedadzą
+kolonialnemu faktorowi, sprzedadzą **jemu**. To pierwsza rzecz, na którą
+notoriety kiedykolwiek się przydało, zamiast tylko kosztować.

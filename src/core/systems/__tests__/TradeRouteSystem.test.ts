@@ -12,6 +12,7 @@ import {
   laneThroughput,
   tickRouteDisruption,
   laneSupplyShare,
+  effectiveSupplier,
   LANE_FULL,
   DISRUPTION_PER_PRIZE,
 } from "../TradeRouteSystem.ts";
@@ -337,5 +338,36 @@ describe("a second source (v0.23.0)", () => {
 
   it("has nothing to say about a good with no lane", () => {
     expect(alternateSuppliers("havana", "water")).toEqual([]);
+  });
+});
+
+describe("effectiveSupplier — who actually gets paid", () => {
+  it("names the lane's own supplier while his harbour is open", () => {
+    const lane = tradeRoutes()[0];
+    expect(effectiveSupplier(lane.to, lane.items[0], openEverywhere)).toBe(lane.from);
+  });
+
+  it("names the next grower along when the usual one is shut in", () => {
+    const lane = tradeRoutes().find(
+      l => l.items.some(item => alternateSuppliers(l.to, item).length > 0),
+    )!;
+    const item = lane.items.find(i => alternateSuppliers(lane.to, i).length > 0)!;
+    const alternates = alternateSuppliers(lane.to, item);
+
+    const paid = effectiveSupplier(lane.to, item, port => port === lane.from);
+    expect(paid).not.toBe(lane.from);
+    expect(alternates).toContain(paid);
+  });
+
+  it("names nobody when every grower in reach is shut — the smugglers keep no books", () => {
+    const lane = tradeRoutes()[0];
+    const item = lane.items[0];
+    const shutEverySource = (port: string) =>
+      port === lane.from || alternateSuppliers(lane.to, item).includes(port);
+    expect(effectiveSupplier(lane.to, item, shutEverySource)).toBeUndefined();
+  });
+
+  it("names nobody for a good with no lane", () => {
+    expect(effectiveSupplier("havana", "water", openEverywhere)).toBeUndefined();
   });
 });

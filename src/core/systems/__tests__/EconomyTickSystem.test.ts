@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { economyDailyTick } from "../EconomyTickSystem.ts";
+import {
+  economyDailyTick,
+  blackFlagImportShare,
+  supplierShutIn,
+} from "../EconomyTickSystem.ts";
 import {
   getAggregatedEffects,
   applyOneShotEffects,
@@ -535,4 +539,91 @@ describe("port closure and war helpers", () => {
   });
 });
 
+// ===========================================================================
+// The black flag — a town with no crown behind it
+// ===========================================================================
 
+/**
+ * Port Royale flying the black flag, which is what `playerHolds` means: the
+ * port's faction is "pirates" and the city it was founded as is not.
+ */
+function heldPortRoyal(over: Partial<WorldState> = {}): WorldState {
+  const world = makeWorld(over);
+  return {
+    ...world,
+    ports: {
+      ...world.ports,
+      port_royal: { ...world.ports.port_royal, factionId: factionId("pirates") },
+    },
+  };
+}
+
+describe("supplierShutIn", () => {
+  it("counts a town under the black flag as one no licensed hull will lade at", () => {
+    expect(supplierShutIn(heldPortRoyal(), "port_royal")).toBe(true);
+  });
+
+  it("leaves a colony alone, whoever's colony it is", () => {
+    expect(supplierShutIn(makeWorld(), "port_royal")).toBe(false);
+    expect(supplierShutIn(makeWorld(), "havana")).toBe(false);
+  });
+});
+
+describe("blackFlagImportShare", () => {
+  it("gives an unknown captain's den only what the smugglers will carry", () => {
+    expect(blackFlagImportShare(makeWorld())).toBeCloseTo(0.35, 5);
+  });
+
+  it("rises with the captain's name and stops rising past full fame", () => {
+    const at = (notoriety: number) => blackFlagImportShare(
+      { ...makeWorld(), player: { ...makeWorld().player, notoriety } },
+    );
+    expect(at(50)).toBeGreaterThan(at(0));
+    expect(at(100)).toBeGreaterThan(at(50));
+    expect(at(400)).toBeCloseTo(at(100), 5);
+    expect(at(100)).toBeCloseTo(0.75, 5);
+  });
+
+  it("is never dragged below the floor by a negative reading", () => {
+    const at = blackFlagImportShare(
+      { ...makeWorld(), player: { ...makeWorld().player, notoriety: -50 } },
+    );
+    expect(at).toBeCloseTo(0.35, 5);
+  });
+});
+
+describe("a town under the black flag — where its wealth settles", () => {
+  /**
+   * The numbers here are measured, not chosen, and they are the argument
+   * against the change this release deliberately did **not** make: pulling a
+   * held town's wealth toward a smaller target. The gap it settles at is the
+   * standing pressure divided by `RECOVERY_WEALTH` — about 380 for a starved
+   * Port Royale — so any target under 380 settles the town at zero. Both a
+   * 0.62 target and a flat daily upkeep were tried and emptied it inside a
+   * year. What the flag changes is what reaches the quay, and that is enough.
+   */
+  it("costs a town most of its wealth without emptying it", () => {
+    const settled = runDays(heldPortRoyal(), 400).ports.port_royal;
+    expect(settled.wealth).toBeGreaterThan(120);
+    expect(settled.wealth).toBeLessThan(getPortBaseline("port_royal").wealth * 0.55);
+  });
+
+  it("keeps a famous captain's den better fed than an unknown's", () => {
+    const nobody = runDays(heldPortRoyal(), 400).ports.port_royal.wealth;
+    const legend = runDays(
+      heldPortRoyal({ player: { ...makeWorld().player, notoriety: 100 } }),
+      400,
+    ).ports.port_royal.wealth;
+    expect(legend).toBeGreaterThan(nobody * 1.5);
+  });
+
+  it("starves the colonies that town used to supply", () => {
+    // Tortuga buys from Port Royale. With Port Royale under the black flag no
+    // licensed hull clears from it, so Tortuga goes looking elsewhere or goes
+    // short — the first strategic consequence of a conquest felt from the far
+    // side of the map.
+    const asColony = runDays(makeWorld(), 400).ports.tortuga.wealth;
+    const asDen = runDays(heldPortRoyal(), 400).ports.tortuga.wealth;
+    expect(asDen).toBeLessThan(asColony);
+  });
+});

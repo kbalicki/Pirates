@@ -10,7 +10,19 @@ const FLAG_OFFSET_X = 7;
 const FLAG_OFFSET_Y = 5;
 /** Clearance between the top of the ensign and the war streamer above it. */
 const PENNANT_GAP = 13;
+/** Clearance between the foot of the ensign and the cargo burgee below it. */
+const CARGO_GAP = 5;
+/**
+ * Share of the lookout's range within which how she rides can be made out.
+ *
+ * A hull is a sail on the horizon long before anybody can say whether she is
+ * down to her marks. Closing to read her is a decision — and it is what makes
+ * the tallest mast in the fleet worth something twice over, because half of a
+ * long range is still longer than half of a short one.
+ */
+const CARGO_READ_SHARE = 0.55;
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
+import { ladenTier } from "../../core/systems/PrizeSystem.ts";
 // FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
 
@@ -80,6 +92,16 @@ export class WorldRenderer {
    * hail — by which time the frigate has decided what it thinks of you.
    */
   private pennantSprites: Map<string, Phaser.GameObjects.Image> = new Map();
+  /**
+   * A gold burgee under the ensign on a merchantman that is carrying something.
+   *
+   * The ensign answers "whose", the streamer "will she fight", and this the
+   * third question — the one v0.23.0 gave an answer and no way to see it. Two
+   * Spanish merchantmen on the same lane are not the same prize: one loaded a
+   * full consignment out of Havana and the other found the quay bare. Running
+   * down the wrong one costs a day of fair wind.
+   */
+  private cargoSprites: Map<string, Phaser.GameObjects.Image> = new Map();
   private portMarkers: Map<string, Phaser.GameObjects.Graphics> = new Map();
   /** Track mode per entity to detect mode changes. */
   private entityModes: Map<string, string> = new Map();
@@ -263,7 +285,7 @@ export class WorldRenderer {
           sprite.setAlpha(dimAlpha);
         }
 
-        this.syncFlag(scene, id, entity, sprite);
+        this.syncFlag(scene, id, entity, sprite, dist, visionRange);
       }
     }
 
@@ -280,6 +302,8 @@ export class WorldRenderer {
         if (flag) { flag.destroy(); this.flagSprites.delete(id); }
         const pennant = this.pennantSprites.get(id);
         if (pennant) { pennant.destroy(); this.pennantSprites.delete(id); }
+        const burgee = this.cargoSprites.get(id);
+        if (burgee) { burgee.destroy(); this.cargoSprites.delete(id); }
       }
     }
   }
@@ -298,6 +322,8 @@ export class WorldRenderer {
     id: string,
     entity: EntityState,
     hull: Phaser.GameObjects.Sprite,
+    dist: number,
+    visionRange: number,
   ): void {
     const faction = entity.ship?.factionId as string | undefined;
     const key = faction ? `flag_${faction}` : undefined;
@@ -324,6 +350,7 @@ export class WorldRenderer {
     flag.setVisible(hull.visible && hull.alpha > 0.05);
 
     this.syncPennant(scene, id, entity, flag, scale);
+    this.syncCargoBurgee(scene, id, entity, flag, scale, dist <= visionRange * CARGO_READ_SHARE);
   }
 
   /** The war streamer, flown only by hulls that will fight. */
@@ -353,6 +380,47 @@ export class WorldRenderer {
     pennant.setDepth(flag.depth);
     pennant.setAlpha(flag.alpha);
     pennant.setVisible(flag.visible);
+  }
+
+  /**
+   * The cargo burgee — how deep she rides, for anything that carries goods.
+   *
+   * Only inside `CARGO_READ_SHARE` of the lookout's range: at the edge of
+   * vision a hull is a sail and nothing more. `near` is passed in rather than
+   * measured here so the one distance the sync loop already has is the one
+   * every flag on this hull is judged by.
+   */
+  private syncCargoBurgee(
+    scene: Phaser.Scene,
+    id: string,
+    entity: EntityState,
+    flag: Phaser.GameObjects.Image,
+    scale: number,
+    near: boolean,
+  ): void {
+    const tier = near ? ladenTier(entity.ship) : 0;
+    const key = tier === 2 ? "pennant_cargo_rich" : "pennant_cargo";
+    let burgee = this.cargoSprites.get(id);
+
+    if (tier === 0 || !scene.textures.exists(key)) {
+      if (burgee) { burgee.destroy(); this.cargoSprites.delete(id); }
+      return;
+    }
+
+    if (!burgee) {
+      burgee = scene.add.image(flag.x, flag.y, key);
+      burgee.setOrigin(0, 0);
+      this.cargoSprites.set(id, burgee);
+    } else if (burgee.texture.key !== key) {
+      // She sold half her cargo into a port and came out riding higher.
+      burgee.setTexture(key);
+    }
+
+    burgee.setScale(scale);
+    burgee.setPosition(flag.x, flag.y + CARGO_GAP * scale);
+    burgee.setDepth(flag.depth);
+    burgee.setAlpha(flag.alpha);
+    burgee.setVisible(flag.visible);
   }
 
   applyEvents(scene: Phaser.Scene, events: WorldEvent[]): void {

@@ -60,6 +60,62 @@ function salvageShare(outcome: PrizeOutcome): number {
 }
 
 /**
+ * How deep she rides, 0..1 — units stowed against what she could stow.
+ *
+ * The one thing about a strange sail that a masthead lookout can actually
+ * report. Not her worth: sugar and cocoa swim the same. Since v0.23.0 a trader
+ * loads out of a real warehouse and may sail in ballast when the quay is bare,
+ * so this is a genuine variable and not a dressed-up constant.
+ */
+export function holdFill(ship: ShipData | undefined): number {
+  if (!ship || ship.cargoCap <= 0) return 0;
+  return Math.min(1, stowed(ship.cargo ?? {}) / ship.cargoCap);
+}
+
+/** Units in her hold — what the encounter screen prints as tons. */
+export function holdTons(ship: ShipData | undefined): number {
+  return Math.round(stowed(ship?.cargo ?? {}));
+}
+
+/**
+ * What she is carrying, best goods first — the manifest, in two or three words.
+ *
+ * Same ordering as `computePrize` uses to decide what comes across, so the
+ * cargo named on the encounter screen is the cargo that would be taken first.
+ */
+export function manifest(ship: ShipData | undefined): { item: string; qty: number }[] {
+  return Object.entries(ship?.cargo ?? {})
+    .map(([item, qty]) => ({ item, qty: Math.round(qty), unit: ITEMS[item]?.basePrice ?? 1 }))
+    .filter(h => h.qty > 0)
+    .sort((a, b) => b.qty * b.unit - a.qty * a.unit)
+    .map(({ item, qty }) => ({ item, qty }));
+}
+
+/**
+ * Three things a hull can be at map scale: in ballast, laden, deep-laden.
+ *
+ * v0.20.0 gave every fighting ship a red streamer, so the ensign answers
+ * "whose" and the streamer answers "will she fight". This is the third
+ * question, and since v0.23.0 it is the one with money riding on it: two
+ * Spanish merchantmen on the same lane are not the same prize, and until now
+ * the only way to find out which was which was to spend a day running one down.
+ *
+ * The thresholds sit either side of what a lane actually loads (`LANE_LOAD_MIN`
+ * 0.55 to `LANE_LOAD_MAX` 0.9, then cut by whatever the warehouse could spare),
+ * so a full consignment reads deep-laden, a scraped-together part cargo reads
+ * laden, and a hull that found nothing to load reads as what she is.
+ */
+export const LADEN_SHARE = 0.1;
+export const DEEP_LADEN_SHARE = 0.5;
+
+export function ladenTier(ship: ShipData | undefined): 0 | 1 | 2 {
+  const fill = holdFill(ship);
+  if (fill >= DEEP_LADEN_SHARE) return 2;
+  if (fill >= LADEN_SHARE) return 1;
+  return 0;
+}
+
+/**
  * Work out what comes across from a beaten ship, given the room you have.
  *
  * Pure, and deliberately not random: the variance is already in *which* ship

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { WorldEngine } from "../WorldEngine.ts";
 import { rentStorehouse, leaseAt, storeAt, LEASE_DAYS } from "../../systems/StorehouseSystem.ts";
+import { acceptRaid, raidOffer, raidCutFlag, activeRaids } from "../../systems/InformantSystem.ts";
+import { disruptRoute } from "../../systems/TradeRouteSystem.ts";
 import { CITIES } from "../../data/cities.ts";
 import { ITEMS } from "../../data/items.ts";
 import { initPortPrices } from "../../data/prices.ts";
@@ -136,6 +138,29 @@ describe("the day rolling over", () => {
     expect(leaseAt(after, PORT)).toBeUndefined();
     expect(after.player.gold).toBeGreaterThan(goldBefore);
     expect(after.eventLog.some(e => e.key === "storehouse.log_auctioned")).toBe(true);
+  });
+
+  it("pays off an informer's commission the day the lane goes quiet", () => {
+    // The wiring under test is the one that does not exist in the system's own
+    // unit tests: `tickRaidCommissions` stamps a flag and the *engine* has to
+    // hand that flag to the quest machine. A commission that pays only when
+    // somebody remembers to call it is the `tick % N` bug in another coat.
+    const base = makeWorld();
+    let w = base;
+    for (const key of Object.keys(CITIES)) {
+      const offer = raidOffer(w, key);
+      if (offer) { w = acceptRaid(w, offer).world; break; }
+    }
+    const commission = activeRaids(w)[0];
+    expect(commission).toBeDefined();
+
+    for (let i = 0; i < 3; i++) w = disruptRoute(w, commission.routeId);
+    const goldBefore = w.player.gold;
+
+    const after = crossDays(w, 1);
+    expect(after.worldFlags[raidCutFlag(commission)]).toBe(true);
+    expect(after.player.gold).toBe(goldBefore + commission.reward);
+    expect(activeRaids(after)).toHaveLength(0);
   });
 
   it("leaves a lease that is still paid up alone", () => {

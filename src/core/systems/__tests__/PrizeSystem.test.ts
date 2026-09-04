@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { computePrize, applyPrize } from "../PrizeSystem.ts";
+import {
+  computePrize, applyPrize,
+  holdFill, holdTons, manifest, ladenTier,
+  LADEN_SHARE, DEEP_LADEN_SHARE,
+} from "../PrizeSystem.ts";
 import { tradeRoutes, laneThroughput } from "../TradeRouteSystem.ts";
 import { CITIES } from "../../data/cities.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
@@ -286,5 +290,57 @@ describe("applyPrize", () => {
     });
     const { world } = applyPrize(w, enemy, "win");
     expect(world.routeDisruption ?? {}).toEqual({});
+  });
+});
+
+// ===========================================================================
+// How she rides — what a lookout can report before anyone boards her
+// ===========================================================================
+
+describe("holdFill and ladenTier", () => {
+  it("reads a hull with nothing aboard as in ballast", () => {
+    const ship = makeShipData({ cargo: {}, cargoCap: 100 });
+    expect(holdFill(ship)).toBe(0);
+    expect(holdTons(ship)).toBe(0);
+    expect(ladenTier(ship)).toBe(0);
+  });
+
+  it("reads a part cargo as laden and a full consignment as deep-laden", () => {
+    const part = makeShipData({ cargo: { sugar_cane: 20 }, cargoCap: 100 });
+    const full = makeShipData({ cargo: { sugar_cane: 70 }, cargoCap: 100 });
+    expect(ladenTier(part)).toBe(1);
+    expect(ladenTier(full)).toBe(2);
+  });
+
+  it("puts the thresholds exactly where the constants say", () => {
+    const at = (units: number) => ladenTier(makeShipData({ cargo: { sugar_cane: units }, cargoCap: 100 }));
+    expect(at(LADEN_SHARE * 100 - 1)).toBe(0);
+    expect(at(LADEN_SHARE * 100)).toBe(1);
+    expect(at(DEEP_LADEN_SHARE * 100 - 1)).toBe(1);
+    expect(at(DEEP_LADEN_SHARE * 100)).toBe(2);
+  });
+
+  it("never reads deeper than full, whatever is stowed", () => {
+    const overloaded = makeShipData({ cargo: { sugar_cane: 500 }, cargoCap: 100 });
+    expect(holdFill(overloaded)).toBe(1);
+  });
+
+  it("answers for a hull that is not there at all", () => {
+    expect(holdFill(undefined)).toBe(0);
+    expect(ladenTier(undefined)).toBe(0);
+    expect(manifest(undefined)).toEqual([]);
+  });
+
+  it("names the cargo in the order a prize crew would take it", () => {
+    // cocoa is worth 20 a unit and sugar 10, so ten of cocoa outranks
+    // fifteen of sugar — the same ranking `computePrize` shifts them in.
+    const ship = makeShipData({ cargo: { sugar_cane: 15, cocoa: 10 }, cargoCap: 100 });
+    expect(manifest(ship).map(h => h.item)).toEqual(["cocoa", "sugar_cane"]);
+    expect(holdTons(ship)).toBe(25);
+  });
+
+  it("leaves out what is not aboard", () => {
+    const ship = makeShipData({ cargo: { sugar_cane: 0, rum: 4 }, cargoCap: 100 });
+    expect(manifest(ship)).toEqual([{ item: "rum", qty: 4 }]);
   });
 });

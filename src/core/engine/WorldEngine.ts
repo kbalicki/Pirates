@@ -18,6 +18,7 @@ import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { tickBlockades } from "../systems/BlockadeSystem.ts";
 import { tickRouteDisruption } from "../systems/TradeRouteSystem.ts";
+import { tickRaidCommissions } from "../systems/InformantSystem.ts";
 import { tickStorehouses } from "../systems/StorehouseSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
@@ -129,6 +130,16 @@ export class WorldEngine {
       allEvents.push(...campaigns.events);
       // Generate/expire world events once per day
       world = updateWorldEvents(world);
+      // Has a commissioned lane gone as quiet as the house paid for (v0.25.0)?
+      // Read before `tickRouteDisruption` would have decayed today's scare
+      // away, so the informer judges the run as it stood when the sun went
+      // down — and stamped as a flag, because the quest machine only ever
+      // hears about a flag when somebody hands it a `flag_set`.
+      const raids = tickRaidCommissions(world);
+      world = raids.world;
+      for (const flag of raids.flags) {
+        world = advanceQuests(world, { type: "flag_set", key: flag }, buildQuestRegistry(world)).world;
+      }
       // The cordon is settled before the economy runs, so the day a blockade
       // closes is the first day the town goes short — and the shippers' nerve
       // comes back on the same clock it was lost on.

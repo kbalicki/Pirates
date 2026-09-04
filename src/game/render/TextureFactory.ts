@@ -108,6 +108,30 @@ export function generateFlagTextures(scene: Phaser.Scene): void {
     g.generateTexture("pennant_war", 10, 3);
     g.destroy();
   }
+
+  // A laden merchantman's burgee, flown below the ensign.
+  //
+  // The ensign says whose, the war streamer says whether she fights; this says
+  // how deep she rides, which since v0.23.0 is the question with money on it.
+  // Two lengths rather than two colours: at map scale a streamer's *length* is
+  // the only property that survives, and a long one next to a short one reads
+  // without a legend.
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(0xb08a3c, 1);
+    g.fillRect(0, 0, 6, 2);
+    g.generateTexture("pennant_cargo", 6, 2);
+    g.destroy();
+  }
+  {
+    const g = scene.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(0xf0c24a, 1);
+    g.fillRect(0, 0, 12, 3);
+    g.fillStyle(0x8a6420, 1);
+    g.fillRect(10, 0, 2, 3);
+    g.generateTexture("pennant_cargo_rich", 12, 3);
+    g.destroy();
+  }
 }
 
 /** Generate a simple 4-direction crew party spritesheet (24x16 per frame, 4 frames). */

@@ -27,7 +27,7 @@ import {
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
 import { heldDefenseCeiling, heldPopulationCeiling, playerHolds } from "./ReconquestSystem.ts";
-import { laneSupplyShare, routeSupplying } from "./TradeRouteSystem.ts";
+import { effectiveSupplier, laneSupplyShare } from "./TradeRouteSystem.ts";
 import { blockadeEffective, portShutIn, BLOCKADE_SUPPLY_SHARE } from "./BlockadeSystem.ts";
 import { spotPrice } from "./PricingSystem.ts";
 import { deliveryValue, settleDailyLedger } from "./TradeLedgerSystem.ts";
@@ -51,7 +51,41 @@ import { deliveryValue, settleDailyLedger } from "./TradeLedgerSystem.ts";
  * packet would.
  */
 const IMPORT_SHARE_CROWN = 1.0;
+
+/**
+ * What the smugglers bring a town under the black flag, and what makes it more.
+ *
+ * The floor is what a den gets from the trade that will deal with anybody: a
+ * third of what a licensed packet would land. On top of it sits the captain's
+ * own name, and that is the point of this function.
+ *
+ * The alternative — the one v0.19.0 tried and v0.25.0 measured again before
+ * dropping it for good — was to pull a held town's *wealth* toward a smaller
+ * target. It cannot work, and the arithmetic says why. A held Port Royale runs
+ * a standing shortage worth about 3.8 wealth a day, and the pull toward
+ * baseline is 1% of the gap, so the town settles wherever the gap is 380: at a
+ * royal target of 600 that is 223, and at any target below 380 it is **zero**.
+ * Measured both ways: a 0.62 target and a flat daily upkeep each emptied the
+ * town inside a year. The target is not the lever. What reaches the quay is.
+ *
+ * So a den's fortunes ride on its captain's reputation among the brethren,
+ * which is a lever he already pulls every time he takes a prize:
+ *
+ *     share = 0.35 + min(1, notoriety / 100) * 0.4      → 0.35 .. 0.75
+ *
+ * A nobody's den starves at 223. A captain the whole Caribbean has heard of
+ * keeps his town at better than four hundred, because the men who will not sell
+ * to a colonial factor will sell to him. It is the first thing notoriety has
+ * ever been *worth*, rather than merely cost.
+ */
 const IMPORT_SHARE_BLACK_FLAG = 0.35;
+const IMPORT_NOTORIETY_BONUS = 0.4;
+const IMPORT_NOTORIETY_FULL = 100;
+
+export function blackFlagImportShare(world: WorldState): number {
+  const fame = Math.min(1, Math.max(0, world.player.notoriety ?? 0) / IMPORT_NOTORIETY_FULL);
+  return IMPORT_SHARE_BLACK_FLAG + fame * IMPORT_NOTORIETY_BONUS;
+}
 /**
  * Wealth lost per demanded good per day when the town cannot get all of it.
  *
@@ -62,6 +96,25 @@ const IMPORT_SHARE_BLACK_FLAG = 0.35;
  * which is what the target was always supposed to mean.
  */
 const SHORTAGE_WEALTH_PER_ITEM = 2;
+
+/**
+ * A port nobody's licensed shipping will lade at today.
+ *
+ * `portShutIn` answers the physical question — is there a cordon across this
+ * harbour mouth, is the port closed. The black flag is the other kind of shut:
+ * the water is open and the wharves are working, and no crown's merchant will
+ * put his consignment aboard a hull clearing from a pirate den. Both stop a
+ * lane at its origin, so both belong in the answer `laneSupplyShare` is given.
+ *
+ * This is what makes taking a town an act against the *sea* and not only
+ * against the town. Havana supplies four colonies with sugar; hold Havana and
+ * those four go looking for another grower or go short, which is the first
+ * strategic consequence of a conquest the player can feel from the far side of
+ * the map.
+ */
+export function supplierShutIn(world: WorldState, portKey: string): boolean {
+  return portShutIn(world, portKey) || playerHolds(world, portKey);
+}
 
 const RECOVERY_WEALTH = 0.01;     // 1% per day toward baseline
 const RECOVERY_POPULATION = 0.005; // 0.5% per day
@@ -140,13 +193,13 @@ export function economyDailyTick(world: WorldState): WorldState {
       // good is still sailing (`laneSupplyShare` — a good with no producer
       // anywhere, such as water, has no lane and cannot be cut), and whether
       // somebody is standing off the harbour with the guns run out.
-      const flagShare = playerHolds(w, portKey) ? IMPORT_SHARE_BLACK_FLAG : IMPORT_SHARE_CROWN;
+      const flagShare = playerHolds(w, portKey) ? blackFlagImportShare(w) : IMPORT_SHARE_CROWN;
       const cordon = blockadeEffective(w, portKey) ? BLOCKADE_SUPPLY_SHARE : 1;
       for (const item of def.demands) {
         if (allProduces.includes(item)) continue;
         const need = baselineConsumptionRate(portKey, item, port.population);
         const cap = inventoryCap(portKey, item);
-        const lane = laneSupplyShare(w, portKey, item, p => portShutIn(w, p));
+        const lane = laneSupplyShare(w, portKey, item, p => supplierShutIn(w, p));
         const arriving = need * flagShare * lane * cordon * effects.importMul;
         const had = inventory[item] ?? 0;
         inventory[item] = Math.min(cap, had + arriving);
@@ -155,16 +208,22 @@ export function economyDailyTick(world: WorldState): WorldState {
         // not delivered and is not paid for, so the landed quantity is the one
         // that settles — not the quantity that set out.
         const landed = inventory[item] - had;
-        const route = landed > 0 ? routeSupplying(portKey, item) : undefined;
-        if (route) {
+        // Who is actually paid for it. Not the lane's named supplier if he is
+        // shut in — a cordon or a black flag sends the trade to the next
+        // grower, and until v0.25.0 the ledger went on paying the man whose
+        // harbour was closed. When nobody within reach is open the goods still
+        // trickle in, but they come by smugglers and no counting house books
+        // them.
+        const from = landed > 0 ? effectiveSupplier(portKey, item, p => supplierShutIn(w, p)) : undefined;
+        if (from) {
           // Yesterday's quotes at both ends: the exporter's, because that is
           // what he was paid, and this town's, because that is what his cargo
           // fetches here. Today's are still being worked out.
-          const origin = w.ports[route.from];
+          const origin = w.ports[from];
           const paid = (origin?.prices[item] ?? ITEMS[item]?.basePrice ?? 0) * landed;
           const soldFor = (port.prices[item] ?? ITEMS[item]?.basePrice ?? 0) * landed;
           const value = deliveryValue(paid, soldFor);
-          laneGold[route.from] = (laneGold[route.from] ?? 0) + value.paid;
+          laneGold[from] = (laneGold[from] ?? 0) + value.paid;
           laneGold[portKey] = (laneGold[portKey] ?? 0) + value.margin;
         }
       }
@@ -208,6 +267,8 @@ export function economyDailyTick(world: WorldState): WorldState {
     // `tickBlockades` thins the garrison, and this stops it growing back.
     const rmul = blockadeEffective(w, portKey) ? 0 : effects.recoveryMul;
     const baseline = getPortBaseline(portKey);
+    // Wealth is pulled toward the *royal* baseline even under the black flag,
+    // and that is measured, not an oversight — see `blackFlagImportShare`.
     wealth     += (baseline.wealth - wealth) * RECOVERY_WEALTH * rmul;
     population += (heldPopulationCeiling(w, portKey) - population) * RECOVERY_POPULATION * rmul;
     // A town that changed hands rebuilds only toward what its own people will

@@ -11,11 +11,13 @@ import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
+import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
+import { ITEMS } from "../../core/data/items.ts";
 
 type EncounterAction = "news" | "attack" | "leave";
 
 const DLG_W = 380;
-const DLG_H = 300;
+const DLG_H = 320;
 const PAD = 14;
 
 export class ShipEncounterScene extends Phaser.Scene {
@@ -88,6 +90,23 @@ export class ShipEncounterScene extends Phaser.Scene {
     const hull = Math.round((this.npcEntity.ship.hullHp / this.npcEntity.ship.hullMax) * 100);
     this.add.text(cx, y, `${t("encounter.cannons")}: ${cannons}   ${t("encounter.crew")}: ${crew}   ${t("encounter.hull")}: ${hull}%`,
       txt(11, { color: "#666666" })).setOrigin(0.5, 0);
+    y += 18;
+
+    // What she is carrying (v0.25.0).
+    //
+    // Hailing distance is where a manifest belongs: the burgee on the map says
+    // only how deep she rides, and this is the line that turns "worth chasing"
+    // into "worth chasing for the cocoa". Named in the order `computePrize`
+    // would take them, so the first good listed is the first one across.
+    const tons = holdTons(this.npcEntity.ship);
+    const goods = manifest(this.npcEntity.ship)
+      .slice(0, 3)
+      .map(h => ITEMS[h.item]?.name ?? h.item)
+      .join(", ");
+    const holdLine = tons > 0
+      ? t("encounter.laden", { tons, goods })
+      : t("encounter.in_ballast");
+    this.add.text(cx, y, holdLine, txt(11, { color: "#7a5a1a" })).setOrigin(0.5, 0);
     y += 18;
 
     // Divider

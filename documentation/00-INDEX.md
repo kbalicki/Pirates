@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.24.0.0 | **Ostatnia aktualizacja:** 2026-09-04
+**Wersja:** 0.25.0.0 | **Ostatnia aktualizacja:** 2026-09-04
 
 ---
 
@@ -41,3 +41,4 @@
 - [SESSION-2026-09-01.md](SESSION-2026-09-01.md) — v0.9.8.1 → v0.10.0.0: wiatr, testy, uszkodzenia, pojedynki
 - [SESSION-2026-09-02.md](SESSION-2026-09-02.md) — v0.9.9.1 → v0.12.0.0: dialogi, łupy, starzenie, emerytura, questy, skarby
 - [SESSION-2026-09-04.md](SESSION-2026-09-04.md) — v0.23.0.0 → v0.24.0.0: pętla pieniężna handlu, wycena przy każdym ruchu towaru, reputacja przy ladzie, magazyn na wynajem
+- [SESSION-2026-09-04B.md](SESSION-2026-09-04B.md) — v0.24.0.0 → v0.25.0.0: proporczyk ładunku, informator w tawernie, przemyt na nazwisko (i dlaczego sufit bogactwa został odrzucony po raz drugi)

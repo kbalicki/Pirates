@@ -117,13 +117,25 @@ update(delta):
 
 Menu port:
 1. **Gubernator** — listy kaperskie, rangi, misje
-2. **Tawerna** — rekrutacja, drink (+morale), plotki i lokalne newsy ze świata
+2. **Tawerna** — rekrutacja, drink (+morale), plotki i lokalne newsy ze świata,
+   mapa skarbów, podział łupów, wątek rodzinny oraz **zlecenie informatora**
+   (v0.25.0): jedna oferta na miasto na dzień, `raidOffer`. Kiedy zlecenie jest
+   w ręku, ta sama pozycja pokazuje postęp — „Zlecenie: A–B — przecięte w 40%,
+   zostało 18 dni". Naciśnięcie nic nie kosztuje: pieniądze idą dopiero, gdy
+   szlak ucichnie
 3. **Kupiec** — kupno/sprzedaż 6 towarów
 4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do floty
 5. **Załoga miasta** — tylko w mieście, które zmieniło właściciela (v0.15.0)
 6. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
 
 Nawigacja: klawisze lub klik na opcje. ESC = wyjście z portu.
+
+#### Ekran spotkania — manifest (v0.25.0)
+
+`ShipEncounterScene` drukuje pod linią dział/załogi/kadłuba jedną linijkę o
+ładowni: `Laden: 80 tons — Sugar Cane` albo `In ballast — nothing in her hold`.
+Towary w kolejności, w jakiej `computePrize` przeniósłby je na pokład. Okno
+urosło z `DLG_H = 300` do `320`, żeby ta linia miała gdzie stanąć.
 
 #### Widok „garrison" (v0.15.0)
 

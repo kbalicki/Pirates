@@ -83,6 +83,9 @@ import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
+  raidOffer, acceptRaid, activeRaids, raidProgress, raidVictim,
+} from "../../core/systems/InformantSystem.ts";
+import {
   isHomePort,
   careen,
   holdFree,
@@ -155,6 +158,8 @@ export class PortScene extends Phaser.Scene {
   /** One-shot line under the tavern actions, e.g. "nothing to divide". */
   private tavernMessage: string | null = null;
 
+  /** The informer's job as it was drawn this pass, so accepting takes that one. */
+  private raidOnOffer: import("../../core/systems/InformantSystem.ts").RaidCommission | null = null;
   /** Governor conversation in progress; rebuilt whenever the view is entered. */
   private governorDialogue: { tree: DialogueTree; runtime: DialogueRuntime } | null = null;
 
@@ -470,7 +475,7 @@ export class PortScene extends Phaser.Scene {
 
     if (this.tavernMessage) {
       const msg = this.add.text(
-        this.infoX, this.dlgY + DLG_H - PAD - 46,
+        this.infoX, this.dlgY + DLG_H - PAD - 58,
         this.tavernMessage,
         { ...txt(12, { color: "#8a3a3a" }), wordWrap: { width: DLG_W - PAD * 2 } },
       );
@@ -724,6 +729,30 @@ export class PortScene extends Phaser.Scene {
       { label: plunderLabel, key: "divide" },
     ];
 
+    // The informer's job, or the one already in hand (v0.25.0). Above the
+    // family thread because it is the only line in here that expires.
+    const raid = activeRaids(this.worldState)[0];
+    if (raid) {
+      const done = Math.round(raidProgress(this.worldState, raid) * 100);
+      const left = raid.days - (this.worldState.time.day - raid.acceptedDay);
+      actions.push({
+        label: t("informer.in_hand", { from: raid.fromName, port: raid.toName, done, days: Math.max(0, left) }),
+        key: "raid_status",
+      });
+    } else {
+      const offer = raidOffer(this.worldState, this.currentPortId as string);
+      if (offer) {
+        this.raidOnOffer = offer;
+        actions.push({
+          label: t("informer.offer", {
+            from: offer.fromName, port: offer.toName,
+            gold: offer.reward, days: offer.days,
+          }),
+          key: "raid_take",
+        });
+      }
+    }
+
     // The family thread lives in the tavern: an informer sells the first name,
     // and the town the trail currently points at offers the fight itself.
     const here = stepAtPort(this.worldState, this.currentPortId as string);
@@ -742,6 +771,8 @@ export class PortScene extends Phaser.Scene {
         case "drinks": this.handleDrinks(); break;
         case "buy_map": this.handleBuyTreasureMap(); break;
         case "divide": this.handleDividePlunder(); break;
+        case "raid_take": this.handleTakeRaid(); break;
+        case "raid_status": this.tavernMessage = t("informer.status_hint"); this.switchView("tavern"); break;
         case "family_ask": this.handleAskAboutFamily(); break;
         case "family_strike": this.handleFamilyStrike(); break;
         case "back": this.switchView("menu"); break;
@@ -753,7 +784,7 @@ export class PortScene extends Phaser.Scene {
     // could not meet — was written and then thrown away unseen.
     if (this.tavernMessage) {
       const msg = this.add.text(
-        this.infoX, this.dlgY + DLG_H - PAD - 46,
+        this.infoX, this.dlgY + DLG_H - PAD - 58,
         this.tavernMessage,
         { ...txt(12, { color: "#6a4a1a" }), wordWrap: { width: DLG_W - PAD * 2 } },
       );
@@ -771,6 +802,31 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(hint);
 
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  }
+
+  /**
+   * Take the informer's job.
+   *
+   * Nothing changes hands here: the commission is a promise about a lane, and
+   * the money only moves when `tickRaidCommissions` sees the run go quiet. The
+   * offer is held from the render pass rather than recomputed, so the job the
+   * captain agreed to is the job on the screen even if the day rolls under him.
+   */
+  private handleTakeRaid(): void {
+    const offer = this.raidOnOffer;
+    if (!offer) return;
+    const result = acceptRaid(this.worldState, offer);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("tavern");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("informer.taken", {
+      from: offer.fromName, port: offer.toName, crown: raidVictim(offer),
+    });
+    this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
   }
 
   private handleRecruit(): void {
