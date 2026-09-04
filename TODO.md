@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.25.0.0 · **Branch:** `main`
-**Kod:** 182 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1228 przechodzi, 0 failuje, 0 `todo`** w 35 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.26.0.0 · **Branch:** `main`
+**Kod:** 182 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1262 przechodzi, 0 failuje, 0 `todo`** w 35 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.25.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1228/1228 zielone; ta wersja daje graczowi **zobaczyć**, który kupiec jest wart pogoni (proporczyk ładunku + manifest przy spotkaniu), stawia **informatora w tawernie** jako trzecie źródło zleceń (zniszcz cudzy szlak na zamówienie) i sprawia, że miasto pod czarną banderą żyje z przemytu, który płynie **na nazwisko kapitana** — lista kandydatów na v0.26.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.26.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1262/1262 zielone; ta wersja sprawia, że **dostawa szlakiem ubywa z magazynu eksportera** — port przejmujący cudze kursy drenuje własne szopy, bogaci się na cenie i w końcu nie ma czym pokrywać, więc drugie źródło jest **skończone** — a informator dostał drugi typ zlecenia (**dostarcz towar do głodującego miasta**, cena z góry, towar twój problem); lista kandydatów na v0.27.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04B.md](documentation/SESSION-2026-09-04B.md) — dlaczego proporczyk mówi o zanurzeniu a nie o wartości, dlaczego zlecenie informatora mierzy się `routeDisruption`, i **dlaczego sufit bogactwa dla miasta pod czarną banderą odpadł drugi raz** — tym razem z pomiarem. Poprzednia: [SESSION-2026-09-04.md](documentation/SESSION-2026-09-04.md).
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04C.md](documentation/SESSION-2026-09-04C.md) — dlaczego zobowiązanie szlaku musiało wejść do **produkcji**, żeby osiadły świat nie drgnął, dlaczego sufit magazynu przycina się **po** wysyłce a nie przed, i dlaczego drugie zlecenie informatora jest **zamówieniem, a nie frachtem** (fracht za kordon jest w grze od v0.23.0). Poprzednia: [SESSION-2026-09-04B.md](documentation/SESSION-2026-09-04B.md).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -69,6 +69,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Manifest przy spotkaniu | ✅ | `ShipEncounterScene`: „Laden: 80 tons — Sugar Cane” w kolejności, w jakiej pryz by to zabrał |
 | Informator w tawernie | ✅ | `InformantSystem` (~250 l.): zlecenie na przecięcie cudzego szlaku, mierzone `routeDisruption` |
 | Przystań żyje z przemytu | ✅ | `blackFlagImportShare`: 0.35 → 0.75 wraz z notoriety; `supplierShutIn` odcina ją jako dostawcę cudzych szlaków |
+| Dostawa ubywa z magazynu | ✅ | `EconomyTickSystem` (4 przebiegi) + `laneCommitment`: stand-in pokrywa cudze kursy z własnego zapasu, a gdy wyschnie — racjonuje pro rata |
+| Zlecenie na dostawę | ✅ | `InformantSystem.reliefOffer`: cena z góry za ładownię do głodującego miasta, towar kapitan znajduje sam |
 
 ### Nietknięte
 
@@ -942,7 +944,52 @@ własna przystań dostaje `0.35 + min(1, notoriety/100) × 0.4` — zmierzone
 
 ---
 
-### v0.26.0 — co dalej
+### ~~v0.26.0 — Ładunek wychodzi z czyjegoś magazynu; informator kupuje~~ ✅ (v0.26.0.0)
+
+Kandydaci **3** i **4** z poprzedniej listy, wzięci razem, bo drugi jest
+konsekwencją pierwszego: dopiero gdy zdobycie miasta naprawdę opróżnia szopy
+trzysta mil dalej, jest po co płacić komuś za dostawę.
+
+**Dostawa ubywa z magazynu** (`EconomyTickSystem`, cztery przebiegi;
+`TradeRouteSystem.laneClients`; `reroutedOnto`). Zarzut z listy był prawdziwy i
+naprawa **nie mogła** polegać na prostym odjęciu: zmierzone przed napisaniem
+czegokolwiek, dziewięć z dwudziestu najruchliwszych par towar-port ma
+zapotrzebowanie **większe niż produkcja** (Port Royale: 44,6 t/d żywności przy
+8,6 t/d produkcji), bo import od v0.20.0 materializował się z niczego. Weszło
+więc zobowiązanie szlaku **do produkcji** — i osiadły świat po 400 dniach jest
+co do dziesiętnej tam, gdzie był (646,1 / 907,6 / 617,1 / 920,6, pilnowane
+testem). Zmienia się **wyłącznie** świat zaburzony: stand-in pokrywa cudze kursy
+z zapasu, którego dla nich nie zasiał (Florida Keys 50 → 2,2 t w miesiąc, cena
+×6, obrót 17 → 150, `wealth` +65%), a gdy wyschnie, zamówienia są skracane pro
+rata i klienci też głodują (Santiago 617 → 537). Drugie źródło jest skończone.
+
+**Zlecenie na dostawę** (`InformantSystem.reliefOffer`). Kandydat 4 mówił
+„przemyć to do miasta pod embargiem" — **to już jest w grze**: kantor frachtowy
+płaci za przewóz do zablokowanego portu półtora raza od v0.23.0. Czego kantor
+nie umie, to kupić, więc drugie zlecenie informatora jest **zamówieniem**: cena
+z góry za całą ładownię, towar kapitan znajduje sam (kupuje albo wyjmuje z
+pryzu). Wycena `min(basePrice × rate, cena w mieście × 0.9)` — drugi człon
+wyszedł z testu, nie z rozumowania: pierwsza wersja płaciła 1084 tam, gdzie lada
+tego samego miasta liczyła 864, bo głód dochodzi do ceny z opóźnieniem.
+
+Żadnego nowego pola w zapisie — migracje stoją na **v12**, i tym razem to jest
+teza: magazyn jest pamięcią całego mechanizmu (`RESTOCK_SURGE`), więc nie ma
+czego migrować.
+
+**Pułapki z tej sesji:**
+
+1. **Dwa widoki `PortScene` mają identyczny kod rysowania komunikatu poza
+   kolorem.** Podmiana skryptem bez koloru w kotwicy trafia w pierwszy z nich, a
+   zrzut ekranu wygląda tak samo jak przed poprawką.
+2. **Tawerna ma dziewięć pozycji i nie mieści komunikatu razem z podpowiedzią.**
+   Komunikat rysuje się pod ostatnią pozycją listy, a podpowiedź klawiszy chowa
+   się, gdy komunikat jest.
+3. **`--scene=` w `drive.mjs` nie działa na świecie debugowym, który sam startuje
+   `PortScene`** — po zatrzymaniu scen nie wstaje żadna.
+
+---
+
+### v0.27.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -953,17 +1000,15 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu. Ścieżki dla portu
    i bitwy dałyby najwięcej
-3. **Przekierowanie jest bezkosztowe dla portu-alternatywy** — Santiago ani się
-   nie bogaci, ani nie męczy z tego, że nagle zaopatruje klientów Hawany.
-   `effectiveSupplier` (v0.25.0) wskazuje już właściwy port do kredytowania, więc
-   połowa roboty jest zrobiona — zostało obciążyć go **dostawą**, nie tylko
-   zapłatą
-4. **Zlecenia informatora są jednorodne** — jeden typ (przetnij szlak). Naturalne
-   drugie: „przemyć to do miasta pod embargiem”, „utop konkretny kadłub”. Drugi
-   typ jest tani, bo `InformantSystem` ma już cały szkielet oferty, questa
-   i wypłaty
-5. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
+3. **Niedobór nie ma twarzy w mieście** — v0.26.0 daje głód, ceny i pustą ladę,
+   ale gubernator, tawerna i newsy o tym nie mówią. Miasto, które je resztki,
+   powinno mieć inny nagłówek w porcie, gorszy werbunek i wątek u gubernatora
+   („przywieź nam zboże, a zapomnimy, czyja to była robota")
+4. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
    (`importMul`), ale sojusz nie daje żadnej symetrycznej korzyści
+5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
+   wymaga trwałego, nazwanego NPC, bo dziś kadłuby spawnują się w promieniu
+   gracza i znikają. To nie jest tanie i dlatego czeka
 6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
 
 ---
@@ -981,10 +1026,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - ~~**Konsorty nie mają morale ani wyszkolenia.**~~ ✅ v0.19.0.0 (morale) i v0.21.0.0 (drill) — `FleetShip.morale?` / `.training?`, obie ważone ludźmi przez `fleetMorale()` / `fleetTraining()`. Drill konsorty rośnie **tylko na morzu**, tak jak kapitana.
 - ~~**Import nie reaguje na wojnę.**~~ ✅ v0.21.0.0 — `EventDailyEffects.importMul`. Został brak geografii: wojna obcina dostawy każdemu portowi wojującej korony jednakowo, bo bez szlaków nie ma czego przeciąć.
 - ~~**Gracz nie może zablokować portu.**~~ ✅ v0.22.0.0 — `BlockadeSystem`, dopracowana w v0.23.0.0 o przekierowanie dostaw. Blokada działa tylko przeciwko **miastu**; szlaku w cieśninie wciąż nie da się przeciąć.
+- ~~**Przekierowanie jest bezkosztowe dla portu-alternatywy.**~~ ✅ v0.26.0.0 — dostawa szlakiem ubywa teraz z magazynu eksportera, a port przejmujący cudze kursy pokrywa je z zapasu, którego dla nich nie zasiał: szopy schodzą, ceny idą w górę, obrót rośnie, a gdy zapas wyschnie — zamówienia są skracane pro rata i klienci też głodują. **Osiadły świat nie drgnął** (zobowiązanie szlaku weszło do produkcji), co pilnuje test regresji na czterech portach.
 - ~~**Import jest abstrakcją, nie handlem.**~~ ✅ v0.22.0.0 + v0.23.0.0 + v0.24.0.0 — `TradeRouteSystem` (81 szlaków), `CargoContractSystem` (fracht dla gracza), a od v0.24.0 `TradeLedgerSystem`: dostawa szlakiem płaci eksporterowi i importerowi, handel gracza rusza kiesą miasta, a `PricingSystem` przelicza notowanie przy **każdym** ruchu towaru, nie raz na dobę.
 - ~~**Magazyn jest jeden, tylko w porcie żony.**~~ ✅ v0.24.0.0 — `StorehouseSystem`, wynajem za czynsz w dowolnym mieście od `neutral` w górę. Ryzyko „magazynowania pod każdą górkę cenową” zniknęło razem z `PricingSystem`: wykupywanie magazynu samo podbija cenę pod ręką, a czynsz biegnie, czy gracz tam jest, czy nie.
 - ~~**Kurs wyprawy jest prostą**~~ ✅ v0.23.0.0 — `expeditionCourse()` liczy `findSeaPath`, a `pointAlong` stawia marker na drodze mierzonej odległością. Renderer rysuje ten sam łamany kurs.
-- ~~**Zlecenie obrony jest jedno na raz i tylko od gubernatora.**~~ ✅ v0.25.0.0 — trzy źródła zleceń: gubernator (obrona, v0.17.0), kantor frachtowy (przewóz, v0.23.0), informator w tawernie (przetnij cudzy szlak, v0.25.0). Zostało to, że **informator ma tylko jeden typ zlecenia** — przemyt pod embargo albo polowanie na konkretny kadłub byłyby tanie, bo `InformantSystem` ma już cały szkielet oferty, questa i wypłaty.
+- ~~**Zlecenie obrony jest jedno na raz i tylko od gubernatora.**~~ ✅ v0.25.0.0 — trzy źródła zleceń: gubernator (obrona, v0.17.0), kantor frachtowy (przewóz, v0.23.0), informator w tawernie (przetnij cudzy szlak, v0.25.0). ~~Informator ma tylko jeden typ zlecenia.~~ ✅ v0.26.0.0 — drugi typ to **zamówienie**, nie fracht: cena z góry za ładownię do głodującego miasta, towar kapitan znajduje sam. Przewóz za kordon **nie** wszedł, bo kantor frachtowy robi to od v0.23.0 (`FREIGHT_BLOCKADE`). Zostało polowanie na **konkretny kadłub**, i to nie jest tanie: wymaga trwałego, nazwanego NPC.
 - ~~**Kantor frachtowy nie patrzy na reputację.**~~ ✅ v0.24.0.0 — i nie tylko on. `PortAccessSystem` to jedna tabela dla wszystkich pięciu lad: kupiec (spread), tawerna (kto się zaciągnie), kantor, stocznia (rachunek i czy w ogóle sprzeda kadłub), właściciel magazynu.
 - ~~**`ExpeditionFleetSystem` nie rysuje niczego na mapie świata.**~~ ✅ v0.18.0.0 — `ExpeditionCourseRenderer` rysuje kreskowany kurs każdej wyprawy, o której gracz słyszał; sama eskadra dalej materializuje się dopiero w promieniu 620.
 - ~~**Miasto pod flagą piratów odbudowuje `population` i `wealth` ku baseline'owi swojej dawnej korony.**~~ ✅ v0.19.0.0, przerobione w v0.20.0.0 — ludzie mają sufit (`heldPopulationCeiling`), pieniądze załatwia brak importu. Uwaga na przyszłość: **sufit to nie równowaga** — `wealth` ma stałą presję w dół, więc udział 0.42 dał bogactwo **5**, a nie „mniej zamożne miasto". Historycznie: `heldDefenseCeiling` obcina sufit obrony do 45% (od v0.16.0 **wyłącznie** pod czarną banderą — kolonia pod koroną, także zdobyta, ma budżet na garnizon), ale pozostałe dwie liczby wracają ku wartościom kolonii królewskiej (`EconomyTickSystem` + `getPortBaseline`). **Domknięte w v0.25.0.0**: sufit bogactwa odrzucony po raz drugi i trzeci, tym razem z pomiarem (cel 0.62 i stały upkeep **oba** dały zero w rok), a w zamian dopływ towaru do przystani zależy od nazwiska kapitana — 223 / 465 bogactwa przy notoriety 0 / 100.
@@ -1009,10 +1055,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - **Cena kupna i sprzedaży to widełki wokół jednej liczby, nie jeden mnożnik w obie strony.** Mnożnik „taniej dla przyjaciela” zastosowany do obu kierunków odwraca spread i robi drukarkę pieniędzy (v0.24.0: 14 za cukier, 16 za cukier, przy tej samej ladzie). `PortAccessSystem.buyPrice/sellPrice` to jedyne miejsce, gdzie wolno to liczyć.
 - **Cokolwiek rusza `wealth` powoli, musi mieć gdzie trzymać ułamek.** `PortRuntimeState.wealth` jest trzymane z dokładnością do 0,1 właśnie dlatego: pół punktu dziennego obrotu zaokrąglane co północ do pełnych punktów znikało, a ledger równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu. To ten sam błąd co „sufit to nie równowaga”, tylko o piętro niżej.
+- **Dwa widoki `PortScene` rysują komunikat identycznym kodem, różnym tylko kolorem** (`#8a3a3a` w menu portu, `#6a4a1a` w tawernie). Podmiana skryptem bez koloru w kotwicy trafia w pierwszy z nich i wygląda jak brak efektu. Komunikat idzie **pod ostatnią pozycją listy**, a podpowiedź klawiszy chowa się, gdy komunikat jest — przy dziewięciu pozycjach miejsca starcza na jedno z dwóch.
+- **Sufit magazynu przycinaj PO wysyłce, nie przed** (`EconomyTickSystem` krok 4). Przycięcie produkcji do sufitu przed odjęciem eksportu sprawia, że zapas dużego eksportera piłuje o ćwiartkę dziennie, a `spotPrice` razem z nim — cena skacze o 33% z dnia na dzień bez żadnego powodu w świecie.
+- **Ekonomiczną zmianę mierz PRZED napisaniem jej.** Tabela „ile ten port ma wysłać kontra ile produkuje" przesądziła kształt v0.26.0 w pięć minut: naiwne odjęcie dostawy od magazynu zagłodziłoby cały region, bo dziewięć z dwudziestu najruchliwszych par ma zapotrzebowanie większe niż produkcja. To ta sama lekcja co „sufit to nie równowaga", tylko od strony przepływu.
 - **Etykieta pozycji w menu portu urywa się wizualnie powyżej ~64 znaków.** Wychodzi poza ramkę okna i nic o tym nie mówi — `setupActionList` nie zawija. Długie oferty (fracht, informator) trzeba skracać, a szczegóły przenosić do komunikatu potwierdzenia albo do Dziennika.
 - **Sufit bogactwa dla miasta pod czarną banderą był próbowany trzy razy i trzy razy jest błędem** (v0.19.0 udział 0.42 → bogactwo 5; v0.25.0 udział 0.62 → 0; v0.25.0 stały upkeep → 0). Osiadła wartość = `cel − presja / RECOVERY_WEALTH`, a presja z niedoborów zjada już całą lukę 380. **Nie próbuj czwarty raz** — dźwignią jest to, co dociera na nabrzeże (`blackFlagImportShare`), nie cel.
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`) (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

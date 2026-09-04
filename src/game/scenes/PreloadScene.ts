@@ -7,6 +7,8 @@ import { CITIES } from "../../core/data/cities.ts";
 import { factionId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
+import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
+import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 
@@ -185,6 +187,8 @@ export class PreloadScene extends Phaser.Scene {
     //   ?commission=port_royal — the governor there with a colony under threat
     //   ?home=port_royal — married into that town, with a battered fleet and a full hold
     //   ?blockade=havana — lying off that harbour with guns enough to shut it
+    //   ?famine=tortuga — standing in that town with its supplier under the black flag
+    //                    (&stand=cover — standing instead in the port covering its runs)
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
       localStorage.setItem("pc_zoom_level", params.get("zoom")!);
@@ -283,6 +287,14 @@ export class PreloadScene extends Phaser.Scene {
       const world = this.createBlockadeWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("famine")) {
+      const portKey = params.get("famine") || "tortuga";
+      const world = this.createFamineWorld(portKey, params.get("stand") === "cover");
+      this.registry.set("worldState", world);
+      const standing = (world.player.location.portId as unknown as string) ?? portKey;
+      this.scene.start("PortScene", { worldState: world, portId: standing });
       return;
     }
     if (params.has("skip")) {
@@ -621,6 +633,54 @@ export class PreloadScene extends Phaser.Scene {
       ports: {
         ...base.ports,
         [portKey]: { ...port, blockadeDays: BLOCKADE_ONSET_DAYS - 1 },
+      },
+    };
+  }
+
+  /**
+   * A town whose supplier has been taken, for `?famine=` (v0.26.0).
+   *
+   * Two things in this release only exist downstream of somebody's harbour
+   * being shut, and reaching that in an ordinary game means storming a fort:
+   * the merchant's counter says whose runs this town is covering, and the
+   * informer in the tavern has a relief order for a town that cannot get what
+   * it eats. So this puts the black flag over every port that supplies this
+   * one, and stands the captain in the port menu with a hold to fill.
+   *
+   * `&stand=cover` stands him instead in the town that has picked the runs up,
+   * because that is where the other half of the release shows: a warehouse
+   * being drawn down for somebody else's customers, and the merchant's counter
+   * saying so.
+   */
+  private createFamineWorld(portKey: string, standInCover = false): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    // The lane network asks about water, and a debug world built in here has
+    // not loaded the coastline yet — without this every course is a straight
+    // line through Cuba and the suppliers come out wrong.
+    loadLandmassesFromCache(this);
+
+    const ports = { ...base.ports };
+    for (const lane of routesTo(portKey)) {
+      const from = ports[lane.from];
+      if (!from) continue;
+      ports[lane.from] = { ...from, factionId: "pirates" as unknown as typeof from.factionId };
+    }
+
+    const starved = { ...base, ports };
+    let standing = portKey;
+    if (standInCover) {
+      const cover = Object.keys(CITIES).find(key => reroutedOnto(starved, key).length > 0);
+      if (cover) standing = cover;
+    }
+    const stand = CITIES[standing];
+
+    return {
+      ...starved,
+      player: {
+        ...base.player,
+        location: { type: "port", portId: stand.id, pos: { ...stand.pos } },
       },
     };
   }

@@ -90,6 +90,8 @@ type Network = {
   routes: TradeRoute[];
   /** "<port>|<item>" -> producers after the chosen one, nearest first. */
   alternates: Record<string, string[]>;
+  /** "<port>|<item>" -> towns this port is the named supplier of it for. */
+  clients: Record<string, string[]>;
 };
 
 let cachedNetwork: Network | null = null;
@@ -181,7 +183,14 @@ function network(): Network {
     }
   }
 
-  cachedNetwork = { routes: [...merged.values()], alternates };
+  const clients: Record<string, string[]> = {};
+  for (const route of merged.values()) {
+    for (const item of route.items) {
+      (clients[`${route.from}|${item}`] ??= []).push(route.to);
+    }
+  }
+
+  cachedNetwork = { routes: [...merged.values()], alternates, clients };
   cachedGeneration = gen;
   return cachedNetwork;
 }
@@ -209,6 +218,25 @@ export function routesTo(portKey: string): TradeRoute[] {
 
 export function routesFrom(portKey: string): TradeRoute[] {
   return tradeRoutes().filter(r => r.from === portKey);
+}
+
+/**
+ * The towns this port is the named supplier of `item` for.
+ *
+ * The other direction of `routeSupplying`, and the reason it exists: a
+ * producer's warehouse is drawn on by the lanes leaving it (v0.26.0), so the
+ * daily tick has to be able to ask "who is standing at my quay with an order
+ * this morning" before it decides how much the plantations cut.
+ *
+ * Note that this is the *named* supplier — the map's answer, not today's. A
+ * port that has been shut in still shows up as its clients' supplier here, and
+ * that is deliberate: the plantation that grew a crop for Havana's lanes does
+ * not stop growing it because a cordon closed the harbour, and the port that
+ * quietly takes over the run is doing it out of stock it never planted for.
+ * That gap is the whole cost of a reroute.
+ */
+export function laneClients(portKey: string, item: string): string[] {
+  return network().clients[`${portKey}|${item}`] ?? [];
 }
 
 /** The lane that brings `item` to `portKey`, if any. */

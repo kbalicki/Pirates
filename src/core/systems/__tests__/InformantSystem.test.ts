@@ -14,6 +14,18 @@ import {
   RAID_SEVERITY,
   RAID_NOTORIETY,
   RAID_REPUTATION,
+  reliefOffer,
+  acceptRelief,
+  activeRelief,
+  reliefQuest,
+  reliefQuestId,
+  reliefLandedFlag,
+  canLandRelief,
+  landRelief,
+  supplyShortfall,
+  MAX_ACTIVE_RELIEF,
+  RELIEF_REPUTATION,
+  RELIEF_NOTORIETY,
 } from "../InformantSystem.ts";
 import { validateQuest, advanceQuests } from "../QuestSystem.ts";
 import { buildQuestRegistry } from "../QuestRegistry.ts";
@@ -21,7 +33,7 @@ import { disruptRoute, tradeRoutes, resetTradeRoutes, laneThroughput } from "../
 import { CITIES } from "../../data/cities.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
-import { portId, entityId } from "../../model/ids.ts";
+import { portId, entityId, factionId, shipClassId } from "../../model/ids.ts";
 import { setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
 import { resetSeaGrid } from "../../services/Pathfinding.ts";
 import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
@@ -304,5 +316,261 @@ describe("watching the lane", () => {
     const other = tradeRoutes()[0];
     for (let i = 0; i < 4; i++) world = disruptRoute(world, other.id);
     expect(tickRaidCommissions(world).flags).toEqual([]);
+  });
+});
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The relief order — the informer's other line of work (v0.26.0)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * A purchase order, not a freight, and the tests are mostly about that
+ * difference: nothing is loaded at signing, the goods have to be found, and the
+ * rate is struck against the item's base price so that buying at the starving
+ * town's own counter and selling it back across the table can never pay.
+ */
+
+function withShip(world: WorldState, cargoCap = 60, cargo: Record<string, number> = {}): WorldState {
+  return {
+    ...world,
+    entities: {
+      ...world.entities,
+      player_ship: {
+        id: entityId("player_ship"),
+        kind: "ship",
+        mode: "sailing",
+        pos: { x: 0, y: 0 },
+        vel: { x: 0, y: 0 },
+        heading: 0,
+        sailLevel: 0.5,
+        depthOffset: 0,
+        ship: {
+          classId: shipClassId("merchantman"),
+          factionId: factionId("england"),
+          hullHp: 100, hullMax: 100,
+          sailsHp: 100, sailsMax: 100,
+          cannons: 10,
+          cargo,
+          cargoCap,
+          crew: { current: 40, max: 60, morale: 0.8 },
+        },
+      },
+    },
+  } as unknown as WorldState;
+}
+
+/** A world where one town's supplier has been taken and its shelves are going bare. */
+function starvedWorld(cargoCap = 60): WorldState {
+  const base = withShip(makeWorld(), cargoCap);
+  // The lane that carries the most is the one worth cutting; cutting it at the
+  // source is what a conquest does.
+  const lane = tradeRoutes()[0];
+  return {
+    ...base,
+    ports: {
+      ...base.ports,
+      [lane.from]: { ...base.ports[lane.from], factionId: factionId("pirates") },
+    },
+  };
+}
+
+/** The town that lane used to serve, and the good it is now short of. */
+function starvedTown(): { port: string; item: string } {
+  const lane = tradeRoutes()[0];
+  return { port: lane.to, item: lane.items[0] };
+}
+
+describe("supplyShortfall", () => {
+  it("is nothing at all in a world where every lane runs", () => {
+    const world = withShip(makeWorld());
+    const { port, item } = starvedTown();
+    expect(supplyShortfall(world, port, item)).toBe(0);
+  });
+
+  it("rises when the town's supplier is shut in", () => {
+    const { port, item } = starvedTown();
+    expect(supplyShortfall(starvedWorld(), port, item)).toBeGreaterThan(0);
+  });
+
+  it("rises when the shippers have been frightened off the run", () => {
+    const world = withShip(makeWorld());
+    const lane = tradeRoutes()[0];
+    const scared = disruptRoute(disruptRoute(world, lane.id), lane.id);
+    expect(supplyShortfall(scared, lane.to, lane.items[0]))
+      .toBeGreaterThan(supplyShortfall(world, lane.to, lane.items[0]));
+  });
+});
+
+describe("the relief order on the table", () => {
+  it("is nowhere to be had while the Caribbean is running normally", () => {
+    const world = withShip(makeWorld());
+    for (const key of Object.keys(CITIES)) expect(reliefOffer(world, key)).toBeNull();
+  });
+
+  it("appears once a town cannot get what it eats", () => {
+    const world = starvedWorld();
+    const offers = Object.keys(CITIES).map(key => reliefOffer(world, key)).filter(Boolean);
+    expect(offers.length).toBeGreaterThan(0);
+  });
+
+  it("is never for the town it is offered in", () => {
+    const world = starvedWorld();
+    for (const key of Object.keys(CITIES)) {
+      const offer = reliefOffer(world, key);
+      if (offer) expect(offer.port).not.toBe(key);
+    }
+  });
+
+  it("is sized to the hold that has to lift it", () => {
+    const small = starvedWorld(20);
+    const big = starvedWorld(200);
+    const key = Object.keys(CITIES).find(k => reliefOffer(small, k))!;
+    expect(reliefOffer(small, key)!.qty).toBeLessThan(reliefOffer(big, key)!.qty);
+  });
+
+  it("is not offered at all to a hold too small to be worth a paper", () => {
+    const world = starvedWorld(4);
+    for (const key of Object.keys(CITIES)) expect(reliefOffer(world, key)).toBeNull();
+  });
+
+  it("pays less than the starving town's own counter would charge for it", () => {
+    // The reason the rate is struck against the base price and not the local
+    // quote: otherwise a captain buys at the counter, turns round and sells it
+    // back to the man who is paying him to bring it.
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const offer = reliefOffer(world, key)!;
+    const counter = (world.ports[offer.port].prices[offer.item] ?? 0) * offer.qty;
+    expect(offer.reward).toBeLessThan(counter);
+  });
+
+  it("stops offering while one is already in hand", () => {
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const taken = acceptRelief(world, reliefOffer(world, key)!).world;
+    expect(activeRelief(taken).length).toBe(MAX_ACTIVE_RELIEF);
+    expect(reliefOffer(taken, key)).toBeNull();
+  });
+});
+
+describe("signing a relief order", () => {
+  it("hands over nothing — the goods are the captain's problem", () => {
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const offer = reliefOffer(world, key)!;
+    const signed = acceptRelief(world, offer).world;
+
+    const hold = signed.entities[signed.player.shipId as string]?.ship?.cargo ?? {};
+    expect(hold[offer.item] ?? 0).toBe(0);
+    expect(signed.player.gold).toBe(world.player.gold);
+    expect(signed.ports[key].inventory).toEqual(world.ports[key].inventory);
+  });
+
+  it("refuses a second one", () => {
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const offer = reliefOffer(world, key)!;
+    const once = acceptRelief(world, offer).world;
+    expect(acceptRelief(once, offer).error).toBe("informer.relief_too_many");
+  });
+
+  it("builds a sound quest that rebuilds from the commission alone", () => {
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const offer = reliefOffer(world, key)!;
+    expect(validateQuest(reliefQuest(offer))).toEqual([]);
+
+    const signed = acceptRelief(world, offer).world;
+    const registry = buildQuestRegistry(signed);
+    expect(registry[reliefQuestId(offer.port, offer.item)]).toBeDefined();
+  });
+});
+
+describe("landing a relief order", () => {
+  function signedAtDestination(): { world: WorldState; offer: ReturnType<typeof reliefOffer> } {
+    const world = starvedWorld();
+    const key = Object.keys(CITIES).find(k => reliefOffer(world, k))!;
+    const offer = reliefOffer(world, key)!;
+    const signed = acceptRelief(world, offer).world;
+    const shipId = signed.player.shipId as string;
+    const entity = signed.entities[shipId];
+    return {
+      world: {
+        ...signed,
+        player: {
+          ...signed.player,
+          location: { type: "port", portId: portId(offer.port) },
+        },
+        entities: {
+          ...signed.entities,
+          [shipId]: { ...entity, ship: { ...entity.ship!, cargo: { [offer.item]: offer.qty } } },
+        },
+      } as unknown as WorldState,
+      offer,
+    };
+  }
+
+  it("cannot be landed anywhere but the town that ordered it", () => {
+    const { world, offer } = signedAtDestination();
+    const elsewhere = {
+      ...world,
+      player: { ...world.player, location: { type: "port", portId: portId("tortuga") } },
+    } as unknown as WorldState;
+    expect(canLandRelief(elsewhere, offer!)).toBe(offer!.port === "tortuga");
+  });
+
+  it("cannot be landed without the goods aboard", () => {
+    const { world, offer } = signedAtDestination();
+    const shipId = world.player.shipId as string;
+    const empty = {
+      ...world,
+      entities: {
+        ...world.entities,
+        [shipId]: { ...world.entities[shipId], ship: { ...world.entities[shipId].ship!, cargo: {} } },
+      },
+    } as unknown as WorldState;
+    expect(canLandRelief(empty, offer!)).toBe(false);
+    expect(landRelief(empty, offer!).error).toBe("informer.relief_not_here");
+  });
+
+  it("moves the goods onto the town's shelves and requotes them", () => {
+    const { world, offer } = signedAtDestination();
+    const before = world.ports[offer!.port];
+    const after = landRelief(world, offer!).world.ports[offer!.port];
+
+    expect(after.inventory[offer!.item]).toBeCloseTo((before.inventory[offer!.item] ?? 0) + offer!.qty, 5);
+    expect(after.prices[offer!.item]).toBeLessThanOrEqual(before.prices[offer!.item]);
+  });
+
+  it("empties the hold of exactly what was promised", () => {
+    const { world, offer } = signedAtDestination();
+    const shipId = world.player.shipId as string;
+    const after = landRelief(world, offer!).world.entities[shipId].ship!.cargo;
+    expect(after[offer!.item] ?? 0).toBe(0);
+  });
+
+  it("pays through the quest machine, not from the landing", () => {
+    const { world, offer } = signedAtDestination();
+    const landed = landRelief(world, offer!).world;
+    // Nothing has been paid yet: `landRelief` only stamps the flag.
+    expect(landed.player.gold).toBe(world.player.gold);
+    expect(landed.worldFlags[reliefLandedFlag(offer!)]).toBe(true);
+
+    const advanced = advanceQuests(
+      landed,
+      { type: "flag_set", key: reliefLandedFlag(offer!) },
+      buildQuestRegistry(landed),
+    ).world;
+    expect(advanced.player.gold).toBe(world.player.gold + offer!.reward);
+    expect(advanced.player.notoriety).toBe((world.player.notoriety ?? 0) + RELIEF_NOTORIETY);
+    expect(advanced.player.reputation[offer!.crown] ?? 0).toBe(RELIEF_REPUTATION);
+  });
+
+  it("is the opposite of the raid commission on the same axis", () => {
+    // One buys notoriety with a crown's goodwill, the other buys a little of
+    // that goodwill back. Having both is the point of having either.
+    expect(RELIEF_REPUTATION).toBeGreaterThan(0);
+    expect(RAID_REPUTATION).toBeLessThan(0);
   });
 });

@@ -3,6 +3,7 @@ import {
   economyDailyTick,
   blackFlagImportShare,
   supplierShutIn,
+  reroutedOnto,
 } from "../EconomyTickSystem.ts";
 import {
   getAggregatedEffects,
@@ -12,8 +13,13 @@ import {
   warSpawnMultipliers,
 } from "../EventEffectsSystem.ts";
 import { CITIES } from "../../data/cities.ts";
+import { effectiveSupplier, tradeRoutes } from "../TradeRouteSystem.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
-import { getPortBaseline } from "../../data/economyBaselines.ts";
+import {
+  getPortBaseline,
+  baselineProductionRate,
+  inventoryCap,
+} from "../../data/economyBaselines.ts";
 import { portId, entityId, factionId } from "../../model/ids.ts";
 import type { WorldState, WorldEventState, WorldEventType, PortRuntimeState } from "../../model/WorldState.ts";
 
@@ -625,5 +631,171 @@ describe("a town under the black flag — where its wealth settles", () => {
     const asColony = runDays(makeWorld(), 400).ports.tortuga.wealth;
     const asDen = runDays(heldPortRoyal(), 400).ports.tortuga.wealth;
     expect(asDen).toBeLessThan(asColony);
+  });
+});
+
+
+// ===========================================================================
+// A delivery comes out of somebody's warehouse (v0.26.0)
+// ===========================================================================
+
+/**
+ * Until this release the goods a lane landed were conjured at the destination:
+ * the exporter was *paid* for them (v0.24.0) and, once shut in, the right
+ * exporter was paid (v0.25.0), but no warehouse anywhere went down by a barrel.
+ * A port that suddenly took over a blockaded rival's runs was neither strained
+ * nor enriched by it.
+ *
+ * The two facts worth pinning down are the two that could plausibly go wrong:
+ *
+ *   - the **settled** world must not move, because the exporter's plantations
+ *     were always growing what his lanes carry — the change is bookkeeping, not
+ *     a new tax on the Caribbean;
+ *   - the **disturbed** world must move, and in both directions at once: the
+ *     town covering the runs sells dear and runs short, and its own clients
+ *     eventually feel that a second source is a finite one.
+ */
+
+const ALL_PORTS = Object.keys(CITIES);
+
+function makeFullWorld(over: Partial<WorldState> = {}): WorldState {
+  const ports: Record<string, PortRuntimeState> = {};
+  for (const key of ALL_PORTS) ports[key] = makePort(key);
+  return { ...makeWorld(over), ports, ...over } as WorldState;
+}
+
+function heldIn(world: WorldState, portKey: string): WorldState {
+  return {
+    ...world,
+    ports: {
+      ...world.ports,
+      [portKey]: { ...world.ports[portKey], factionId: factionId("pirates") },
+    },
+  };
+}
+
+/** The port that picks up `item` for `client` when its usual supplier shuts. */
+function standIn(client: string, item: string, shut: string): string {
+  const from = effectiveSupplier(client, item, port => port === shut);
+  expect(from).toBeDefined();
+  return from!;
+}
+
+describe("an exporter's warehouse — the settled world", () => {
+  it("keeps a committed exporter's sheds full: he grows what his lanes carry", () => {
+    const w = runDays(makeFullWorld(), 120);
+    for (const lane of tradeRoutes().slice(0, 20)) {
+      for (const item of lane.items) {
+        const cap = inventoryCap(lane.from, item);
+        // Full, give or take the town's own day's eating.
+        expect(w.ports[lane.from].inventory[item]).toBeGreaterThan(cap * 0.9);
+      }
+    }
+  });
+
+  it("leaves the towns exactly where v0.25.0 left them", () => {
+    // The regression guard for the whole rearrangement. These are the measured
+    // settled values of the release before it; a lane that draws goods out of a
+    // real warehouse must not, on its own, make the Caribbean poorer.
+    const w = runDays(makeFullWorld(), 400);
+    expect(w.ports.port_royal.wealth).toBeCloseTo(646.1, 0);
+    expect(w.ports.havana.wealth).toBeCloseTo(907.6, 0);
+    expect(w.ports.santiago.wealth).toBeCloseTo(617.1, 0);
+    expect(w.ports.santo_domingo.wealth).toBeCloseTo(920.6, 0);
+  });
+});
+
+describe("an exporter's warehouse — a producer answering an empty shed", () => {
+  it("works harder when the sheds are bare than when they are full", () => {
+    const item = CITIES.havana.produces[0];
+    const empty = makeFullWorld();
+    empty.ports.havana = { ...empty.ports.havana, inventory: { ...empty.ports.havana.inventory, [item]: 0 } };
+    const gained = economyDailyTick(empty).ports.havana.inventory[item];
+    expect(gained).toBeGreaterThan(baselineProductionRate("havana", item, empty.ports.havana.wealth));
+  });
+
+  it("stops at the cap however hard it works", () => {
+    const item = CITIES.havana.produces[0];
+    const w = runDays(makeFullWorld(), 60);
+    expect(w.ports.havana.inventory[item]).toBeLessThanOrEqual(inventoryCap("havana", item));
+  });
+});
+
+describe("an exporter's warehouse — covering somebody else's runs", () => {
+  const item = "food";
+  const client = "santiago";
+
+  it("names the port that has taken the runs over, and what they cost it", () => {
+    const held = heldIn(makeFullWorld(), "port_royal");
+    const cover = standIn(client, item, "port_royal");
+    const carried = reroutedOnto(held, cover);
+    expect(carried.length).toBeGreaterThan(0);
+    expect(carried.some(c => c.item === item && c.tons > 0)).toBe(true);
+  });
+
+  it("names nobody in a world where every lane is running normally", () => {
+    const w = makeFullWorld();
+    for (const port of ALL_PORTS) expect(reroutedOnto(w, port)).toEqual([]);
+  });
+
+  it("draws the stand-in's warehouse down and puts his prices up", () => {
+    const held = heldIn(makeFullWorld(), "port_royal");
+    const cover = standIn(client, item, "port_royal");
+
+    const quiet = runDays(makeFullWorld(), 30).ports[cover];
+    const strained = runDays(held, 30).ports[cover];
+
+    expect(strained.inventory[item]).toBeLessThan(quiet.inventory[item] * 0.5);
+    expect(strained.prices[item]).toBeGreaterThan(quiet.prices[item]);
+  });
+
+  it("pays him for it — the strain and the windfall are the same fact", () => {
+    const held = heldIn(makeFullWorld(), "port_royal");
+    const cover = standIn(client, item, "port_royal");
+
+    const quiet = runDays(makeFullWorld(), 90).ports[cover];
+    const strained = runDays(held, 90).ports[cover];
+
+    expect(strained.tradeIncome ?? 0).toBeGreaterThan(quiet.tradeIncome ?? 0);
+    expect(strained.wealth).toBeGreaterThan(quiet.wealth);
+  });
+
+  it("keeps his own people fed before anyone else's", () => {
+    // The reserve is what stops a stand-in shipping his last barrel abroad.
+    const held = runDays(heldIn(makeFullWorld(), "port_royal"), 90);
+    const cover = standIn(client, item, "port_royal");
+    expect(held.ports[cover].inventory[item]).toBeGreaterThan(0);
+  });
+});
+
+describe("an exporter's warehouse — a second source is a finite one", () => {
+  it("short-ships the orders when the quay cannot fill them all", () => {
+    const item = "food";
+    const held = heldIn(makeFullWorld(), "port_royal");
+    const client = "santiago";
+    const cover = standIn(client, item, "port_royal");
+
+    // Same day, twice: once with the stand-in's sheds full, once with them
+    // bare. The only difference is what he has to ship, so the difference in
+    // what lands at the far end is the rationing and nothing else.
+    const full = economyDailyTick(held).ports[client].inventory[item] ?? 0;
+    const bare = economyDailyTick({
+      ...held,
+      ports: {
+        ...held.ports,
+        [cover]: { ...held.ports[cover], inventory: { ...held.ports[cover].inventory, [item]: 0 } },
+      },
+    }).ports[client].inventory[item] ?? 0;
+
+    expect(bare).toBeLessThan(full);
+  });
+
+  it("leaves the towns it used to supply worse off than a costless reroute would", () => {
+    // The point of the release, stated as an outcome: taking Port Royale is
+    // felt across the sea for longer than the week its neighbours' warehouses
+    // last, because the trade that covers for it runs out of goods.
+    const quiet = runDays(makeFullWorld(), 200).ports.santiago.wealth;
+    const cut = runDays(heldIn(makeFullWorld(), "port_royal"), 200).ports.santiago.wealth;
+    expect(cut).toBeLessThan(quiet);
   });
 });

@@ -13,6 +13,7 @@ import {
   tickRouteDisruption,
   laneSupplyShare,
   effectiveSupplier,
+  laneClients,
   LANE_FULL,
   DISRUPTION_PER_PRIZE,
 } from "../TradeRouteSystem.ts";
@@ -369,5 +370,36 @@ describe("effectiveSupplier — who actually gets paid", () => {
 
   it("names nobody for a good with no lane", () => {
     expect(effectiveSupplier("havana", "water", openEverywhere)).toBeUndefined();
+  });
+});
+
+
+describe("laneClients — the other end of the same fact", () => {
+  it("names the towns a supplier's lanes serve", () => {
+    const lane = tradeRoutes()[0];
+    const item = lane.items[0];
+    expect(laneClients(lane.from, item)).toContain(lane.to);
+  });
+
+  it("agrees with routeSupplying for every lane in the network", () => {
+    for (const lane of tradeRoutes()) {
+      for (const item of lane.items) {
+        expect(routeSupplying(lane.to, item)?.from).toBe(lane.from);
+        expect(laneClients(lane.from, item)).toContain(lane.to);
+      }
+    }
+  });
+
+  it("names nobody for a good this port does not ship", () => {
+    expect(laneClients("havana", "water")).toEqual([]);
+  });
+
+  it("still names them when the supplier is shut in — the crop is in the ground", () => {
+    // Deliberate: `laneClients` is the map's answer, not today's. The
+    // plantation that grew for Havana's lanes does not stop growing because a
+    // cordon closed the harbour, and the port covering the run is doing it out
+    // of stock it never planted for. That gap is the cost of a reroute.
+    const lane = tradeRoutes()[0];
+    expect(laneClients(lane.from, lane.items[0]).length).toBeGreaterThan(0);
   });
 });

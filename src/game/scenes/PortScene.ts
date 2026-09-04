@@ -81,9 +81,12 @@ import {
 } from "../../core/systems/CargoContractSystem.ts";
 import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
+import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
   raidOffer, acceptRaid, activeRaids, raidProgress, raidVictim,
+  reliefOffer, acceptRelief, activeRelief, canLandRelief, landRelief,
+  reliefLandedFlag, type ReliefCommission,
 } from "../../core/systems/InformantSystem.ts";
 import {
   isHomePort,
@@ -157,6 +160,9 @@ export class PortScene extends Phaser.Scene {
 
   /** One-shot line under the tavern actions, e.g. "nothing to divide". */
   private tavernMessage: string | null = null;
+
+  /** The informer's relief order as drawn this pass, for the same reason. */
+  private reliefOnOffer: ReliefCommission | null = null;
 
   /** The informer's job as it was drawn this pass, so accepting takes that one. */
   private raidOnOffer: import("../../core/systems/InformantSystem.ts").RaidCommission | null = null;
@@ -473,9 +479,18 @@ export class PortScene extends Phaser.Scene {
       }
     });
 
+    // The reply takes the last line of the frame when there is one, and the
+    // hint stands down for it: with nine entries in the list there is room for
+    // exactly one of them, and a keyboard hint the player has read a hundred
+    // times is the one worth losing.
+    const spoke = this.tavernMessage !== null;
     if (this.tavernMessage) {
+      // Under the last line of the list, not at a fixed height. The tavern grew
+      // a ninth and tenth entry in v0.26.0 and the reply landed on top of
+      // [ BACK TO PORT ]; the hint line is the floor it must not reach.
+      const below = y + actions.length * 26 + 6;
       const msg = this.add.text(
-        this.infoX, this.dlgY + DLG_H - PAD - 58,
+        this.infoX, Math.min(Math.max(below, this.dlgY + DLG_H - PAD - 58), this.dlgY + DLG_H - PAD - 34),
         this.tavernMessage,
         { ...txt(12, { color: "#8a3a3a" }), wordWrap: { width: DLG_W - PAD * 2 } },
       );
@@ -484,13 +499,15 @@ export class PortScene extends Phaser.Scene {
     }
 
     // Hint
-    const hint = this.add.text(
-      this.cx, this.dlgY + DLG_H - PAD - 4,
-      t("port.menu_hint"),
-      txt(10, { color: "#888888" }),
-    );
-    hint.setOrigin(0.5, 1);
-    this.contentContainer.add(hint);
+    if (!spoke) {
+      const hint = this.add.text(
+        this.cx, this.dlgY + DLG_H - PAD - 4,
+        t("port.menu_hint"),
+        txt(10, { color: "#888888" }),
+      );
+      hint.setOrigin(0.5, 1);
+      this.contentContainer.add(hint);
+    }
 
     this.bindKey("keydown-ESC", () => this.leavePort());
   }
@@ -745,10 +762,44 @@ export class PortScene extends Phaser.Scene {
         this.raidOnOffer = offer;
         actions.push({
           label: t("informer.offer", {
-            from: offer.fromName, port: offer.toName,
-            gold: offer.reward, days: offer.days,
+            from: offer.fromName, port: offer.toName, gold: offer.reward,
           }),
           key: "raid_take",
+        });
+      }
+    }
+
+    // His other line of work (v0.26.0): a town three hundred miles away that
+    // cannot get what it eats, and a house that will pay for a hold of it. The
+    // deliver line only appears where it can be acted on, which is the town
+    // itself — the same shape the charter uses at the far end of a passage.
+    const relief = activeRelief(this.worldState)[0];
+    if (relief) {
+      const itemName = t("item." + relief.item + ".name");
+      if (canLandRelief(this.worldState, relief)) {
+        actions.push({
+          label: t("informer.relief_land", { qty: relief.qty, item: itemName, gold: relief.reward }),
+          key: "relief_land",
+        });
+      } else {
+        const left = relief.days - (this.worldState.time.day - relief.acceptedDay);
+        actions.push({
+          label: t("informer.relief_in_hand", {
+            qty: relief.qty, item: itemName, port: relief.portName, days: Math.max(0, left),
+          }),
+          key: "relief_status",
+        });
+      }
+    } else {
+      const order = reliefOffer(this.worldState, this.currentPortId as string);
+      if (order) {
+        this.reliefOnOffer = order;
+        actions.push({
+          label: t("informer.relief_offer", {
+            qty: order.qty, item: t("item." + order.item + ".name"),
+            port: order.portName, gold: order.reward,
+          }),
+          key: "relief_take",
         });
       }
     }
@@ -773,6 +824,9 @@ export class PortScene extends Phaser.Scene {
         case "divide": this.handleDividePlunder(); break;
         case "raid_take": this.handleTakeRaid(); break;
         case "raid_status": this.tavernMessage = t("informer.status_hint"); this.switchView("tavern"); break;
+        case "relief_take": this.handleTakeRelief(); break;
+        case "relief_land": this.handleLandRelief(); break;
+        case "relief_status": this.tavernMessage = t("informer.relief_hint"); this.switchView("tavern"); break;
         case "family_ask": this.handleAskAboutFamily(); break;
         case "family_strike": this.handleFamilyStrike(); break;
         case "back": this.switchView("menu"); break;
@@ -782,9 +836,15 @@ export class PortScene extends Phaser.Scene {
     // What the last action in here had to say. Only the port menu drew this
     // before, so every tavern reply — the map you just bought, the price you
     // could not meet — was written and then thrown away unseen.
+    const spoke = this.tavernMessage !== null;
     if (this.tavernMessage) {
+      // Under the last line of the list, not at a fixed height. The tavern grew
+      // a ninth entry in v0.26.0 and the reply landed on top of [ BACK TO PORT ];
+      // the hint line is the floor it must not reach.
+      const below = y + actions.length * 26 + 6;
       const msg = this.add.text(
-        this.infoX, this.dlgY + DLG_H - PAD - 58,
+        this.infoX,
+        Math.min(Math.max(below, this.dlgY + DLG_H - PAD - 58), this.dlgY + DLG_H - PAD - 34),
         this.tavernMessage,
         { ...txt(12, { color: "#6a4a1a" }), wordWrap: { width: DLG_W - PAD * 2 } },
       );
@@ -793,13 +853,15 @@ export class PortScene extends Phaser.Scene {
     }
 
     // Hint
-    const hint = this.add.text(
-      this.cx, this.dlgY + DLG_H - PAD - 4,
-      t("tavern.hint"),
-      txt(10, { color: "#888888" }),
-    );
-    hint.setOrigin(0.5, 1);
-    this.contentContainer.add(hint);
+    if (!spoke) {
+      const hint = this.add.text(
+        this.cx, this.dlgY + DLG_H - PAD - 4,
+        t("tavern.hint"),
+        txt(10, { color: "#888888" }),
+      );
+      hint.setOrigin(0.5, 1);
+      this.contentContainer.add(hint);
+    }
 
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
   }
@@ -824,8 +886,57 @@ export class PortScene extends Phaser.Scene {
     this.worldState = result.world;
     this.registry.set("worldState", this.worldState);
     this.tavernMessage = t("informer.taken", {
-      from: offer.fromName, port: offer.toName, crown: raidVictim(offer),
+      from: offer.fromName, port: offer.toName, days: offer.days, crown: raidVictim(offer),
     });
+    this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
+  }
+
+  /**
+   * Take the relief order (v0.26.0).
+   *
+   * Nothing is loaded and nothing is advanced: unlike a charter, the house has
+   * no cargo to give him. What he has agreed to is a price for goods he does
+   * not own yet, which is the whole difference between the two contracts.
+   */
+  private handleTakeRelief(): void {
+    const order = this.reliefOnOffer;
+    if (!order) return;
+    const result = acceptRelief(this.worldState, order);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("tavern");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("informer.relief_taken", {
+      qty: order.qty, item: t("item." + order.item + ".name"), port: order.portName,
+    });
+    this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
+  }
+
+  /**
+   * Land it. `landRelief` moves the goods and stamps the flag; the gold and the
+   * standing come out of `advanceQuests`, as they do for a charter — paying
+   * here as well would pay twice.
+   */
+  private handleLandRelief(): void {
+    const order = activeRelief(this.worldState)[0];
+    if (!order) return;
+    const result = landRelief(this.worldState, order);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("tavern");
+      return;
+    }
+    const advanced = advanceQuests(
+      result.world,
+      { type: "flag_set", key: reliefLandedFlag(order) },
+      buildQuestRegistry(result.world),
+    );
+    this.worldState = advanced.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("informer.relief_landed", { gold: order.reward, port: order.portName });
     this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
   }
 
@@ -1582,6 +1693,25 @@ export class PortScene extends Phaser.Scene {
       }
 
       y += 22;
+    }
+
+    // Why the shelves are bare and the prices doubled, when they are (v0.26.0).
+    // A lane delivery leaves a real warehouse now, so a town covering a shut-in
+    // rival's runs is genuinely short of its own crop — and that is a fact
+    // about a harbour three hundred miles away which the player has no other
+    // way of reading off this screen.
+    const covering = reroutedOnto(this.worldState, portKey);
+    if (covering.length > 0) {
+      this.contentContainer.add(this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 64,
+        t("port.covering", {
+          items: covering
+            .slice(0, 2)
+            .map(c => `${t("item." + c.item + ".name")} ${c.tons} t/d`)
+            .join(", "),
+        }),
+        txt(11, { color: "#996633" }),
+      ));
     }
 
     // What his standing is costing him at this counter, in plain percent. The

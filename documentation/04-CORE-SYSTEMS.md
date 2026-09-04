@@ -2160,3 +2160,194 @@ Przystań nieznanego kapitana przymiera głodem; przystań kogoś, o kim słysza
 całe Karaiby, trzyma się powyżej czterystu, bo ludzie, którzy nie sprzedadzą
 kolonialnemu faktorowi, sprzedadzą **jemu**. To pierwsza rzecz, na którą
 notoriety kiedykolwiek się przydało, zamiast tylko kosztować.
+
+
+---
+
+## Ładunek wychodzi z czyjegoś magazynu (v0.26.0)
+
+`EconomyTickSystem` (cztery przebiegi), `TradeRouteSystem.laneClients`,
+`EconomyTickSystem.reroutedOnto`.
+
+### Dziura, którą to zatyka
+
+Szlaki dowoziły towar od v0.22.0 i płaciły za niego od v0.24.0, ale **nigdzie
+nic nie ubywało**: ładunek materializował się na końcu szlaku. Skutek widać było
+w jednym zdaniu z TODO — „przekierowanie jest bezkosztowe dla portu-alternatywy":
+Santiago ani się nie bogaciło, ani nie męczyło z tego, że nagle zaopatruje
+klientów zablokowanej Hawany. `effectiveSupplier` (v0.25.0) wskazywał już
+właściwy port **do zapłaty**; brakowało obciążenia go **dostawą**.
+
+### Dlaczego dzień ma teraz cztery przebiegi
+
+Bo czy Havana wypełni zamówienie Tortugi, zależy od tego, o co poprosiły jej
+tego samego ranka Santiago i Bridgetown — a połowa z nich wypada w
+`Object.keys(ports)` **później** niż ona. Jeden przebieg dałby wynik zależny od
+kolejności kluczy.
+
+```
+1. produkcja + zamówienia       każdy port sieje i wypisuje, czego mu trzeba
+2. racjonowanie                 dostawca krótszy niż suma zamówień dzieli pro rata
+3. wyładunek + ledger           towar ląduje, oba końce szlaku dostają pieniądze
+4. wysyłka, konsumpcja, ceny    co odpłynęło, znika z szop; miasto je; kwotowanie
+```
+
+### Dlaczego osiadły świat się nie ruszył
+
+Produkcja portu eksportowego dostała człon `laneCommitment` — sumę dziennego
+zapotrzebowania miast, dla których ten port jest **nazwanym** dostawcą. W spokoju
+`produkcja = baza + zobowiązania`, a `wysyłka = zobowiązania`, więc magazyn stoi
+na suficie tak samo jak przed zmianą. Zmierzone bogactwo osiadłe po 400 dniach
+jest **co do dziesiętnej** takie samo jak w v0.25.0 (Port Royale 646,1 · Havana
+907,6 · Santiago 617,1 · Santo Domingo 920,6) i jest teraz pilnowane testem
+regresji. Zmiana dotyczy **wyłącznie** świata zaburzonego.
+
+Uwaga na kolejność: produkcja **nie** jest przycinana do sufitu magazynu przed
+wysyłką, tylko po niej. Przycięcie najpierw sprawiało, że zapas dużego
+eksportera piłował o ćwiartkę dziennie, a ceny razem z nim.
+
+### Co się dzieje przy przekierowaniu
+
+`laneClients` to odpowiedź **mapy**, nie dzisiejszego dnia: port zamknięty
+(kordon, czarna bandera) dalej figuruje jako dostawca swoich klientów, bo
+plantacja nie przestaje rosnąć od tego, że zamknięto przystań. Port, który
+przejmuje kurs, **nie** ma tych klientów w swoim `laneCommitment` — pokrywa je
+z zapasu, którego nigdy dla nich nie zasiał. Ta różnica jest całym kosztem
+przekierowania.
+
+Zmierzone, po zajęciu Port Royale (85 szlaków, 33 pary towar-klient z tego portu):
+
+| dzień | zapas stand-ina (Florida Keys) | cena żywności | obrót dzienny | `wealth` |
+|---|---|---|---|---|
+| 0 | 50/50 | 2 | 17 | 103,6 |
+| 7 | 19,4/50 | 6 | 73 | 105,2 |
+| 30 | 2,2/50 | 12 | 150 | 119,5 |
+| 400 | 2,2/50 | 12 | 151 | 170,5 |
+
+Bermuda, dotknięta jednym kursem zamiast kilkunastu, schodzi w tym czasie ze
+100 na 91,7 — obciążenie jest proporcjonalne do tego, ile ktoś wziął na siebie.
+**Napięcie i zysk to ta sama rzecz**: stand-in sprzedaje sześć razy drożej i
+jednocześnie nie ma czym handlować u siebie.
+
+### Drugie źródło jest źródłem skończonym
+
+Kiedy szopy stand-ina wysychają, zamówienia są **skracane pro rata** i miasta,
+którym pokrywał kursy, też zaczynają głodować (Santiago 617 → 537 przez 200 dni).
+To jest właściwy skutek zdobycia miasta: region absorbuje je przez tydzień czy
+dwa — dokładnie tyle, ile starcza magazynów sąsiada — a potem czuje.
+
+```
+available = zapas * (1 - EXPORT_RESERVE 0.15) - własne dzienne spożycie
+ratio     = min(1, available / suma zamówień)
+```
+
+`EXPORT_RESERVE` nie wiąże w spokojnym świecie (zobowiązania to kilka dni
+produkcji z magazynu na miesiąc) — wiąże wyłącznie przy przekierowaniu, i o to
+chodzi: miasto zostawia sobie coś na własne półki, zanim odmówi obcemu.
+
+### Producent odpowiada na pustą szopę
+
+```
+produkcja = (baza * (1 + RESTOCK_SURGE * pustka) + zobowiązania) * productionMul
+pustka    = (sufit - zapas) / sufit          RESTOCK_SURGE = 1.0
+```
+
+**Magazyn jest pamięcią całego mechanizmu** — żadnego nowego pola w zapisie,
+żadnej „zdolności produkcyjnej" do migrowania. Port, który od dwóch tygodni wozi
+cudzy handel, tak właśnie *wygląda*: puste szopy i wysokie ceny, a wraca do
+siebie tą samą arytmetyką, która go wydrenowała. Efekt uboczny, zamierzony: port
+wykupiony przez gracza odbudowuje zapas w kilka dni zamiast w miesiąc.
+
+### Co widzi gracz
+
+Lada kupca, gdy `reroutedOnto(world, port)` nie jest puste:
+
+```
+Covering another port's runs: Food 23.7 t/d — the shelves here are bare.
+```
+
+`reroutedOnto` jest **wyliczane**, nigdy zapisywane, i czyta dokładnie te same
+dwie funkcje co dzienny tick (`routeSupplying` + `effectiveSupplier`), więc nie
+może się z nim rozjechać.
+
+Parametr debugowania: `?famine=<port>` — czarna bandera nad wszystkimi dostawcami
+tego miasta, kapitan stoi w jego menu portowym; `&stand=cover` stawia go zamiast
+tego w mieście, które przejęło kursy.
+
+---
+
+## Zlecenie na dostawę — druga robota informatora (v0.26.0)
+
+`InformantSystem.reliefOffer` / `acceptRelief` / `landRelief` / `supplyShortfall`.
+
+### Dlaczego to zamówienie, a nie fracht
+
+Oczywistym drugim zleceniem było „przewieź to za kordon" — i oczywiste drugie
+zlecenie **już jest w grze**: kantor frachtowy płaci za to `FREIGHT_BLOCKADE`
+(półtora raza) od v0.23.0. Zbudowanie tego drugi raz pod inną nazwą byłoby tym
+samym ekranem gorzej nazwanym.
+
+Czego kantor **nie** umie, to kupić. Kompania z głodującym klientem i bez
+dostawcy nie ma czego wręczyć kapitanowi, więc przy podpisie nie dostaje on nic
+poza ceną:
+
+```
+dostarcz <qty> <towaru> do <miasta> w <days> dni — <gold>, skądkolwiek go weźmiesz
+```
+
+To jest inna gra niż fracht: nic nie może zostać ukradzione, bo nic nie zostało
+powierzone; ryzyko jest **handlowe**, nie powiernicze. Towar trzeba **znaleźć** —
+kupić tam, gdzie rośnie, albo wyjąć z ładowni pryzu — a zarabia się na różnicy,
+nie na przewozie.
+
+### Wycena: stawka od ceny bazowej, ale zawsze pod ceną lokalną
+
+```
+rate   = 1.6 + 1.4 * shortfall                       → 1.6 .. 3.0 × cena bazowa
+perTon = min(basePrice * rate, cena w mieście * 0.9)
+reward = round(perTon * qty)
+```
+
+Oba człony są nośne, i drugi wyszedł **z testu, nie z rozumowania**. Głodujące
+miasto kwotuje potrójnie, więc premia ponad cenę lokalną byłaby zaproszeniem do
+kupienia towaru przy tej samej ladzie i odsprzedania go przez ten sam stół. Ale
+sama stawka od ceny bazowej to to samo zaproszenie zawsze wtedy, gdy głód nie
+doszedł jeszcze do ceny — pierwsza wersja płaciła 1084 tam, gdzie lada liczyła
+864. **Kompania, która płaci więcej niż rynek obok niej, nie jest kompanią,
+tylko błędem.**
+
+Za co więc kapitan dostaje pieniądze: nie za lepszą cenę za tonę, tylko za cenę
+**stałą** dla całej ładowni. Sprzedaż czterdziestu ton przez ladę miasta z
+trzydziestotonową szopą zjeżdża po własnym ogonie (`PricingSystem` od v0.24.0);
+zlecenie nie.
+
+### Miara niedoboru
+
+```ts
+supplyShortfall(world, port, item)
+  = 1 - laneSupplyShare(...) * (kordon ? 0.15 : 1) * (czarna bandera ? blackFlagImportShare : 1)
+```
+
+Te same trzy liczby, które `EconomyTickSystem` mnoży przy wyliczaniu, co
+naprawdę ląduje — czytane z zewnątrz, więc liczba, którą podaje informator, jest
+liczbą, którą miasto żyje. Zlecenie pojawia się od `shortfall ≥ 0.25`, co jest
+osiągalne trzema drogami: zajęciem dostawcy, blokadą i **własnym rajdem gracza na
+szlaku** (jeden wzięty kadłub to `severity` 0.3).
+
+### Wypłata i symetria
+
+```
+RELIEF_DAYS = 24      MAX_ACTIVE_RELIEF = 1      RELIEF_REACH = 900
+qty  = min(40, ładowność * 0.6), nie mniej niż 8 ton
+landRelief  → towar do magazynu miasta + requote + flaga
+flaga       → advanceQuests: gold, +3 notoriety, +6 reputacji z koroną miasta
+przeterminowanie → -5 reputacji (nic nie było powierzone, więc kara jest mała)
+```
+
+`landRelief` **nie płaci** — stempluje flagę, a płaci maszyna questów, ten sam
+podział pracy co przy frachcie i przy zleceniu obrony. Płacenie w obu miejscach
+płaciłoby dwa razy.
+
+Dwa zlecenia informatora ciągną w **przeciwne strony na tej samej osi**: rajd
+kosztuje 14 punktów reputacji i daje 8 notoriety, dostawa oddaje 6 punktów
+reputacji i daje 3 notoriety. Po to się ma oba.
