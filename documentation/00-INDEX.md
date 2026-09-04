@@ -40,3 +40,4 @@
 
 - [SESSION-2026-09-01.md](SESSION-2026-09-01.md) — v0.9.8.1 → v0.10.0.0: wiatr, testy, uszkodzenia, pojedynki
 - [SESSION-2026-09-02.md](SESSION-2026-09-02.md) — v0.9.9.1 → v0.12.0.0: dialogi, łupy, starzenie, emerytura, questy, skarby
+- [SESSION-2026-09-04.md](SESSION-2026-09-04.md) — v0.23.0.0 → v0.24.0.0: pętla pieniężna handlu, wycena przy każdym ruchu towaru, reputacja przy ladzie, magazyn na wynajem

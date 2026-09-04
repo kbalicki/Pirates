@@ -18,6 +18,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04.md](documentation/SESSION-2026-09-04.md) — dlaczego ledger siedzi na szlaku a nie na kadłubie, jak wyszła kalibracja `GOLD_PER_WEALTH`, i dwie pułapki (drukarka pieniędzy przy ladzie, `wealth` bez miejsca dziesiętnego).
+
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
 ---
@@ -31,9 +33,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Statki NPC na mapie | ✅ | `NpcSpawnSystem` (324 l.), `NpcAiSystem` (293 l.), `PortWaterPositions`, mgła wojny, zasięg wzroku = f(maszt), flagi frakcji |
 | Bitwy morskie | ✅ ~80% | `SeaBattleScene` (1127 l.) + `CombatEngine`: 3 typy amunicji, łuki ostrzału ±60°, reload = f(załoga × morale × wyszkolenie), abordaż, kapitulacja, przejęcie statku |
 | Wydarzenia świata | ✅ | `WorldEventSystem` (538 l.): 10 wojen 1568-1697 + 15 typów wydarzeń |
-| Żywa ekonomia | ✅ | `EconomyTickSystem` + `EventEffectsSystem` (301 l.): populacja / wealth / defense, dzienny tick, ceny reagują na podaż |
+| Żywa ekonomia | ✅ | `EconomyTickSystem` + `EventEffectsSystem`: populacja / wealth / defense, dzienny tick, ceny reagują na podaż **i na przewozy** (v0.24.0) |
 | Flota gracza | ✅ | `FleetSystem`: max 3 statki, kupno/sprzedaż/porzucenie, prędkość = najwolniejszy, wzrok = najwyższy maszt |
-| Zapis/odczyt | ✅ | `SaveRepository` + `Migrations` (v8), 5 slotów IndexedDB — UI w `OptionsMenuScene`, nie w osobnej scenie |
+| Zapis/odczyt | ✅ | `SaveRepository` + `Migrations` (**v12**), 5 slotów IndexedDB — UI w `OptionsMenuScene`, nie w osobnej scenie |
 | Obieg newsów | ✅ | `NpcNewsSystem`: NPC zbierają newsy w portach i przekazują graczowi w `ShipEncounterScene` |
 | Bitwy lądowe | ✅ | `SiegeSystem` (~560 l.) + `CityAssaultScene`: ostrzał rundowy, desant falami, trzy zakończenia, port zmienia właściciela |
 | Córki gubernatorów | ✅ | `RomanceSystem`: jedna na miasto, cztery podejścia, ślub raz na karierę |
@@ -59,10 +61,16 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Fracht dla gracza | ✅ | `CargoContractSystem` + kantor w porcie: przewóz na zlecenie, dodatek za ryzyko, pokusa kradzieży |
 | Towar naprawdę płynie | ✅ | `NpcSpawnSystem`: kupiec ładuje się z magazynu i wysypuje ładownię w celu |
 | Przekierowanie dostaw | ✅ | `alternateSuppliers`: blokada boli tylko tam, gdzie nie ma drugiego źródła |
+| Pętla pieniężna handlu | ✅ | `TradeLedgerSystem`: dostawa szlakiem płaci oba końce, ledger w złocie na `port.tradeBalance`, raz dziennie na bogactwo |
+| Wycena przy każdym ruchu towaru | ✅ | `PricingSystem`: `spotPrice` woła lada kupca, `loadHold` i krok DOCK — nie raz na dobę |
+| Reputacja przy ladzie | ✅ | `PortAccessSystem`: jedna tabela, pięć poziomów — spread, werbunek, fracht, najem, stocznia |
+| Magazyn na wynajem | ✅ | `StorehouseSystem`: 100-500 ton wg miasta, czynsz na 30 dni, wygasły najem idzie pod młotek |
 
 ### Nietknięte
 
-Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · pathfinding A\* · muzyka poza menu
+Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · muzyka poza menu · sprite'y statków per klasa
+
+(Pathfinding A\* zszedł z tej listy w v0.22.0 — `Pathfinding.ts` jest prawdziwy.)
 
 ### Świadome placeholdery (zostawione celowo)
 

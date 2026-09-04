@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-01 | **Wersja kodu:** 0.9.8.1
+**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.24.0.0
 
 ## Wizja
 
@@ -49,6 +49,23 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.24)
+
+| Wersja | Opis | Status |
+|--------|------|--------|
+| 0.13.0.0 | **Bitwy lądowe** (`SiegeSystem` + `CityAssaultScene`), warstwa fabularna: romans i wątek rodzinny | ✅ |
+| 0.14.0.0 | Trzon fabuły: córki gubernatorów, rejestr questów odbudowywany z `questLog` | ✅ |
+| 0.15.0.0 | **Korona wraca po swoje** — `ReconquestSystem`, `settleRelief` jako jedyne miejsce rozliczenia desantu | ✅ |
+| 0.16.0.0 | **Rozgrywalna bitwa obronna** z murów + wojny koron przesuwające flagi | ✅ |
+| 0.17.0.0 | Wyprawa jako **eskadra na mapie** do przechwycenia; zlecenie obrony u gubernatora; załoga konsorty | ✅ |
+| 0.18.0.0 | Kurs wyprawy rysowany na mapie; **port macierzysty** po ślubie (posag, klarowanie, magazyn) | ✅ |
+| 0.19.0.0 | Bandery statków NPC jako sprite; morale konsorty; ekonomia miast pod czarną banderą | ✅ |
+| 0.20.0.0 | **Import do portów** (`EconomyTickSystem` krok 3.5) — każdy port w grze po cichu głodował | ✅ |
+| 0.21.0.0 | Wojna obcina dostawy; wyszkolenie konsorty; zielona załoga pryzowa | ✅ |
+| 0.22.0.0 | **Szlaki handlowe** (81), prawdziwy **pathfinding A\***, blokada portu, ładownia pryzu | ✅ |
+| 0.23.0.0 | **Fracht dla gracza** (kantor frachtowy); towar naprawdę wędruje z magazynu do magazynu; przekierowanie dostaw | ✅ |
+| 0.24.0.0 | **Pętla pieniężna handlu**, wycena przy każdym ruchu towaru, **reputacja przy ladzie**, magazyn na wynajem | ✅ |
+
 **Zrealizowane moduły w ujęciu tematycznym:**
 
 - **Statki NPC na mapie** — spawn z portów i despawn w portach, 5 typów zachowań, limit 30 jednostek, mgła wojny, zasięg obserwacji zależny od najwyższego masztu floty
@@ -56,6 +73,9 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 - **Wydarzenia i ekonomia** — 10 wojen historycznych 1568-1697, 15 typów wydarzeń, dzienna symulacja produkcji, konsumpcji i cen w 45 portach, wojna zmienia ruch morski
 - **Obieg informacji** — wydarzenie → news w porcie → NPC jako kurier → gracz
 - **Flota gracza** — do 3 własnych statków, prędkość eskadry = najwolniejsza jednostka
+- **Ruchoma mapa polityczna** — korony odbijają utracone kolonie i biją się między sobą, wyprawy płyną realną wodą i dają się przechwycić, zdobyte miasto trzeba obronić
+- **Warstwa handlowa** — 81 szlaków wyliczonych z geografii, towar fizycznie wędrujący między magazynami, pieniądz idący za tym towarem, fracht na zlecenie i trzy sposoby zaatakowania cudzej żeglugi (blokada, pryz, zakłócenie szlaku)
+- **Reputacja, która coś znaczy** — opinia korony o graczu rozstrzyga spread u kupca, werbunek w tawernie, dostęp do frachtu i najmu oraz rachunek stoczni
 
 ---
 
@@ -220,6 +240,7 @@ Moduł G ─── Rozszerzenia poza oryginał
 | Beta 2 — pełna walka | Moduły A + B (uszkodzenia, pojedynki) | v1.0.x |
 | Beta 3 — kariera kapitana | Moduł C (łupy, starzenie, punktacja) | v1.1.x |
 | Beta 4 — questy i skarby | Moduły D + E + H + I (skarby, bitwy lądowe, obrona zdobyczy, ruchoma mapa) | v1.2.x |
+| Warstwa handlowa | Szlaki, blokada, fracht, pętla pieniężna, reputacja przy ladzie (v0.22-0.24) | ✅ |
 | Release Candidate | Moduł F (fabuła) | v1.5.x |
 | v2.0 — pełna gra | Moduł G + kompletne assety AI | v2.0 |
 
