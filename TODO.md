@@ -4,7 +4,11 @@
 **Kod:** 181 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1191 przechodzi, 0 failuje, 0 `todo`** w 34 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
-Stare firmowe repo zostało jako remote `websystems` (websystemspl/PiratesChronicles).
+Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
+odczytu). Przed archiwizacją sprawdzone po hashach drzew: oba jego czoła gałęzi miały drzewa
+identyczne z commitami już obecnymi na `origin/main` (`04564f0` i `d173e93`) — nic unikalnego
+tam nie zostało. Lokalny remote `websystems` **zostaje celowo**: push do zarchiwizowanego repo
+się nie powiedzie, i o to chodzi.
 **W commitach i PR-ach nie wymieniamy Claude'a** — żadnego `Co-Authored-By`, żadnej stopki.
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
