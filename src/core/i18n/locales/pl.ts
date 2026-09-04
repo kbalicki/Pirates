@@ -528,6 +528,12 @@ export const PL: LocaleData = {
   "tavern.rumor_war": "\"Mówią, że Anglia i Hiszpania znów są o krok od wojny.\"",
   "tavern.rumor_governor": "\"Gubernator szuka zdolnych kapitanów do specjalnych zleceń.\"",
   "tavern.rumor_ghost_ship": "\"Podobno statek-widmo nawiedza wody koło Bermudów nocą...\"",
+  "tavern.rumor_hunger": "\u201eW {{port}} nie ma {{item}} za \u017cadne pieni\u0105dze \u2014 brakuje im {{pct}}% tego, czego potrzebuj\u0105, a gubernator p\u0142aci ponad stawk\u0119 za wszystko, co wp\u0142ynie.\u201d",
+  "tavern.rumor_blockade": "\u201ePod {{port}} sta\u0142a eskadra. Nic tam nie wchodzi ani nie wychodzi, dop\u00f3ki tam jest.\u201d",
+  "tavern.rumor_covering": "\u201e{{port}} karmi p\u00f3\u0142 wybrze\u017ca, odk\u0105d {{other}} zamkn\u0119\u0142o nabrze\u017ce. U siebie maj\u0105 pusto i wida\u0107 to po cenie {{item}}.\u201d",
+  "tavern.rumor_lane": "\u201e\u017baden ubezpieczyciel nie tknie w tym sezonie szlaku {{from}}\u2013{{to}}. Kto\u015b tam si\u0119 nagimna\u0142.\u201d",
+  "tavern.rumor_black_flag": "\u201e{{port}} nie nosi dzi\u015b barw \u017cadnej korony. Przemytnikom podobno nie\u017ale si\u0119 przy tym powodzi.\u201d",
+  "tavern.rumor_busy_quay": "\u201eP\u00f3\u0142 handlu Indii Zachodnich idzie teraz przez nabrze\u017ce {{port}}. T\u0142usty k\u0105sek dla kogo\u015b.\u201d",
 
   // -- New events --
   "event.letter_of_marque": "Otrzymano List Kaperski od {{faction}}.",

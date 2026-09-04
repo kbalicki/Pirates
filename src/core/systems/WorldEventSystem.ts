@@ -279,7 +279,12 @@ export function seedInitialEvents(world: WorldState): WorldState {
 
     const portR = rngNext(rng);
     rng = portR.state;
-    const port = allPorts[portR.value % allPorts.length];
+    // `rngNext` returns a float in [0,1). Taking it modulo the array length —
+    // which this did until v0.28.0 — returns the float back, so every seeded
+    // event indexed `allPorts[0.37]` and got `undefined`: no port name in the
+    // headline, no port in `ports`, and therefore no effect on anything and no
+    // news anywhere. Five events at the start of every game, all of them dead.
+    const port = allPorts[Math.floor(portR.value * allPorts.length)];
     const portDef = PORTS[port];
     const portName = portDef?.name ?? port;
     const factionId = portDef?.factionId as string ?? "pirates";
@@ -460,8 +465,13 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
   // Pick a port from the eligible pool
   const portRng = rngNext(rng);
   rng = portRng.state;
-  const portIdx = portRng.value;
-  const mainPort = pool[portIdx % pool.length];
+  // The same float-modulo mistake as in `seedInitialEvents`, and the same
+  // consequence: every random event the world has ever spawned picked
+  // `pool[0.37]`, so `mainPort` was undefined, the headline read "sail from
+  // undefined", `affectedPorts` was `[undefined]` and the whole living-world
+  // event layer moved nothing. Fixed in v0.28.0, found by reading a tavern
+  // noticeboard in a screenshot.
+  const mainPort = pool[Math.floor(portRng.value * pool.length)];
   const portDef = PORTS[mainPort];
   const portName = portDef?.name ?? mainPort;
 
@@ -482,6 +492,19 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
       affectedPorts.push(...nearby);
     }
   }
+
+  // One of a kind per town (v0.28.0). A crown does not issue three tariff
+  // decrees at once and a harbour does not have two hurricanes, and until the
+  // events actually landed anywhere nobody could see that it was allowed: the
+  // `sameTypeCount >= 3` guard above counts events, not overlap, and a
+  // faction-wide decree covers twenty-four ports. Three of them on the same
+  // twenty-four put every rich Spanish colony on the wealth clamp inside a year.
+  const alreadyHere = w.worldEvents.some(
+    ev => ev.type === chosen!.type
+      && ev.endDay >= w.time.day
+      && ev.ports.some(port => affectedPorts.includes(port)),
+  );
+  if (alreadyHere) return { ...w, rng };
 
   const durR = rngNextFloat(rng, 0, 1);
   rng = durR.state;

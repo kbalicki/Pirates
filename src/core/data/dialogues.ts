@@ -29,7 +29,15 @@ export type GovernorTreeContext = {
   reputation: number;
   rankName: string;
   /** i18n key of the rumour the governor is willing to share today. */
+  /**
+   * What the tavern and the mansion are both repeating today.
+   *
+   * Since v0.28.0 it is a fact about the world with names in it, so the vars
+   * travel with the key — a governor saying "there is no bread in Tortuga"
+   * without the town's name would be worse than the ghost story he used to tell.
+   */
   rumorKey: string;
+  rumorVars?: Record<string, string | number>;
   /** Captain's age — retirement is only offered once there is a career behind it. */
   age: number;
   /** What the career would score if he stopped today. */
@@ -317,6 +325,7 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
       rumor: {
         id: "rumor",
         textKey: ctx.rumorKey,
+        vars: ctx.rumorVars,
         options: [{ id: "back", textKey: "governor.opt_back", next: "greeting" }],
       },
 

@@ -528,6 +528,12 @@ export const EN: LocaleData = {
   "tavern.rumor_war": "\"Word is that England and Spain are on the brink of war again.\"",
   "tavern.rumor_governor": "\"The Governor's been looking for capable captains to run errands.\"",
   "tavern.rumor_ghost_ship": "\"They say a ghost ship haunts the waters near Bermuda at night...\"",
+  "tavern.rumor_hunger": "\"There is no {{item}} to be had in {{port}} \u2014 short by {{pct}}% of what they need, and the governor paying over the odds for any that comes in.\"",
+  "tavern.rumor_blockade": "\"There is a squadron lying off {{port}}. Nothing goes in or out while she stays there.\"",
+  "tavern.rumor_covering": "\"{{port}} has been feeding half the coast since {{other}} shut its wharves. Their own shelves are bare and their {{item}} shows it.\"",
+  "tavern.rumor_lane": "\"No underwriter will touch the {{from}}\u2013{{to}} run this season. Somebody has been busy out there.\"",
+  "tavern.rumor_black_flag": "\"{{port}} flies no crown\u0027s colours these days. The smugglers do well enough out of it, I hear.\"",
+  "tavern.rumor_busy_quay": "\"Half the trade in the Indies crosses {{port}}\u0027s quay just now. Fat pickings for somebody.\"",
 
   // -- New events --
   "event.letter_of_marque": "Received Letter of Marque from {{faction}}.",

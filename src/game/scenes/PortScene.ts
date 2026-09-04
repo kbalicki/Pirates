@@ -24,7 +24,6 @@ import {
   requestLetterOfMarque,
   recruitCrew,
   buyRoundOfDrinks,
-  getRumorKey,
   repairShip,
   repairableDamage,
   buyShip,
@@ -93,6 +92,7 @@ import {
 } from "../../core/systems/CargoContractSystem.ts";
 import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
+import { tavernRumor } from "../../core/systems/RumorSystem.ts";
 import { reroutedOnto, townHunger, townIsHungry } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
@@ -600,6 +600,9 @@ export class PortScene extends Phaser.Scene {
     const grain = grainOffer(this.worldState, this.currentPortId as string);
     this.pendingGrainOffer = grain;
 
+    // The governor repeats what the town is repeating (v0.28.0).
+    const rumor = tavernRumor(this.worldState, this.currentPortId as string);
+
     const tree = governorTree({
       factionKey,
       level,
@@ -608,7 +611,8 @@ export class PortScene extends Phaser.Scene {
       levelName: t("rep." + level),
       reputation: rep,
       rankName: t(getRankNameKey(factionKey, rankIndex)),
-      rumorKey: getRumorKey(this.worldState),
+      rumorKey: rumor.key,
+      rumorVars: rumor.vars,
       age: captainAge(this.worldState),
       scorePreview: computeScore(this.worldState).total,
       daughterName: willReceive(this.worldState, this.currentPortId as string)
@@ -1013,7 +1017,7 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleRumors(): void {
-    const rumorKey = getRumorKey(this.worldState);
+    const rumor = tavernRumor(this.worldState, this.currentPortId as string);
     this.contentContainer.removeAll(true);
     this.clearKeyboard();
 
@@ -1050,7 +1054,7 @@ export class PortScene extends Phaser.Scene {
     }
 
     // Classic rumor
-    const rumorText = this.add.text(this.infoX, y, t(rumorKey), {
+    const rumorText = this.add.text(this.infoX, y, t(rumor.key, rumor.vars), {
       ...txt(13, { color: "#444444" }),
       wordWrap: { width: DLG_W - PAD * 2 },
       fontStyle: "italic",

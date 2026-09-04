@@ -582,25 +582,10 @@ export function abandonFleetShip(
 }
 
 // ── Rumors ────────────────────────────────────────────────
-
-const RUMOR_KEYS = [
-  "tavern.rumor_treasure",
-  "tavern.rumor_fleet",
-  "tavern.rumor_storm",
-  "tavern.rumor_trade",
-  "tavern.rumor_pirates",
-  "tavern.rumor_war",
-  "tavern.rumor_governor",
-  "tavern.rumor_ghost_ship",
-];
-
-/**
- * Get a deterministic rumor key based on the current game day.
- */
-export function getRumorKey(world: WorldState): string {
-  const index = (world.time.day + world.time.hour) % RUMOR_KEYS.length;
-  return RUMOR_KEYS[index];
-}
+//
+// Moved out to `RumorSystem` in v0.28.0. What the tavern says is a function of
+// what is happening within earshot of it now, and that needed more of the world
+// than this module has any business importing.
 
 
 // ── The public granary ────────────────────────────────────────────────────

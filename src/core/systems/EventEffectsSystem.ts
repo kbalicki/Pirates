@@ -59,6 +59,37 @@ const NEUTRAL: EventDailyEffects = {
   recoveryMul: 1,
 };
 
+/**
+ * What a day of `wealthDelta` is actually worth — read this before touching one.
+ *
+ * `EconomyTickSystem` pulls wealth toward baseline by `RECOVERY_WEALTH` (1%) of
+ * the gap every day, so a standing pressure of `d` points a day settles the town
+ * `d / 0.01 = d * 100` points away from where it would otherwise sit, and takes
+ * about a hundred days to get there. A number that reads like a modest nudge is
+ * therefore a permanent revaluation:
+ *
+ *     +10/day for a year  →  +1000, which is the whole 0..1000 scale
+ *     +3/day for 90 days  →  about +190 by the time it lifts
+ *     +1/day for 30 days  →  about +26
+ *
+ * The table below was written in v0.9.7 against the first of those readings and
+ * never measured, because of a one-line bug that meant no random event ever
+ * attached itself to a port (see `WorldEventSystem`, fixed in v0.28.0). With the
+ * events actually landing, the old numbers put Havana and Santiago on the 1000
+ * clamp inside a year and lifted the Caribbean's total wealth by 39%.
+ *
+ * So the deltas are scaled to a rule: **an event is a perturbation, not a new
+ * baseline.** No single event may be worth more than `EVENT_WEALTH_CEILING`
+ * points of settled offset, which puts the strongest of them at about a sixth
+ * of a prosperous colony's worth — plainly felt, never transformative. What
+ * makes an event dramatic is its one-shot hit, its production and price
+ * multipliers, and what it does to people; not a standing subsidy.
+ */
+export const EVENT_WEALTH_CEILING = 150;
+
+/** A day's pressure worth that ceiling, given a 1%/day pull toward baseline. */
+export const MAX_WEALTH_DELTA = EVENT_WEALTH_CEILING / 100;
+
 /** Per-type continuous effect on each affected port. */
 function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEffects {
   const sev = severity; // 1..3 — used to scale a few values
@@ -68,7 +99,7 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
         consumptionMul: 1.0,
         priceMul: 1 + 0.15 * sev,   // food/water cost more during plague
         popDelta: -2 * sev,         // ~60/month for severity 1
-        wealthDelta: -1 * sev,
+        wealthDelta: -0.5 * sev,    // -50..-150 settled; the plague's bite is in the people
         crewMul: 0.5,
       };
     case "pirate_raid":
@@ -83,12 +114,12 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
         productionMul: 1.5,
         importMul: 1.2,
         priceMul: 0.8,
-        wealthDelta: +5,
+        wealthDelta: +MAX_WEALTH_DELTA,   // a boom is the strongest good news there is
       };
     case "slave_revolt":
       return { ...NEUTRAL,
         productionMul: 0.3,
-        wealthDelta: -3,
+        wealthDelta: -MAX_WEALTH_DELTA,
         crewMul: 0.5,
       };
     case "hurricane":
@@ -98,11 +129,14 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
       };
     case "treasure_fleet":
       return { ...NEUTRAL,
-        wealthDelta: +2, // small boost to source ports while convoy assembles
+        // Every Spanish port at once, so it is deliberately the mildest of them.
+        wealthDelta: +0.5,
       };
     case "new_governor":
+      // One day long: this is a one-shot dressed as a daily, and at a day's
+      // length it is worth about five points however it is written.
       return { ...NEUTRAL,
-        wealthDelta: +5,
+        wealthDelta: +MAX_WEALTH_DELTA,
       };
     case "war_start":
       return { ...NEUTRAL,
@@ -118,13 +152,16 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     case "gold_discovery":
       return { ...NEUTRAL,
         popDelta: +8,         // workers migrate in
-        wealthDelta: +10,
+        // Was +10 — a year of it is the entire wealth scale. The strike's real
+        // reward is the gold in `bonusProduces` and the hundred-point windfall
+        // in `applyOneShotEffects`; this is only the boom town around it.
+        wealthDelta: +MAX_WEALTH_DELTA,
         productionMul: 1.2,
       };
     case "native_raid":
       return { ...NEUTRAL,
         productionMul: 0.5,
-        wealthDelta: -2,
+        wealthDelta: -1,
         defenseDelta: -0.5,
         recoveryMul: 0.5,    // recovery cut in half
       };
@@ -139,19 +176,20 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
       return { ...NEUTRAL,
         productionMul: 1.8,
         priceMul: 0.6,
-        wealthDelta: +3,
+        wealthDelta: +1,
       };
     case "royal_decree":
       return { ...NEUTRAL,
         priceMul: 1.2,        // tariff
-        wealthDelta: +1,
+        // A whole crown's ports, for up to a year: the mildest of the lot.
+        wealthDelta: +0.3,
       };
     case "treaty_signed":
       return { ...NEUTRAL,
         productionMul: 1.15,
         // Peace reopens the routes before it changes anything ashore.
         importMul: 1.15,
-        wealthDelta: +2,
+        wealthDelta: +0.5,
       };
     // A relief squadron is a fleet at sea, not a condition in a town, and its
     // event lists every port its crown still holds so the news travels. Giving

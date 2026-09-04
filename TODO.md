@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.27.0.0 · **Branch:** `main`
-**Kod:** 182 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1281 przechodzi, 0 failuje, 0 `todo`** w 35 plikach
+**Stan na:** 2026-09-04 · **Wersja:** v0.28.0.0 · **Branch:** `main`
+**Kod:** 186 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1309 przechodzi, 0 failuje, 0 `todo`** w 37 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.27.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1281/1281 zielone; ta wersja daje głodowi **twarz i cenę** — miasto zapisuje, czego mu wczoraj zabrakło, traci przez to ludzi, zapełnia tawernę chętnymi na koję i posiłek, a jego gubernator kupi z ładowni wszystko, czego brakuje, płacąc po części **reputacją**; lista kandydatów na v0.28.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.28.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1309/1309 zielone; ta wersja daje tawernie **głos o świecie** (plotka mówi, gdzie brakuje chleba, gdzie stoi eskadra i którego szlaku nikt nie ubezpieczy, w promieniu 1300) — i przy okazji naprawia rzecz znacznie większą: **zdarzenia świata nigdy nie trafiały w żaden port**, przez jedną linijkę `roll % length` na ułamku, więc piętnaście typów zdarzeń było przez cały czas dekoracją; lista kandydatów na v0.29.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04D.md](documentation/SESSION-2026-09-04D.md) — dlaczego `hunger` jest **stemplowane a nie wyliczane**, **druga instancja** błędu „stan, który rusza się powoli, musi mieć gdzie trzymać ułamek" (tym razem populacja), dlaczego werbunek w głodującym mieście jest **lepszy** a nie gorszy niż w TODO, i dlaczego spichlerz jest transakcją, nie kontraktem. Poprzednia: [SESSION-2026-09-04C.md](documentation/SESSION-2026-09-04C.md).
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04E.md](documentation/SESSION-2026-09-04E.md) — jak przeczytanie tablicy ogłoszeń na zrzucie ekranu odkryło, że **losowa połowa żywego świata nigdy nie działała**, dlaczego tabela efektów musiała zostać zmierzona i przeskalowana zaraz po włączeniu, i dlaczego plotka jest lokalna. Poprzednia: [SESSION-2026-09-04D.md](documentation/SESSION-2026-09-04D.md).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -73,6 +73,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Zlecenie na dostawę | ✅ | `InformantSystem.reliefOffer`: cena z góry za ładownię do głodującego miasta, towar kapitan znajduje sam |
 | Głód widać w mieście | ✅ | `PortRuntimeState.hunger` stemplowane przez tick: linia w menu portu i na ladzie, ubytek ludności, pełniejsza ława w tawernie |
 | Miejski spichlerz | ✅ | `grainOffer` / `sellGrain`: gubernator kupuje z ładowni na miejscu, płaci ceną korony **i reputacją**, luka zamyka się po wyładunku |
+| Zdarzenia świata naprawdę działają | ✅ | `WorldEventSystem`: `Math.floor(v × n)` zamiast `v % n`, jedno zdarzenie danego typu na miasto, tabela efektów zmierzona i przeskalowana do `EVENT_WEALTH_CEILING` |
+| Plotka mówi, co się dzieje | ✅ | `RumorSystem`: sześć faktów ze świata w promieniu 1300, jeden dziennie, rotujący; stare opowieści tylko przy spokojnym świecie |
 
 ### Nietknięte
 
@@ -1036,7 +1038,53 @@ gra daje. Niefarmowalny bez licznika, bo wyładunek zamyka lukę, o którą ofer
 
 ---
 
-### v0.28.0 — co dalej
+### ~~v0.28.0 — Plotka mówi, co się dzieje; zdarzenia świata zaczynają się dziać~~ ✅ (v0.28.0.0)
+
+Kandydat **3** z poprzedniej listy. Zadanie było małe; znalazło przy okazji rzecz
+dużą.
+
+**Plotka w tawernie** (`RumorSystem`) — sześć faktów, które świat już prowadzi:
+głodujące miasto i czego mu brakuje, eskadra pod portem, nabrzeże wożące cudze
+kursy, szlak, którego nikt nie ubezpieczy, miasto pod czarną banderą,
+najruchliwsze nabrzeże. **Plotka jest lokalna** (`RUMOR_REACH = 1300`, ta sama
+zasada co `NpcNewsSystem`), więc w ruchliwym węźle warto się napić, a w zatoczce
+nie ma czego słuchać. Kolejność kandydatów jest projektem: na czele fakt, na
+którym da się zarobić tego popołudnia.
+
+**Zdarzenia świata nigdy się nie działy.** Przy weryfikacji plotki tablica
+ogłoszeń napisała „treasure fleet preparing to sail from **undefined**". Przyczyna:
+`allPorts[portR.value % allPorts.length]`, a `rngNext` zwraca ułamek — więc
+odczytem było `allPorts[0.37]`. Przez cały czas życia modułu: brak nazwy portu,
+`faction` zawsze „pirates", `ports: [undefined]` (żadna tawerna nie niosła newsa)
+i — połowa bez widocznego objawu — `getAggregatedEffects` nigdy nie trafiał,
+czyli **piętnaście typów zdarzeń nigdy nie tknęło miasta, którego dotyczyło**.
+
+Włączenie ich odsłoniło drugą połowę: tabela efektów z v0.9.7 nigdy nie była
+mierzona. Osiadłe przesunięcie = `wealthDelta × 100`, więc odkrycie złota przy
++10/dzień przez rok to **cała skala 0..1000**. Po włączeniu: +39% łącznego
+bogactwa i cztery hiszpańskie stolice przybite do sufitu. Naprawione dwoma
+rzeczami: przeskalowaniem do reguły *zdarzenie jest zaburzeniem, nie nowym
+baseline'em* (`EVENT_WEALTH_CEILING = 150`) i **jednym zdarzeniem danego typu na
+miasto** (strażnik liczył zdarzenia, nie pokrycie — a dekret królewski obejmuje
+24 porty). Zmierzone po poprawkach: +1% do +5% łącznego bogactwa, 8–16 żywych
+zdarzeń, sufit osiągany sporadycznie. **Świat żywszy, nie bogatszy** — pilnowane
+testem.
+
+Efekt uboczny: głodujące porty pojawiają się teraz same (huragan, najazd, klęska
+głodu), więc v0.27.0 i v0.28.0 zazębiają się bez dokładania czegokolwiek.
+
+**Pułapki z tej sesji:**
+
+1. **`X % length` na wyniku `rngNext` to zawsze błąd** — `rngNext` zwraca ułamek.
+2. **Serwer deweloperski Vite potrafi zawiesić loader assetów** (19/23, cztery
+   żądania w locie, zero błędów) — wtedy weryfikuj zbudowany pakiet przez
+   `npx vite preview --port 3000`.
+3. **`git stash -u` przy działającym dev serwerze daje fałszywy trop** — Vite
+   zgłasza błąd importu pliku, który stash właśnie zabrał.
+
+---
+
+### v0.29.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1046,12 +1094,12 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    trzeba rozstrzygnąć zanim ktokolwiek narysuje pierwszą klatkę
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Głód nie ma jeszcze głosu** — v0.27.0 daje mu twarz (linia w porcie, ceny,
-   ława w tawernie, ubytek ludności), ale newsy i plotki w tawernie dalej są
-   listą rotowaną po dniu (`getRumorKey`) i nie wiedzą, że miasto przymiera.
-   Plotka wyliczana ze stanu świata byłaby tanim domknięciem — i pierwszym
-   miejscem, w którym gracz **usłyszy** o cudzym niedoborze, zamiast zobaczyć go
-   dopiero na miejscu
+3. **Zdarzenia świata dopiero co ożyły i nikt ich jeszcze nie rozegrał.** Teraz,
+   gdy naprawdę trafiają w miasta, warto przejść je po kolei od strony gracza:
+   huragan zamyka port (czy da się to zobaczyć na mapie?), odkrycie złota tworzy
+   miasto warte odwiedzenia, klęska głodu i najazd tubylców tworzą okazję dla
+   spichlerza z v0.27.0. Kilka z nich pewnie nie ma jeszcze żadnej reprezentacji
+   poza newsem
 4. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
    (`importMul`), ale sojusz nie daje żadnej symetrycznej korzyści
 5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
@@ -1064,6 +1112,7 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 ## 4. Zadania równoległe (można wpleść w każdy release)
 
 - ~~**Niedobór nie ma twarzy w mieście.**~~ ✅ v0.27.0.0 — `PortRuntimeState.hunger` stemplowane przez dzienny tick: linia w menu portu i na ladzie kupca, ubytek ludności (71% ludzi przy pełnym głodzie), pełniejsza ława w tawernie i spichlerz u gubernatora. Zostały **newsy i plotki**, które dalej nie wiedzą, że miasto przymiera.
+- ~~**Głód nie ma jeszcze głosu.**~~ ✅ v0.28.0.0 — `RumorSystem`: tawerna mówi o głodzie, blokadzie, przeciętym szlaku, czarnej banderze i najruchliwszym nabrzeżu w promieniu 1300. Przy okazji odkryte i naprawione: **zdarzenia świata nigdy nie trafiały w żaden port**.
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1), zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). **Nie trenuj v3, dopóki nie ma nowego materiału** — patrz sekcja 6. Ocena: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
@@ -1104,6 +1153,9 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **`LANDMASSES` jest puste w testach** — ląd ładuje się z GeoJSON dopiero w runtime. Każda kontrola „czy to woda” przechodzi w vitest zawsze; weryfikuj ją w grze albo nie pisz na niej asercji.
 - **Cena kupna i sprzedaży to widełki wokół jednej liczby, nie jeden mnożnik w obie strony.** Mnożnik „taniej dla przyjaciela” zastosowany do obu kierunków odwraca spread i robi drukarkę pieniędzy (v0.24.0: 14 za cukier, 16 za cukier, przy tej samej ladzie). `PortAccessSystem.buyPrice/sellPrice` to jedyne miejsce, gdzie wolno to liczyć.
 - **Cokolwiek rusza stan powoli, musi mieć gdzie trzymać ułamek — i zdarzyło się to już DWA razy.** `PortRuntimeState.wealth` jest trzymane z dokładnością do 0,1 właśnie dlatego: pół punktu dziennego obrotu zaokrąglane co północ do pełnych punktów znikało, a ledger równoważył się cztery punkty nad baseline'em zamiast pięćdziesięciu. To ten sam błąd co „sufit to nie równowaga”, tylko o piętro niżej. **Druga instancja, v0.27.0: `population`.** Wioska pięciuset ludzi przy `hunger` 0,23 traci jedną piątą człowieka dziennie, a zaokrąglanie do pełnych ludzi co północ wyrzucało to w całości — małe miasta były na głód odporne, duże nie, i populacja po prostu nigdy nie drgnęła. Trzymana teraz z dokładnością do 0,1; `CityInfoScene` zaokrągla przy wyświetlaniu.
+- **`X % length` na wyniku `rngNext` to zawsze błąd.** `rngNext` zwraca ułamek z [0,1), więc modulo oddaje ten ułamek i indeks wychodzi `arr[0.37]` → `undefined`. Indeks losowy to `Math.floor(value * length)` albo `rngNextInt`. Ta jedna linijka trzymała **całą losową połowę żywego świata** martwą przez kilkanaście wydań (v0.28.0).
+- **Zdarzenie jest zaburzeniem, nie nowym baseline'em.** `wealthDelta` czyta się naprzeciw `RECOVERY_WEALTH = 0.01`: punkt dziennie to **sto punktów** osiadłego przesunięcia. `EVENT_WEALTH_CEILING = 150` (czyli 1.5/dzień) jest sufitem dla pojedynczego zdarzenia, a strażniki przed stakowaniem muszą liczyć **pokrycie portów**, nie liczbę zdarzeń — dekret królewski obejmuje 24 porty naraz.
+- **Gdy dev serwer Vite zawiesi loader assetów** (postęp staje, kilka żądań „w locie" nigdy się nie kończy, zero błędów w konsoli, a `curl` pobiera te pliki natychmiast) — nie debuguj gry, tylko zweryfikuj **zbudowany pakiet**: `npm run build` i `npx vite preview --port 3000`. Testuje dokładnie to, co idzie na produkcję.
 - **Dwa widoki `PortScene` rysują komunikat identycznym kodem, różnym tylko kolorem** (`#8a3a3a` w menu portu, `#6a4a1a` w tawernie). Podmiana skryptem bez koloru w kotwicy trafia w pierwszy z nich i wygląda jak brak efektu. Komunikat idzie **pod ostatnią pozycją listy**, a podpowiedź klawiszy chowa się, gdy komunikat jest — przy dziewięciu pozycjach miejsca starcza na jedno z dwóch.
 - **Sufit magazynu przycinaj PO wysyłce, nie przed** (`EconomyTickSystem` krok 4). Przycięcie produkcji do sufitu przed odjęciem eksportu sprawia, że zapas dużego eksportera piłuje o ćwiartkę dziennie, a `spotPrice` razem z nim — cena skacze o 33% z dnia na dzień bez żadnego powodu w świecie.
 - **Ekonomiczną zmianę mierz PRZED napisaniem jej.** Tabela „ile ten port ma wysłać kontra ile produkuje" przesądziła kształt v0.26.0 w pięć minut: naiwne odjęcie dostawy od magazynu zagłodziłoby cały region, bo dziewięć z dwudziestu najruchliwszych par ma zapotrzebowanie większe niż produkcja. To ta sama lekcja co „sufit to nie równowaga", tylko od strony przepływu.

@@ -2492,3 +2492,118 @@ uzupełnienia, nie tę właśnie zapełnioną („13 ton wody" po sprzedaniu 10 
 rozmowy. Drugi z tej samej pary: nagłówek portu rysuje się raz w `create()`,
 więc kiesa w nim kłamała po transakcji zawartej **wewnątrz** widoku — pierwszej
 takiej w grze. `goldText` jest teraz trzymany i odświeżany.
+
+
+---
+
+## Zdarzenia świata nigdy się nie działy (v0.28.0)
+
+`WorldEventSystem.seedInitialEvents` / `spawnRandomEvent`, `EventEffectsSystem`.
+
+### Jedna linijka, zła od początku modułu
+
+```ts
+const port = allPorts[portR.value % allPorts.length];   // rngNext zwraca [0,1)
+```
+
+`rngNext` zwraca **ułamek**, więc modulo oddaje ten ułamek z powrotem i
+odczytem jest `allPorts[0.37]` → `undefined`. Skutki, przez cały czas życia
+modułu:
+
+- nagłówek brzmiał „Spanish treasure fleet preparing to sail from **undefined**";
+- `portDef?.factionId ?? "pirates"` → **każde** zdarzenie należało do piratów;
+- `ports: [undefined]`, więc `getPortNews` nie pokazywał go w żadnej tawernie…
+- …i `getAggregatedEffects` nigdy nie trafiał, czyli **żaden z piętnastu typów
+  zdarzeń nigdy nie tknął miasta, którego dotyczył**. Epidemie, huragany,
+  odkrycia złota, dekrety królewskie — wszystko dekoracja.
+
+Znalezione przez **przeczytanie tablicy ogłoszeń na zrzucie ekranu** podczas
+weryfikacji plotek. Testy tego nie widziały, bo `WorldEventSystem` nie miał
+własnego pliku testowego (TODO odnotowywało to od P0-3).
+
+Poprawka to `Math.floor(value * length)` w obu miejscach — plus pierwszy plik
+testowy tego modułu, z asercjami nudnymi do czasu, aż się na nich przejedzie:
+że wylosowany port **istnieje**.
+
+### Druga połowa: tabela efektów nigdy nie była mierzona
+
+Skoro nic nie lądowało w porcie, liczby z v0.9.7 nikt nigdy nie zobaczył w
+działaniu. A czytać je trzeba naprzeciw `RECOVERY_WEALTH = 0.01`:
+
+```
+osiadłe przesunięcie = wealthDelta / 0.01 = wealthDelta × 100
+
++10/dzień przez rok   → +1000, czyli CAŁA skala 0..1000
+ +3/dzień przez 90 dni → ok. +190 zanim minie
+ +1/dzień przez 30 dni → ok. +26
+```
+
+Włączone bez kalibracji podniosły łączne bogactwo Karaibów o **39%** i
+przybiły Havanę, Santo Domingo, San Juan i Cartagenę do sufitu 1000.
+
+Reguła, do której przeskalowano tabelę: **zdarzenie jest zaburzeniem, nie nowym
+baseline'em.** `EVENT_WEALTH_CEILING = 150` punktów osiadłego przesunięcia na
+zdarzenie (`MAX_WEALTH_DELTA = 1.5/dzień`) — najmocniejsze z nich jest warte
+jedną szóstą zamożnej kolonii. Dramat zdarzenia ma pochodzić z jednorazowego
+uderzenia, z mnożników produkcji i cen oraz z tego, co robi ludziom; nie ze
+stałej dotacji.
+
+### Jedno zdarzenie danego typu na miasto
+
+Strażnik `sameTypeCount >= 3` liczył **zdarzenia**, nie pokrycie — a dekret
+królewski obejmuje dwadzieścia cztery porty. Trzy naraz na tych samych
+dwudziestu czterech to było właśnie to, co przybijało hiszpańskie stolice do
+sufitu. Teraz nowe zdarzenie nie startuje, jeśli aktywne zdarzenie tego samego
+typu obejmuje choć jeden z tych portów: korona nie wydaje trzech taryf naraz, a
+przystań nie ma dwóch huraganów.
+
+Zmierzone po poprawce (5 ziaren, rok gry): łączne bogactwo **+1% do +5%** wobec
+świata bez zdarzeń, 8–16 żywych zdarzeń naraz, 0–3 głodujące porty, sufit 1000
+osiągany sporadycznie i zwykle przez miasto z odkrytym złotem. Świat żywszy, nie
+bogatszy — i to jest pilnowane testem.
+
+---
+
+## Co mówią w tawernie (v0.28.0)
+
+`RumorSystem.tavernRumor` / `rumorsAt`.
+
+Plotka była listą ośmiu napisów rotowaną po dniu miesiąca: ten sam statek widmo
+koło Bermudów, niezależnie od tego, czy kapitan spędził miesiąc na blokadzie
+Hawany, czy przespał go w Port Royale. Tymczasem świat miał sporo do powiedzenia
+— sześć wydań zbudowało warstwę handlową z konsekwencjami, które gracz potrafi
+**wywołać**, a każda z nich była niewidoczna, dopóki tam nie dopłynął.
+
+### Co tawerna wie, w kolejności przydatności
+
+| plotka | źródło w świecie |
+|---|---|
+| „nie ma {{item}} w {{port}}" | `townIsHungry` + najkrótsza półka (v0.27.0) |
+| „pod {{port}} stoi eskadra" | `blockadeEffective` (v0.22.0) |
+| „{{port}} karmi pół wybrzeża" | `reroutedOnto` (v0.26.0) |
+| „nikt nie ubezpieczy szlaku {{from}}–{{to}}" | `routeDisruption` (v0.22.0) |
+| „{{port}} nie nosi barw żadnej korony" | `playerHolds` (v0.19.0) |
+| „pół handlu idzie przez {{port}}" | `tradeIncome` (v0.24.0) |
+
+Kolejność jest projektem: na czele fakt, na którym da się zarobić **tego
+popołudnia**, na końcu ten, na którym da się zarobić w tym roku.
+
+### Plotka jest lokalna
+
+Tylko fakty w promieniu `RUMOR_REACH = 1300` od tego miasta. Ta sama zasada, na
+której stoi `NpcNewsSystem` — wieść płynie kadłubem, nie telegrafem — i ma
+konsekwencję wartą posiadania: **w ruchliwym węźle warto się napić, w zatoczce
+nie ma czego słuchać.** Kapitan szukający, gdzie sprzedać ładownię żywności,
+robi coś sensownego, stawiając kolejkę.
+
+### Jedna rzecz dziennie, i się zmienia
+
+`(dzień + nazwa miasta) % kandydaci` — deterministyczne, wyliczane, nigdzie nie
+zapisywane. Ten sam zapis opowiada tego samego ranka to samo, a kto poczeka
+dzień, usłyszy następny fakt zamiast tego samego. Osiem starych opowieści dalej
+jest w puli, ale tylko gdy dzieje się mniej niż `QUIET_WORLD = 2` rzeczy:
+spokojne Karaiby plotkują o statkach widmach, ruchliwe o cenie chleba.
+
+Nowe klucze i18n mają test pokrycia w obu językach — plotka złożona z faktów
+świata podstawia zmienne, a brakujący klucz albo nieużyta zmienna wyglądają jak
+błąd w świecie, nie w tabeli napisów.
