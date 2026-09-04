@@ -8,6 +8,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Start sesji w jednym zdaniu:** v0.21.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 990/990 zielone; wojna wreszcie dociera na nabrzeże (osobny człon żeglugowy zdarzeń), a konsorta ma własne wyszkolenie, więc drugi statek jest decyzją, nie darmowymi działami — lista kandydatów na v0.22.0 jest niżej.
 
+> **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
+
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
 ---
@@ -719,8 +721,8 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - **Pathfinding A\*** — `Pathfinding.ts` to pusty hak; NPC nawigują reaktywnie. Prawdziwe szlaki handlowe = wiarygodniejszy ruch morski, ale duża zmiana w `NpcAiSystem`.
-- **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1). Problem „całe ekrany zamiast sprite'ów" **rozwiązany**: 51/51 assetów to pojedynczy obiekt. Nadaje się do użycia: ikony ekwipunku i budynki portu przy sile 0.6-0.75. **Nie** nadaje się: dziewięć klas statków wychodzi identycznych (w projekcie jest jeden sprite statku — retrening tego nie naprawi bez nowego materiału), towary są bezkształtne, portrety nie trzymają wspólnego stylu. Zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). v3 poprawia ujęcie z góry (10% → 32% zbioru) i balans kategorii. Ocena i szczegóły: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
-- **Assety AI — kolejny krok wymaga materiału, nie GPU.** Żeby statki się różniły, potrzeba narysowanych/pozyskanych kadłubów o różnej wielkości i liczbie masztów; żeby towary miały kształt — ~15 ikon towarów. Bez tego kolejny retrening niczego nie zmieni. Klatki uszkodzeń są już **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
+- **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1), zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). **Nie trenuj v3, dopóki nie ma nowego materiału** — patrz sekcja 6. Ocena: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)
+- **Assety AI — kolejny krok wymaga materiału, nie GPU.** Kierunek artystyczny jest rozstrzygnięty (pixel art, sekcja 6) i to on wyznacza pracę: dziewięć klas statków po osiem klatek kierunkowych, nowe sprite'y miast, ~15 ikon towarów. Klatki uszkodzeń są **niepotrzebne** — zastąpiła je proceduralna nakładka `ShipDamageOverlay` (v0.12.1)
 - ~~**`WorldRenderer.ts:239`** — TODO: flaga frakcji jako sprite obok statku NPC zamiast tintu.~~ ✅ v0.19.0.0 — `syncFlag`. Bandera mówi **kto**, ale nie **co**: kupiec i okręt wojenny tej samej korony wyglądają identycznie.
 - ~~**Wyzwalacze `reach_port` i `days_passed` w `QuestSystem` nie są nigdzie odpalane.**~~ ✅ v0.17.0.0 — `PortScene.create()` (tylko przy wejściu przez bramę) i zmiana dnia w `WorldEngine`; pierwszym konsumentem obu jest zlecenie obrony. Zwłoka była celowa: martwy hak jest tym samym błędem co martwa scena, więc czekały na pierwszy quest, który naprawdę ich potrzebuje.
 - ~~**Flagi na mapie to snapshot z `MainMapScene.create()`.**~~ ✅ v0.15.0.0 — `refreshPortFlags` podmienia teksturę przy zmianie właściciela. Podmieniana jest **wyłącznie** flaga; kolor frakcji w `drawCityIcon` obsługuje tylko proceduralny fallback, do którego wydana gra nie dochodzi.
@@ -756,3 +758,63 @@ Nic nie jest jeszcze wybrane. Czterej kandydaci, w kolejności wartości dla gra
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`).
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
+
+---
+
+## 6. Kierunek artystyczny — ROZSTRZYGNIĘTE (2026-09-04)
+
+**Decyzja użytkownika: cała gra ma być pixel artem.** To rozstrzyga pytanie,
+które blokowało plan assetowy z audytu ComfyUI.
+
+### Co z tego wynika
+
+- **`sailship.png` i sprite'y miast są tymczasowe.** Malowane (tusz + akwarela),
+  wstawione na czas budowy silnika, do **podmiany**. Nie traktuj ich jako wzorca
+  stylu — dotąd każda ocena assetów AI porównywała je z tym, co w grze jest, i
+  właśnie dlatego wychodziło, że pixel art „odstaje".
+- **Każda z dziewięciu klas statków dostaje własny art.** Dziś wszystkie
+  renderują się z jednego arkusza `sailship`, i to jest prawdziwy powód, dla
+  którego „dziewięć klas wychodzi identycznych" — nie wina LoRA, tylko brak
+  materiału. Klasy: pinnace, sloop, barque, brigantine, fluyt, frigate,
+  fast_galleon, galleon, merchantman.
+- **Retrening LoRA v3 poczeka**, aż będzie z czego trenować. Dziewięć
+  narysowanych kadłubów to materiał, którego brakowało; godzina GPU bez niego
+  niczego nie naprawi.
+
+### Wymagania techniczne dla nowych sprite'ów statków
+
+Arkusz `sailship.png` to dziś **1024×512 RGBA, siatka 4×2 po 256×256**, osiem
+kierunków. Mapowanie w `WorldRenderer.DIR8_TO_FRAME`:
+
+```
+rząd 0 = [SW, S, SE, E]      rząd 1 = [NE, N, NW, W]
+```
+
+Czyli **osiem klatek kierunkowych na klasę statku** — dziewięć klas to 72
+klatki. To jest ta liczba, którą trzeba mieć w głowie przy planowaniu pracy.
+
+**Dwie pułapki, które trzeba rozstrzygnąć zanim ktokolwiek narysuje 72 klatki:**
+
+1. **Rozdzielczość.** Statek renderuje się na ekranie w okolicach **20-30 px**
+   (`0.086 × zoomFactor 0.10-0.33 × zoom kamery`). Klatka 256×256 jest więc
+   skalowana w dół dziesięciokrotnie — dla malowanego arta to nieszkodliwe, dla
+   pixel artu **zabójcze**: piksele się rozmyją i cała robota pójdzie w gwizdek.
+   Nowy arkusz powinien być rysowany blisko rozmiaru wyświetlania (rząd 32-64 px
+   na klatkę), a skala w `WorldRenderer` odpowiednio przeliczona.
+2. **`roundPixels` jest wyłączone i to jest napięcie z pixel artem.**
+   `pixelArt: true` wymusza `roundPixels: true`, a `MainMapScene.create()`
+   **musi** robić `camera.setRoundPixels(false)`, bo inaczej wraca jitter statku
+   (project_ship_jitter). Ostry pixel art chce zaokrąglania, jitter go nie chce.
+   Do przemyślenia: zaokrąglać **scroll kamery**, a nie pozycje sprite'ów —
+   wtedy siatka pikseli stoi, a statek płynie płynnie.
+
+### Co jest gotowe i czeka
+
+- `ai-assets/scripts/postprocess_asset.py` — flood fill od krawędzi, trim, alfa,
+  kwantyzacja palety, skalowanie nearest-neighbour, kryteria akceptacji z kodem
+  wyjścia. Na 85 assetach v2: 69 przechodzi, 16 odpada.
+- `ai-assets/workflows/sprite_isolated.json` — szablon bez `ImageScale` w grafie
+  (skalowanie przed keyingiem uniemożliwiało czyste wycięcie tła).
+- Uwaga na `sd-pipeline/workflows/pirate_lora.json`: ma **zaszytą** LoRA v1 na
+  0.8 i nadpisuje ją tylko przy jawnym `--lora`. JSON-y obok wygenerowanych
+  obrazów potrafią kłamać, że `"lora": null`.

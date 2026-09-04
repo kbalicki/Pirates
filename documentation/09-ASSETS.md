@@ -1,12 +1,48 @@
 # 09 — Zasoby gry (Assets)
 
+## Kierunek artystyczny — pixel art (decyzja 2026-09-04)
+
+**Cała gra ma być pixel artem.** To rozstrzyga pytanie, które blokowało plan
+assetowy: dotąd każda ocena wygenerowanych sprite'ów porównywała je z tym, co w
+grze *jest* — a to, co jest, to malowany placeholder.
+
+- **`sailship.png` i sprite'y miast są tymczasowe.** Malowane (tusz + akwarela),
+  wstawione na czas budowy silnika, **do podmiany**. Nie są wzorcem stylu.
+- **Każda z dziewięciu klas statków dostaje własny art.** Dziś wszystkie
+  renderują się z jednego arkusza — i to jest prawdziwy powód, dla którego
+  „dziewięć klas wychodzi identycznych". Brakuje materiału, a nie treningu.
+- **Retrening LoRA v3 czeka na ten materiał.** Godzina GPU bez nowych kadłubów
+  niczego nie naprawi; ocena v2 niżej mówi to samo, tylko innymi słowami.
+
+### Ile tego jest
+
+Arkusz statku to **1024×512 RGBA, siatka 4×2 po 256×256**, osiem kierunków
+(`WorldRenderer.DIR8_TO_FRAME`: rząd 0 = SW, S, SE, E; rząd 1 = NE, N, NW, W).
+Czyli **8 klatek na klasę — 72 klatki na komplet**: pinnace, sloop, barque,
+brigantine, fluyt, frigate, fast_galleon, galleon, merchantman.
+
+### Dwie pułapki do rozstrzygnięcia przed rysowaniem
+
+1. **Rozdzielczość.** Statek wyświetla się w okolicach **20-30 px**
+   (`0.086 × zoomFactor 0.10-0.33 × zoom kamery`), więc klatka 256×256 jest
+   skalowana w dół dziesięciokrotnie. Dla malowanego arta to nieszkodliwe, dla
+   pixel artu zabójcze. Rysować blisko rozmiaru wyświetlania (32-64 px na
+   klatkę) i przeliczyć skalę w `WorldRenderer`.
+2. **`roundPixels` jest wyłączone.** `pixelArt: true` wymusza
+   `roundPixels: true`, ale `MainMapScene.create()` **musi** wołać
+   `camera.setRoundPixels(false)` — inaczej wraca jitter statku. Ostry pixel art
+   chce zaokrąglania, jitter go nie chce. Do przemyślenia: zaokrąglać **scroll
+   kamery**, a nie pozycje sprite'ów.
+
+---
+
 ## Inventory zasobów
 
 ### Sprite'y (`public/assets/sprites/`)
 
 | Plik | Rozmiar | Opis |
 |------|---------|------|
-| sailship.png | 384×128 (4×2 grid, 96×64/klatka) | 8-kierunkowy statek |
+| sailship.png | **1024×512 RGBA (4×2 grid, 256×256/klatka)** | 8-kierunkowy statek — **placeholder, malowany, do podmiany na pixel art** |
 | ship_player.png | wariant | Statek gracza (bitwa) |
 | ship_enemy.png | wariant | Statek wroga (bitwa) |
 | ships.png | kolekcja | Referencja |
