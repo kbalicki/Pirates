@@ -5,6 +5,7 @@ import {
   routesFrom,
   routeSupplying,
   routesNear,
+  alternateSuppliers,
   resetTradeRoutes,
   disruptions,
   disruptRoute,
@@ -287,5 +288,54 @@ describe("laneSupplyShare", () => {
     const w = makeWorld();
     const elsewhere = (port: string) => port === "nowhere_at_all";
     expect(laneSupplyShare(w, lane.to, lane.items[0], elsewhere)).toBe(LANE_FULL);
+  });
+});
+
+describe("a second source (v0.23.0)", () => {
+  it("names the other producers that could serve a town", () => {
+    // Sugar and rum have many growers, so at least one lane must have a
+    // fallback. If none did, blockading anybody would be equally devastating.
+    const withAlternates = tradeRoutes().filter(
+      lane => lane.items.some(item => alternateSuppliers(lane.to, item).length > 0),
+    );
+    expect(withAlternates.length).toBeGreaterThan(0);
+  });
+
+  it("never lists the chosen supplier as its own alternative", () => {
+    for (const lane of tradeRoutes()) {
+      for (const item of lane.items) {
+        expect(alternateSuppliers(lane.to, item)).not.toContain(lane.from);
+      }
+    }
+  });
+
+  it("never lists the destination as a source of what it cannot grow", () => {
+    for (const lane of tradeRoutes()) {
+      for (const item of lane.items) {
+        expect(alternateSuppliers(lane.to, item)).not.toContain(lane.to);
+      }
+    }
+  });
+
+  it("delivers more when the trade can go the long way round", () => {
+    const lane = tradeRoutes().find(
+      l => l.items.some(item => alternateSuppliers(l.to, item).length > 0),
+    )!;
+    const item = lane.items.find(i => alternateSuppliers(lane.to, i).length > 0)!;
+    const w = makeWorld();
+
+    const onlySupplierShut = (port: string) => port === lane.from;
+    const everySourceShut = (port: string) =>
+      port === lane.from || alternateSuppliers(lane.to, item).includes(port);
+
+    const rerouted = laneSupplyShare(w, lane.to, item, onlySupplierShut);
+    const strangled = laneSupplyShare(w, lane.to, item, everySourceShut);
+
+    expect(rerouted).toBeGreaterThan(strangled);
+    expect(rerouted).toBeLessThan(LANE_FULL);
+  });
+
+  it("has nothing to say about a good with no lane", () => {
+    expect(alternateSuppliers("havana", "water")).toEqual([]);
   });
 });

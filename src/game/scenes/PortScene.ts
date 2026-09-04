@@ -66,6 +66,18 @@ import {
   INFORMER_PRICE,
 } from "../../core/systems/FamilyQuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
+import {
+  cargoOffers,
+  activeCharters,
+  acceptCharter,
+  deliverCharter,
+  canDeliver,
+  cargoDeliveredFlag,
+  holdRoom,
+  type CargoContract,
+} from "../../core/systems/CargoContractSystem.ts";
+import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
+import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
   isHomePort,
@@ -103,7 +115,7 @@ const DLG_H = 420;
 const BORDER = 3;
 const PAD = 16;
 
-type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison" | "warehouse";
+type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison" | "warehouse" | "charter";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
@@ -280,6 +292,7 @@ export class PortScene extends Phaser.Scene {
       case "daughter": this.renderDaughter(); break;
       case "garrison": this.renderGarrison(); break;
       case "warehouse": this.renderWarehouse(); break;
+      case "charter": this.renderCharter(); break;
     }
   }
 
@@ -382,6 +395,7 @@ export class PortScene extends Phaser.Scene {
       { label: t("port.visit_governor"), key: "governor" },
       { label: t("port.visit_tavern"), key: "tavern" },
       { label: t("port.visit_merchant"), key: "merchant" },
+      { label: t("port.visit_charter"), key: "charter" },
       { label: t("port.visit_shipyard"), key: "shipyard" },
     ];
 
@@ -408,6 +422,7 @@ export class PortScene extends Phaser.Scene {
         case "governor": this.switchView("governor"); break;
         case "tavern": this.switchView("tavern"); break;
         case "merchant": this.switchView("merchant"); break;
+        case "charter": this.selectedIndex = 0; this.switchView("charter"); break;
         case "shipyard": this.switchView("shipyard"); break;
         case "garrison": this.switchView("garrison"); break;
         case "warehouse": this.selectedIndex = 0; this.switchView("warehouse"); break;
@@ -1444,6 +1459,160 @@ export class PortScene extends Phaser.Scene {
     this.bindKey("keydown-BACKSPACE", sellSelected);
     this.bindKey("keydown-Q", sellSelected);
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  }
+
+  // ===== VIEW: Charter (freight) =====
+
+  /**
+   * The freight office (v0.23.0).
+   *
+   * Two lists in one screen, because they are two halves of one job: what this
+   * town wants carried, and what the captain is already carrying for somebody
+   * else. A charter he is standing at the far end of shows a *deliver* line
+   * instead of a destination, which is the only place the hold gets emptied.
+   *
+   * The fee is printed with the reason for it — danger money, a cordon to run —
+   * because a number that quietly triples is a number the player will not
+   * trust. He should be able to see what he is being paid for.
+   */
+  private renderCharter(): void {
+    const portKey = this.currentPortId as string;
+    let y = this.contentStartY;
+
+    const title = this.add.text(this.cx, y, t("charter.title"), txt(16, { bold: true }));
+    title.setOrigin(0.5, 0);
+    this.contentContainer.add(title);
+    y += 26;
+
+    const room = holdRoom(this.worldState);
+    this.contentContainer.add(
+      this.add.text(this.infoX, y, t("charter.hold_room", { room }), txt(11, { color: "#666666" })),
+    );
+    y += 18;
+
+    const held = activeCharters(this.worldState);
+    const offers = cargoOffers(this.worldState, portKey);
+    const actions: { label: string; key: string }[] = [];
+
+    if (held.length > 0) {
+      this.contentContainer.add(
+        this.add.text(this.infoX, y, t("charter.carrying"), txt(12, { bold: true, color: "#444444" })),
+      );
+      y += 18;
+      for (const contract of held) {
+        const item = t("item." + contract.item + ".name");
+        if (canDeliver(this.worldState, contract)) {
+          actions.push({
+            label: t("charter.deliver", { qty: contract.qty, item, gold: contract.reward }),
+            key: "deliver:" + contract.id,
+          });
+        } else {
+          this.contentContainer.add(this.add.text(
+            this.infoX + 8, y,
+            t("charter.en_route", { qty: contract.qty, item, port: contract.toName, gold: contract.reward }),
+            txt(11, { color: "#666666" }),
+          ));
+          y += 16;
+        }
+      }
+      y += 6;
+    }
+
+    this.contentContainer.add(
+      this.add.text(this.infoX, y, t("charter.on_offer"), txt(12, { bold: true, color: "#444444" })),
+    );
+    y += 12;
+
+    if (offers.length === 0) {
+      this.contentContainer.add(
+        this.add.text(this.infoX + 8, y + 14, t("charter.nothing"), txt(11, { color: "#886655" })),
+      );
+      y += 20;
+    }
+
+    for (const offer of offers) {
+      const item = t("item." + offer.item + ".name");
+      let note = "";
+      if (blockadeEffective(this.worldState, offer.to)) note = "  [" + t("charter.note_blockade") + "]";
+      else if ((disruptions(this.worldState)[offer.from + "__" + offer.to]?.severity ?? 0) > 0) {
+        note = "  [" + t("charter.note_danger") + "]";
+      }
+      actions.push({
+        label: t("charter.offer", {
+          qty: offer.qty, item, port: offer.toName, gold: offer.reward, days: offer.days,
+        }) + note,
+        key: "take:" + offer.id,
+      });
+    }
+
+    actions.push({ label: t("governor.back"), key: "back" });
+
+    this.setupActionList(actions, y + 8, (key) => {
+      if (key === "back") { this.switchView("menu"); return; }
+      if (key.startsWith("take:")) {
+        const offer = offers.find(o => o.id === key.slice(5));
+        if (offer) this.handleTakeCharter(offer);
+        return;
+      }
+      if (key.startsWith("deliver:")) {
+        const contract = held.find(c => c.id === key.slice(8));
+        if (contract) this.handleDeliverCharter(contract);
+      }
+    });
+
+    if (this.tavernMessage) {
+      this.contentContainer.add(this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 26, this.tavernMessage,
+        txt(12, { color: "#884422" }),
+      ));
+    }
+
+    this.bindKey("keydown-ESC", () => this.switchView("menu"));
+  }
+
+  private handleTakeCharter(offer: CargoContract): void {
+    const result = acceptCharter(this.worldState, offer);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("charter");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("charter.taken", {
+      qty: offer.qty,
+      item: t("item." + offer.item + ".name"),
+      port: offer.toName,
+    });
+    this.selectedIndex = 0;
+    this.switchView("charter");
+  }
+
+  /**
+   * Hand the cargo over and let the quest machine pay for it.
+   *
+   * `deliverCharter` only moves goods and stamps the flag; the gold, the
+   * standing and the log line all come out of `advanceQuests`, which is the
+   * same division of labour the defence commission uses. Paying here as well
+   * would pay twice.
+   */
+  private handleDeliverCharter(contract: CargoContract): void {
+    const result = deliverCharter(this.worldState, contract);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("charter");
+      return;
+    }
+    const advanced = advanceQuests(
+      result.world,
+      { type: "flag_set", key: cargoDeliveredFlag(contract) },
+      buildQuestRegistry(result.world),
+    );
+    this.worldState = advanced.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("charter.delivered", { gold: contract.reward });
+    this.selectedIndex = 0;
+    this.switchView("charter");
   }
 
   // ===== VIEW: Shipyard =====

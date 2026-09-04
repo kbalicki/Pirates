@@ -42,6 +42,7 @@
 | TradeRoute | `TradeRouteSystem.ts` | Szlaki handlowe: kto kogo zaopatruje i jaką wodą |
 | Blockade | `BlockadeSystem.ts` | Blokada portu przez gracza |
 | Prize | `PrizeSystem.ts` | Ładownia i kiesa zdobytego statku |
+| CargoContract | `CargoContractSystem.ts` | Fracht: gracz jako przewoźnik na szlakach |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
 
@@ -1680,3 +1681,122 @@ Kupcy ładują się ze szlaku, który płyną (`NpcSpawnSystem.loadHold`, 55-90%
 ładowni), więc merchantman na biegu z Hawany wiezie cukier i rum. Zdobycie
 kupca dokłada zakłócenie **jego szlakowi** — miasto na drugim końcu czuje to w
 ciągu tygodnia.
+
+
+---
+
+## Fracht — gracz jako przewoźnik (v0.23.0)
+
+`src/core/systems/CargoContractSystem.ts` (czysty) + widok `charter` w `PortScene`.
+
+v0.22.0 dała Karaibom prawdziwą żeglugę i **trzy sposoby, żeby ją zaatakować**
+(blokada, pryz, zakłócenie szlaku), po czym zostawiła gracza na nabrzeżu.
+Jedynym sposobem zarobku na handlu było dalej kupno taniej i sprzedaż drożej —
+na własny rachunek.
+
+Fracht to druga połowa. Kupiec z ładunkiem i bez kadłuba płaci za przewóz.
+
+### Skąd bierze się oferta
+
+`cargoOffers(world, portKey)` jest **pochodną, nigdy zapisem**: książka kupca to
+funkcja szlaków wychodzących z jego miasta, zawartości jego magazynu i tego, co
+ostatnio działo się na morzu. Stabilna w obrębie doby, zmienia się sama, gdy
+zmienia się świat — szlak, który dziś w nocy stracił kadłub, jutro rano płaci
+lepiej.
+
+| Człon | Wzór |
+|---|---|
+| towar | `basePrice(item) × qty` |
+| dystans | `0.55 + 0.75 × min(1, długość/1500)` |
+| ryzyko | `1 + 1.2 × severity` z ledgera zakłóceń |
+| blokada celu | `× 1.6` |
+
+Wielkość frachtu jest skrojona **i do trasy, i do statku**:
+`min(charterSize(długość), zapas w magazynie, max(10, wolna ładownia))`. Bez
+ostatniego członu startowy slup (10 ton wolnego) dostawałby wyłącznie
+czterdziestotonowe zlecenia, których nigdy nie udźwignie — czyli funkcja nie
+istniałaby przez pierwszą godzinę gry.
+
+### Cykl życia
+
+```
+podpisanie   towar wychodzi z magazynu portu i wchodzi do ładowni
+             (od tej chwili zajmuje miejsce i można go stracić na morzu)
+wydanie      towar wychodzi z ładowni do magazynu celu + flaga cargo_delivered_<id>
+zapłata      przez advanceQuests, NIE przez deliverCharter — inaczej płaciłoby dwa razy
+przeterminowanie  days_passed → reputacja −12 z koroną celu, notoriety +5,
+             ładunek ZOSTAJE u gracza (to jest cała pokusa)
+```
+
+Nowy efekt `DialogueEffect`: `{ type: "notoriety", amount }` — kradzież frachtu
+to nie tylko sprawa jednej korony, a sama reputacja nie umiała tego powiedzieć.
+
+Quest odbudowuje się z `contract` w `runtime.data` przez `buildQuestRegistry`,
+tak samo jak mapa skarbu i zlecenie obrony. Termin jest **zapieczony przy
+podpisaniu** — z dokładnie tego samego powodu co w `DefenseContractSystem`.
+
+---
+
+## Towar naprawdę płynie (v0.23.0)
+
+`NpcSpawnSystem.loadHold` + krok DOCK.
+
+Do v0.22.0 ładownia kupca NPC była **wyczarowywana przy spawnie**: nie ubywało
+jej z magazynu portu wyjścia, a zadokowanie nie dosypywało niczego portowi
+docelowemu. Teraz:
+
+- kupiec wychodzący z portu **ładuje się z jego magazynu** (i o tyle ten magazyn
+  ubożeje),
+- kupiec dobijający do celu **wysypuje ładownię do magazynu** celu (do sufitu
+  `inventoryCap`, nigdy poniżej stanu, który tam już był).
+
+Ogranicznik `EXPORT_TAKE_SHARE = 0.25`: pojedynczy kadłub może uszczuplić
+magazyn, ale nigdy go nie ogołoci. Uzasadnienie jest wprost w kodzie — kadłuby
+w pobliżu gracza są **próbką** handlu, nie całym handlem, bo poza zasięgiem
+gracza nic się nie symuluje; masę dalej niesie abstrakcja z kroku 3.5
+`EconomyTickSystem`.
+
+Konsekwencja dla rozgrywki: zdobyty konwój to dostawa, która **nie dotarła** —
+w towarze, nie tylko w abstrakcyjnym ledgerze.
+
+---
+
+## Przekierowanie dostaw (v0.23.0)
+
+`alternateSuppliers(portKey, item)` + `REROUTE_SHARE = 0.65`.
+
+Do v0.22.0 zamknięcie portu-dostawcy obcinało jego klientów do 30% —
+**niezależnie od tego, czy ten sam towar rósł dzień drogi dalej**. Model nie
+odróżniał blokady jedynego portu kakaowego w zasięgu od blokady jednego z
+czterech portów cukrowych.
+
+Teraz sieć zapamiętuje przy budowie **uszeregowaną listę pozostałych
+producentów** (do `1.5 × MAX_LANE_LENGTH`, bo drugie źródło dwa razy dalej to
+wciąż źródło, a po drugiej stronie morza — już nie). Gdy zwykły dostawca jest
+zamknięty:
+
+| Sytuacja | Dostawa |
+|---|---|
+| jest inne czynne źródło | 0.65 (dłużej, drożej, ale dociera) |
+| wszystkie źródła zamknięte | 0.30 (przemytnicy i to, co wypłynęło przed kordonem) |
+
+Skutek dla gracza: **wybór portu do blokady wreszcie jest decyzją.**
+
+---
+
+## Kurs wyprawy po realnej wodzie (v0.23.0)
+
+`expeditionCourse()` + `pointAlong()` w `ExpeditionFleetSystem`.
+
+Wyprawa korony szła prostą od portu wyjścia do celu — linia potrafiła przeciąć
+półwysep, a zliczenie stawiało eskadrę na lądzie (stąd stary komentarz „nic nie
+trafia na mapę, jeśli punkt nie jest wodą"). Teraz kurs to `findSeaPath`, a
+pozycja na dziś to punkt `progress` drogi **mierzonej odległością**, nie numerem
+odcinka — inaczej eskadra sprintowałaby po krótkim odcinku i pełzła po długim.
+
+`ExpeditionCourseRenderer` rysuje ten sam łamany kurs, a grot celuje wzdłuż
+odcinka, na którym stoi marker.
+
+Pod vitestem `LANDMASSES` jest puste, więc `findSeaPath` zwraca prostą i całe
+zachowanie jest identyczne jak przed zmianą — dlatego żaden istniejący test
+`ExpeditionFleetSystem` nie drgnął.

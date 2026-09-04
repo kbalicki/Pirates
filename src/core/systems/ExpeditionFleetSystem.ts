@@ -56,6 +56,7 @@ import type { WorldEvent } from "../model/Events.ts";
 import type { PortId } from "../model/ids.ts";
 import { entityId, factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES } from "../data/cities.ts";
+import { findSeaPath, pathLength } from "../services/Pathfinding.ts";
 import { FACTIONS } from "../data/factions.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { LANDMASSES } from "../data/geography.ts";
@@ -197,25 +198,59 @@ export function expeditionProgress(world: WorldState, event: WorldEventState): n
 }
 
 /**
- * Where the squadron is today.
+ * The water the squadron crosses, harbour to harbour.
  *
- * A straight line from the harbour it sailed from to the town it is going to,
- * walked by the day. There is no pathfinding in this game (`Pathfinding.ts` is
- * still a hook), so the line may cut a headland — which is why nothing is put
- * on the chart unless the point it lands on is water.
+ * Until v0.23.0 this was a ruled line and nothing more, because `Pathfinding`
+ * was an empty hook: the reckoning could land the squadron inside a peninsula,
+ * and the dashed course on the chart was sometimes drawn straight through
+ * Cuba. Now it is a real sea path, so both the marker and the hulls follow the
+ * water a fleet would actually have used.
+ *
+ * With no coastline loaded — which is every unit test — `findSeaPath` answers
+ * a straight line, so the behaviour under vitest is exactly what it always was.
  */
-export function expeditionPos(world: WorldState, event: WorldEventState): Vec2 | undefined {
+export function expeditionCourse(world: WorldState, event: WorldEventState): Vec2[] | undefined {
   const target = CITIES[event.ports[0]];
   if (!target) return undefined;
   const originKey = originPortFor(world, event);
   const origin = originKey ? CITIES[originKey] : undefined;
   if (!origin) return undefined;
 
-  const p = expeditionProgress(world, event);
-  return {
-    x: origin.pos.x + (target.pos.x - origin.pos.x) * p,
-    y: origin.pos.y + (target.pos.y - origin.pos.y) * p,
-  };
+  const from = nearestWater(origin.pos) ?? origin.pos;
+  const to = nearestWater(target.pos) ?? target.pos;
+  return findSeaPath(from, to) ?? [origin.pos, target.pos];
+}
+
+/**
+ * Where the squadron is today: the point `progress` of the way along its course.
+ *
+ * Measured by distance rather than by leg, so a passage that doubles back round
+ * a headland does not make the squadron sprint down the short leg and crawl
+ * along the long one.
+ */
+export function expeditionPos(world: WorldState, event: WorldEventState): Vec2 | undefined {
+  const course = expeditionCourse(world, event);
+  if (!course || course.length === 0) return undefined;
+  return pointAlong(course, expeditionProgress(world, event));
+}
+
+/** The point a fraction of the way along a polyline, by distance. */
+export function pointAlong(path: Vec2[], fraction: number): Vec2 {
+  if (path.length === 1) return path[0];
+  const total = pathLength(path);
+  if (total <= 0) return path[0];
+  let want = clamp(0, 1, fraction) * total;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const leg = Math.hypot(b.x - a.x, b.y - a.y);
+    if (want <= leg || i === path.length - 1) {
+      const t = leg > 0 ? want / leg : 0;
+      return { x: a.x + (b.x - a.x) * Math.min(1, t), y: a.y + (b.y - a.y) * Math.min(1, t) };
+    }
+    want -= leg;
+  }
+  return path[path.length - 1];
 }
 
 /** True when the player is close enough for the squadron to be on the chart. */

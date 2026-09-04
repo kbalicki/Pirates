@@ -30,7 +30,7 @@ import Phaser from "phaser";
 import type { WorldState, WorldEventState } from "../../core/model/WorldState.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
-import { originPortFor, expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
+import { originPortFor, expeditionPos, expeditionCourse } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { expeditionsInFlight } from "../../core/systems/ReconquestSystem.ts";
 import { txt } from "../ui/textStyle.ts";
 import { t } from "../../core/i18n/index.ts";
@@ -98,6 +98,23 @@ function dashedLine(
   }
 }
 
+
+/**
+ * The next corner of the course after the point the marker sits on.
+ *
+ * Used only to aim the arrowhead. Falls back to the last point, which is the
+ * right answer for a squadron on its final leg.
+ */
+function nearestCourseLegEnd(course: { x: number; y: number }[], at: { x: number; y: number }): { x: number; y: number } {
+  let best = course[course.length - 1];
+  let bestDist = Infinity;
+  for (let i = 1; i < course.length; i++) {
+    const d = Math.hypot(course[i].x - at.x, course[i].y - at.y);
+    if (d > 1 && d < bestDist) { bestDist = d; best = course[i]; }
+  }
+  return best;
+}
+
 /**
  * Draw every course the player knows about.
  *
@@ -123,27 +140,29 @@ export function drawExpeditionCourses(
     const target = CITIES[targetKey];
     const originKey = originPortFor(world, event);
     const origin = originKey ? CITIES[originKey] : undefined;
-    const ideal = expeditionPos(world, event);
-    if (!target || !origin || !ideal) continue;
-    // The same nudge `ExpeditionFleetSystem` applies before putting hulls in
-    // the water, so the marker sits where the ships would actually be rather
-    // than on the ruler's line through a headland.
-    const at = nearestWater(ideal) ?? ideal;
+    const course = expeditionCourse(world, event);
+    const at = expeditionPos(world, event);
+    if (!target || !origin || !course || !at) continue;
 
     drawnIds.push(event.id);
     const color = FACTIONS[event.factions[0]]?.color ?? 0xcc4444;
 
-    // The passage, and the ring on the place it ends.
+    // The passage, and the ring on the place it ends. Since v0.23.0 the course
+    // is the real water the squadron crosses rather than a ruled line, so it
+    // no longer runs through the peninsula it has to sail round.
     gfx.lineStyle(1.6 * scale, color, 0.7);
-    dashedLine(gfx, origin.pos, target.pos, scale);
+    for (let i = 1; i < course.length; i++) dashedLine(gfx, course[i - 1], course[i], scale);
     // A ring wide enough to clear the town sprite, or it reads as part of the
     // icon rather than as a mark somebody put on the chart.
     gfx.lineStyle(2.2 * scale, color, 0.85);
     gfx.strokeCircle(target.pos.x, target.pos.y, TARGET_RING * scale);
 
     // Where the reckoning puts it: an arrowhead on the course, so the bearing
-    // reads off the chart without having to work out which end is which.
-    const heading = Math.atan2(target.pos.y - origin.pos.y, target.pos.x - origin.pos.x);
+    // reads off the chart without having to work out which end is which. It
+    // points along the leg the marker is actually on, which on a dog-legged
+    // passage is not the bearing of the whole voyage.
+    const legEnd = nearestCourseLegEnd(course, at);
+    const heading = Math.atan2(legEnd.y - at.y, legEnd.x - at.x);
     const fx = Math.cos(heading);
     const fy = Math.sin(heading);
     const m = MARKER * scale;

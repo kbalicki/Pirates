@@ -54,6 +54,14 @@ export type DialogueEffect =
   | { type: "set_flag"; key: string; value?: boolean }
   | { type: "gold"; amount: number }
   | { type: "reputation"; faction: string; amount: number }
+  /**
+   * Change how notorious the captain is (v0.23.0).
+   *
+   * Added for the charter carried off: stealing a merchant's cargo is not just
+   * something one crown resents, it is something the whole sea hears about, and
+   * reputation alone could not say that.
+   */
+  | { type: "notoriety"; amount: number }
   | { type: "log"; key: string; vars?: Record<string, string | number> }
   /** Anything this module has no business knowing about. Resolved by the caller. */
   | { type: "custom"; id: string };
@@ -159,6 +167,11 @@ export function applyEffect(
           ...world.player,
           reputation: changeReputation(world.player.reputation, effect.faction, effect.amount),
         },
+      };
+    case "notoriety":
+      return {
+        ...world,
+        player: { ...world.player, notoriety: Math.max(0, (world.player.notoriety ?? 0) + effect.amount) },
       };
     case "log":
       return addLogEntry(world, effect.key, effect.vars);

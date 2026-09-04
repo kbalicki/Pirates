@@ -57,8 +57,20 @@ const SAME_CROWN_DISCOUNT = 0.7;
 /** What a lane delivers when nothing is interfering with it. */
 export const LANE_FULL = 1;
 
-/** What still gets through to a port whose supplier is itself shut in. */
+/** What still gets through to a port whose supplier is shut in and unreplaceable. */
 const SUPPLIER_SHUT_SHARE = 0.3;
+
+/**
+ * What arrives when the usual supplier is shut but somebody else grows it too.
+ *
+ * A blockade of the *only* cocoa port in reach is a different act from a
+ * blockade of one of four sugar ports, and until v0.23.0 the model could not
+ * tell them apart: shutting a harbour cut its clients to 30% whether or not
+ * there was another producer a day further on. Now the trade goes the long way
+ * round at a worse price — which is what it did in life, and which makes
+ * blockading a sole supplier the strategically interesting act it should be.
+ */
+const REROUTE_SHARE = 0.65;
 
 /** Convoys taken on a lane: how fast the shippers' nerve comes back, per day. */
 const DISRUPTION_DECAY = 0.12;
@@ -74,7 +86,13 @@ export type RouteDisruption = { severity: number; until: number };
 
 // ── The lane network ───────────────────────────────────────────────────────
 
-let cachedRoutes: TradeRoute[] | null = null;
+type Network = {
+  routes: TradeRoute[];
+  /** "<port>|<item>" -> producers after the chosen one, nearest first. */
+  alternates: Record<string, string[]>;
+};
+
+let cachedNetwork: Network | null = null;
 let cachedGeneration = -1;
 
 /**
@@ -86,8 +104,23 @@ let cachedGeneration = -1;
  * still the right lanes, they simply sail through where Cuba would be.
  */
 export function tradeRoutes(): TradeRoute[] {
+  return network().routes;
+}
+
+/**
+ * Producers of `item` that could serve `portKey` if the usual one could not,
+ * in the order the trade would turn to them.
+ *
+ * Empty when the chosen supplier is the only one in reach — and that emptiness
+ * is the whole point: it is what makes one blockade worth ten of another.
+ */
+export function alternateSuppliers(portKey: string, item: string): string[] {
+  return network().alternates[`${portKey}|${item}`] ?? [];
+}
+
+function network(): Network {
   const gen = landmassGeneration();
-  if (cachedRoutes && cachedGeneration === gen) return cachedRoutes;
+  if (cachedNetwork && cachedGeneration === gen) return cachedNetwork;
 
   /** item -> ports that grow it */
   const producers: Record<string, string[]> = {};
@@ -99,6 +132,7 @@ export function tradeRoutes(): TradeRoute[] {
 
   /** "<from>__<to>" -> route under construction */
   const merged = new Map<string, TradeRoute>();
+  const alternates: Record<string, string[]> = {};
 
   for (const [toKey, toDef] of Object.entries(CITIES)) {
     for (const item of toDef.demands) {
@@ -106,8 +140,7 @@ export function tradeRoutes(): TradeRoute[] {
       const candidates = producers[item];
       if (!candidates || candidates.length === 0) continue; // a well, not a lane
 
-      let best: { from: string; path: Vec2[]; length: number } | null = null;
-      let bestScore = Infinity;
+      const ranked: { from: string; path: Vec2[]; length: number; score: number }[] = [];
       for (const fromKey of candidates) {
         if (fromKey === toKey) continue;
         const path = laneCourse(fromKey, toKey);
@@ -115,13 +148,19 @@ export function tradeRoutes(): TradeRoute[] {
         const length = pathLength(path);
         const sameCrown =
           (CITIES[fromKey].factionId as string) === (toDef.factionId as string);
-        const score = length * (sameCrown ? SAME_CROWN_DISCOUNT : 1);
-        if (score < bestScore) {
-          bestScore = score;
-          best = { from: fromKey, path, length };
-        }
+        ranked.push({ from: fromKey, path, length, score: length * (sameCrown ? SAME_CROWN_DISCOUNT : 1) });
       }
+      ranked.sort((a, b) => a.score - b.score);
+      const best = ranked[0];
       if (!best || best.length > MAX_LANE_LENGTH) continue; // ocean import
+
+      // Who else could serve this town, and how far the trade would have to
+      // reach to do it. A second source twice as far away is still a second
+      // source; one on the other side of the sea is not.
+      alternates[`${toKey}|${item}`] = ranked
+        .slice(1)
+        .filter(r => r.length <= MAX_LANE_LENGTH * REROUTE_REACH)
+        .map(r => r.from);
 
       const id = `${best.from}__${toKey}`;
       const existing = merged.get(id);
@@ -142,10 +181,13 @@ export function tradeRoutes(): TradeRoute[] {
     }
   }
 
-  cachedRoutes = [...merged.values()];
+  cachedNetwork = { routes: [...merged.values()], alternates };
   cachedGeneration = gen;
-  return cachedRoutes;
+  return cachedNetwork;
 }
+
+/** How much further than a normal lane the trade will reach for a second source. */
+const REROUTE_REACH = 1.5;
 
 /** The water between two ports, or null if a ship cannot get from one to the other. */
 function laneCourse(fromKey: string, toKey: string): Vec2[] | null {
@@ -157,7 +199,7 @@ function laneCourse(fromKey: string, toKey: string): Vec2[] | null {
 
 /** Drop the memoized network. For tests that swap the coastline underneath it. */
 export function resetTradeRoutes(): void {
-  cachedRoutes = null;
+  cachedNetwork = null;
   cachedGeneration = -1;
 }
 
@@ -263,8 +305,13 @@ export function laneSupplyShare(
   const route = routeSupplying(portKey, item);
   // No lane: a well, or an ocean import. Neither can be interdicted here.
   if (!route) return LANE_FULL;
-  // A supplier that is itself shut in still leaks something out — smugglers,
-  // and hulls that sailed before the cordon closed.
-  const supplier = shutIn(route.from) ? SUPPLIER_SHUT_SHARE : LANE_FULL;
-  return laneThroughput(world, route.id) * supplier;
+  const throughput = laneThroughput(world, route.id);
+  if (!shutIn(route.from)) return throughput;
+
+  // The usual supplier is shut. If anybody else within reach grows this, the
+  // trade goes the long way round — worse, but not a famine. If nobody does,
+  // all that gets through is what smugglers carry and what sailed before the
+  // cordon closed.
+  const open = alternateSuppliers(portKey, item).some(port => !shutIn(port));
+  return throughput * (open ? REROUTE_SHARE : SUPPLIER_SHUT_SHARE);
 }

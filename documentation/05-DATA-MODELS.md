@@ -281,6 +281,21 @@ znaczy „port otwarty, morze spokojne", co jest prawdą o nim. `TradeRoute.id`
 nigdy nie trafia do zapisu jako klucz trwały: gdy sieć szlaków się zmieni,
 nieaktualne wpisy po prostu wygasną z ledgera.
 
+### Fracht (v0.23.0, bez migracji)
+
+Kontrakt frachtowy **nie ma własnego pola w `WorldState`**. Leży w
+`questLog[].data.contract`, tak jak mapa skarbu i zlecenie obrony, a
+`buildQuestRegistry` odtwarza z niego `QuestDef` przy każdym wczytaniu. Ładunek
+jest zwykłą zawartością `ShipData.cargo` — nie ma „zarezerwowanej" przegródki,
+więc gracz może go sprzedać, i to jest zamierzone.
+
+Doszedł jeden wariant efektu dialogowego:
+
+```typescript
+| { type: "notoriety"; amount: number }
+```
+
+
 ## RNG Service (`src/core/services/RNG.ts`)
 
 ```typescript

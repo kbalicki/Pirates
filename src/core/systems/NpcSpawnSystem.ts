@@ -18,6 +18,7 @@ import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
+import { inventoryCap } from "../data/economyBaselines.ts";
 import { routesFrom, type TradeRoute } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
@@ -160,30 +161,51 @@ const LANE_LOAD_MIN = 0.55;
 const LANE_LOAD_MAX = 0.9;
 
 /**
- * Load a hold from the lane she is sailing.
+ * How much of a port's stock of one good the trade may take at once.
  *
- * Split evenly across the goods the run carries, in whole units, so the prize
- * the player takes reads as a cargo — "sugar and rum out of Havana" — rather
- * than as a number.
+ * The hulls near the player are a *sample* of the trade, not the whole of it —
+ * the abstraction in `EconomyTickSystem` still carries the bulk, because
+ * nothing off-screen is simulated. So a departing hull may draw down the
+ * quayside stock but never strip it: a town whose warehouse the player happens
+ * to be sitting next to must not go hungry for it.
+ */
+const EXPORT_TAKE_SHARE = 0.25;
+
+/**
+ * Load a hold from the lane she is sailing, out of the port's own warehouse.
+ *
+ * Split across the goods the run carries, in whole units, so the prize the
+ * player takes reads as a cargo — "sugar and rum out of Havana" — rather than
+ * as a number. What comes out of the warehouse is what goes in the hold: this
+ * is the goods actually moving, which is why she can be worth taking and why
+ * her arrival is worth something at the far end.
  */
 function loadHold(
   lane: TradeRoute,
   cargoCap: number,
+  stock: Record<string, number>,
   rng: { seed: number; state: number },
-): { cargo: Record<string, number>; rng: typeof rng } {
+): { cargo: Record<string, number>; taken: Record<string, number>; rng: typeof rng } {
   let fill: number;
   ({ value: fill, state: rng } = rngNextFloat(rng, LANE_LOAD_MIN, LANE_LOAD_MAX));
   const total = Math.floor(cargoCap * fill);
   const cargo: Record<string, number> = {};
-  if (total <= 0 || lane.items.length === 0) return { cargo, rng };
+  const taken: Record<string, number> = {};
+  if (total <= 0 || lane.items.length === 0) return { cargo, taken, rng };
+
   const each = Math.floor(total / lane.items.length);
   let left = total;
   for (const item of lane.items) {
-    const qty = Math.min(each, left);
-    if (qty > 0) { cargo[item] = qty; left -= qty; }
+    const wanted = Math.min(each, left);
+    if (wanted <= 0) continue;
+    const available = Math.floor((stock[item] ?? 0) * EXPORT_TAKE_SHARE);
+    const qty = Math.min(wanted, available);
+    if (qty <= 0) continue;
+    cargo[item] = qty;
+    taken[item] = qty;
+    left -= qty;
   }
-  if (left > 0) cargo[lane.items[0]] = (cargo[lane.items[0]] ?? 0) + left;
-  return { cargo, rng };
+  return { cargo, taken, rng };
 }
 
 /**
@@ -219,6 +241,9 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
 
   let rng = world.rng;
   let entities = { ...world.entities };
+  // Goods physically move between warehouses now, so the spawn pass writes to
+  // `ports` as well as `entities` (v0.23.0).
+  let ports = world.ports;
   const playerShipId = world.player.shipId as string;
 
   // ---- DESPAWN: far away NPCs ----
@@ -256,6 +281,24 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     const dx = e.pos.x - waterPos.x;
     const dy = e.pos.y - waterPos.y;
     if (Math.sqrt(dx * dx + dy * dy) < DOCK_RADIUS) {
+      // Her hold comes ashore before she does (v0.23.0). This is the far end of
+      // the loop that `loadHold` opened: goods left one warehouse and now reach
+      // another, so a convoy the player took is a delivery that never arrives.
+      const hold = e.ship?.cargo;
+      if (hold && Object.keys(hold).length > 0 && ports[targetPortKey]) {
+        const port = ports[targetPortKey];
+        const inventory = { ...port.inventory };
+        for (const [item, qty] of Object.entries(hold)) {
+          if (qty <= 0) continue;
+          const cap = inventoryCap(targetPortKey, item);
+          const have = inventory[item] ?? 0;
+          // Never *below* what was already there: a warehouse that is somehow
+          // over its cap — an old save, an event that dumped goods on it — must
+          // not be quietly emptied by a delivery arriving.
+          inventory[item] = Math.max(have, Math.min(cap, have + qty));
+        }
+        ports = { ...ports, [targetPortKey]: { ...port, inventory } };
+      }
       // Ship docks — remove from map
       const copy = { ...entities };
       delete copy[id];
@@ -364,7 +407,17 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
       // traders on a lane load a hold; a patrol sails in ballast.
       let laneCargo: Record<string, number> = {};
       if (lane) {
-        ({ cargo: laneCargo, rng } = loadHold(lane, shipClass.cargoCap, rng));
+        const stock = ports[portKey]?.inventory ?? {};
+        let taken: Record<string, number>;
+        ({ cargo: laneCargo, taken, rng } = loadHold(lane, shipClass.cargoCap, stock, rng));
+        if (Object.keys(taken).length > 0 && ports[portKey]) {
+          const origin = ports[portKey];
+          const inventory = { ...origin.inventory };
+          for (const [item, qty] of Object.entries(taken)) {
+            inventory[item] = Math.max(0, (inventory[item] ?? 0) - qty);
+          }
+          ports = { ...ports, [portKey]: { ...origin, inventory } };
+        }
       }
 
       const npcId = entityId(`npc_${tick}_${s}_${classId}`);
@@ -409,5 +462,5 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     }
   }
 
-  return { ...world, entities, rng };
+  return { ...world, entities, ports, rng };
 }
