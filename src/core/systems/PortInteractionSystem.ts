@@ -14,6 +14,8 @@ import { portAccess } from "./PortAccessSystem.ts";
 import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
 import { getAggregatedEffects } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
+import { letterCrowns, marqueFlag } from "./PrivateerSystem.ts";
+import { FACTIONS } from "../data/factions.ts";
 import { diluteTraining } from "../model/CaptainState.ts";
 
 // ── Governor ──────────────────────────────────────────────
@@ -31,14 +33,24 @@ const REPAIR_COST_PER_HP = 2;
 
 /**
  * Request a letter of marque from a faction's governor.
- * Requires reputation >= "friendly" (rep >= 20).
+ *
+ * Requires reputation >= "friendly" (rep >= 20), and — since v0.37.0 — it is
+ * **exclusive**: taking this crown's paper gives up whatever else he was
+ * carrying. Before that a captain could collect all four, which made him
+ * covered against everybody by somebody and turned "which crown do I serve"
+ * into a question with no answer.
+ *
+ * The giving-up happens here, at the counter, and nowhere else. Every reader in
+ * `PrivateerSystem` works over the *set* of letters held, so a save written
+ * before this release may still carry two and reads correctly rather than
+ * needing a migration step.
  */
 export function requestLetterOfMarque(
   world: WorldState,
   factionId: FactionId,
 ): GovernorResult {
   const factionKey = factionId as string;
-  const flagKey = `letter_of_marque_${factionKey}`;
+  const flagKey = marqueFlag(factionKey);
 
   if (world.worldFlags[flagKey]) {
     return { world, granted: false, error: "already_granted" };
@@ -51,11 +63,20 @@ export function requestLetterOfMarque(
     return { world, granted: false, error: "insufficient_reputation" };
   }
 
-  const newWorld = addLogEntry(
-    { ...world, worldFlags: { ...world.worldFlags, [flagKey]: true } },
+  const given = letterCrowns(world);
+  const flags = { ...world.worldFlags, [flagKey]: true };
+  for (const crown of given) delete flags[marqueFlag(crown)];
+
+  // The Journal prints these verbatim, so they are names and not keys — which
+  // this line has been getting wrong since the first governor's dialogue.
+  let newWorld = addLogEntry(
+    { ...world, worldFlags: flags },
     "event.letter_of_marque",
-    { faction: factionKey },
+    { faction: FACTIONS[factionKey]?.name ?? factionKey },
   );
+  for (const crown of given) {
+    newWorld = addLogEntry(newWorld, "privateer.log_given_up", { faction: FACTIONS[crown]?.name ?? crown });
+  }
 
   return { world: newWorld, granted: true };
 }

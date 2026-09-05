@@ -93,6 +93,7 @@ import {
 import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
 import { tavernRumor } from "../../core/systems/RumorSystem.ts";
+import { letterCrowns } from "../../core/systems/PrivateerSystem.ts";
 import { reroutedOnto, townHunger, townIsHungry } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
@@ -623,6 +624,10 @@ export class PortScene extends Phaser.Scene {
         ? daughterFor(this.worldState, this.currentPortId as string)?.name
         : undefined,
       married: isMarried(this.worldState),
+      // What he would be giving up by signing here (v0.37.0).
+      heldMarqueName: letterCrowns(this.worldState)
+        .filter(c => c !== factionKey)
+        .map(c => t("faction." + c + ".name"))[0],
       grainSold: this.lastGrainSale ? {
         itemName: t("item." + this.lastGrainSale.item + ".name"),
         qty: this.lastGrainSale.qty,

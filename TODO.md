@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.36.0.0 · **Branch:** `main`
-**Kod:** 194 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1484 przechodzi, 0 failuje, 0 `todo`** w 41 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.37.0.0 · **Branch:** `main`
+**Kod:** 196 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1503 przechodzi, 0 failuje, 0 `todo`** w 42 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.36.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1484/1484 zielone; ucieczka przestała być przywilejem sześciu nazwanych kadłubów — **każdy kupiec ucieka przed groźnym kapitanem**, po tym samym predykacie (`looksDangerous`: czarna bandera, znienawidzona korona, notoriety > 50), więc dla uczciwego kapitana nie zmienia się nic, a wielkie nazwisko wreszcie coś kosztuje. **To jest zmiana odczucia i warto ją przegrać** — pokrętła to `FLEE_NOTORIETY` i `awarenessRadius`. Lista kandydatów na v0.37.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.37.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1503/1503 zielone; **list kaperski przestał być pamiątką** — pryz wzięty wrogowi patrona jest uznany za dobry (i tylko w połowie zapisany braciom), pryz wzięty komuś, z kim patron ma pokój, jest dla niego wstydem, a napad na samego patrona dziera list na miejscu; komisja jest **wyłączna** i gubernator mówi o tym przed podpisem. Dwie rzeczy z poprzednich wydań dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`) i decyzje z sekcji 6 o pixel arcie. Lista kandydatów na v0.38.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) i [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) i [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -79,6 +79,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Nazwany statek reaguje na pościg | ✅ | `harryNamedShip` + `answerHarrying`: walka, którą przeżyła, jest pamiętana i odpowiadana w porcie — postój, konsorta, a po drugim strachu inny szlak; mapa dalej rysuje trasę z raportu |
 | Pościg na wodzie | ✅ | `NpcAiSystem.bestVmgHeading` + `boltFor` + `makeShelter`: ucieka do jednego z własnych dwóch końców kursem o najlepszej prędkości uzyskanej, eskorty zawracają, pod działami portu jest po wszystkim |
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
+| List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 
 ### Nietknięte
 
@@ -1472,7 +1473,44 @@ test, najpierw przeczytaj, po co ten test istniał.*
 
 ---
 
-### v0.37.0 — co dalej
+### ~~v0.37.0 — Komisja jest posadą~~ ✅ (v0.37.0.0)
+
+Kandydat **4** — pozycja opisana jako **niedoprecyzowana** i przeskakiwana cztery
+razy, bo „sojusz z koroną" mogło znaczyć dwie różne rzeczy.
+
+**Rozstrzygnięcie:** przymierze dwóch koron wymagałoby nowej warstwy w modelu
+świata (dziś są tylko wojny) — to osobne wydanie. Drugie odczytanie było w zasięgu
+ręki, bo **list kaperski już istniał i już był czytany** (`ReconquestSystem`,
+`SiegeSystem`), tylko **nie przez to, co gracz robi w zwykłe popołudnie**. To jest
+„pole bez odbiorcy" o piętro wyżej: z obu stron kod wyglądał na kompletny, bo dwa
+odbiorniki naprawdę były.
+
+**Trzy sytuacje** (`settleHostileAct`, wyjęte z `SeaBattleScene` bez zmiany
+arytmetyki i dopiero potem nauczone czytać list): **pokryty** (patron w wojnie z
+ofiarą — pryz dobry, bracia liczą połowę), **niepokryty** (patron w pokoju z
+ofiarą — wstyd, `−8`), **zdrada** (ofiarą jest patron — list darty na miejscu,
+jedyne cofnięcie komisji w grze).
+
+`UNCOVERED_PATRON −8` jest **większy niż pokryty pryz jest wart (5)** i to celowe:
+noszenie listu bez wyboru musi być gorsze niż nienoszenie żadnego, inaczej papier
+jest darmowym bonusem, a wybór korony nie jest wyborem.
+
+**Wyłączność egzekwowana przy ladzie**, bo każdy czytnik pracuje na **zbiorze**
+listów — zapis sprzed wersji może nieść dwa i czyta się poprawnie, więc migracji
+nie ma. Ta sama reguła co `escorts?` w v0.33.0, od strony odczytu.
+
+**Błąd przy okazji:** `event.letter_of_marque` drukowało w dzienniku surowy klucz
+frakcji („england") od pierwszego dialogu z gubernatorem. **Zmienna w logu jest
+napisem, nie kluczem** — dziennik renderuje `vars` dosłownie później.
+
+**Czego NIE widziałem na ekranie:** rozliczenia bitwy (19 testów, okablowanie to
+jedna linijka w tym samym miejscu). Doprowadzenie bitwy do końca skryptem kosztuje
+~7200 klatek, bo auto-rozejście wymaga dwóch minut na dystansie, a `?battle=`
+startuje ją burta w burtę. Najtańsze domknięcie: `&far=1`.
+
+---
+
+### v0.38.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1491,10 +1529,12 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    (`awarenessRadius` z szablonu kupca) to liczby wybrane z namysłem, nie
    zmierzone przy graniu. Jeśli pościgi okażą się nużące albo przeciwnie —
    niezauważalne — to są dwa pokrętła. Wymaga użytkownika, nie agenta
-4. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana**,
-   przeskakiwana czwarty raz: „sojusz" może znaczyć list kaperski gracza albo
-   przymierze dwóch koron, którego w modelu świata **nie ma**. Przed wzięciem
-   trzeba rozstrzygnąć które
+4. **Przymierze dwóch koron dalej nie istnieje.** v0.37.0 rozstrzygnęła drugie
+   odczytanie tej pozycji (list kaperski), to zostało: świat zna **wojny** i nie
+   zna sojuszy, więc „Anglia i Holandia przeciw Hiszpanii" nie jest czymś, co umie
+   powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
+   pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
+   wystawia korsarzy
 5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
 6. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
@@ -1582,8 +1622,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Funkcja wyprowadzająca fakt ze stanu musi dostać ten fakt od tego, kto już go zna.** `answerHarrying` czytała, do którego portu statek dobił, z `ship.progress < 1`; `makeShelter` podaje jej rekord **już ostemplowany** na granicy, więc przybycie do `to` czytało się jako przybycie do `from` i obracało obieg na drugą stronę. Jawny parametr, nie sprytniejsze wyprowadzenie (v0.35.0).
 - **Statek uciekający nie może sterować na punkt.** Reszta `NpcAiSystem` steruje na cel i pozwala `NavigationSystem` policzyć, co z tego wyszło; przy krzywej polarnej robiącej między dwoma kursami różnicę rzędu trzykrotnej prędkości to jest sposób, w jaki kupiec zaczyna halsować pod wiatr ze slupem na rufie. `bestVmgHeading` = `argmax polar(h) × cos(h − namiar)` (v0.35.0).
 - **Nie edytuj `src/` w trakcie pomiaru w przeglądarce.** Vite przeładuje stronę i puppeteer padnie na `Execution context was destroyed` w połowie przebiegu. Druga strona reguły „skrypt w katalogu głównym jest obserwowany przez Vite" — tam winny był plik pomocniczy, tu zwykły bump wersji (v0.35.0).
+- **Zmienna w logu jest napisem, nie kluczem.** `addLogEntry` trzyma `vars` i renderuje je dosłownie długo później, więc surowy klucz frakcji dociera na ekran jako „england". `event.letter_of_marque` robiło to źle od pierwszego dialogu z gubernatorem, choć ta sama reguła jest zastosowana w `huntQuest` (pieczenie nazw miast). Widać to wyłącznie w Dzienniku i żaden test tego nie łapał (v0.37.0).
+- **Jeśli czytnik radzi sobie ze starym kształtem, nową zasadę egzekwuj tylko tam, gdzie stan powstaje.** Wyłączność listu kaperskiego jest wymuszana **przy ladzie**, a `PrivateerSystem` pracuje na *zbiorze* listów — dzięki temu zapis sprzed wersji, niosący dwa, czyta się poprawnie i migracji nie ma. Ta sama reguła co `escorts?` w v0.33.0, tylko od strony odczytu (v0.37.0).
+- **Kara za nadużycie przywileju musi być większa niż nagroda za jego użycie**, inaczej przywilej jest darmowym bonusem, a wybór, który go daje, nie jest wyborem. `UNCOVERED_PATRON −8` przeciwko `PRIZE_PATRON_TRADER 5` (v0.37.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

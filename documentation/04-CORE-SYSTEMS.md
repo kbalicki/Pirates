@@ -15,6 +15,7 @@
 | MapEvent | `MapEventSystem.ts` | Wyprowadza znaki na mapie ze zdarzeń, o których gracz słyszał |
 | NamedShip | `NamedShipSystem.ts` | Nazwane kupce z rozkładem: rekord, pozycja wyprowadzana, materializacja przy graczu |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
+| Privateer | `PrivateerSystem.ts` | Co znaczy list kaperski: pryz dobry, pryz wstydliwy, zdrada patrona |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -600,6 +601,62 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## PrivateerSystem (v0.37.0)
+
+List kaperski był w grze od pierwszego dialogu z gubernatorem i był **pamiątką**.
+Czytały go dwa systemy — `ReconquestSystem` (liczy cię za sojusznika korony, która
+go wystawiła) i `SiegeSystem` (możesz jej oddać zdobyte miasto) — i na tym koniec.
+Na morzu papier nie robił **nic**: wzięcie hiszpańskiego kupca kosztowało tyle samo
+u Hiszpanii i dawało tyle samo u braci wybrzeża, czy nosiłeś angielski list, czy nic.
+
+To jest kształt „pola bez odbiorcy" o piętro wyżej: flaga **była** czytana, tylko
+nie przez to, co gracz robi w zwykłe popołudnie.
+
+### Trzy sytuacje, w których papier coś znaczy
+
+`settleHostileAct(world, victim, behavior)` — cały rachunek za wrogi akt, wyjęty
+z `SeaBattleScene` bez zmiany arytmetyki i dopiero potem nauczony czytać list.
+Scena dalej decyduje, **kiedy** akt jest wrogi; ile jest wart, mieszka tutaj.
+
+| Sytuacja | Co się dzieje |
+|---|---|
+| **Pokryty** — patron jest w wojnie z koroną ofiary | patron uznaje pryz za dobry (`PRIZE_PATRON_TRADER` 5 / `PRIZE_PATRON_NAVY` 10), a bracia liczą tylko **połowę** (`PRIVATEER_BRETHREN_SHARE`) |
+| **Niepokryty** — patron nie ma zatargu z ofiarą | patron się wstydzi: `UNCOVERED_PATRON` −8, bracia liczą pełną stawkę |
+| **Zdrada** — ofiarą jest sam patron | list jest **darty na miejscu** |
+
+`UNCOVERED_PATRON` jest celowo większy niż jeden pokryty pryz jest wart. Noszenie
+listu i używanie go bez wyboru musi być gorsze niż nienoszenie żadnego — inaczej
+list byłby darmowym bonusem, a wybór korony nie byłby wyborem.
+
+Zdarcie listu przy zdradzie to **jedyne** miejsce w grze, które cofa komisję, i tak
+ma zostać: komisja kończy się wtedy, gdy obracasz się przeciw patronowi.
+
+Bez listu liczby są **dokładnie te, co przed tym systemem** (−10/−20 u ofiary,
++6/+12 u braci) i pilnuje tego pierwszy test w pliku. Pirat nie ma korony, którą
+można obrazić, więc walka z nim nie rozlicza niczego — świat wraca nietknięty, co
+pozwala wywołaniu w scenie być jedną linijką.
+
+### Wyłączność jest egzekwowana przy ladzie
+
+Do tej pory kapitan mógł zebrać listy wszystkich czterech koron i być pokryty
+przeciwko każdemu przez kogoś — co czyniło „niepokryty" nieosiągalnym, a pytanie
+„której koronie służę" pytaniem bez odpowiedzi. `requestLetterOfMarque` oddaje
+teraz stary list przy podpisaniu nowego, a gubernator mówi o tym **przed**
+podpisem (`governor.letter_available_switch` z nazwą oddawanej korony).
+
+Wyłączność jest egzekwowana **wyłącznie przy ladzie**, a każda funkcja w
+`PrivateerSystem` pracuje na **zbiorze** trzymanych listów. Zapis sprzed tej wersji
+może nieść dwa i czyta się poprawnie — pokryty, jeśli którykolwiek patron jest w
+wojnie z ofiarą, zawstydzony przez każdego, który nie jest — więc **migracji nie
+ma**.
+
+### Zmienne w logu są nazwami, nie kluczami
+
+Dziennik renderuje `vars` dosłownie później, więc surowy klucz frakcji dociera na
+ekran jako „england". `event.letter_of_marque` robiło to źle od pierwszego dialogu
+z gubernatorem; poprawione przy okazji. Ta sama reguła co pieczenie nazw miast w
+`huntQuest`.
 
 ## SiegeSystem (v0.13.0)
 

@@ -88,6 +88,15 @@ export type GovernorTreeContext = {
     qty: number;
     gold: number;
   };
+  /**
+   * The crown whose commission he is already carrying (v0.37.0).
+   *
+   * A letter is exclusive now, so the offer has to say what accepting costs
+   * before he accepts it. Absent when he carries none, and the node falls back
+   * to the plain offer — an option that warned about nothing would read as a
+   * threat the governor was not making.
+   */
+  heldMarqueName?: string;
 };
 
 /** Effect id the caller must handle: hands over the letter of marque. */
@@ -217,7 +226,11 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
 
       letter_offer: {
         id: "letter_offer",
-        textKey: "governor.letter_available",
+        // Two texts, one node: the governor of a crown you already serve
+        // somebody else against says so, because the acceptance is what tears
+        // the other paper up (v0.37.0).
+        textKey: ctx.heldMarqueName ? "governor.letter_available_switch" : "governor.letter_available",
+        vars: { other: ctx.heldMarqueName ?? "" },
         options: [
           {
             id: "accept",

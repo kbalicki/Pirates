@@ -6,6 +6,34 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.37.0.0",
+    date: "2026-09-05",
+    changes: [
+      "THE COMMISSION IS A JOB",
+      "  A LETTER OF MARQUE HAS BEEN A KEEPSAKE since the first governor's",
+      "  dialogue. Two systems read it — you count as an ally when a crown",
+      "  retakes a town, and you may hand a captured town to a patron — and",
+      "  that was all. At sea the paper did nothing whatever",
+      "  A PRIZE TAKEN FROM AN ENEMY OF YOUR PATRON is now declared good. The",
+      "  crown thinks better of you for it, and the brethren credit you with",
+      "  only half of what they would: a privateer is not a pirate",
+      "  A PRIZE TAKEN FROM SOMEBODY HE IS AT PEACE WITH embarrasses him, and",
+      "  it costs more than a covered prize pays. That is what carrying the",
+      "  paper is worth — without one, an indiscriminate captain answers to",
+      "  nobody at all",
+      "  TURN ON YOUR PATRON and the letter is torn up on the spot. Nothing",
+      "  else in the game revokes a commission, and nothing else should",
+      "  ONE CROWN AT A TIME. You could collect all four letters and be covered",
+      "  against everybody by somebody, which made 'which crown do I serve' a",
+      "  question with no answer. Signing a new commission gives up the old",
+      "  one, and the governor says so before you sign",
+      "  The Journal has been printing 'england' where it meant England since",
+      "  the letter was first handed over. Fixed",
+      "  `?marque=<port>` stands you at a governor's desk with another crown's",
+      "  paper already in your coat",
+    ],
+  },
+  {
     version: "0.36.0.0",
     date: "2026-09-05",
     changes: [

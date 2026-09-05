@@ -330,6 +330,13 @@ export class PreloadScene extends Phaser.Scene {
       }
       return;
     }
+    if (params.has("marque")) {
+      const portKey = params.get("marque") || "petit_goave";
+      const world = this.createMarqueWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
     if (params.has("famine")) {
       const portKey = params.get("famine") || "tortuga";
       const world = this.createFamineWorld(portKey, params.get("stand") === "cover");
@@ -928,6 +935,56 @@ export class PreloadScene extends Phaser.Scene {
         location: { type: "port", portId: makePortId(portKey), pos: { ...def.pos } },
       },
     }, makePortId(portKey));
+  }
+
+  /**
+   * A governor with a commission on the table and another already in the
+   * captain's coat, for `?marque=` (v0.37.0).
+   *
+   * The one screen in this release that can go wrong silently: the offer has two
+   * texts now, and the second names the crown he would be giving up. A missing
+   * `{{other}}` prints itself and no test sees it.
+   *
+   * The siege world already hands him England's letter, so this adds the two
+   * things needed to make the *other* half of the counter reachable: standing
+   * with the town's own crown, and a war that England is in — so that the
+   * prizes he takes afterwards are covered or not depending on whose they are.
+   */
+  private createMarqueWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const crown = def.factionId as unknown as string;
+
+    const world = {
+      ...base,
+      player: {
+        ...base.player,
+        reputation: { ...base.player.reputation, [crown]: 40 },
+        location: { type: "port" as const, portId: makePortId(portKey), pos: { ...def.pos } },
+      },
+      worldEvents: [
+        ...base.worldEvents,
+        {
+          id: "debug_marque_war",
+          type: "war_start",
+          startDay: base.time.day,
+          endDay: base.time.day + 900,
+          ports: [],
+          factions: ["england", crown === "england" ? "spain" : crown],
+          severity: 2,
+          headline: "event.war_start",
+          // Every headline a debug world can raise needs its full set of vars,
+          // or the screen prints a raw {{faction1}} and nothing catches it.
+          vars: { faction1: "England", faction2: crown },
+        } as import("../../core/model/WorldState.ts").WorldEventState,
+      ],
+    };
+
+    // The bench in the tavern is filled by `PortApproachScene`, which starting
+    // `PortScene` directly skips — the same omission that made v0.27.0's
+    // recruiting bonus invisible on screen.
+    return generateAvailableCrew(world, makePortId(portKey));
   }
 
   private createFamineWorld(portKey: string, standInCover = false): import("../../core/model/WorldState.ts").WorldState {

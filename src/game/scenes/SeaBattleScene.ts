@@ -13,7 +13,6 @@ import { txt } from "../ui/textStyle.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
 import type { AiArchetype } from "../../core/engine/CombatEngine.ts";
-import { changeReputation } from "../../core/systems/ReputationSystem.ts";
 import {
   addToFleet,
   canAddToFleet,
@@ -30,6 +29,7 @@ import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
 import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
+import { settleHostileAct } from "../../core/systems/PrivateerSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
@@ -1317,21 +1317,17 @@ export class SeaBattleScene extends Phaser.Scene {
 
     // Reputation impact (Phase C) — attacking trader/navy hurts that faction, gives pirate cred.
     // Win, surrender, captured ALL count as a hostile act; lose/disengaged do too if you fired.
+    //
+    // The arithmetic moved into `PrivateerSystem` in v0.37.0 and grew a reader:
+    // the letter of marque. A prize taken from an enemy of the crown that
+    // commissioned him is declared good and only half-credited to the brethren;
+    // one taken from a crown his patron is at peace with embarrasses that
+    // patron; one taken from the patron himself tears the letter up. The scene
+    // still decides *when* an act is hostile — this decides what it is worth.
     const enemyWorldEntity = this.worldState.entities[enemyId];
     const enemyFaction = enemyWorldEntity?.ship?.factionId as string | undefined;
     const enemyBehavior = enemyWorldEntity?.ai?.behavior;
-    if (enemyFaction && enemyBehavior && enemyBehavior !== "pirate") {
-      const repPenalty = enemyBehavior === "navy" ? -20 : -10;
-      const piratesBoost = enemyBehavior === "navy" ? 12 : 6;
-      w = {
-        ...w,
-        player: {
-          ...w.player,
-          reputation: changeReputation(changeReputation(
-            w.player.reputation, enemyFaction, repPenalty), "pirates", piratesBoost),
-        },
-      };
-    }
+    w = settleHostileAct(w, enemyFaction, enemyBehavior).world;
 
     // A named ship that comes out of this afloat remembers it (v0.34.0). She
     // answers it in harbour — later sailing, another consort, and after a
