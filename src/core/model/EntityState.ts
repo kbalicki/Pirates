@@ -66,6 +66,15 @@ export type AiData = {
    */
   namedShipId?: string;
   /**
+   * `NamedShip.id` this hull is escorting (v0.33.0).
+   *
+   * The escorts are anonymous — a crown replaces one without writing a name
+   * down — so only the count persists, in her record. This is the thread that
+   * lets the count be recomputed from what is still afloat, and lets the whole
+   * convoy leave the chart with her.
+   */
+  namedEscortOf?: string;
+  /**
    * The shipping lane this trader is sailing, and how far along it she is
    * (v0.22.0).
    *

@@ -53,6 +53,8 @@ import {
   namedShipById,
   namedShipPos,
   namedShipFateFlag,
+  reportNamedShip,
+  escortCount,
 } from "./NamedShipSystem.ts";
 
 /** Quest ids for an informer's commission all start with this. */
@@ -631,6 +633,9 @@ const HUNT_DAYS = 40;
 const HUNT_BASE_FEE = 400;
 const HUNT_TONNAGE_FEE = 3.2;
 
+/** ...and half again for every hull sailing in company with her. */
+const HUNT_ESCORT_FEE = 0.5;
+
 /** What her crown makes of it, and what the brethren do. A name is not a lane. */
 export const HUNT_REPUTATION = -18;
 export const HUNT_NOTORIETY = 10;
@@ -643,6 +648,8 @@ export type HuntCommission = {
   /** Her register — the crown that will remember this. */
   crown: string;
   classId: string;
+  /** Hulls in company with her when the offer was made — what he is buying into. */
+  escorts: number;
   /** The two ends of her run, localised, so the quest log reads without lookup. */
   fromName: string;
   toName: string;
@@ -691,6 +698,10 @@ export function huntOffer(world: WorldState, portKey: string): HuntCommission | 
     if (Math.hypot(pos.x - here.x, pos.y - here.y) > HUNT_REACH) continue;
 
     const tonnage = SHIP_CLASSES[ship.classId]?.tonnage ?? 200;
+    // A convoy is what the house is really paying to get past (v0.33.0): the
+    // galleon carries two escorts and cannot be taken by a sloop, and that is
+    // most of the difference between an afternoon's work and a real decision.
+    const convoy = 1 + HUNT_ESCORT_FEE * escortCount(ship);
     const commission: HuntCommission = {
       id: huntQuestId(ship.id),
       shipId: ship.id,
@@ -699,7 +710,8 @@ export function huntOffer(world: WorldState, portKey: string): HuntCommission | 
       classId: ship.classId,
       fromName: CITIES[ship.from]?.name ?? ship.from,
       toName: CITIES[ship.to]?.name ?? ship.to,
-      reward: Math.round(HUNT_BASE_FEE + HUNT_TONNAGE_FEE * tonnage),
+      reward: Math.round((HUNT_BASE_FEE + HUNT_TONNAGE_FEE * tonnage) * convoy),
+      escorts: escortCount(ship),
       acceptedDay: world.time.day,
       days: HUNT_DAYS,
     };
@@ -775,5 +787,9 @@ export function acceptHunt(world: WorldState, commission: HuntCommission): HuntR
   }
   const ship = namedShipById(world, commission.shipId);
   if (!ship || ship.fate) return { world, error: "informer.already_gone" };
-  return { world: startQuest(world, huntQuest(commission), { commission }) };
+  // The informer knows her schedule; that is what he is selling. Signing puts
+  // today's reckoning on the captain's chart, and from there it is his own
+  // arithmetic (v0.33.0).
+  const told = reportNamedShip(world, commission.shipId);
+  return { world: startQuest(told, huntQuest(commission), { commission }) };
 }

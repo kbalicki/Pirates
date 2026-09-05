@@ -95,6 +95,7 @@ import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
 import { tavernRumor } from "../../core/systems/RumorSystem.ts";
 import { reroutedOnto, townHunger, townIsHungry } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import { reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import {
   raidOffer, acceptRaid, activeRaids, raidProgress, raidVictim,
   reliefOffer, acceptRelief, activeRelief, canLandRelief, landRelief,
@@ -1084,6 +1085,14 @@ export class PortScene extends Phaser.Scene {
 
   private handleRumors(): void {
     const rumor = tavernRumor(this.worldState, this.currentPortId as string);
+    // Hearing where a named hull was is the one rumour worth writing down, and
+    // this is the moment he hears it (v0.33.0). Same shape as the event news
+    // below: the tavern is where the chart gets filled in.
+    const heardOf = rumor.vars?.shipId;
+    if (typeof heardOf === "string") {
+      this.worldState = reportNamedShip(this.worldState, heardOf);
+      this.registry.set("worldState", this.worldState);
+    }
     this.contentContainer.removeAll(true);
     this.clearKeyboard();
 

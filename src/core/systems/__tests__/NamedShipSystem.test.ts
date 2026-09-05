@@ -16,6 +16,13 @@ import {
   hullOf,
   settleNamedShip,
   namedShipFateFlag,
+  escortCount,
+  escortsOf,
+  reportNamedShip,
+  namedReports,
+  livingReports,
+  reckonedPos,
+  REPORT_LIFE_DAYS,
   NAMED_SHIP_COUNT,
   PASSAGE_SPEED,
   type NamedShip,
@@ -32,6 +39,8 @@ import {
 import { buildQuestRegistry } from "../QuestRegistry.ts";
 import { advanceQuests } from "../QuestSystem.ts";
 import { CITIES } from "../../data/cities.ts";
+import { rumorsAt } from "../RumorSystem.ts";
+import { SHIP_CLASSES } from "../../data/ships.ts";
 import { SHIP_NAMES } from "../../data/shipNames.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
@@ -176,6 +185,7 @@ describe("the schedule", () => {
     passageDays: 10,
     hullHp: 60,
     sailsHp: 50,
+    escorts: 0,
     ...over,
   });
 
@@ -375,13 +385,34 @@ describe("the hunt commission", () => {
     expect(offers.length).toBeGreaterThan(0);
   });
 
-  it("prices her by her tonnage", () => {
+  it("prices her by her tonnage and by what sails with her", () => {
     const w = seeded();
     const offers = Object.keys(CITIES).map(k => huntOffer(w, k)).filter(Boolean);
+    expect(offers.length).toBeGreaterThan(0);
     for (const offer of offers) {
       expect(offer!.reward).toBeGreaterThan(400);
-      expect(offer!.reward).toBeLessThan(4000);
+      const ship = namedShipById(w, offer!.shipId)!;
+      const tonnage = SHIP_CLASSES[ship.classId]!.tonnage;
+      // The convoy is what the house is really paying to get past: the same
+      // tonnage with two escorts is worth twice the same tonnage alone.
+      const alone = 400 + 3.2 * tonnage;
+      expect(offer!.reward).toBeCloseTo(alone * (1 + 0.5 * escortCount(ship)), 0);
+      expect(offer!.escorts).toBe(escortCount(ship));
     }
+  });
+
+  it("pays more for a ship in company than for the same ship alone", () => {
+    const w = seeded();
+    const key = Object.keys(CITIES).find(k => huntOffer(w, k) !== null)!;
+    const offer = huntOffer(w, key)!;
+    // Only her in the world, or `huntOffer` picks whichever ship pays best and
+    // stripping one changes which ship that is.
+    const her = namedShips(w).filter(s => s.id === offer.shipId);
+    const withConvoy = huntOffer({ ...w, namedShips: her }, key)!;
+    const alone = huntOffer({ ...w, namedShips: her.map(s => ({ ...s, escorts: 0 })) }, key)!;
+    expect(alone.escorts).toBe(0);
+    if (withConvoy.escorts > 0) expect(withConvoy.reward).toBeGreaterThan(alone.reward);
+    else expect(withConvoy.reward).toBe(alone.reward);
   });
 
   it("takes the job and stops offering another", () => {
@@ -522,5 +553,139 @@ describe("sinking her actually pays", () => {
       ).world.player.gold;
     }
     expect(run("sunk")).toBe(run("taken"));
+  });
+});
+
+// ===========================================================================
+// What he has been told, and what sails with her (v0.33.0)
+// ===========================================================================
+
+describe("sightings", () => {
+  /**
+   * A report is a *memory of a moment*, not her position, and the whole
+   * interest of a hunt is the arithmetic between the moment and today. If the
+   * chart ever drew her live, an interception would become following an arrow.
+   */
+  it("writes down the phase she was at on the day he was told", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const after = reportNamedShip(w, ship.id);
+    const report = namedReports(after)[ship.id];
+    expect(report.day).toBe(w.time.day);
+    expect(report.progress).toBeCloseTo(phaseAt(ship, w.time.day), 5);
+  });
+
+  it("agrees with her exactly while nothing has interfered with her", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const told = reportNamedShip(w, ship.id);
+    for (const later of [0, 3, 9]) {
+      const day = { ...told, time: { ...told.time, day: told.time.day + later } };
+      const reckoned = reckonedPos(day, ship, namedReports(told)[ship.id])!;
+      const truth = namedShipPos(day, ship)!;
+      expect(reckoned.x, `day +${later}`).toBeCloseTo(truth.x, 3);
+      expect(reckoned.y, `day +${later}`).toBeCloseTo(truth.y, 3);
+    }
+  });
+
+  it("goes stale, because at three weeks she could be anywhere on the circuit", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const told = reportNamedShip(w, ship.id);
+    const fresh = { ...told, time: { ...told.time, day: told.time.day + REPORT_LIFE_DAYS } };
+    const stale = { ...told, time: { ...told.time, day: told.time.day + REPORT_LIFE_DAYS + 1 } };
+    expect(livingReports(fresh).map(r => r.ship.id)).toContain(ship.id);
+    expect(livingReports(stale).map(r => r.ship.id)).not.toContain(ship.id);
+  });
+
+  it("is dropped when she is, so no mark stands over a ship on the bottom", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const told = reportNamedShip(w, ship.id);
+    const afloat = materializeNamed(told, ship, namedShipPos(told, ship)!);
+    const [, entity] = hullOf(afloat, ship.id)!;
+    const sunk = settleNamedShip(afloat, entity, "sunk");
+    expect(namedReports(sunk)[ship.id]).toBeUndefined();
+    expect(livingReports(sunk)).toEqual([]);
+  });
+
+  it("says nothing about a ship nobody has mentioned", () => {
+    expect(livingReports(seeded())).toEqual([]);
+  });
+
+  it("comes with the commission, because the informer is selling her schedule", () => {
+    const w = seeded();
+    const key = Object.keys(CITIES).find(k => huntOffer(w, k) !== null)!;
+    const offer = huntOffer(w, key)!;
+    const signed = acceptHunt(w, offer).world;
+    expect(namedReports(signed)[offer.shipId]).toBeDefined();
+  });
+
+  it("carries her id in the rumour, so reading it can write it down", () => {
+    const w = seeded();
+    // A day on which some tavern has her departure to report.
+    let found: { key: string; vars: Record<string, string | number> } | null = null;
+    outer: for (let d = 0; d < 40 && !found; d++) {
+      const day = { ...w, time: { ...w.time, day: w.time.day + d } };
+      for (const key of Object.keys(CITIES)) {
+        const said = rumorsAt(day, key).find(r => r.key === "tavern.rumor_named");
+        if (said?.vars) { found = { key, vars: said.vars }; break outer; }
+      }
+    }
+    expect(found, "no tavern reported a named ship inside forty days").not.toBeNull();
+    expect(typeof found!.vars.shipId).toBe("string");
+    expect(namedShipById(w, found!.vars.shipId as string)).toBeDefined();
+  });
+});
+
+describe("the convoy", () => {
+  it("gives the richest hulls company and the cheapest none", () => {
+    const w = seeded();
+    for (const ship of namedShips(w)) {
+      if (ship.classId === "fluyt") expect(escortCount(ship)).toBe(0);
+      if (ship.classId === "galleon") expect(escortCount(ship)).toBe(2);
+      if (ship.classId === "merchantman") expect(escortCount(ship)).toBe(1);
+    }
+  });
+
+  it("reads a v0.32.0 save with no convoys as sailing alone", () => {
+    const ship = { ...namedShips(seeded())[0] };
+    delete (ship as { escorts?: number }).escorts;
+    expect(escortCount(ship)).toBe(0);
+  });
+
+  it("puts her escorts on the water with her, under her crown", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s => escortCount(s) > 0);
+    expect(ship, "no seeded ship carries a convoy").toBeDefined();
+    const afloat = materializeNamed(w, ship!, namedShipPos(w, ship!)!);
+    const escorts = escortsOf(afloat, ship!.id);
+    expect(escorts).toHaveLength(escortCount(ship!));
+    for (const [, e] of escorts) {
+      expect(e.ship?.factionId as unknown as string).toBe(ship!.crown);
+      // A warship on convoy duty, not a trader: it closes on whoever closes.
+      expect(e.ai?.behavior).toBe("navy");
+    }
+  });
+
+  it("counts what is left rather than subtracting what was lost", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s => escortCount(s) > 1)!;
+    const afloat = materializeNamed(w, ship, namedShipPos(w, ship)!);
+    // Sink one of them, the way a battle does: the entity simply stops existing.
+    const [firstId] = escortsOf(afloat, ship.id)[0];
+    const entities = { ...afloat.entities };
+    delete entities[firstId];
+    const after = writeBackNamed({ ...afloat, entities }, ship);
+    expect(escortCount(namedShipById(after, ship.id)!)).toBe(escortCount(ship) - 1);
+  });
+
+  it("takes the whole convoy off the chart with her", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s => escortCount(s) > 0)!;
+    const afloat = materializeNamed(w, ship, namedShipPos(w, ship)!);
+    const gone = dematerializeNamed(afloat, ship.id);
+    expect(hullOf(gone, ship.id)).toBeUndefined();
+    expect(escortsOf(gone, ship.id)).toEqual([]);
   });
 });

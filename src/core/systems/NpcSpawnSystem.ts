@@ -259,7 +259,7 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     // Same rule for a named merchantman (v0.32.0): `NamedShipSystem` owns her
     // and writes her damage and her place on the passage back into her record
     // before she leaves the chart. Deleted here she would heal and teleport.
-    if (e.ai.namedShipId) continue;
+    if (e.ai.namedShipId || e.ai.namedEscortOf) continue;
     const dx = e.pos.x - playerPos.x;
     const dy = e.pos.y - playerPos.y;
     if (Math.sqrt(dx * dx + dy * dy) > DESPAWN_DISTANCE) {
@@ -282,7 +282,7 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     // turns round there rather than vanishing, and the schedule in her record
     // already says so. Docking her would delete the ship the captain is hunting
     // the moment she reached the end of a leg.
-    if (e.ai.namedShipId) continue;
+    if (e.ai.namedShipId || e.ai.namedEscortOf) continue;
     const targetPortKey = e.ai.targetPortId as string;
     if (!targetPortKey) continue;
     const targetPort = PORTS[targetPortKey];

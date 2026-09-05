@@ -825,6 +825,7 @@ export const EN: LocaleData = {
   "quest.hunt_paid": "The {{ship}} will not sail again. The house pays {{gold}} Gold.",
   "quest.hunt_cold": "The {{ship}} is still sailing, and the house has stopped waiting.",
   "named.encounter": "the {{ship}}",
+  "named.reckoned": "{{ship}} · {{days}} d",
   "tavern.rumor_named": "The {{ship}} cleared {{port}} not three days since, standing for {{to}}.",
 
   "expedition.course_label": "{{soldiers}} men · {{days}}d",

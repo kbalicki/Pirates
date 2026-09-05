@@ -375,3 +375,19 @@ type NamedShip = {
 
 `ai.namedShipId` to nitka od kadłuba na wodzie do rekordu — po niej idzie zapis
 zwrotny uszkodzeń i rozpoznanie, że to właśnie ona poszła na dno.
+
+## `WorldState.namedShipReports?`, `NamedShip.escorts?`, `ai.namedEscortOf?` (v0.33.0)
+
+Trzy pola opcjonalne, wszystkie czytane przez `?? domyślna`, **bez migracji**.
+
+```ts
+// co kapitanowi powiedziano — wspomnienie momentu, nie pozycja
+namedShipReports?: Record<string, { day: number; progress: number }>;
+
+// ile kadłubów płynie z nią; brak = samotna (zapis z v0.32.0)
+escorts?: number;
+
+// nitka od eskorty do niej: pozwala przeliczyć liczbę z tego, co pływa,
+// i zabrać cały konwój z mapy razem z nią
+ai.namedEscortOf?: string;
+```

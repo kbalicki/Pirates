@@ -13,7 +13,7 @@ import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
-import { seedNamedShips, livingNamedShips, namedShipPos } from "../../core/systems/NamedShipSystem.ts";
+import { seedNamedShips, livingNamedShips, namedShipPos, escortCount } from "../../core/systems/NamedShipSystem.ts";
 
 /** Crown ids are lower case in the data and title case on a noticeboard. */
 function capitalise(word: string): string {
@@ -818,7 +818,10 @@ export class PreloadScene extends Phaser.Scene {
     // tavern within the informer's reach by walking her phase, not by moving
     // her — moving her would be a position the schedule then contradicts.
     const localCrown = def.factionId as unknown as string;
-    const quarry = livingNamedShips(world).find(s => s.crown !== localCrown);
+    const foreign = livingNamedShips(world).filter(s => s.crown !== localCrown);
+    // Prefer one sailing in company: the convoy is the half of this worth
+    // looking at, and a lone fluyt shows nothing a screenshot has not seen.
+    const quarry = foreign.find(s => escortCount(s) > 0) ?? foreign[0];
     if (!quarry) return world;
 
     if (meet) {

@@ -229,6 +229,9 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
         ship: ship.name,
         port: CITIES[from]?.name ?? from,
         to: CITIES[to]?.name ?? to,
+        // Carried so the tavern screen can write the sighting onto the chart
+        // when the captain actually reads it (v0.33.0). Unused by the string.
+        shipId: ship.id,
       },
     });
     break;

@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.32.0.0
+**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.33.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.32)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.33)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -73,6 +73,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.30.0.0 | **Mapa mówi, co się dzieje** — miasto, o którym kapitan słyszał, nosi znak zdarzenia, zamknięta przystań przerywany pierścień. **Pokój wreszcie następuje**: każda wojna historyczna wygasała przed własną datą końca, więc traktatu nie podpisano ani razu | ✅ |
 | 0.31.0.0 | **Wojny, w które gracz się rodzi** — trzy z sześciu er otwierają się w środku wojny i żadna o tym nie wiedziała; przy okazji `warBite`: wojna bije w handel na wybuchu, a nie przez osiemdziesiąt lat | ✅ |
 | 0.32.0.0 | **Statek z nazwiskiem** — sześć kupców z rozkładem, które jutro są tym samym statkiem; trzeci typ zlecenia informatora (pościg za konkretnym kadłubem), czekający na liście od v0.25.0 | ✅ |
+| 0.33.0.0 | **Pościg jako zadanie z mapy i jako bitwa** — jej ostatni znany kurs na chartcie (rachuba, nie pozycja: znacznik, który by za nią podążał, zamieniłby przechwycenie w podążanie za strzałką) oraz konwój przy najbogatszych kadłubach | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 

@@ -825,6 +825,7 @@ export const PL: LocaleData = {
   "quest.hunt_paid": "{{ship}} już nie wypłynie. Kantor płaci {{gold}} złota.",
   "quest.hunt_cold": "{{ship}} dalej pływa, a kantor przestał czekać.",
   "named.encounter": "{{ship}}",
+  "named.reckoned": "{{ship}} · {{days}} dni",
   "tavern.rumor_named": "{{ship}} wyszła z {{port}} nie dalej jak trzy dni temu, kursem na {{to}}.",
 
   "expedition.course_label": "{{soldiers}} ludzi · {{days}} dni",

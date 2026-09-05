@@ -10,7 +10,7 @@ import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
-import { namedShipById } from "../../core/systems/NamedShipSystem.ts";
+import { namedShipById, reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
 import { ITEMS } from "../../core/data/items.ts";
@@ -39,6 +39,14 @@ export class ShipEncounterScene extends Phaser.Scene {
     this.worldState = data.worldState;
     this.npcEntity = data.worldState.entities[data.npcEntityId];
     this.showingNews = false;
+    // Seeing her *is* the best report there is (v0.33.0). Written here rather
+    // than on any of the three ways out of this screen, because it is true the
+    // moment the hail goes up — sailing away does not unsee her.
+    const seen = this.npcEntity?.ai?.namedShipId;
+    if (seen) {
+      this.worldState = reportNamedShip(this.worldState, seen);
+      this.registry.set("worldState", this.worldState);
+    }
   }
 
   create(): void {

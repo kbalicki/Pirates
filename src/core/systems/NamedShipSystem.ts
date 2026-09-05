@@ -64,6 +64,27 @@ export const NAMED_SHIP_COUNT = 6;
 const NAMED_CLASSES = ["fluyt", "merchantman", "galleon"];
 
 /**
+ * How many hulls sail in company with her, by what she is worth (v0.33.0).
+ *
+ * v0.32.0 made the hunt a navigation problem — work out which end of the
+ * passage to sit on — and stopped there, so catching her was the whole of it
+ * and a lone merchantman was no fight at all. A convoy on the richest of them
+ * is the other half of the problem: the galleon is worth the most gold and
+ * cannot be taken by a sloop, and the fluyt is worth least and can.
+ *
+ * Two is deliberately the ceiling. Three escorts is not a harder decision than
+ * two, it is simply a battle the player declines.
+ */
+const ESCORTS_BY_CLASS: Record<string, number> = {
+  fluyt: 0,
+  merchantman: 1,
+  galleon: 2,
+};
+
+/** Classes a crown puts on convoy duty. */
+const ESCORT_CLASSES = ["brigantine", "frigate"];
+
+/**
  * World units a named merchantman makes in a day.
  *
  * Not her class's top speed: a working trader loses days to harbours, weather
@@ -102,9 +123,27 @@ export type NamedShip = {
   /** Damage she carries between meetings, so a mauled ship stays mauled. */
   hullHp: number;
   sailsHp: number;
+  /**
+   * Hulls sailing in company with her (v0.33.0), and the ledger of them.
+   *
+   * Recomputed from what is afloat on write-back and never decremented
+   * anywhere else — the same rule `ExpeditionFleetSystem.syncLedger` runs on,
+   * and for the same reason: a squadron the player has half destroyed has to be
+   * counted by what is left rather than by what somebody remembered to subtract.
+   *
+   * Optional and read through `escortCount()`: a save written by v0.32.0 has
+   * named ships and no convoys, and reads as sailing alone rather than needing
+   * a migration step.
+   */
+  escorts?: number;
   /** Set once and never cleared; a ship on the bottom stays on the bottom. */
   fate?: NamedShipFate;
 };
+
+/** Hulls in company with her, defaulting a v0.32.0 save to sailing alone. */
+export function escortCount(ship: NamedShip): number {
+  return Math.max(0, ship.escorts ?? 0);
+}
 
 /** Every named hull the world knows about, afloat or not. */
 export function namedShips(world: WorldState): NamedShip[] {
@@ -214,6 +253,7 @@ export function seedNamedShips(world: WorldState, rng: RngState): { world: World
       passageDays: Math.max(2, Math.round(lane.length / PASSAGE_SPEED)),
       hullHp: cls.hullMax,
       sailsHp: cls.sailsMax,
+      escorts: ESCORTS_BY_CLASS[classId] ?? 0,
     });
   }
 
@@ -243,7 +283,26 @@ function headingTowards(from: Vec2, to: Vec2): number {
   return Math.atan2(to.x - from.x, -(to.y - from.y));
 }
 
-/** Put her on the water at `pos`, carrying whatever damage she already had. */
+/** Hulls sailing in company with her, if any are afloat. */
+export function escortsOf(world: WorldState, shipId: string): [string, EntityState][] {
+  const out: [string, EntityState][] = [];
+  for (const [id, e] of Object.entries(world.entities)) {
+    if (e.ai?.namedEscortOf === shipId) out.push([id, e]);
+  }
+  return out;
+}
+
+/** Screen-space spacing of a convoy, in world units. */
+const ESCORT_SPACING = 46;
+
+/**
+ * Put her on the water at `pos`, carrying whatever damage she already had, with
+ * however much of her convoy is still with her.
+ *
+ * The escorts are anonymous on purpose: they are a squadron, not characters,
+ * and a crown replaces a lost escort without anybody writing a name down. What
+ * persists is *how many*, in her record.
+ */
 export function materializeNamed(world: WorldState, ship: NamedShip, pos: Vec2): WorldState {
   const cls = SHIP_CLASSES[ship.classId];
   const lane = laneOf(ship);
@@ -253,10 +312,55 @@ export function materializeNamed(world: WorldState, ship: NamedShip, pos: Vec2):
   const heading = target ? headingTowards(pos, target.pos) : 0;
   const id = entityId(`named_${ship.id}`);
 
+  // Abeam of her course, so the convoy spreads across it rather than along it.
+  const sideX = Math.cos(heading);
+  const sideY = Math.sin(heading);
+  const escorts: Record<string, EntityState> = {};
+  for (let i = 0; i < escortCount(ship); i++) {
+    const escortClass = SHIP_CLASSES[ESCORT_CLASSES[i % ESCORT_CLASSES.length]];
+    if (!escortClass) continue;
+    const offset = (i === 0 ? 1 : -1) * ESCORT_SPACING;
+    const at = nearestWater({ x: pos.x + sideX * offset, y: pos.y + sideY * offset });
+    if (!at) continue;
+    const eid = entityId(`namedesc_${ship.id}_${i}`);
+    escorts[eid as string] = {
+      id: eid,
+      kind: "ship",
+      mode: "sailing",
+      pos: at,
+      vel: { x: 0, y: 0 },
+      heading,
+      sailLevel: 0.75,
+      depthOffset: 0,
+      ship: {
+        classId: escortClass.id,
+        factionId: makeFactionId(ship.crown),
+        hullHp: escortClass.hullMax,
+        hullMax: escortClass.hullMax,
+        sailsHp: escortClass.sailsMax,
+        sailsMax: escortClass.sailsMax,
+        cannons: escortClass.cannons,
+        cargo: {},
+        cargoCap: escortClass.cargoCap,
+        crew: { current: Math.round(escortClass.crewMax * 0.85), max: escortClass.crewMax, morale: 0.8 },
+      },
+      ai: {
+        // A warship on convoy duty closes on anybody who closes on her charge.
+        behavior: "navy",
+        state: "travel",
+        targetPortId: makePortId(boundFor(ship, world.time.day)),
+        aggression: 0.8,
+        awarenessRadius: 280,
+        namedEscortOf: ship.id,
+      },
+    };
+  }
+
   return {
     ...world,
     entities: {
       ...world.entities,
+      ...escorts,
       [id as string]: {
         id,
         kind: "ship",
@@ -354,17 +458,93 @@ export function writeBackNamed(world: WorldState, ship: NamedShip): WorldState {
       progressDay: world.time.day,
       hullHp: entity.ship?.hullHp ?? s.hullHp,
       sailsHp: entity.ship?.sailsHp ?? s.sailsHp,
+      // Counted from what is afloat, never decremented — an escort the player
+      // sank an hour ago is simply not here to be counted.
+      escorts: escortsOf(world, ship.id).length,
     }),
   };
 }
 
-/** Take her off the chart. Call `writeBackNamed` first, always. */
+/** Take her and her convoy off the chart. Call `writeBackNamed` first, always. */
 export function dematerializeNamed(world: WorldState, shipId: string): WorldState {
   const found = hullOf(world, shipId);
-  if (!found) return world;
+  const escorts = escortsOf(world, shipId);
+  if (!found && escorts.length === 0) return world;
   const entities = { ...world.entities };
-  delete entities[found[0]];
+  if (found) delete entities[found[0]];
+  for (const [id] of escorts) delete entities[id];
   return { ...world, entities };
+}
+
+// ── What he has been told ────────────────────────────────
+
+/**
+ * How long a sighting is worth pencilling on a chart (v0.33.0).
+ *
+ * Three weeks. Her circuit is a fortnight on a middling lane, so a report older
+ * than this has her somewhere on the whole run with equal probability and the
+ * mark would be decoration rather than information.
+ */
+export const REPORT_LIFE_DAYS = 21;
+
+export type NamedShipReport = { day: number; progress: number };
+
+export function namedReports(world: WorldState): Record<string, NamedShipReport> {
+  return world.namedShipReports ?? {};
+}
+
+/**
+ * Write down where she was today, because somebody has just said so.
+ *
+ * A *report*, not a position: what goes on the chart is the phase she was at on
+ * the day he heard it, and today's mark is that phase walked forward by the
+ * days since. He is doing the reckoning the informer would have done, with the
+ * same information and the same chance of being wrong — she may have been taken
+ * by somebody else, or held up, or he may simply have mis-added.
+ *
+ * This is why the chart does not draw her live. A marker that moved with her
+ * would turn an interception into following an arrow, and the whole content of
+ * the commission is the guess about which end of the passage to sit on.
+ */
+export function reportNamedShip(world: WorldState, shipId: string): WorldState {
+  const ship = namedShipById(world, shipId);
+  if (!ship || ship.fate) return world;
+  return {
+    ...world,
+    namedShipReports: {
+      ...namedReports(world),
+      [shipId]: { day: world.time.day, progress: phaseAt(ship, world.time.day) },
+    },
+  };
+}
+
+/** The reports still worth anything, newest first. */
+export function livingReports(world: WorldState): { ship: NamedShip; report: NamedShipReport }[] {
+  const out: { ship: NamedShip; report: NamedShipReport }[] = [];
+  for (const [id, report] of Object.entries(namedReports(world))) {
+    if (world.time.day - report.day > REPORT_LIFE_DAYS) continue;
+    const ship = namedShipById(world, id);
+    if (!ship || ship.fate) continue;
+    out.push({ ship, report });
+  }
+  out.sort((a, b) => b.report.day - a.report.day);
+  return out;
+}
+
+/**
+ * Where his reckoning puts her today, from a report — not where she is.
+ *
+ * The two agree exactly while nothing has interfered with her, and that is the
+ * point: the chart is only ever as good as the last thing he was told, and
+ * every hour he spends elsewhere is an hour it could have gone wrong.
+ */
+export function reckonedPos(world: WorldState, ship: NamedShip, report: NamedShipReport): Vec2 | undefined {
+  const lane = laneOf(ship);
+  if (!lane || lane.path.length === 0) return undefined;
+  const elapsed = (world.time.day - report.day) / Math.max(0.5, ship.passageDays);
+  const raw = (report.progress + elapsed) % 2;
+  const phase = raw < 0 ? raw + 2 : raw;
+  return pointAlong(lane.path, phase < 1 ? phase : 2 - phase);
 }
 
 // ── The end of her ───────────────────────────────────────
@@ -392,9 +572,15 @@ export function settleNamedShip(
   const ship = namedShipById(world, shipId);
   if (!ship || ship.fate) return world;
 
+  // Her report goes with her: a mark on the chart for a ship on the bottom is
+  // the one kind of stale information the captain cannot correct by waiting.
+  const reports = { ...namedReports(world) };
+  delete reports[shipId];
+
   return {
     ...world,
     namedShips: namedShips(world).map(s => s.id === shipId ? { ...s, fate } : s),
+    namedShipReports: reports,
     worldFlags: { ...world.worldFlags, [namedShipFateFlag(shipId)]: true },
   };
 }
@@ -417,6 +603,9 @@ export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
   if (seeded.rng !== world.rng) w = { ...w, rng: seeded.rng };
 
   for (const ship of namedShips(w)) {
+    // Her own hull decides whether she is on the chart; the convoy follows it.
+    // A ship whose escorts are afloat but whose own hull is not has been sunk,
+    // and `settleNamedShip` has already said so.
     const afloat = hullOf(w, ship.id) !== undefined;
 
     // A ship that has been sunk or taken is a record, not a hull. She is left

@@ -6,6 +6,35 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.33.0.0",
+    date: "2026-09-05",
+    changes: [
+      "THE HUNT IS A CHART PROBLEM AND A FIGHT",
+      "  WHERE YOU WERE TOLD SHE WOULD BE. A named merchantman you have heard",
+      "  of now has her run drawn on the chart, and one mark where your own",
+      "  reckoning puts her — the phase she was at when somebody told you,",
+      "  walked forward by the days since",
+      "  It is not her position and it never will be. A marker that followed",
+      "  her would turn an interception into following an arrow, and the whole",
+      "  content of the commission is the guess about which end of the passage",
+      "  to sit on. The mark is right until something interferes with her",
+      "  Three ways to get a report, and they are the three a captain would:",
+      "  signing the commission (the informer knows her book), a tavern within",
+      "  earshot saying she has just cleared a harbour, and seeing her yourself",
+      "  The mark fades and is gone after three weeks. Her circuit is a",
+      "  fortnight, so an older report puts her anywhere on the run with equal",
+      "  probability and a confident arrow would be the chart lying to you",
+      "  SHE IS NOT ALONE ANY MORE. The richest of them sail in company: a",
+      "  galleon with two escorts, a merchantman with one, a fluyt with none.",
+      "  Warships on convoy duty, and they close on whoever closes on her",
+      "  The commission pays half again for every hull with her, because that",
+      "  is what the house is really paying to get past",
+      "  Sink an escort and break off and it stays sunk — the convoy is counted",
+      "  from what is still afloat, never from what somebody subtracted",
+      "  A save from v0.32.0 reads her as sailing alone, and grows no convoy",
+    ],
+  },
+  {
     version: "0.32.0.0",
     date: "2026-09-05",
     changes: [

@@ -2971,3 +2971,80 @@ Trzy kanały, i każdy jest potrzebny:
 nazwany statek, więc materializuje się pod dziobem. Nazwane kadłuby są w tym
 świecie zasiewane ręcznie, bo w normalnej grze robi to pierwszy dzienny tick, a
 świat debugowy oglądany od razu nigdy do niego nie dochodzi.
+
+---
+
+# v0.33.0 — pościg jako zadanie z mapy i jako bitwa
+
+v0.32.0 dała sześciu kupcom nazwę i rozkład i zostawiła kapitana z problemem
+rozwiązywanym na kartce: informator mówi, że chodzi z Florida Keys do Vera Cruz i
+wyszła sześć dni temu, robi przeprawę w dziewięć, więc gdzie ma być jutro. To jest
+**dobry** problem — jest całą treścią zlecenia — ale był stawiany w tawernie i
+noszony w głowie, bo mapa nie miała go na czym zawiesić. I był jedynym problemem:
+samotny kupiec to nie jest walka.
+
+## Raporty — co mu powiedziano, nie gdzie ona jest
+
+`world.namedShipReports?` — mapa `NamedShip.id → { day, progress }`. Opcjonalna,
+czytana przez `namedReports()`, bez migracji.
+
+`reportNamedShip(world, shipId)` zapisuje **fazę, w której była w dniu, w którym
+usłyszał**. `reckonedPos(world, ship, report)` przesuwa tę fazę o dni, które minęły,
+po jej znanym rozkładzie.
+
+**To nie jest jej pozycja i nigdy nią nie będzie.** Znacznik podążający za nią
+zamieniłby przechwycenie w podążanie za strzałką, a całą treścią zlecenia jest
+zgadnięcie, na którym końcu przeprawy usiąść. To, co jest rysowane, to
+**wspomnienie przesunięte w przód**: prawdziwe, dopóki nic jej nie przeszkodziło,
+i mylne dokładnie wtedy, gdy coś przeszkodziło — a możliwość pomyłki jest tym, co
+czyni trafienie coś wartym.
+
+Trzy źródła raportu, i są to trzy źródła, jakie miałby prawdziwy kapitan:
+
+| Źródło | Gdzie |
+|---|---|
+| podpisanie zlecenia (informator zna jej książkę) | `acceptHunt` |
+| tawerna w zasięgu mówiąca, że właśnie wyszła z portu | `PortScene.handleRumors`, po `rumor.vars.shipId` |
+| zobaczenie jej | `ShipEncounterScene.init` |
+
+Ostatnie jest zapisywane w `init`, a nie na którymś z trzech wyjść z ekranu:
+odpłynięcie nie sprawia, że jej nie widział.
+
+`REPORT_LIFE_DAYS = 21` — jej pełny obieg to dwa tygodnie na średnim szlaku, więc
+raport starszy niż trzy tygodnie stawia ją gdziekolwiek na trasie z równym
+prawdopodobieństwem. Rdzeń go wtedy porzuca, a znacznik blaknie przez cały ten czas
+(`fade = max(0.15, 1 − wiek / 21)`). **Raport ginie razem z nią**: znak na mapie nad
+statkiem, który jest na dnie, to jedyny rodzaj nieaktualnej informacji, którego
+kapitan nie poprawi czekaniem.
+
+## Konwój
+
+`NamedShip.escorts?` — liczba kadłubów płynących w jej towarzystwie, **opcjonalna**
+(zapis z v0.32.0 czyta się jako samotny) i przeliczana z tego, co pływa:
+
+```
+ESCORTS_BY_CLASS = { fluyt: 0, merchantman: 1, galleon: 2 }
+ESCORT_CLASSES   = ["brigantine", "frigate"]
+```
+
+Dwa to sufit celowo: trzy eskorty to nie jest trudniejsza decyzja niż dwie, to jest
+bitwa, której gracz po prostu nie podejmuje. Galeon jest wart najwięcej złota i nie
+da się go wziąć slupem; fluyt jest wart najmniej i da się.
+
+Eskorty są **anonimowe** — korona zastępuje utraconą, nie zapisując niczyjego
+nazwiska. Trwała jest tylko **liczba**, a `writeBackNamed` liczy ją z tego, co
+zostało na wodzie (`escortsOf().length`), nigdy przez odejmowanie. To ta sama reguła
+co `ExpeditionFleetSystem.syncLedger` i z tego samego powodu: eskadrę w połowie
+rozbitą liczy się po tym, co pływa, a nie po tym, co ktoś pamiętał odjąć.
+
+`dematerializeNamed` zabiera cały konwój razem z nią, a `NpcSpawnSystem` pomija
+`ai.namedEscortOf` w obu pętlach, tak jak pomija `ai.namedShipId`.
+
+Zlecenie płaci `× (1 + 0,5 × eskorty)`, bo to konwój jest tym, za ominięcie czego
+kantor naprawdę płaci.
+
+### Parametr debugowania
+
+`?hunt=<port>&meet=1` wybiera teraz **statek z eskortą**, jeśli taki jest w zasięgu:
+konwój jest tą połową, na którą warto popatrzeć, a samotny fluyt nie pokazuje
+niczego, czego zrzut ekranu już nie widział.

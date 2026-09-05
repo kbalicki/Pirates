@@ -33,6 +33,12 @@ import {
   type EventMarkerResult,
 } from "../render/MapEventMarkerRenderer.ts";
 import {
+  drawNamedCourses,
+  namedCoursesStale,
+  clearNamedCourses,
+  type NamedCourseResult,
+} from "../render/NamedShipCourseRenderer.ts";
+import {
   harbourInReach,
   blockadeDays,
   blockadeEffective,
@@ -134,6 +140,7 @@ export class MainMapScene extends Phaser.Scene {
   private expeditionCourses: ExpeditionCourseResult | null = null;
   private tradeLanes: TradeLaneResult | null = null;
   private eventMarkers: EventMarkerResult | null = null;
+  private namedCourses: NamedCourseResult | null = null;
   /** Pin the events he has heard of on the chart? Toggled with N. */
   private marksVisible = localStorage.getItem("pc_marks") !== "0";
   /** Chart the shipping lanes? Toggled with T, remembered across sessions. */
@@ -404,6 +411,7 @@ export class MainMapScene extends Phaser.Scene {
     if (this.marksVisible) {
       this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
     }
+    this.namedCourses = drawNamedCourses(this, this.worldState, this.cameras.main.zoom);
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
@@ -900,6 +908,14 @@ export class MainMapScene extends Phaser.Scene {
     if (this.marksVisible && markersStale(this.eventMarkers, this.worldState, this.cameras.main.zoom)) {
       clearEventMarkers(this.eventMarkers);
       this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
+    }
+
+    // A hunted merchantman's mark moves every day, because it is his reckoning
+    // walked forward rather than her position — so the day is part of what
+    // makes the drawing stale.
+    if (namedCoursesStale(this.namedCourses, this.worldState, this.cameras.main.zoom)) {
+      clearNamedCourses(this.namedCourses);
+      this.namedCourses = drawNamedCourses(this, this.worldState, this.cameras.main.zoom);
     }
 
     if (result.transitions) {

@@ -267,6 +267,15 @@ export type WorldState = {
    * daily reckoning, which is the same answer a new world gets.
    */
   namedShips?: import("../systems/NamedShipSystem.ts").NamedShip[];
+  /**
+   * What the captain has been *told* about where a named ship was (v0.33.0).
+   *
+   * Keyed by `NamedShip.id`. Deliberately not her position — a report is a
+   * memory of a moment, and the whole interest of a hunt is the arithmetic
+   * between the moment and today. Optional and read through `namedReports()`,
+   * so no migration step.
+   */
+  namedShipReports?: Record<string, { day: number; progress: number }>;
   playerName: string;
   eraId: string;
   startYear: number;

@@ -255,3 +255,29 @@ i znaki byłyby dywanem słów na Karaibach, nie mapą.
 
 Klawisz **N** chowa i pokazuje całą warstwę (`pc_marks` w `localStorage`), tak
 jak **T** chowa szlaki handlowe.
+
+## NamedShipCourseRenderer — gdzie miała być (v0.33.0)
+
+Rysuje trasę nazwanego kupca, o którym gracz **słyszał**, i jeden znacznik tam,
+gdzie jego własne rachuby ją stawiają. Dane z `NamedShipSystem.livingReports` i
+`reckonedPos`.
+
+| Element | Depth | Rozmiar |
+|---|---|---|
+| trasa (kreskowana, blada) | 452 | `DASH 7 / GAP 8` px ekranowych |
+| romb + pierścień | 452 | `MARK 6` px ekranowych |
+| etykieta `{{ship}} · {{days}} dni` | 602 | `txt(11, bold)`, `setScale(1 / zoom)` |
+
+Depth 452 to ta sama półka co kursy wypraw (450) — pod znacznikami portów, nad
+lądem. Kolor `0xd4a017`, to samo złoto co „okazja" wśród znaków zdarzeń, bo tym
+właśnie ona jest, i odróżnialne od kolorów frakcji, którymi rysuje się kurs desantu.
+
+**Romb, nie grot.** `ExpeditionCourseRenderer` rysuje grot, bo kurs eskadry jest
+znany. Jej kurs jest **zgadywany** i znacznik nie powinien niczego wskazywać.
+
+Alfa idzie za wiekiem raportu (`max(0.15, 1 − wiek / REPORT_LIFE_DAYS)`), więc
+pewność, z jaką mapa mówi, spada razem z pewnością, którą kapitan ma prawo mieć.
+
+**Staleness liczy dzień.** Inaczej niż znaki zdarzeń, ten znacznik rusza się
+**każdego dnia**, bo jest rachubą przesuwaną w przód, a nie stanem świata — dlatego
+`world.time.day` wchodzi do klucza porównania.
