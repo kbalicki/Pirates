@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.31.0.0
+**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.32.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.31)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.32)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -72,10 +72,12 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.29.0.0 | **Zdarzenie, które gracz spotyka** — zamknięty port naprawdę nie wpuszcza, zaraza opróżnia tawernę, a odkryte złoto jest towarem, po który się płynie (pierwszy towar `rare`) | ✅ |
 | 0.30.0.0 | **Mapa mówi, co się dzieje** — miasto, o którym kapitan słyszał, nosi znak zdarzenia, zamknięta przystań przerywany pierścień. **Pokój wreszcie następuje**: każda wojna historyczna wygasała przed własną datą końca, więc traktatu nie podpisano ani razu | ✅ |
 | 0.31.0.0 | **Wojny, w które gracz się rodzi** — trzy z sześciu er otwierają się w środku wojny i żadna o tym nie wiedziała; przy okazji `warBite`: wojna bije w handel na wybuchu, a nie przez osiemdziesiąt lat | ✅ |
+| 0.32.0.0 | **Statek z nazwiskiem** — sześć kupców z rozkładem, które jutro są tym samym statkiem; trzeci typ zlecenia informatora (pościg za konkretnym kadłubem), czekający na liście od v0.25.0 | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
 - **Statki NPC na mapie** — spawn z portów i despawn w portach, 5 typów zachowań, limit 30 jednostek, mgła wojny, zasięg obserwacji zależny od najwyższego masztu floty
+- **Nazwane kupce** — sześć kadłubów z nazwą, koroną i rozkładem, materializowanych tylko w promieniu gracza; uszkodzenia i postęp przeżywają zniknięcie z mapy
 - **Bitwy morskie** — arena 3× viewport, łuki ostrzału ±60°, kule / łańcuchówki / kartacze, przeładowanie zależne od stanu załogi, kapitulacja, abordaż z przejęciem statku
 - **Wydarzenia i ekonomia** — 10 wojen historycznych 1568-1697 z traktatem pokojowym na końcu każdej, 15 typów wydarzeń, dzienna symulacja produkcji, konsumpcji i cen w 45 portach, wojna zmienia ruch morski, a mapa nosi znaki tego, o czym kapitan słyszał
 - **Obieg informacji** — wydarzenie → news w porcie → NPC jako kurier → gracz

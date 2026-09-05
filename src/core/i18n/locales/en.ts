@@ -814,6 +814,19 @@ export const EN: LocaleData = {
   "mapevent.shown": "Chart marks shown",
   "mapevent.hidden": "Chart marks hidden",
 
+  // -- The informer's third commission: a ship with a name (v0.32.0) --
+  "informer.hunt_offer": "The informer: sink the {{ship}} \u2014 {{gold}} Gold",
+  "informer.hunt_in_hand": "The {{ship}}: {{from}}\u2013{{port}}, {{days}} d left",
+  "informer.hunt_taken": "\"She clears {{from}} for {{port}} and back. Find her, and the {{gold}} Gold is yours \u2014 sunk or struck, I am not particular.\"",
+  "informer.hunt_hint": "\"She works {{from}} to {{port}}. Sit on one end of that and be patient.\"",
+  "informer.already_gone": "\"Somebody got to her first.\"",
+  "quest.hunt_title": "The {{ship}}",
+  "quest.hunt_find": "Sink or take the {{ship}} on the {{from}}\u2013{{port}} run \u2014 {{days}} days, {{gold}} Gold",
+  "quest.hunt_paid": "The {{ship}} will not sail again. The house pays {{gold}} Gold.",
+  "quest.hunt_cold": "The {{ship}} is still sailing, and the house has stopped waiting.",
+  "named.encounter": "the {{ship}}",
+  "tavern.rumor_named": "The {{ship}} cleared {{port}} not three days since, standing for {{to}}.",
+
   "expedition.course_label": "{{soldiers}} men · {{days}}d",
   "expedition.log_scattered": "The {{faction}} expedition for {{port}} is scattered. Nobody is coming ashore.",
   "expedition.toast_scattered": "The landing for {{port}} will not arrive.",

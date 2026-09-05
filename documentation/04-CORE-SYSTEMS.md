@@ -13,6 +13,7 @@
 | EventEffects | `EventEffectsSystem.ts` | Przełożenie wydarzeń świata na dzienne delty |
 | WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia + traktaty pokojowe |
 | MapEvent | `MapEventSystem.ts` | Wyprowadza znaki na mapie ze zdarzeń, o których gracz słyszał |
+| NamedShip | `NamedShipSystem.ts` | Nazwane kupce z rozkładem: rekord, pozycja wyprowadzana, materializacja przy graczu |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
@@ -2859,3 +2860,114 @@ kaperskimi, bo **`warBite` nie dotyka niczego poza handlem**.
 `?skip&era=<id>` — startuje w wybranej erze historycznej (`ERAS`). Bez tego nie
 da się w ogóle dojść do świata otwierającego się w środku wojny inaczej niż
 ręcznie przez ekran tworzenia postaci.
+
+---
+
+# v0.32.0 — statek, który jutro jest tym samym statkiem
+
+## NamedShipSystem
+
+Każdy kadłub w tej grze był anonimowy: `NpcSpawnSystem` stawia kupców i patrole
+w horyzoncie gracza i zdejmuje je za jego plecami. Dwa fluyty pod Hawaną w dwa
+kolejne poranki nie są tym samym fluytem i nic w świecie nie pamięta żadnego z
+nich. To jest właściwy model dla **ruchu** — dzięki niemu stać nas na żeglugę
+czterdziestu pięciu portów — i to jest powód, dla którego trzecie zlecenie
+informatora („utop *Santa Anę*") leżało nietknięte na liście od v0.25.0.
+
+### Rekord, nie encja
+
+Sześć nazwanych kupców żyje w `world.namedShips` jako **księgowość**: nazwa,
+korona, klasa, szlak i to, jak daleko jest na nim dzisiaj. Nie ma encji i nic nie
+kosztuje, gdy gracz jest gdzie indziej. W promieniu `MATERIALIZE_RANGE` trafia na
+mapę jako zwykły NPC; poza nim jest zdejmowana, a jej uszkodzenia i postęp są
+**najpierw zapisywane z powrotem**.
+
+To jest wzorzec `ExpeditionFleetSystem`, świadomie: jedyne miejsce w tej bazie,
+które już rozwiązało „coś, co istnieje na mapie i tylko czasem na wodzie", a jego
+reguła — **zapisz zanim usuniesz** — jest całym powodem, dla którego model jest
+bezpieczny. `NpcSpawnSystem` pomija te kadłuby w obu pętlach (despawn i dokowanie)
+tak samo jak pomija kadłuby desantu.
+
+### Postęp, nie pozycja
+
+Oczywisty sposób zapisania, gdzie ona jest, to zapisać, gdzie ona jest. Jest też
+błędny: jej szlak to kurs po wodzie z zakrętami, a zapisane `{x, y}` schodzi z
+tego kursu przy każdym cyklu materializacji.
+
+Rekord trzyma więc **jak daleko jest na przeprawie** (`progress`, 0..2 — pierwsza
+połowa to `from`→`to`, druga powrót) i **dzień, w którym to była prawda**
+(`progressDay`). Pozycja wychodzi z tych dwóch liczb i szlaku przez `pointAlong`,
+dokładnie jak pozycja wyprawy.
+
+Zapis zwrotny **rzutuje** jej realną pozycję na kurs (`projectOnPath`) i zapisuje
+ułamek. Dzięki temu statek ścigany dwieście jednostek w bok od swojej trasy
+wznawia z tego miejsca przeprawy, do którego naprawdę dopłynął, zamiast skakać na
+pozycję z rozkładu.
+
+| Stała | Wartość | Znaczenie |
+|---|---|---|
+| `NAMED_SHIP_COUNT` | 6 | ile nazwanych kadłubów niesie mapa |
+| `PASSAGE_SPEED` | 120 | jednostek świata dziennie — nie prędkość klasy, tylko robocze tempo z postojami; szlak 900 jednostek to 7-8 dni w jedną stronę |
+| `NAMED_INTERVAL_TICKS` | 40 | ta sama kadencja co kadłuby desantu |
+
+Zasiew idzie z **dziennego ticku**, nie z tworzenia świata: `namedShips` jest polem
+opcjonalnym, więc zapis sprzed tej wersji po prostu ich nie ma i dorasta ich
+następnego ranka — migracja, która dodaje pustą tablicę, byłaby hałasem w łańcuchu.
+Wybierane są **najdłuższe** szlaki, bo statek pokonujący czterdzieści jednostek
+wody nigdy nie jest nigdzie konkretnie.
+
+### Koniec jej
+
+`settleNamedShip(world, entity, fate)` stempluje `named_gone_<id>` i zapisuje
+`fate`. Wołane ze sceny bitwy **w tym samym oddechu co `applyPrize`** i z tego
+samego powodu: oba czytają przeciwnika ze świata, więc oba muszą pobiec zanim
+zostanie z niego usunięty. Dla kadłuba bez nazwy zwraca świat bez zmian — dlatego
+miejsce wywołania jest jedną bezwarunkową linijką.
+
+**Druga połowa jest łatwa do przeoczenia i bez niej nic nie działa:** maszyna
+questów dowiaduje się o fladze wyłącznie wtedy, gdy ktoś poda jej `flag_set`.
+`SeaBattleScene.settleNamed` robi obie rzeczy naraz — dokładnie ta sama para
+linijek co w `CityDefenseScene`. Jeden księgowy, kilku posłańców.
+
+## Trzecie zlecenie informatora
+
+`huntOffer` / `huntQuest` / `acceptHunt` w `InformantSystem.ts`. Wyprowadzane,
+nigdy zapisywane, jak dwa poprzednie.
+
+| Stała | Wartość |
+|---|---|
+| `HUNT_REACH` | 900 — jak daleko od tawerny może biec jej trasa |
+| `HUNT_DAYS` | 40 — dwie jej rundy na średnim szlaku, czyli druga szansa po złym zgadnięciu końca |
+| `HUNT_BASE_FEE` / `HUNT_TONNAGE_FEE` | 400 + 3,2 × tonaż |
+| `HUNT_REPUTATION` / `HUNT_NOTORIETY` | −18 / +10 (raid: −14 / +8) |
+
+**Dlaczego to inna praca niż przecięcie szlaku.** Raid (v0.25.0) jest zadaniem
+*statystycznym*: bądź na tym szlaku dwa tygodnie i weź dość kadłubów, żeby ruch
+stanął — nic w nim nie jest konkretnym statkiem. To jest odwrotność: jeden kadłub,
+z nazwą, na znanej trasie, a całym problemem jest **przechwycenie**. Zatopienie i
+zdobycie płacą tyle samo (kapitanowi zdobycie jest warte więcej, bo pryz to pryz —
+i to jest decyzja, a nie reguła).
+
+Korona pamięta to mocniej niż przecięty szlak, bo szlak to niedogodność, a nazwany
+statek to czyjaś ruina.
+
+## Jak gracz ma ją znaleźć
+
+Trzy kanały, i każdy jest potrzebny:
+
+1. **Zlecenie** mówi trasę (`quest.hunt_find`), czyli oba końce.
+2. **Plotka w tawernie** (`tavern.rumor_named`, siódmy fakt `RumorSystem`) mówi,
+   że wyszła z konkretnego portu — ale tylko jeśli zrobiła to nie dalej niż
+   `RUMOR_FRESH_DAYS = 3` temu i port jest w zasięgu plotki. To **jedyny** kanał,
+   przez który da się ustalić, na którym końcu przeprawy ona jest; rozkład siedzi
+   w rekordzie, a rekordu gracz nie czyta. Trzy dni celowo: plotka, nie namiar.
+3. **Ekran spotkania** pokazuje jej **nazwę** zamiast klasy (klasa idzie pod
+   spodem mniejszą czcionką, bo to z nią za chwilę przyjdzie się bić).
+
+### Parametr debugowania
+
+`?hunt=<port>` stawia kapitana w tawernie tego miasta z ofertą na stole;
+`?hunt=<port>&meet=1` stawia go na wodzie dokładnie tam, gdzie rozkład stawia
+nazwany statek, więc materializuje się pod dziobem. Nazwane kadłuby są w tym
+świecie zasiewane ręcznie, bo w normalnej grze robi to pierwszy dzienny tick, a
+świat debugowy oglądany od razu nigdy do niego nie dochodzi.

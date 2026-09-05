@@ -6,6 +6,36 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.32.0.0",
+    date: "2026-09-05",
+    changes: [
+      "A SHIP WITH A NAME",
+      "  Every hull in this game was anonymous: spawned inside your horizon,",
+      "  forgotten behind you, and two fluyts off Havana on consecutive",
+      "  mornings were never the same fluyt. Six merchantmen are not, now.",
+      "  They have names, crowns, classes and a run they work back and forth",
+      "  on a schedule, and they are the same ship next week",
+      "  She is bookkeeping while you are elsewhere and a real hull when you",
+      "  are near, and what you do to her sticks: shoot her rigging away and",
+      "  break off, and she is still short a topmast when you find her again",
+      "  THE INFORMER'S THIRD COMMISSION, listed as waiting since v0.25.0 and",
+      "  impossible until now. Cutting a lane is a statistical job — be there a",
+      "  fortnight and take enough hulls. This is one ship, by name, and the",
+      "  whole problem is interception: she cleared Florida Keys six days ago",
+      "  and makes the passage in nine, so where should you be tomorrow",
+      "  Sunk or struck, the house is not particular. Taking her is worth more",
+      "  to you than sinking her and exactly the same to them",
+      "  Her crown remembers it harder than a lane raid — a lane is an",
+      "  inconvenience, a named ship is somebody's ruin",
+      "  The tavern will tell you when one of them has just cleared a harbour",
+      "  within earshot. It is the only way to learn which end of the run she",
+      "  is on, and it goes stale after three days",
+      "  The tavern list can carry ten entries now, so the keyboard hint stands",
+      "  down when the informer has all three of his jobs on the table",
+      "  Debug: ?hunt=<port> for the tavern, &meet=1 to be put alongside her",
+    ],
+  },
+  {
     version: "0.31.0.0",
     date: "2026-09-05",
     changes: [

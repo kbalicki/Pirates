@@ -5,7 +5,7 @@ import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { ERAS } from "../../core/data/eras.ts";
-import { factionId } from "../../core/model/ids.ts";
+import { factionId, portId as makePortId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
 import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
@@ -13,6 +13,7 @@ import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
+import { seedNamedShips, livingNamedShips, namedShipPos } from "../../core/systems/NamedShipSystem.ts";
 
 /** Crown ids are lower case in the data and title case on a noticeboard. */
 function capitalise(word: string): string {
@@ -311,6 +312,17 @@ export class PreloadScene extends Phaser.Scene {
       );
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("hunt")) {
+      const portKey = params.get("hunt") || "port_royal";
+      const world = this.createHuntWorld(portKey, params.has("meet"));
+      this.registry.set("worldState", world);
+      if (params.has("meet")) {
+        this.scene.start("MainMapScene", { worldState: world });
+      } else {
+        this.scene.start("PortScene", { worldState: world, portId: portKey });
+      }
       return;
     }
     if (params.has("famine")) {
@@ -776,6 +788,68 @@ export class PreloadScene extends Phaser.Scene {
    * being drawn down for somebody else's customers, and the merchant's counter
    * saying so.
    */
+  /**
+   * A tavern with a name on the table, for `?hunt=` (v0.32.0).
+   *
+   * Two things need looking at and they are in different places. Without
+   * `&meet` the captain stands in the tavern, where the informer's third row is
+   * the whole point; with it he is put on the water exactly where the named
+   * ship's reckoning says she is, so she materialises under his bowsprit and
+   * the encounter screen can be checked for her name.
+   *
+   * The named hulls are seeded here by hand because the running game seeds them
+   * on the first daily reckoning, and a debug world that starts on day one and
+   * is looked at immediately never gets one.
+   */
+  private createHuntWorld(portKey: string, meet: boolean): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    // The lane network asks about water; without the coastline every course is
+    // a straight line through Cuba and the named ships work lanes that do not
+    // exist. Same trap as `?famine=`.
+    loadLandmassesFromCache(this);
+
+    const seededWorld = seedNamedShips(base, base.rng);
+    let world = { ...seededWorld.world, rng: seededWorld.rng };
+
+    // Her schedule is what makes her findable, and on day one every ship is
+    // wherever her seeded phase put her. Bring the best candidate for this
+    // tavern within the informer's reach by walking her phase, not by moving
+    // her — moving her would be a position the schedule then contradicts.
+    const localCrown = def.factionId as unknown as string;
+    const quarry = livingNamedShips(world).find(s => s.crown !== localCrown);
+    if (!quarry) return world;
+
+    if (meet) {
+      const at = namedShipPos(world, quarry);
+      const water = at ? nearestWater(at) : undefined;
+      if (water) {
+        const shipId = world.player.shipId as string;
+        const entity = world.entities[shipId];
+        world = {
+          ...world,
+          player: { ...world.player, location: { type: "sea", pos: { ...water } } },
+          entities: entity
+            ? { ...world.entities, [shipId]: { ...entity, mode: "sailing", pos: { ...water }, vel: { x: 0, y: 0 } } }
+            : world.entities,
+        };
+      }
+      return world;
+    }
+
+    // Standing in the port: the tavern bench is filled by `PortApproachScene`,
+    // which starting `PortScene` directly skips — the same omission that made
+    // v0.27.0's recruiting bonus invisible on screen.
+    return generateAvailableCrew({
+      ...world,
+      player: {
+        ...world.player,
+        location: { type: "port", portId: makePortId(portKey), pos: { ...def.pos } },
+      },
+    }, makePortId(portKey));
+  }
+
   private createFamineWorld(portKey: string, standInCover = false): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];

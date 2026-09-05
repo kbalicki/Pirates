@@ -47,6 +47,13 @@ import { blockadeEffective, BLOCKADE_SUPPLY_SHARE } from "./BlockadeSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
 import { supplierShutIn, blackFlagImportShare } from "./EconomyTickSystem.ts";
 import { repriceItem } from "./PricingSystem.ts";
+import { SHIP_CLASSES } from "../data/ships.ts";
+import {
+  livingNamedShips,
+  namedShipById,
+  namedShipPos,
+  namedShipFateFlag,
+} from "./NamedShipSystem.ts";
 
 /** Quest ids for an informer's commission all start with this. */
 export const RAID_QUEST_PREFIX = "raid_";
@@ -566,4 +573,207 @@ export function landRelief(world: WorldState, commission: ReliefCommission): Rel
   const repriced = repriceItem(landed, commission.port, commission.item);
   if (!repriced) return { world: landed };
   return { world: { ...landed, ports: { ...landed.ports, [commission.port]: repriced } } };
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The third kind of work: a ship with a name (v0.32.0)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * The informer's third commission, and the reason it waited seven releases.
+ *
+ * It has been on the list since v0.25.0 as "sink the Santa Ana" with a note
+ * saying it is not cheap, and the note was right: every hull in this game was
+ * spawned inside the player's horizon and forgotten behind him, so there was no
+ * Santa Ana to sink. Naming one and pricing her would have been a quest that
+ * asked the captain to find a ship the world does not contain.
+ *
+ * `NamedShipSystem` is what makes it possible — a handful of merchantmen that
+ * are the same merchantman tomorrow, working a lane on a schedule, materialised
+ * only when he is near. This is the commission that pays for them.
+ *
+ * ## Why it is a different job from cutting a lane
+ *
+ * The raid commission (v0.25.0) is a *statistical* job: be on that lane for a
+ * fortnight and take enough hulls that the traffic stops. Nothing in it is a
+ * particular ship, and the captain is paid for a pattern of behaviour.
+ *
+ * This is the opposite. One hull, named, on a known route, and the whole
+ * problem is *interception* — she left Havana six days ago and makes the passage
+ * in nine, so where should he be tomorrow. Taking her is worth more than sinking
+ * her to the captain (a prize is a prize) and exactly the same to the house,
+ * which is a decision worth having rather than a rule worth writing.
+ *
+ * The crown whose register she is on remembers it harder than a lane raid,
+ * because a lane is an inconvenience and a named ship is somebody's ruin.
+ */
+
+/** Quest ids for a hunt all start with this. */
+export const HUNT_QUEST_PREFIX = "hunt_";
+
+/** One at a time, and for a blunter reason than the raid's: she is one ship. */
+export const MAX_ACTIVE_HUNTS = 1;
+
+/** How far from the tavern her lane may run and still be worth mentioning. */
+const HUNT_REACH = 900;
+
+/**
+ * Days allowed.
+ *
+ * Long enough for two of her round trips on a middling lane, so a captain who
+ * guesses the wrong end of the passage gets a second chance rather than a failed
+ * contract; short enough that he cannot simply blunder into her.
+ */
+const HUNT_DAYS = 40;
+
+/** Fee: a retainer plus what her tonnage is worth to the house that wants her gone. */
+const HUNT_BASE_FEE = 400;
+const HUNT_TONNAGE_FEE = 3.2;
+
+/** What her crown makes of it, and what the brethren do. A name is not a lane. */
+export const HUNT_REPUTATION = -18;
+export const HUNT_NOTORIETY = 10;
+
+export type HuntCommission = {
+  /** `hunt_<shipId>`. Stable, so one ship cannot be commissioned twice. */
+  id: string;
+  shipId: string;
+  shipName: string;
+  /** Her register — the crown that will remember this. */
+  crown: string;
+  classId: string;
+  /** The two ends of her run, localised, so the quest log reads without lookup. */
+  fromName: string;
+  toName: string;
+  reward: number;
+  acceptedDay: number;
+  /** Baked at signing, for the reason every other contract here bakes it. */
+  days: number;
+};
+
+export function huntQuestId(shipId: string): string {
+  return HUNT_QUEST_PREFIX + shipId;
+}
+
+/** Commissions the captain is under right now. */
+export function activeHunts(world: WorldState): HuntCommission[] {
+  const out: HuntCommission[] = [];
+  for (const runtime of world.player.questLog) {
+    if (runtime.completed) continue;
+    if (!(runtime.questId as string).startsWith(HUNT_QUEST_PREFIX)) continue;
+    const commission = runtime.data.commission as HuntCommission | undefined;
+    if (commission) out.push(commission);
+  }
+  return out;
+}
+
+/**
+ * The ship on the table in this tavern today, or nothing.
+ *
+ * Derived, never stored, like the other two. She must be somebody else's — a
+ * house does not pay to have its own crown's ships taken, and the tavern it
+ * drinks in is that crown's — and her run has to pass near enough that the man
+ * at the back table would know her schedule at all.
+ */
+export function huntOffer(world: WorldState, portKey: string): HuntCommission | null {
+  if (activeHunts(world).length >= MAX_ACTIVE_HUNTS) return null;
+
+  const here = getPortWaterPos(portKey);
+  if (!here) return null;
+  const localCrown = portFaction(world, portKey) as string;
+
+  let best: HuntCommission | null = null;
+  for (const ship of livingNamedShips(world)) {
+    if (ship.crown === localCrown) continue;
+    const pos = namedShipPos(world, ship);
+    if (!pos) continue;
+    if (Math.hypot(pos.x - here.x, pos.y - here.y) > HUNT_REACH) continue;
+
+    const tonnage = SHIP_CLASSES[ship.classId]?.tonnage ?? 200;
+    const commission: HuntCommission = {
+      id: huntQuestId(ship.id),
+      shipId: ship.id,
+      shipName: ship.name,
+      crown: ship.crown,
+      classId: ship.classId,
+      fromName: CITIES[ship.from]?.name ?? ship.from,
+      toName: CITIES[ship.to]?.name ?? ship.to,
+      reward: Math.round(HUNT_BASE_FEE + HUNT_TONNAGE_FEE * tonnage),
+      acceptedDay: world.time.day,
+      days: HUNT_DAYS,
+    };
+    if (!best || commission.reward > best.reward) best = commission;
+  }
+  return best;
+}
+
+/** Whose ship she is, in words the tavern screen can print. */
+export function huntVictim(commission: HuntCommission): string {
+  return FACTIONS[commission.crown]?.name ?? commission.crown;
+}
+
+/**
+ * Rebuild the quest from a signed commission.
+ *
+ * Same rule as the other two: every number comes out of the commission and none
+ * out of `world`, because `buildQuestRegistry` runs this on every load and a
+ * definition that read today's clock would hand itself another forty days each
+ * time the player opened a save.
+ */
+export function huntQuest(commission: HuntCommission): QuestDef {
+  const vars = {
+    ship: commission.shipName,
+    from: commission.fromName,
+    port: commission.toName,
+    gold: commission.reward,
+    days: commission.days,
+  };
+
+  return {
+    id: commission.id,
+    titleKey: "quest.hunt_title",
+    start: "hunt",
+    stages: {
+      hunt: {
+        id: "hunt",
+        objectiveKey: "quest.hunt_find",
+        vars,
+        on: [
+          {
+            // Sunk or taken, the house does not mind which; `settleNamedShip`
+            // stamps the same flag for both, and what the captain does with her
+            // hold is his own business.
+            trigger: { type: "flag_set", key: namedShipFateFlag(commission.shipId) },
+            next: "paid",
+            effects: [
+              { type: "gold", amount: commission.reward },
+              { type: "reputation", faction: commission.crown, amount: HUNT_REPUTATION },
+              { type: "notoriety", amount: HUNT_NOTORIETY },
+              { type: "log", key: "quest.hunt_paid", vars },
+            ],
+          },
+          {
+            trigger: { type: "days_passed", days: commission.days },
+            next: "cold",
+            effects: [{ type: "log", key: "quest.hunt_cold", vars }],
+          },
+        ],
+      },
+      paid: { id: "paid", objectiveKey: "quest.hunt_paid", vars, completes: true },
+      cold: { id: "cold", objectiveKey: "quest.hunt_cold", vars, fails: true },
+    },
+  };
+}
+
+export type HuntResult = { world: WorldState; error?: string };
+
+/** Take the job. Nothing changes hands until she is on the bottom or in his fleet. */
+export function acceptHunt(world: WorldState, commission: HuntCommission): HuntResult {
+  if (activeHunts(world).length >= MAX_ACTIVE_HUNTS) {
+    return { world, error: "informer.too_many" };
+  }
+  const ship = namedShipById(world, commission.shipId);
+  if (!ship || ship.fate) return { world, error: "informer.already_gone" };
+  return { world: startQuest(world, huntQuest(commission), { commission }) };
 }

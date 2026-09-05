@@ -15,6 +15,7 @@ import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { tickReconquest, DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../systems/ReconquestSystem.ts";
 import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
 import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
+import { tickNamedShips } from "../systems/NamedShipSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { tickBlockades } from "../systems/BlockadeSystem.ts";
 import { tickRouteDisruption } from "../systems/TradeRouteSystem.ts";
@@ -302,6 +303,13 @@ export class WorldEngine {
     world = expeditionFleets.world;
     updatedEntities = { ...world.entities };
     allEvents.push(...expeditionFleets.events);
+
+    // 6.2 Named merchantmen (v0.32.0). After the invasion hulls and before the
+    // AI, for the same two reasons: the generic spawner must not have touched
+    // them, and a named ship the player has just mauled has to have her damage
+    // written into her record before anything else reads it.
+    world = tickNamedShips(world, dtTicks);
+    updatedEntities = { ...world.entities };
 
     // 6.5 NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);

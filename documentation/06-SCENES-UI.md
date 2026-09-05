@@ -326,3 +326,18 @@ miasto, na które wskazuje trop, oferuje samą walkę (`DuelScene` nad wstrzyman
 - Nigdy nie hardkodować fontu — zawsze `UI_FONT` lub `txt()`
 - Font "Dancing Script" ładowany z `<link>` w index.html
 - Pełne wsparcie polskich znaków: ą ć ę ł ń ó ś ź ż
+
+## Tawerna ma dziesięć pozycji (v0.32.0)
+
+Menu tawerny rosło z każdym źródłem zleceń i doszło do granicy okna. Przy trzech
+liniach informatora naraz (przecięcie szlaku, zamówienie, pościg) lista to
+**dziesięć** pozycji i `[ WRÓĆ DO PORTU ]` ląduje na podpowiedzi klawiszy.
+
+Ustępuje **podpowiedź**: mówi te same trzy klawisze co każdy inny ekran w tej
+grze, a wiersza, którego gracz nie może odczytać, równie dobrze mogłoby nie być.
+Warunek jest liczony, nie zgadnięty — `listBottom < hintTop` — więc lista o
+dziewięciu pozycjach dalej ją pokazuje.
+
+Komunikat odpowiedzi chowa podpowiedź od v0.26.0 z tego samego powodu. Miejsca
+starcza na jedno z dwojga i to się nie zmieniło; zmieniło się to, że teraz o
+zabraniu podpowiedzi decyduje też **sama długość listy**.

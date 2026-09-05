@@ -259,6 +259,14 @@ export type WorldState = {
    * this release has quiet seas, which is what it had.
    */
   routeDisruption?: Record<string, { severity: number; until: number }>;
+  /**
+   * The handful of merchantmen that have a name and a schedule (v0.32.0).
+   *
+   * Optional and read through `namedShips()`, so a save from before this
+   * release needs no migration step — `seedNamedShips` fills it in on the next
+   * daily reckoning, which is the same answer a new world gets.
+   */
+  namedShips?: import("../systems/NamedShipSystem.ts").NamedShip[];
   playerName: string;
   eraId: string;
   startYear: number;

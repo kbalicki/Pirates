@@ -17,6 +17,7 @@
  *   cargo_*         from the `CargoContract` in the entry's own data
  *   raid_*          from the `RaidCommission` in the entry's own data
  *   relief_*        from the `ReliefCommission` in the entry's own data
+ *   hunt_*          from the `HuntCommission` in the entry's own data
  *   QUESTS          hand-authored definitions, if there ever are any
  */
 
@@ -32,8 +33,11 @@ import {
   RAID_QUEST_PREFIX,
   reliefQuest,
   RELIEF_QUEST_PREFIX,
+  huntQuest,
+  HUNT_QUEST_PREFIX,
   type RaidCommission,
   type ReliefCommission,
+  type HuntCommission,
 } from "./InformantSystem.ts";
 
 /**
@@ -70,6 +74,12 @@ export function buildQuestRegistry(world: WorldState): QuestRegistry {
     if (id.startsWith(RELIEF_QUEST_PREFIX)) {
       const commission = runtime.data.commission as ReliefCommission | undefined;
       if (commission) registry[id] = reliefQuest(commission);
+      continue;
+    }
+
+    if (id.startsWith(HUNT_QUEST_PREFIX)) {
+      const commission = runtime.data.commission as HuntCommission | undefined;
+      if (commission) registry[id] = huntQuest(commission);
       continue;
     }
 

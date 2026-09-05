@@ -56,6 +56,16 @@ export type AiData = {
     guns: number;
   };
   /**
+   * `NamedShip.id` this hull is the body of (v0.32.0).
+   *
+   * A named merchantman is a record in `world.namedShips` that is put on the
+   * water only inside the player's horizon; this is the thread back to it, so
+   * her damage can be written into the record before she is despawned and her
+   * loss can be recognised when she is sunk or taken. Absent on every ordinary
+   * hull, so no save migration was needed.
+   */
+  namedShipId?: string;
+  /**
    * The shipping lane this trader is sailing, and how far along it she is
    * (v0.22.0).
    *

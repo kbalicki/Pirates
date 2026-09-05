@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.31.0.0 · **Branch:** `main`
-**Kod:** 189 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1377 przechodzi, 0 failuje, 0 `todo`** w 39 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.32.0.0 · **Branch:** `main`
+**Kod:** 192 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1413 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.31.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1377/1377 zielone; ta wersja stawia na mapie wojny, które w danej erze **już trwają** (trzy z sześciu er otwierały się w środku wojny i żadna o tym nie wiedziała), a przy okazji zmienia to, czym wojna jest dla ekonomii: bije w handel na **wybuchu**, a nie równo przez osiemdziesiąt lat — bez tego samo zasianie zabierało Karaibom 39% bogactwa na dekady; lista kandydatów na v0.32.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.32.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1413/1413 zielone; ta wersja daje sześciu kupcom **nazwę i rozkład** — są tym samym statkiem w przyszłym tygodniu, niosą uszkodzenia między spotkaniami i materializują się tylko w promieniu gracza — a na tym stoi **trzeci typ zlecenia informatora** (pościg za konkretnym kadłubem), który leżał na liście nietknięty od v0.25.0, bo nie było czego ścigać; lista kandydatów na v0.33.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0 — znaki na mapie, pokój) i [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0 — wojny trwające w dniu startu, `warBite`, audyt martwych kontraktów).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0) i [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0 — nazwane statki, pościg informatora).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -1245,30 +1245,89 @@ trzymanego przez osiem lat.
 
 ---
 
-### v0.32.0 — co dalej
+### ~~v0.32.0 — Statek z nazwiskiem~~ ✅ (v0.32.0.0)
+
+Kandydat **4** z poprzedniej listy — pozycja, która czekała nietknięta od
+v0.25.0 z notatką „to nie jest tanie i dlatego czeka". Notatka miała rację i
+powód był jeden: nie było czego ścigać.
+
+**1. `NamedShipSystem`.** Sześć kupców z nazwą, koroną, klasą i trasą, którą
+chodzą tam i z powrotem wedle rozkładu. Nie mają encji, dopóki gracz nie
+podpłynie; w promieniu `MATERIALIZE_RANGE` trafiają na wodę jako zwykli NPC i
+zachowują się jak każdy inny kupiec. To wzorzec `ExpeditionFleetSystem` i jego
+reguła — **zapisz zanim usuniesz** — jest całym powodem, dla którego to działa:
+postrzelasz jej takielunek i odpuścisz, a przy następnym spotkaniu dalej jest
+bez bramstengi.
+
+Rekord trzyma **postęp**, nie pozycję: `progress` (0..2, zawija) plus dzień, w
+którym to była prawda. Zapis zwrotny **rzutuje** jej realne położenie na kurs
+(`projectOnPath`), więc statek ścigany dwieście jednostek w bok wznawia stamtąd,
+dokąd naprawdę dopłynął, zamiast skakać na pozycję z rozkładu.
+
+`NpcSpawnSystem` pomija te kadłuby w obu pętlach (despawn i dokowanie), tak samo
+jak pomija kadłuby desantu — i z tego samego powodu.
+
+**2. Trzecie zlecenie informatora.** Jeden kadłub, z nazwą, na znanej trasie.
+Przecięcie szlaku (v0.25.0) jest zadaniem *statystycznym*; to jest jego
+odwrotność i całym problemem jest **przechwycenie**: wyszła z Florida Keys sześć
+dni temu i robi przeprawę w dziewięć, więc gdzie ma być jutro. Zatopienie i
+zdobycie płacą tyle samo — kapitanowi zdobycie jest warte więcej, i to jest
+decyzja, a nie reguła. Korona pamięta mocniej niż przecięty szlak (−18/+10 wobec
+−14/+8), bo szlak to niedogodność, a nazwany statek to czyjaś ruina.
+
+**3. Jak ją znaleźć** — trzy kanały i każdy jest potrzebny: zlecenie mówi trasę,
+**plotka w tawernie** mówi, że wyszła z konkretnego portu (tylko przez
+`RUMOR_FRESH_DAYS = 3` — plotka, nie namiar; to jedyny kanał, którym da się
+ustalić, na którym końcu przeprawy ona jest), a ekran spotkania pokazuje jej
+**nazwę** zamiast klasy.
+
+**Pułapki z tej sesji:**
+
+1. **Maszyna questów dowiaduje się o fladze wyłącznie wtedy, gdy ktoś poda jej
+   `flag_set`.** `settleNamedShip` stempluje flagę — i to wszystko. Bez wywołania
+   `advanceQuests` zlecenie siedziałoby ze spełnionym warunkiem i nigdy nie
+   zapłaciło. `SeaBattleScene.settleNamed` robi obie rzeczy, dokładnie tak jak
+   `CityDefenseScene`. **Najłatwiejsze do przeoczenia okablowanie w tej bazie** —
+   pilnuje go teraz test integracyjny idący całą ścieżką od zatopienia do złota.
+2. **Tawerna doszła do dziesięciu pozycji** i `[ WRÓĆ DO PORTU ]` wszedł na
+   podpowiedź klawiszy. Ustępuje podpowiedź, a warunek jest **liczony**
+   (`listBottom < hintTop`), nie zgadnięty — przy dziewięciu pozycjach dalej
+   jest widoczna. Znalezione na zrzucie, jak wszystko inne w tej sesji.
+3. **Pozycja zapisana jako `{x, y}` schodzi z kursu.** Szlak ma zakręty, a
+   materializacja-pościg-despawn powtarza się w kółko. Trzymanie **ułamka
+   przeprawy** zamiast punktu rozwiązuje to jedną liczbą i przy okazji pozwala
+   narysować ją na mapie, nie stawiając jej na wodzie.
+
+---
+
+### v0.33.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
 1. **Sprite'y statków w pixel arcie** — 9 klas × 8 klatek = 72 klatki, sekcja 6.
    Jedyna pozycja, która zmienia to, **jak gra wygląda**. Blokują ją dwie decyzje
-   techniczne z sekcji 6, a druga z nich (**`roundPixels`**) jest zmianą
-   *odczucia* (jitter statku) i wymaga playtestu użytkownika — agent nie powinien
-   jej rozstrzygać sam. Propozycja do sprawdzenia: zaokrąglać **przewijanie
-   kamery** do pełnych pikseli ekranu (`scrollX = round(scrollX * zoom) / zoom`),
-   a nie pozycje sprite'ów; do zweryfikowania empirycznie, czy Phaser zaokrągla w
+   techniczne z sekcji 6, a druga (**`roundPixels`**) jest zmianą *odczucia*
+   (jitter statku) i wymaga playtestu użytkownika — agent nie powinien jej
+   rozstrzygać sam. Propozycja do sprawdzenia: zaokrąglać **przewijanie kamery**
+   do pełnych pikseli ekranu (`scrollX = round(scrollX * zoom) / zoom`), a nie
+   pozycje sprite'ów; do zweryfikowania empirycznie, czy Phaser zaokrągla w
    przestrzeni świata (jak sugeruje `project_ship_jitter`), czy ekranu
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana** i dlatego
-   przeskakiwana drugi raz: „sojusz" może znaczyć list kaperski gracza (dziś daje
-   wyłącznie prawo do bicia się) albo przymierze dwóch koron, którego w modelu
-   świata **nie ma** — są wojny i od v0.30.0 traktaty. Przed wzięciem trzeba
-   rozstrzygnąć które
-4. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
-   wymaga trwałego, nazwanego NPC, bo dziś kadłuby spawnują się w promieniu gracza
-   i znikają. To nie jest tanie i dlatego czeka
-5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
-6. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
+3. **Nazwany statek nie jest na mapie.** v0.32.0 dała jej rozkład i wyprowadzaną
+   pozycję, więc narysowanie jej ostatniego znanego kursu kosztowałoby tyle co
+   `ExpeditionCourseRenderer` — ale **nie wolno** rysować jej pozycji na bieżąco,
+   bo to zamieni przechwycenie w podążanie za strzałką. Do przemyślenia: kurs i
+   znacznik **z dnia, w którym gracz o niej słyszał**, blaknący z czasem
+4. **Nazwany statek nie ma eskorty.** Dziś jest samotnym kupcem, więc pościg jest
+   zadaniem nawigacyjnym, nie bojowym. Konwój przy najbogatszych z nich dałby
+   drugą połowę problemu
+5. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana**,
+   przeskakiwana trzeci raz: „sojusz" może znaczyć list kaperski gracza albo
+   przymierze dwóch koron, którego w modelu świata **nie ma**. Przed wzięciem
+   trzeba rozstrzygnąć które
+6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
+7. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
    usuniętą `PauseMenuScene`. Nic ich nie linkuje z `00-INDEX.md`. Do skasowania,
    ale to decyzja właściciela repo, nie agenta
@@ -1340,6 +1399,9 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Czas trwania zdarzenia jest częścią jego siły.** „Zdarzenie jest zaburzeniem, nie nowym baseline'em" (v0.28.0) ma drugą połowę: wiersz w tabeli efektów opisuje **wybuch**, a zastosowany płasko do wojny osiemdziesięcioletniej opisuje osiemdziesiąt lat. `warBite` zanika przez `WAR_ADAPTATION_DAYS = 730` i dotyka wyłącznie mnożników handlu; wszystko, co czyni wojnę wojną (spawn marynarki, korsarze, `areFactionsAtWar`), jest od tego niezależne (v0.31.0).
 - **`t()` nie rzuca na nieznanym kluczu — wypisuje go na ekran.** Klucz wpisany wprost jest bezpieczny; groźne są budowane z danych w miejscu wywołania (`t("port." + key + ".name")`), bo nic nie łączy tabeli portów z tabelą napisów. Tym połączeniem jest `src/core/i18n/__tests__/keys.test.ts` — **dopisując nową rodzinę kluczy budowanych w runtime, dopisz tam sprawdzenie** (v0.31.0).
 - **Nieaktualny dokument utrzymuje martwy kod przy życiu.** `06-SCENES-UI.md` twierdził, że `[ESC] → PauseMenuScene`; ESC na mapie nie jest obsługiwany i nigdy nie był, a scena przeżyła dzięki temu 112 linii i dwa komplety tłumaczeń od pierwszego commita (v0.31.0).
+- **Maszyna questów dowiaduje się o fladze wyłącznie wtedy, gdy ktoś poda jej `flag_set`.** Postawienie flagi w `worldFlags` nie robi nic samo z siebie: `WorldEngine` jest tym posłańcem dla wszystkiego rozstrzyganego poza ekranem, a scena, która sama zapisuje wynik, musi zawołać `advanceQuests` u siebie (`CityDefenseScene`, `SeaBattleScene.settleNamed`). Zlecenie ze spełnionym warunkiem, które nigdy nie płaci, wygląda dokładnie jak zepsuty warunek (v0.32.0).
+- **Pozycja czegoś, co porusza się po kursie, ma być trzymana jako UŁAMEK TRASY, nie jako `{x, y}`.** Kurs ma zakręty, a cykl materializacja-pościg-despawn powtarza się w kółko i punkt z każdym obrotem schodzi z trasy. Jedna liczba (`progress`) plus dzień, w którym była prawdą, daje pozycję na żądanie, przeżywa nieobecność gracza i pozwala narysować obiekt na mapie bez stawiania go na wodzie. Zapis zwrotny **rzutuje** realne położenie na kurs (v0.32.0, `NamedShipSystem.projectOnPath`; ten sam wzorzec co `expeditionPos`).
+- **Menu tawerny jest pełne przy dziesięciu pozycjach.** Trzy linie informatora naraz to maksimum i wtedy podpowiedź klawiszy musi ustąpić; warunek jest liczony (`listBottom < hintTop`), nie zgadnięty. Kolejne źródło zleceń nie zmieści się bez przebudowy na widok podrzędny (v0.32.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.

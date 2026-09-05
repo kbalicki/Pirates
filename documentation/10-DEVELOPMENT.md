@@ -269,6 +269,8 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?skip` | Pomija tworzenie postaci |
 | `?zoom=z10` | Startowy poziom zoomu (`z1`..`z14`). Od v0.30.0 działa **za pierwszym razem** — wcześniej zapis szedł prosto do `localStorage`, a `initZoomSetting()` odczytuje go w `BootScene`, czyli wcześniej |
 | `?era=<id>` | Era historyczna dla `?skip` (`silver_empire`, `merchants_smugglers`, `new_colonists`, `war_for_profit`, `buccaneer_heroes`, `pirates_sunset`). Trzy z nich otwierają się w środku wojny (v0.31.0) |
+| `?hunt=<port>` | Kapitan w tawernie tego miasta z pościgiem informatora na stole (v0.32.0) |
+| `&meet=1` | Zamiast tego na wodzie dokładnie tam, gdzie rozkład stawia nazwany statek — razem z `?hunt=` |
 | `?debug=1` | Tryb debug (wyłącza mgłę wojny) |
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |

@@ -814,6 +814,19 @@ export const PL: LocaleData = {
   "mapevent.shown": "Znaki na mapie widoczne",
   "mapevent.hidden": "Znaki na mapie ukryte",
 
+  // -- Trzecie zlecenie informatora: statek z nazwiskiem (v0.32.0) --
+  "informer.hunt_offer": "Informator: zatop {{ship}} \u2014 {{gold}} złota",
+  "informer.hunt_in_hand": "{{ship}}: {{from}}\u2013{{port}}, zostało {{days}} dni",
+  "informer.hunt_taken": "\"Chodzi z {{from}} do {{port}} i z powrotem. Znajdź ją, a {{gold}} jest twoje \u2014 na dnie czy ze spuszczoną banderą, wszystko jedno.\"",
+  "informer.hunt_hint": "\"Pracuje na trasie {{from}} \u2013 {{port}}. Usiądź na jednym końcu i bądź cierpliwy.\"",
+  "informer.already_gone": "\"Ktoś ją dopadł przed tobą.\"",
+  "quest.hunt_title": "{{ship}}",
+  "quest.hunt_find": "Zatop albo zdobądź {{ship}} na trasie {{from}}\u2013{{port}} \u2014 {{days}} dni, {{gold}} złota",
+  "quest.hunt_paid": "{{ship}} już nie wypłynie. Kantor płaci {{gold}} złota.",
+  "quest.hunt_cold": "{{ship}} dalej pływa, a kantor przestał czekać.",
+  "named.encounter": "{{ship}}",
+  "tavern.rumor_named": "{{ship}} wyszła z {{port}} nie dalej jak trzy dni temu, kursem na {{to}}.",
+
   "expedition.course_label": "{{soldiers}} ludzi · {{days}} dni",
   "expedition.log_scattered": "Wyprawa ({{faction}}) na {{port}} rozbita. Nikt nie zejdzie na brzeg.",
   "expedition.toast_scattered": "Desant na {{port}} nie dotrze.",

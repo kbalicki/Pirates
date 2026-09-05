@@ -29,6 +29,10 @@ import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
+import { settleNamedShip, namedShipFateFlag } from "../../core/systems/NamedShipSystem.ts";
+import { advanceQuests } from "../../core/systems/QuestSystem.ts";
+import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
+import type { EntityState } from "../../core/model/EntityState.ts";
 import { ITEMS } from "../../core/data/items.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
@@ -1234,6 +1238,35 @@ export class SeaBattleScene extends Phaser.Scene {
    * - Player gold increased by loot (win)
    * - Adds an event log entry for the outcome
    */
+  /**
+   * Record a named ship's end, and tell the quest machine a flag moved.
+   *
+   * Both halves are needed and the second is the easy one to forget: the quest
+   * machine only ever hears about a flag when somebody hands it a `flag_set`
+   * (`WorldEngine` is that somebody for everything settled offscreen), so a
+   * commission paid off `settleNamedShip` alone would stamp its flag and never
+   * pay. `CityDefenseScene` has the same pair of lines for the same reason —
+   * one bookkeeper, several messengers.
+   *
+   * Returns the world unchanged for any hull without a name, which is what lets
+   * both call sites be one unconditional line.
+   */
+  private settleNamed(
+    world: WorldState,
+    entity: EntityState | undefined,
+    fate: "sunk" | "taken",
+  ): WorldState {
+    const after = settleNamedShip(world, entity, fate);
+    if (after === world) return world;
+    const shipId = entity?.ai?.namedShipId as string;
+    const advanced = advanceQuests(
+      after,
+      { type: "flag_set", key: namedShipFateFlag(shipId) },
+      buildQuestRegistry(after),
+    );
+    return advanced.world;
+  }
+
   private applyBattleOutcomeToWorld(
     outcome: "win" | "lose" | "disengaged" | "surrender" | "captured",
   ): WorldState {
@@ -1306,6 +1339,9 @@ export class SeaBattleScene extends Phaser.Scene {
       // the shippers' ledger that this lane just lost a hull.
       const prize = applyPrize(w, enemyWorldEntity, outcome);
       w = prize.world;
+      // If she had a name, the world has to lose it (v0.32.0). Same rule as the
+      // prize above: it reads her off the world, so it runs before she leaves it.
+      w = this.settleNamed(w, enemyWorldEntity, outcome === "win" ? "sunk" : "taken");
       const { [enemyId]: _, ...remaining } = w.entities;
       w = { ...w, entities: remaining };
       w = addLogEntry(w, "battle.log_won", { gold: prize.prize.gold });
@@ -1319,6 +1355,7 @@ export class SeaBattleScene extends Phaser.Scene {
       // Loot + add ship to fleet if slot available
       const prize = applyPrize(w, enemyWorldEntity, outcome);
       w = prize.world;
+      w = this.settleNamed(w, enemyWorldEntity, "taken");
       const { [enemyId]: _captured, ...remaining } = w.entities;
       let player = w.player;
       if (enemyWorldEntity?.ship && canAddToFleet(player)) {

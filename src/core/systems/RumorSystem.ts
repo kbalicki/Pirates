@@ -43,6 +43,7 @@ import { ITEMS } from "../data/items.ts";
 import { baselineConsumptionRate } from "../data/economyBaselines.ts";
 import { townHunger, townIsHungry, reroutedOnto, supplierShutIn } from "./EconomyTickSystem.ts";
 import { disruptions, tradeRoutes } from "./TradeRouteSystem.ts";
+import { livingNamedShips, phaseAt, outbound } from "./NamedShipSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { isPortClosed } from "./EventEffectsSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
@@ -83,6 +84,14 @@ const FLAVOUR_KEYS = [
 ];
 
 /** Towns within earshot of this one, this one excluded. */
+/**
+ * How lately a named ship must have sailed for her departure to still be news.
+ *
+ * Three days: long enough that a captain in the next port over can act on it,
+ * short enough that it stays gossip rather than a position report.
+ */
+const RUMOR_FRESH_DAYS = 3;
+
 function within(portKey: string): string[] {
   const here = CITIES[portKey];
   if (!here) return [];
@@ -198,7 +207,34 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     break;
   }
 
-  // 7. Where the money is crossing a quay. The slowest fact, told last.
+  // 7. A named hull that has just cleared a harbour within earshot (v0.32.0).
+  //    The only fact in this list that is worth *acting on within the hour*,
+  //    and the only channel through which a captain under a hunt commission can
+  //    find out which end of the passage she is on: her schedule is in her
+  //    record, but a record is not something he can read. She has to be freshly
+  //    away — a ship that sailed a week ago is a ship that could be anywhere,
+  //    and a rumour that told him so every day would be a tracker rather than
+  //    gossip.
+  for (const ship of livingNamedShips(world)) {
+    const day = world.time.day;
+    const phase = phaseAt(ship, day);
+    const legDay = (phase < 1 ? phase : phase - 1) * ship.passageDays;
+    if (legDay > RUMOR_FRESH_DAYS) continue;
+    const from = outbound(ship, day) ? ship.from : ship.to;
+    const to = outbound(ship, day) ? ship.to : ship.from;
+    if (!neighbours.includes(from) && from !== portKey) continue;
+    out.push({
+      key: "tavern.rumor_named",
+      vars: {
+        ship: ship.name,
+        port: CITIES[from]?.name ?? from,
+        to: CITIES[to]?.name ?? to,
+      },
+    });
+    break;
+  }
+
+  // 8. Where the money is crossing a quay. The slowest fact, told last.
   let busiest: string | null = null;
   let best = RUMOR_BUSY_QUAY;
   for (const key of neighbours) {

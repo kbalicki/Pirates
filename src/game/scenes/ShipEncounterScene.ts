@@ -10,6 +10,7 @@ import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { namedShipById } from "../../core/systems/NamedShipSystem.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
 import { ITEMS } from "../../core/data/items.ts";
@@ -73,10 +74,21 @@ export class ShipEncounterScene extends Phaser.Scene {
     this.drawShipThumbnail(dlgX + PAD, y, DLG_W - PAD * 2, thumbH, factionColor);
     y += thumbH + 10;
 
-    // Ship class name
-    const shipName = shipClass?.name ?? "Unknown Ship";
+    // Her name if she has one, her class if she has not (v0.32.0). A named
+    // merchantman is the point of the whole hunt, and a captain who has crossed
+    // the Caribbean for her has to be able to see he has found her.
+    const named = this.npcEntity.ai?.namedShipId
+      ? namedShipById(this.worldState, this.npcEntity.ai.namedShipId)
+      : undefined;
+    const shipName = named?.name ?? shipClass?.name ?? "Unknown Ship";
     this.add.text(cx, y, shipName, txt(20, { bold: true })).setOrigin(0.5, 0);
     y += 26;
+    if (named) {
+      // The class still matters — it is what he is about to fight — so it goes
+      // under the name rather than being replaced by it.
+      this.add.text(cx, y, shipClass?.name ?? "", txt(12, { color: "#666666" })).setOrigin(0.5, 0);
+      y += 18;
+    }
 
     // Faction & behavior
     const factionName = t("faction." + (this.npcEntity.ship.factionId as string) + ".name");

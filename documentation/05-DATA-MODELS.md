@@ -352,3 +352,26 @@ headingToDir8(heading: number): number    // 8 kierunków (0-7)
 pointInPolygon(point: Vec2, polygon: Vec2[]): boolean
 pointInLandmass(point: Vec2, landmasses: Landmass[]): boolean
 ```
+
+## `WorldState.namedShips?` i `EntityState.ai.namedShipId?` (v0.32.0)
+
+Dwa pola opcjonalne, oba czytane przez `?? domyślna`, oba **bez kroku migracji**
+— zgodnie z regułą projektu.
+
+```ts
+type NamedShip = {
+  id: string;            // "named_<n>", stabilne na całe życie świata
+  name: string;          // "Vergulde Draeck"
+  crown: string;         // rejestr, na którym stoi
+  classId: string;
+  routeId: string; from: string; to: string;
+  progress: number;      // 0..2, gdzie 0..1 to from→to; zawija
+  progressDay: number;   // dzień, w którym progress był prawdą
+  passageDays: number;   // wyprowadzone z długości szlaku / PASSAGE_SPEED
+  hullHp: number; sailsHp: number;   // niesione między spotkaniami
+  fate?: "sunk" | "taken";           // ustawiane raz, nigdy nie kasowane
+};
+```
+
+`ai.namedShipId` to nitka od kadłuba na wodzie do rekordu — po niej idzie zapis
+zwrotny uszkodzeń i rozpoznanie, że to właśnie ona poszła na dno.

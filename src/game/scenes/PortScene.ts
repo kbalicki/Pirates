@@ -98,6 +98,7 @@ import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import {
   raidOffer, acceptRaid, activeRaids, raidProgress, raidVictim,
   reliefOffer, acceptRelief, activeRelief, canLandRelief, landRelief,
+  huntOffer, acceptHunt, activeHunts,
   reliefLandedFlag, type ReliefCommission,
 } from "../../core/systems/InformantSystem.ts";
 import {
@@ -187,6 +188,8 @@ export class PortScene extends Phaser.Scene {
 
   /** The informer's job as it was drawn this pass, so accepting takes that one. */
   private raidOnOffer: import("../../core/systems/InformantSystem.ts").RaidCommission | null = null;
+  /** The named ship on the table this pass, for the same reason. */
+  private huntOnOffer: import("../../core/systems/InformantSystem.ts").HuntCommission | null = null;
   /** Governor conversation in progress; rebuilt whenever the view is entered. */
   private governorDialogue: { tree: DialogueTree; runtime: DialogueRuntime } | null = null;
 
@@ -871,6 +874,30 @@ export class PortScene extends Phaser.Scene {
       }
     }
 
+    // And his third line (v0.32.0): one named hull, on a known run. A status
+    // line rather than a progress one — there is no partial credit for half
+    // sinking a ship, so the only number worth printing is the days left.
+    const hunt = activeHunts(this.worldState)[0];
+    if (hunt) {
+      const left = hunt.days - (this.worldState.time.day - hunt.acceptedDay);
+      actions.push({
+        label: t("informer.hunt_in_hand", {
+          ship: hunt.shipName, from: hunt.fromName, port: hunt.toName,
+          days: Math.max(0, left),
+        }),
+        key: "hunt_status",
+      });
+    } else {
+      const chase = huntOffer(this.worldState, this.currentPortId as string);
+      if (chase) {
+        this.huntOnOffer = chase;
+        actions.push({
+          label: t("informer.hunt_offer", { ship: chase.shipName, gold: chase.reward }),
+          key: "hunt_take",
+        });
+      }
+    }
+
     // The family thread lives in the tavern: an informer sells the first name,
     // and the town the trail currently points at offers the fight itself.
     const here = stepAtPort(this.worldState, this.currentPortId as string);
@@ -894,6 +921,15 @@ export class PortScene extends Phaser.Scene {
         case "relief_take": this.handleTakeRelief(); break;
         case "relief_land": this.handleLandRelief(); break;
         case "relief_status": this.tavernMessage = t("informer.relief_hint"); this.switchView("tavern"); break;
+        case "hunt_take": this.handleTakeHunt(); break;
+        case "hunt_status": {
+          const h = activeHunts(this.worldState)[0];
+          this.tavernMessage = h
+            ? t("informer.hunt_hint", { from: h.fromName, port: h.toName })
+            : "";
+          this.switchView("tavern");
+          break;
+        }
         case "family_ask": this.handleAskAboutFamily(); break;
         case "family_strike": this.handleFamilyStrike(); break;
         case "back": this.switchView("menu"); break;
@@ -919,8 +955,16 @@ export class PortScene extends Phaser.Scene {
       this.tavernMessage = null;
     }
 
-    // Hint
-    if (!spoke) {
+    // Hint — but only if the list has left it any floor to stand on.
+    //
+    // The tavern was nine entries at its worst until v0.32.0, and the informer's
+    // third commission makes ten: with all three of his lines on the table at
+    // once [ BACK TO PORT ] lands on top of the hint. The hint is the thing that
+    // gives way — it says the same three keys every screen in this game says,
+    // and a row the player cannot read is a row that may as well not be there.
+    const listBottom = y + actions.length * 26;
+    const hintTop = this.dlgY + DLG_H - PAD - 16;
+    if (!spoke && listBottom < hintTop) {
       const hint = this.add.text(
         this.cx, this.dlgY + DLG_H - PAD - 4,
         t("tavern.hint"),
@@ -965,6 +1009,28 @@ export class PortScene extends Phaser.Scene {
    * no cargo to give him. What he has agreed to is a price for goods he does
    * not own yet, which is the whole difference between the two contracts.
    */
+  /**
+   * Take the hunt. Nothing changes hands until she is on the bottom or struck;
+   * the message repeats her run, because that is the only thing the captain
+   * actually has to work with.
+   */
+  private handleTakeHunt(): void {
+    const chase = this.huntOnOffer;
+    if (!chase) return;
+    const result = acceptHunt(this.worldState, chase);
+    if (result.error) {
+      this.tavernMessage = t(result.error);
+      this.switchView("tavern");
+      return;
+    }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.tavernMessage = t("informer.hunt_taken", {
+      from: chase.fromName, port: chase.toName, gold: chase.reward,
+    });
+    this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
+  }
+
   private handleTakeRelief(): void {
     const order = this.reliefOnOffer;
     if (!order) return;
