@@ -199,7 +199,7 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 
 - **Wioski Indian** — lokacje nie-portowe, handel egzotyką, wskazówki do skarbów i rodziny
 - **Misje jezuickie** — leczenie załogi, informacje o regionie, konwersja piratów
-- **Pogoda rozszerzona** — huragany sezonowe, mgła (mniejszy zasięg), prądy morskie, deszcz i pioruny
+- **Pogoda rozszerzona** — ✅ szkwał (v0.38.0) i ✅ huragany sezonowe jako prawdziwy sztorm na wodzie, z krążącym wiatrem i strefami wiatru mapy (v0.39.0). Zostały: mgła (mniejszy zasięg, bez darcia płótna), prądy morskie, deszcz i pioruny, oraz **wędrujące oko** huraganu
 - **Specjalizacje statków** — ulepszenia żagli, kadłuba i uzbrojenia, galion (bonus morale), balast (stabilność vs prędkość)
 - **Pathfinding A\*** — prawdziwe szlaki handlowe zamiast reaktywnego sterowania NPC
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden; brakuje ścieżek dla żeglugi, portu, tawerny i bitwy

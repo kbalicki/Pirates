@@ -197,12 +197,31 @@ type CombatEntity = {
 
 ```typescript
 type WeatherState = {
-  windDirection: number;        // radiany
+  windDirRad: number;           // radiany, 0 = N, rośnie zgodnie ze wskazówkami;
+                                // kierunek, Z KTÓREGO wieje (kurs = windDirRad → martwa strefa)
   windStrength: number;         // 0.0 – 1.0
-  storm: boolean;
-  stormDuration?: number;       // minuty
+  stormActive: boolean;         // szkwał; konsumenta doczekał się dopiero w v0.38.0
+  stormTimer: number;           // ticki do końca szkwału (clampowane do zera od v0.38.0)
 };
 ```
+
+To jest **pogoda przeważająca dla całej mapy** i jedyna, która siedzi w save'ie.
+Od v0.39.0 **nikt nie czyta jej wprost**: `weatherAt(world, pos)` z
+`WeatherFieldSystem` wyprowadza z niej pogodę *w danym miejscu*, mieszając strefy
+wiatru z `MAP_ZONES` i huragany z `world.worldEvents`.
+
+```typescript
+type LocalWeather = WeatherState & {
+  hurricane: number;   // 0 poza okręgiem, 1 w oku
+  eye?: Vec2;          // gdzie stoi oko
+  eyePort?: string;    // miasto, nad którym stoi — do linii dziennika
+};
+```
+
+`LocalWeather` **nie jest nigdzie zapisywane i nie ma migracji**: to funkcja
+`(zapisany wiatr, pozycja, lista zdarzeń)`. Save sprzed v0.39.0 wchodzi w huragan
+tak samo jak nowy, bo huragan zawsze był zdarzeniem świata — po prostu nikt nie
+pytał, jaka jest nad nim woda.
 
 ## Branded ID Types (`src/core/model/ids.ts`)
 

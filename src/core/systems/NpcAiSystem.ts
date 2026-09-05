@@ -58,6 +58,7 @@ import { tradeRoutes } from "./TradeRouteSystem.ts";
 import { windSpeedModifier } from "./WeatherSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { boltFor, namedShipById, hullOf, harryCount, boundFor, type NamedShip } from "./NamedShipSystem.ts";
+import { weatherAt } from "./WeatherFieldSystem.ts";
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
 const PIRATE_CHASE_RADIUS = 200;
@@ -245,12 +246,16 @@ function updateTrader(
   }
 
   const cls = SHIP_CLASSES[entity.ship?.classId as string];
+  // The wind where *she* is (v0.39.0). A hull running from the player inside a
+  // hurricane sails the same circling wind he does, or she would outrun him on
+  // a trade wind that is not blowing over either of them.
+  const here = weatherAt(world, entity.pos);
   const heading = bestVmgHeading(
     // Away from him, which for a ship with nowhere in particular to be is the
     // only sensible bearing there is.
     headingToward(player.pos, entity.pos),
-    world.weather.windDirRad,
-    world.weather.windStrength,
+    here.windDirRad,
+    here.windStrength,
     cls?.minWindAngle ?? 30,
   );
 
@@ -355,10 +360,11 @@ function updateNamedTrader(
 
   const haven = getPortWaterPos(end);
   const cls = SHIP_CLASSES[entity.ship?.classId as string];
+  const here = weatherAt(world, entity.pos);
   const heading = bestVmgHeading(
     headingToward(entity.pos, haven),
-    world.weather.windDirRad,
-    world.weather.windStrength,
+    here.windDirRad,
+    here.windStrength,
     cls?.minWindAngle ?? 30,
   );
 

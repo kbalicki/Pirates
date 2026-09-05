@@ -17,6 +17,7 @@
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Privateer | `PrivateerSystem.ts` | Co znaczy list kaperski: pryz dobry, pryz wstydliwy, zdrada patrona |
 | Storm | `StormSystem.ts` | Szkwał: co drze płótno, co zabiera z lunety, co mówi HUD |
+| WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -602,6 +603,87 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## WeatherFieldSystem (v0.39.0)
+
+Ta gra miała **dwie pogody, które nigdy sobie nie zostały przedstawione**.
+
+Pierwsza to `WeatherState`: jeden kierunek i jedna siła wiatru dla całych Karaibów,
+plus szkwał, któremu v0.38.0 wreszcie dała odbiorcę. Ta sama pod Vera Cruz i pod
+Barbadosem, dwa tysiące kilometrów dalej.
+
+Druga to `hurricane` — typ zdarzenia świata z sezonową tabelą, trzema miastami,
+nagłówkiem, szpilką na mapie widoczną z drugiego końca Karaibów i realnym
+uderzeniem w ekonomię. **Nigdy nie dotknął wody.** Huragan mógł stać nad Cartageną
+przez tydzień, a statek na redzie czuł spokojny pasat.
+
+`weatherAt(world, pos)` łączy je w jedno. **Nic nowego nie jest zapisywane**: wiatr
+dalej jest jednym stanem w save'ie, huragan dalej jednym zdarzeniem świata, a pole
+między nimi to arytmetyka.
+
+### Strefy mapy przestają być dekoracją
+
+`MAP_ZONES` nosi `windDirBias` i `windStrengthBias` na pasie pasatów i w Zatoce
+**od czasu narysowania mapy**, a jedyne, co w ogóle sięgało po tę tabelę —
+`EncounterSystem` — czyta z niej wyłącznie `zone.kind` i `zone.risk`. Pól wiatru
+nie tknęło **nic, nigdy**. Czwarty producent bez odbiorcy w tej bazie po `crewMul`,
+`treaty_signed` i `stormActive`, i jedyny, za którym stał cały plik danych.
+
+(Sam `EncounterSystem` jest osobnym wariantem tej samej choroby: `WorldEngine`
+**woła** go co tick w kroku 7, ale zdarzenia `Encounter`, które ten produkuje, nie
+mają w całej bazie ani jednego odbiorcy — robotę spotkań przejął `NpcSpawnSystem`.
+Zostawiony nietknięty, bo usunięcie zmieniłoby strumień RNG. Sprawdzaj obie strony:
+wywołanie **i** zdarzenie.)
+
+Teraz pas jest drogą: w środku wiatr jest ciągnięty ku pasatowi (`ZONE_WIND_PULL`
+0,45 — tendencja, nie szyna) i trzymany równiej niż na otwartym morzu, więc rejs na
+zachód wzdłuż północnego wybrzeża jest naprawdę szybszy niż ta sama odległość na
+południe od Hispanioli. Gracz nigdy nie czyta nazwy strefy. Czyta kompas.
+
+### Huragan odpowiada się sterem, nie żaglami
+
+To jest **cała** różnica i to dlatego huragan nie jest większym szkwałem:
+
+- **szkwał** odpowiada się `SailSystem` — zrefuj i kosztuje tylko godziny (v0.38.0);
+- **huraganu nie da się przeczekać.** Pod gołymi masztami też ubywa płótna, a do
+  tego bierze kadłub. Jedyną odpowiedzią jest wyjście z okręgu — i sam wiatr mówi,
+  gdzie ten okrąg jest.
+
+Wiatr krąży wokół oka **przeciwnie do ruchu wskazówek** (prawo Buysa Ballota: stań
+tyłem do wiatru na tej szerokości, a niż masz po lewej ręce), więc kompas w rogu
+ekranu **jest namiarem na środek sztormu**: oko leży dokładnie 90° na prawo od
+kierunku, z którego wieje. Trzymaj je na trawersie, a wychodzisz; uciekaj z wiatrem,
+a obnosi cię dookoła. To jest prawdziwa decyzja podejmowana przyrządem, który gracz
+ma od pierwszego wydania.
+
+```
+HURRICANE_RADIUS = 260            (px ≈ km na tej mapie; 320 to blokada, 620 to spawn)
+HURRICANE_RIG_SHARE_PER_TICK  = 0.0006   (udział `sailsMax`, niezależnie od żagli)
+HURRICANE_HULL_SHARE_PER_TICK = 0.0004   (udział `hullMax`)
+HURRICANE_HULL_FLOOR = FOUNDERING_THRESHOLD   (0.25)
+HURRICANE_RIG_FLOOR  = RIG_TIERS[1].minFrac   (0.40, „torn")
+HURRICANE_VISION_SHARE = 0.3
+```
+
+### Kaleczy, nigdy nie topi
+
+Zatrzymuje się na granicach, **które HUD już nazywa**. Kadłub schodzi do
+`FOUNDERING_THRESHOLD` i ani punktu niżej — *crippled*, nigdy *foundering* — a
+płótno do progu „torn". Poniżej „torn" jest dismasted, czyli na mapie pełzanie
+`MAP_DISMASTED_CRAWL` 0,15; statek pełzający wewnątrz okręgu o promieniu 260 nigdy
+by z niego nie wyszedł, więc podłoga jest tym, co czyni z tego przejście do
+przeżycia, a nie pułapkę do przesiedzenia.
+
+To ta sama zasada co `STORM_SAFE_SAIL = 0.5` będące dokładnie „Reefed" z
+`SailSystem`: **próg bierz z liczby, którą gracz i tak czyta z ekranu**.
+
+### Co jeszcze czyta miejscową pogodę
+
+Nawigacja gracza w `WorldEngine`, `NpcAiSystem` (kadłub uciekający graczowi w
+huraganie żegluje tym samym krążącym wiatrem, inaczej uciekłby na pasacie, który
+nad żadnym z nich nie wieje) i cały `MainMapScene`: kompas, woda, chmury, mewy,
+dźwięk wiatru i ostrzeżenie o martwej strefie. Kompas mówiący prawdę o Karaibach i
+kłamiący o *tym miejscu* byłby gorszy niż brak kompasu.
 
 ## StormSystem (v0.38.0)
 

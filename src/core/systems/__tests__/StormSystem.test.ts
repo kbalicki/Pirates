@@ -194,10 +194,10 @@ describe("what the screen says about it", () => {
 
   it("warns when he is carrying too much, and only then", () => {
     expect(stormWarning(makeWorld({ storm: true, sail: 1 }))).toEqual({
-      key: "weather.storm_canvas", danger: true,
+      key: "weather.storm_canvas", danger: true, severity: 0,
     });
     expect(stormWarning(makeWorld({ storm: true, sail: STORM_SAFE_SAIL }))).toEqual({
-      key: "weather.storm", danger: false,
+      key: "weather.storm", danger: false, severity: 0,
     });
   });
 

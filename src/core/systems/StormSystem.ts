@@ -32,9 +32,35 @@
  * Nothing here touches an NPC. The hulls on the chart are a sample of the
  * traffic and always have been; giving each of them rigging damage would be
  * bookkeeping the player never sees, on ships that despawn behind him.
+ *
+ * ## And then a squall stopped being the only weather (v0.39.0)
+ *
+ * Everything here now reads `weatherAt` rather than the one saved global wind,
+ * so a storm has a *place*. That brings in the second kind: a `hurricane` world
+ * event, which had a chart pin and a headline and had never touched the water.
+ *
+ * The two are different in kind, not in degree, and this module is where that
+ * shows:
+ *
+ *   - a **squall** is answered with the sails. Reefed is free, and it can tear
+ *     canvas to nothing if he insists on carrying it.
+ *   - a **hurricane** is answered with the helm. Bare poles still lose canvas,
+ *     it opens the hull as well, and it stops only at `HURRICANE_RIG_FLOOR` and
+ *     `HURRICANE_HULL_FLOOR` — so it always leaves a ship that can be sailed
+ *     out of the circle, which is the only answer there is.
  */
 
 import type { WorldState, WeatherState } from "../model/WorldState.ts";
+import {
+  weatherAtPlayer,
+  hurricaneRigLoss,
+  hurricaneHullLoss,
+  stormFloored,
+  HURRICANE_HULL_FLOOR,
+  HURRICANE_RIG_FLOOR,
+  HURRICANE_VISION_SHARE,
+  type LocalWeather,
+} from "./WeatherFieldSystem.ts";
 
 /**
  * Sail a squall can be carried under without loss.
@@ -58,12 +84,33 @@ export const STORM_RIG_SHARE_PER_TICK = 0.0004;
 /** How much of the spyglass is left in a squall. */
 export const STORM_VISION_SHARE = 0.55;
 
-export function isStormy(weather: WeatherState): boolean {
+/**
+ * Weather as any caller may hand it over: the saved global state, or the local
+ * field `weatherAt` derives from it (v0.39.0). A plain `WeatherState` simply
+ * has no hurricane in it, which is true of nearly all of the sea nearly all of
+ * the time.
+ */
+type AnyWeather = WeatherState & { hurricane?: number };
+
+export function isStormy(weather: AnyWeather): boolean {
   return weather.stormActive === true;
 }
 
-/** What the lookout can still see, as a multiplier on the spyglass. */
-export function stormVisionMultiplier(weather: WeatherState): number {
+/**
+ * What the lookout can still see, as a multiplier on the spyglass.
+ *
+ * A hurricane closes it down further than a squall, in proportion to how deep
+ * into the circle the ship is — so the edge of one is a haze and the middle of
+ * one is blind.
+ */
+export function stormVisionMultiplier(weather: AnyWeather): number {
+  const eye = weather.hurricane ?? 0;
+  if (eye > 0) {
+    return Math.min(
+      isStormy(weather) ? STORM_VISION_SHARE : 1,
+      1 - (1 - HURRICANE_VISION_SHARE) * eye,
+    );
+  }
   return isStormy(weather) ? STORM_VISION_SHARE : 1;
 }
 
@@ -81,36 +128,75 @@ export function stormRigLoss(sailLevel: number, sailsMax: number, dtTicks: numbe
 }
 
 /**
- * Tear the fleet's canvas for one tick of squall.
+ * Tear the fleet's canvas for one tick of weather — and open her seams, if it
+ * is a hurricane.
  *
  * The flagship and every consort, at the flagship's sail level: the fleet sails
  * as one everywhere else in this codebase (`fleetSpeedMultiplier`,
  * `fleetMaxMastHeight`), and a consort quietly riding out a storm under bare
  * poles while her admiral loses topmasts would be the odd thing to model.
  *
+ * The weather it reads is the weather **where the ship is** (v0.39.0), not the
+ * one saved global wind — so a hurricane standing over Cartagena is felt off
+ * Cartagena and nowhere else.
+ *
+ * Two losses, and they are different in kind:
+ *
+ *   - the **squall** part depends on sail and is zero at Reefed, and can tear
+ *     canvas to nothing, exactly as it has since v0.38.0;
+ *   - the **hurricane** part ignores the sail entirely and takes hull as well,
+ *     because there is no answer to one but leaving — but it stops at
+ *     `HURRICANE_RIG_FLOOR` and `HURRICANE_HULL_FLOOR`, so it always leaves a
+ *     ship that can be sailed home.
+ *
  * Returns the world untouched when there is no storm, when the captain is
- * ashore, or when he is under Reefed — which is what lets the engine call it
- * unconditionally.
+ * ashore, or when a mere squall finds him already reefed — which is what lets
+ * the engine call it unconditionally.
  */
 export function tickStormDamage(world: WorldState, dtTicks: number): WorldState {
-  if (!isStormy(world.weather)) return world;
+  const local: LocalWeather = weatherAtPlayer(world);
+  if (!isStormy(local)) return world;
 
   const shipId = world.player.shipId as string;
   const entity = world.entities[shipId];
   if (!entity?.ship || entity.mode !== "sailing") return world;
 
-  const loss = stormRigLoss(entity.sailLevel, entity.ship.sailsMax, dtTicks);
-  if (loss <= 0) return world;
+  const eye = local.hurricane;
+  const squall = (sailsMax: number) => stormRigLoss(entity.sailLevel, sailsMax, dtTicks);
+  const gale = (sailsMax: number) => hurricaneRigLoss(eye, sailsMax, dtTicks);
+  const seams = (hullMax: number) => hurricaneHullLoss(eye, hullMax, dtTicks);
+
+  const ship = entity.ship;
+  if (squall(ship.sailsMax) + gale(ship.sailsMax) + seams(ship.hullMax) <= 0) return world;
+
+  /**
+   * Canvas. Inside a hurricane the floor covers **both** losses, not only the
+   * hurricane's own: measured on screen, a frigate carrying full sail in one
+   * went through the "torn" line and on toward dismasted, which on the map is a
+   * 0.15 crawl inside a circle 260 units in radius. That is a captain sitting
+   * out a storm he cannot leave, and the whole design says the helm is the
+   * answer — so it has to stay an answer he can still give. A plain squall
+   * keeps its v0.38.0 teeth and can shred canvas to nothing.
+   */
+  const canvas = (hp: number, max: number) => (eye > 0
+    ? stormFloored(hp, max, squall(max) + gale(max), HURRICANE_RIG_FLOOR)
+    : Math.max(0, hp - squall(max)));
+  const hull = (hp: number, max: number) => stormFloored(hp, max, seams(max), HURRICANE_HULL_FLOOR);
 
   const flagship = {
     ...entity,
-    ship: { ...entity.ship, sailsHp: Math.max(0, entity.ship.sailsHp - loss) },
+    ship: {
+      ...ship,
+      sailsHp: canvas(ship.sailsHp, ship.sailsMax),
+      hullHp: hull(ship.hullHp, ship.hullMax),
+    },
   };
 
   const fleet = world.player.fleet ?? [];
   const battered = fleet.length === 0 ? fleet : fleet.map(consort => ({
     ...consort,
-    sailsHp: Math.max(0, consort.sailsHp - stormRigLoss(entity.sailLevel, consort.sailsMax, dtTicks)),
+    sailsHp: canvas(consort.sailsHp, consort.sailsMax),
+    hullHp: hull(consort.hullHp, consort.hullMax),
   }));
 
   return {
@@ -123,16 +209,27 @@ export function tickStormDamage(world: WorldState, dtTicks: number): WorldState 
 /**
  * The line the HUD carries while it blows, or nothing.
  *
- * Two states rather than one, because "you are carrying too much sail" is the
- * only actionable thing a weather warning can say. A captain already reefed
- * wants to know the squall is still on him and that he is doing the right
- * thing; a captain under full sail wants to know he is paying for it.
+ * Three states rather than one. A captain already reefed wants to know the
+ * squall is still on him and that he is doing the right thing; a captain under
+ * full sail wants to know he is paying for it; and a captain inside a hurricane
+ * wants to know that neither of those answers is the one he needs (v0.39.0) —
+ * that the sails will not save him and the helm might.
+ *
+ * `severity` is how deep into a hurricane he is, 0 for a plain squall, and it
+ * is what the map's wash is drawn from.
  */
-export function stormWarning(world: WorldState): { key: string; danger: boolean } | null {
-  if (!isStormy(world.weather)) return null;
+export function stormWarning(world: WorldState): { key: string; danger: boolean; severity: number } | null {
+  const local = weatherAtPlayer(world);
+  if (!isStormy(local)) return null;
   const entity = world.entities[world.player.shipId as string];
   const carrying = (entity?.sailLevel ?? 0) > STORM_SAFE_SAIL && entity?.mode === "sailing";
+  // "Claw off" is an order to a ship. A captain ashore with his boats on the
+  // beach takes no damage from any of this (`tickStormDamage` leaves him alone),
+  // so telling him his hull is going would be the HUD lying to him.
+  if (local.hurricane > 0 && entity?.mode === "sailing") {
+    return { key: "weather.hurricane", danger: true, severity: local.hurricane };
+  }
   return carrying
-    ? { key: "weather.storm_canvas", danger: true }
-    : { key: "weather.storm", danger: false };
+    ? { key: "weather.storm_canvas", danger: true, severity: 0 }
+    : { key: "weather.storm", danger: false, severity: 0 };
 }

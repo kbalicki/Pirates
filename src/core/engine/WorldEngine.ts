@@ -5,6 +5,7 @@ import { reduceCommand } from "./reducers.ts";
 import { advanceTime, dayToCalendar, daysInMonth, tickBoundaryCrossed } from "../systems/TimeSystem.ts";
 import { updateWeather } from "../systems/WeatherSystem.ts";
 import { tickStormDamage } from "../systems/StormSystem.ts";
+import { weatherAt, hurricaneAt } from "../systems/WeatherFieldSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
@@ -212,6 +213,15 @@ export class WorldEngine {
       allEvents.push(...consumeResult.events);
     }
 
+    // A hurricane the captain was already inside when this tick began
+    // (v0.39.0). Read here, before the world moves him or the day generates new
+    // events, so that both ways in are caught: sailing into a storm, and a
+    // storm forming over the harbour he is lying off.
+    const stormBefore = hurricaneAt(
+      world,
+      world.entities[world.player.shipId as string]?.pos ?? world.player.location.pos,
+    );
+
     // 3. Update weather (season-aware)
     const cal = dayToCalendar(newTime.day, world.startYear);
     const dim = daysInMonth(cal.month, cal.year);
@@ -269,7 +279,10 @@ export class WorldEngine {
           : 1;
         const updatedPlayer = updateNavigation(
           playerEntity,
-          weatherResult.weather,
+          // The wind where the ship actually is (v0.39.0): the prevailing wind
+          // bent by the map's own zones and, inside a hurricane, circling its
+          // eye instead.
+          weatherAt({ ...world, weather: weatherResult.weather }, playerEntity.pos),
           this.terrainQuery,
           dtTicks,
           fleetMul,
@@ -312,6 +325,18 @@ export class WorldEngine {
     // the one paid for.
     world = tickStormDamage(world, dtTicks);
     updatedEntities = { ...world.entities };
+
+    // Sailing into a hurricane, and out the other side (v0.39.0). Until this
+    // release `hurricane` was a world event that shut a harbour and never once
+    // touched the water it was named over.
+    const stormNow = hurricaneAt(world, world.entities[playerShipId]?.pos ?? world.player.location.pos);
+    if (stormNow && !stormBefore) {
+      world = addLogEntry(world, "weather.log_hurricane", { port: stormNow.port });
+      allEvents.push({ type: "Toast", message: t("weather.hurricane_toast", { port: stormNow.port }) });
+    } else if (!stormNow && stormBefore) {
+      world = addLogEntry(world, "weather.log_hurricane_passed");
+      allEvents.push({ type: "Toast", message: t("weather.hurricane_over") });
+    }
 
     // 6.1 Invasion squadrons (v0.17.0). After the generic spawner, because it
     // reconciles hulls the spawner is told to keep its hands off — and because

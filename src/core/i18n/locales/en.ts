@@ -548,6 +548,11 @@ export const EN: LocaleData = {
   "weather.storm_over": "The squall has blown through.",
   "weather.log_storm": "Sailed into a squall.",
   "weather.log_storm_passed": "The squall blew through.",
+  "weather.hurricane": "Hurricane! Claw off — she is taking hull as well as canvas.",
+  "weather.hurricane_toast": "A hurricane off {{port}}! The wind circles her eye — keep it on your beam and stand out of it.",
+  "weather.hurricane_over": "Clear of the hurricane.",
+  "weather.log_hurricane": "Caught in the hurricane off {{port}}.",
+  "weather.log_hurricane_passed": "Stood clear of the hurricane.",
   "event.recruited_crew": "Recruited {{count}} crew members for {{cost}} Gold.",
   "event.bought_drinks": "Bought a round of drinks for {{cost}} Gold. Morale boosted!",
 

@@ -55,3 +55,4 @@
 - [SESSION-2026-09-05G.md](SESSION-2026-09-05G.md) — v0.35.0.0 → v0.36.0.0: morze zna twoje nazwisko — każdy kupiec ucieka przed groźnym kapitanem, jeden predykat dla wszystkich
 - [SESSION-2026-09-05H.md](SESSION-2026-09-05H.md) — v0.36.0.0 → v0.37.0.0: komisja jest posadą — pryz pokryty, pryz wstydliwy, zdrada patrona, list wyłączny
 - [SESSION-2026-09-06.md](SESSION-2026-09-06.md) — v0.37.0.0 → v0.38.0.0: szkwał — pole, które było w każdym zapisie od pierwszego commita i którego nie czytało nic
+- [SESSION-2026-09-06B.md](SESSION-2026-09-06B.md) — v0.38.0.0 → v0.39.0.0: pogoda ma miejsce na mapie — huragan przestaje być tylko nagłówkiem, strefy wiatru wreszcie ciągną pasat

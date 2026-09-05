@@ -6,6 +6,7 @@ import { WorldEngine } from "../../core/engine/WorldEngine.ts";
 import { type TerrainType, findOpenSeaHeading } from "../../core/systems/NavigationSystem.ts";
 import { WorldRenderer, visionRangeForMast } from "../render/WorldRenderer.ts";
 import { stormVisionMultiplier, stormWarning } from "../../core/systems/StormSystem.ts";
+import { weatherAt, type LocalWeather } from "../../core/systems/WeatherFieldSystem.ts";
 import { fleetMaxMastHeight } from "../../core/systems/FleetSystem.ts";
 import { CameraController } from "../render/CameraController.ts";
 // MinimapRenderer removed — map available in SPACE menu
@@ -116,11 +117,26 @@ export class MainMapScene extends Phaser.Scene {
   private onResize: ((gameSize: Phaser.Structs.Size) => void) | null = null;
   private windSound: Phaser.Sound.BaseSound | null = null;
 
+  /**
+   * The weather where the player's ship is (v0.39.0).
+   *
+   * Everything on this screen that draws wind draws it from here rather than
+   * from `worldState.weather`, so the compass, the water, the clouds, the
+   * gulls, the sound and the dead-zone warning all agree with the wind the
+   * engine is actually sailing the ship in. A compass that told the truth about
+   * the Caribbean and lied about *here* would be worse than no compass.
+   */
+  private localWeather(): LocalWeather | null {
+    if (!this.worldState) return null;
+    const entity = this.worldState.entities[this.worldState.player.shipId as string];
+    return weatherAt(this.worldState, entity?.pos ?? this.worldState.player.location.pos);
+  }
+
   /** Public: re-apply wind volume immediately (called from OptionsMenu when slider changes). */
   applyWindVolume(): void {
     if (this.windSound && "setVolume" in this.windSound) {
       const gain = getSoundGain("wind");
-      const wind = this.worldState?.weather?.windStrength ?? 0.5;
+      const wind = this.localWeather()?.windStrength ?? 0.5;
       const vol = (0.25 + wind * 0.55) * gain;
       (this.windSound as Phaser.Sound.WebAudioSound).setVolume(vol);
     }
@@ -940,10 +956,15 @@ export class MainMapScene extends Phaser.Scene {
     // A squall takes his eyes as well as his canvas (v0.38.0): the same circle
     // the fog of war is cut from, so the world really does close in rather than
     // the ring merely being drawn smaller.
-    const visionRange = visionRangeForMast(maxMast) * stormVisionMultiplier(this.worldState.weather);
+    const here = this.localWeather() ?? this.worldState.weather;
+    const visionRange = visionRangeForMast(maxMast) * stormVisionMultiplier(here);
 
     const squall = stormWarning(this.worldState);
-    this.uiOverlay?.updateStorm(squall ? t(squall.key) : null, squall?.danger ?? false);
+    this.uiOverlay?.updateStorm(
+      squall ? t(squall.key) : null,
+      squall?.danger ?? false,
+      squall?.severity ?? 0,
+    );
 
     // Render: direct position with gentle lerp (no prediction at 60Hz)
     this.worldRenderer.sync(this, this.worldState, visionRange);
@@ -996,8 +1017,9 @@ export class MainMapScene extends Phaser.Scene {
       entry.text.setVisible(false);
     }
 
-    this.cloudRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
-    this.cirrusRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    const wx = this.localWeather() ?? this.worldState.weather;
+    this.cloudRenderer.update(wx.windDirRad, wx.windStrength);
+    this.cirrusRenderer.update(wx.windDirRad, wx.windStrength);
 
 
     this.palmRenderer.update();
@@ -1018,8 +1040,8 @@ export class MainMapScene extends Phaser.Scene {
       this.beachGfx.setAlpha(beachAlpha);
     }
 
-    this.seagullRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
-    this.uiOverlay?.updateWind(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.seagullRenderer.update(wx.windDirRad, wx.windStrength);
+    this.uiOverlay?.updateWind(wx.windDirRad, wx.windStrength);
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
     this.uiOverlay?.updateFleet(this.worldState.player.fleet?.length ?? 0);
     this.updateBlockadeHud();
@@ -1027,7 +1049,7 @@ export class MainMapScene extends Phaser.Scene {
     const pe3 = this.worldState.entities[this.worldState.player.shipId as string];
     const psc = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;
     const inIrons = pe3?.mode === "sailing" && pe3.sailLevel > 0
-      && isInIrons(pe3.heading, this.worldState.weather.windDirRad, psc?.minWindAngle);
+      && isInIrons(pe3.heading, wx.windDirRad, psc?.minWindAngle);
 
     this.uiOverlay?.updateSail(
       inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey),
@@ -1040,7 +1062,7 @@ export class MainMapScene extends Phaser.Scene {
     this.uiOverlay?.updateSpeed(pe3?.mode === "sailing" ? shipSpeed : 0);
 
     // Animate water surface with wind
-    this.waterRenderer.update(this.worldState.weather.windDirRad, this.worldState.weather.windStrength);
+    this.waterRenderer.update(wx.windDirRad, wx.windStrength);
     // Cartographic grid: show/hide based on zoom
     this.cartographicGrid.update();
     this.mountainRenderer.update(this.cameras.main.zoom);
@@ -1049,7 +1071,7 @@ export class MainMapScene extends Phaser.Scene {
     // At gain=10 the wind is clearly heard even in calm weather; at gain=0 muted.
     if (this.windSound && "setVolume" in this.windSound) {
       const gain = getSoundGain("wind");
-      const wind = this.worldState.weather.windStrength; // 0..1
+      const wind = wx.windStrength; // 0..1
       const vol = (0.25 + wind * 0.55) * gain; // 0..0.8 range
       (this.windSound as Phaser.Sound.WebAudioSound).setVolume(vol);
     }

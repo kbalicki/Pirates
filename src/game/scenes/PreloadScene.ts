@@ -343,6 +343,22 @@ export class PreloadScene extends Phaser.Scene {
       this.scene.start("MainMapScene", { worldState: world });
       return;
     }
+    if (params.has("hurricane")) {
+      // A hurricane is a world event with a chart pin, a headline and, since
+      // v0.39.0, weather on the water under it. `?event=hurricane&port=` stages
+      // the event and leaves the ship wherever the siege world put her, which
+      // is usually nowhere near it; this puts her *inside the circle*, so the
+      // circling wind, the wash, the warning line and the damage are all on
+      // screen at once. She starts furled — `MainMapScene.create` always builds
+      // `new SailSystem(0)` and pays no attention to `entity.sailLevel` — and in
+      // a hurricane that is deliberately **not** the answer: bare poles bleed
+      // canvas and hull all the same. `W` sets sail to see it cost more.
+      const portKey = params.get("hurricane") || "havana";
+      const world = this.createHurricaneWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
     if (params.has("marque")) {
       const portKey = params.get("marque") || "petit_goave";
       const world = this.createMarqueWorld(portKey);
@@ -951,6 +967,26 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   /** A world already inside a squall, for `?storm=1` (v0.38.0). */
+  private createHurricaneWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const staged = this.createEventWorld("hurricane", portKey);
+    const def = CITIES[portKey];
+    const shipId = staged.player.shipId as string;
+    const entity = staged.entities[shipId];
+    if (!def || !entity) return staged;
+    loadLandmassesFromCache(this);
+    const station = getPortWaterPos(portKey);
+    return {
+      ...staged,
+      player: { ...staged.player, location: { type: "sea", pos: { ...station } } },
+      entities: {
+        ...staged.entities,
+        // `sailLevel` here is what the engine sees on the first tick before the
+        // scene's own `SailSystem` overwrites it; the screen starts furled.
+        [shipId]: { ...entity, mode: "sailing" as const, sailLevel: 1, pos: { ...station }, vel: { x: 0, y: 0 } },
+      },
+    };
+  }
+
   private createStormWorld(ticks: number): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const shipId = base.player.shipId as string;

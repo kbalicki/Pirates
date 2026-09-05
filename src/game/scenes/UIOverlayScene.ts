@@ -8,6 +8,8 @@ const COMPASS_SIZE = 100; // px on screen
 
 /** How dark a squall gets, and how quickly it gets there (v0.38.0). */
 const STORM_VEIL_ALPHA = 0.34;
+/** How dark it gets at the eye of a hurricane (v0.39.0). */
+const STORM_VEIL_MAX = 0.62;
 const STORM_VEIL_EASE = 0.04;
 
 /**
@@ -230,8 +232,14 @@ export class UIOverlayScene extends Phaser.Scene {
    * between two frames would read as a rendering fault rather than as weather.
    * `null` means fair weather and fades it back out.
    */
-  updateStorm(line: string | null, danger: boolean): void {
-    const target = line === null ? 0 : STORM_VEIL_ALPHA;
+  updateStorm(line: string | null, danger: boolean, severity = 0): void {
+    // A hurricane is darker than a squall, in proportion to how deep into it
+    // the ship is (v0.39.0) — so the wash itself is a reading of how bad this
+    // is, and standing out of the circle visibly lightens the sea before the
+    // warning line goes away.
+    const target = line === null
+      ? 0
+      : STORM_VEIL_ALPHA + (STORM_VEIL_MAX - STORM_VEIL_ALPHA) * Math.max(0, Math.min(1, severity));
     this.stormAlpha += (target - this.stormAlpha) * STORM_VEIL_EASE;
     if (this.stormVeil) this.stormVeil.setAlpha(this.stormAlpha);
     if (this.stormText) {

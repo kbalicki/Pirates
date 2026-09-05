@@ -6,6 +6,36 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.39.0.0",
+    date: "2026-09-06",
+    changes: [
+      "THE WEATHER HAS A PLACE ON THE CHART",
+      "  This game had TWO WEATHERS that had never been introduced. One wind",
+      "  for the whole Caribbean, the same off Vera Cruz as off Barbados; and a",
+      "  hurricane that was a headline, a chart pin and a shut harbour, and had",
+      "  never once touched the water it stood over",
+      "  A HURRICANE IS NOW A REAL BLOW. Sail into the circle and it takes your",
+      "  canvas whatever sail you are carrying — bare poles will not save you —",
+      "  and it opens your hull, which no squall does",
+      "  A SQUALL IS ANSWERED WITH THE SAILS. A HURRICANE ONLY WITH THE HELM",
+      "  The wind circles her eye counter-clockwise, so the compass in the",
+      "  corner is a bearing to the storm's centre: it lies ninety degrees to",
+      "  starboard of where the wind is from. Keep it on your beam and you sail",
+      "  out of it; run before the wind and you are carried round it",
+      "  It will cripple you and it will never sink you. Hull stops at the",
+      "  foundering line and canvas at the torn tier, so you always limp home",
+      "  THE TRADE WINDS ARE A ROAD NOW. The map has carried a wind bias on the",
+      "  trade belt and the Gulf since it was drawn and nothing ever read it.",
+      "  Inside the belt the wind is pulled easterly and held steadier, so a",
+      "  passage along the north coast really is faster than the open sea",
+      "  Everything on screen reads the wind where your ship is: the compass,",
+      "  the water, the clouds, the gulls, the sound, the dead-zone warning —",
+      "  and the hulls near you sail the wind you are in, not one that is",
+      "  blowing somewhere else",
+      "  `?hurricane=<port>` puts you inside one, under full sail",
+    ],
+  },
+  {
     version: "0.38.0.0",
     date: "2026-09-06",
     changes: [
