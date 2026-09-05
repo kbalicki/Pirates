@@ -345,9 +345,18 @@ export class PreloadScene extends Phaser.Scene {
       // worlds without going through character creation by hand.
       const eraKey = params.get("era") ?? "";
       const era = ERAS[eraKey];
-      const world = era
+      const fresh = era
         ? createNewWorldState(Date.now(), "Captain", era.id, era.startYear)
         : createNewWorldState(Date.now());
+      // `&notoriety=N` gives the captain a name before he has earned one
+      // (v0.36.0). Everything that reads notoriety — the merchant service
+      // running from him, a pirate den's smugglers, the hunters — is otherwise
+      // an hour of plundering away, and the TODO has been telling people to
+      // edit `player.notoriety` in the console for four releases.
+      const fame = Number(params.get("notoriety") ?? NaN);
+      const world = Number.isFinite(fame)
+        ? { ...fresh, player: { ...fresh.player, notoriety: Math.max(0, Math.min(100, fame)) } }
+        : fresh;
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
     } else {

@@ -52,3 +52,4 @@
 - [SESSION-2026-09-05D.md](SESSION-2026-09-05D.md) — v0.32.0.0 → v0.33.0.0: raport na mapie (rachuba, nie pozycja) i konwój
 - [SESSION-2026-09-05E.md](SESSION-2026-09-05E.md) — v0.33.0.0 → v0.34.0.0: ona się dowiaduje — walka, którą przeżyła, odpowiadana w porcie
 - [SESSION-2026-09-05F.md](SESSION-2026-09-05F.md) — v0.34.0.0 → v0.35.0.0: ona ucieka — do jednego z własnych dwóch końców, kursem o najlepszej prędkości uzyskanej
+- [SESSION-2026-09-05G.md](SESSION-2026-09-05G.md) — v0.35.0.0 → v0.36.0.0: morze zna twoje nazwisko — każdy kupiec ucieka przed groźnym kapitanem, jeden predykat dla wszystkich

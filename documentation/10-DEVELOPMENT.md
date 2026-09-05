@@ -273,6 +273,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `&meet=1` | Zamiast tego na wodzie dokładnie tam, gdzie **jego mapa** stawia nazwany statek — razem z `?hunt=`. Od v0.33.0 wybiera statek **z eskortą**, jeśli jest w zasięgu |
 | `&harried=N` | Nazwanemu statkowi N nieodpowiedzianych strachów, jedną przeprawę przed portem, z raportem już na mapie (v0.34.0). Pierwszy dzienny tick robi to, do czego doprowadziłaby walka: cumuje, wychodzi później, bierze konsortę, a przy N ≥ 2 zmienia szlak — podczas gdy złoty kurs i romb dalej opisują trasę, o której kapitanowi powiedziano |
 | `&chase=1` | Kapitan 90 jednostek za jej rufą, ona z jednym strachem na koncie, czyli uciekająca przed każdym (v0.35.0). Jedyny świat debugowy, w którym mapa jest bez znaczenia: patrzy się na jej kurs, jej żagle, na to, który z własnych dwóch portów wybrała, i na eskorty zawracające na gracza |
+| `?skip&notoriety=N` | Nazwisko, zanim zostało zapracowane (v0.36.0), 0-100. Wszystko, co czyta notoriety — uciekający kupcy, przemyt do przystani pirackiej, łowcy — jest inaczej o godzinę łupiestwa dalej |
 | `?debug=1` | Tryb debug (wyłącza mgłę wojny) |
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |

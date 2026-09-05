@@ -23,6 +23,28 @@
  * in `ships.ts`. She is slower than almost anything that would chase her; what
  * she has is the right to choose the point of sail, and against a square rig
  * running for a harbour dead upwind, that is worth more than a knot.
+ *
+ * ## Anonymous traffic runs too (v0.36.0)
+ *
+ * v0.35.0 gave the running to the six hulls that have names, because they were
+ * the ones with a reason to be afraid of a particular captain. Everything else
+ * on the water went on steering at its destination while a black flag came down
+ * on it, which made the whole Caribbean read as though nobody had heard of him.
+ *
+ * The predicate is the same one — `looksDangerous` — so **nothing changes for an
+ * honest captain**: traders sail up to him exactly as they always have. What
+ * changes is what a name costs. Past `FLEE_NOTORIETY`, or under a black flag,
+ * or with a crown that has come to hate him, the merchant service stops
+ * standing still to be collected.
+ *
+ * A nameless trader runs **away from him**, not towards anywhere, and that is
+ * the one place her behaviour differs from a named ship's. A named ship runs
+ * *to* one of her own two harbours because she has a schedule that a landfall
+ * anywhere else would falsify; anonymous traffic has nothing to protect but
+ * itself, and — decisively — its hold is owed to a **particular warehouse**
+ * (`NpcSpawnSystem`'s DOCK step). Divert her and the goods come ashore in the
+ * wrong town. So her destination is never touched: she runs, and when he falls
+ * astern she picks her voyage up where she left it.
  */
 import type { WorldState, Vec2 } from "../model/WorldState.ts";
 import type { EntityState } from "../model/EntityState.ts";
@@ -52,8 +74,18 @@ const WAYPOINT_RADIUS = 70;          // how close counts as "rounded that corner
  */
 const FLEE_SAMPLES = 36;
 
-/** Notoriety past which a named merchantman does not wait to be introduced. */
+/** Notoriety past which a merchantman does not wait to be introduced. */
 const FLEE_NOTORIETY = 50;
+
+/**
+ * What a trader goes back to when the chase is off (v0.36.0).
+ *
+ * Her cruising canvas was rolled between 0.5 and 0.8 when she was spawned and
+ * is not worth a field in the save to remember exactly; 0.7 is the middle of
+ * that band. The alternative — leaving her under everything she has — would
+ * quietly speed up every hull the player has ever sailed past.
+ */
+const TRADER_CRUISE_SAIL = 0.7;
 
 /**
  * Update AI decisions for all NPC ships.
@@ -112,7 +144,7 @@ function updateSingleNpc(
 
   switch (ai.behavior) {
     case "trader":
-      return updatePortToPort(entity, rng);
+      return updateTrader(entity, player, distToPlayer, world, rng);
     case "navy":
       return updateNavy(entity, player, distToPlayer, world, rng);
     case "pirate":
@@ -178,6 +210,56 @@ function updatePortToPort(
   return { entity: { ...entity, heading }, rng };
 }
 
+/**
+ * An ordinary trader: works her voyage, or runs from a bad name (v0.36.0).
+ *
+ * Everything about her is simpler than a named ship's version, and the reason
+ * is worth keeping in view: she has **no schedule and no record**, so there is
+ * nothing to keep in step and no refuge she has to reach. She also has a hold
+ * that is owed to one particular warehouse, so diverting her would land somebody
+ * else's cargo in the wrong town — which is why `targetPortId` is not touched
+ * here at all, and why `NpcSpawnSystem`'s DOCK step (`travel`/`patrol` only)
+ * correctly refuses to tie her up while she is running.
+ */
+function updateTrader(
+  entity: EntityState,
+  player: EntityState,
+  distToPlayer: number,
+  world: WorldState,
+  rng: typeof world.rng,
+): { entity: EntityState; rng: typeof world.rng } {
+  const ai = entity.ai!;
+  const crown = entity.ship?.factionId as string;
+  const threatened = distToPlayer < ai.awarenessRadius && looksDangerous(world, player, crown);
+
+  if (!threatened) {
+    if (ai.state !== "flee") return updatePortToPort(entity, rng);
+    // He has fallen astern. Her destination was never changed, so picking the
+    // voyage up is the whole of it — including the lane corner she was steering
+    // for and the warehouse her hold is owed to.
+    return updatePortToPort({
+      ...entity,
+      sailLevel: TRADER_CRUISE_SAIL,
+      ai: { ...ai, state: "travel" },
+    }, rng);
+  }
+
+  const cls = SHIP_CLASSES[entity.ship?.classId as string];
+  const heading = bestVmgHeading(
+    // Away from him, which for a ship with nowhere in particular to be is the
+    // only sensible bearing there is.
+    headingToward(player.pos, entity.pos),
+    world.weather.windDirRad,
+    world.weather.windStrength,
+    cls?.minWindAngle ?? 30,
+  );
+
+  return {
+    entity: { ...entity, heading, sailLevel: 1, ai: { ...ai, state: "flee" } },
+    rng,
+  };
+}
+
 // ===== NAMED MERCHANTMEN (v0.35.0) =====
 
 /**
@@ -206,21 +288,31 @@ export function bestVmgHeading(
 }
 
 /**
- * Whether this player is something she runs from.
+ * Whether this captain is something a merchant service runs from (v0.36.0).
  *
- * Two answers, and the second is the interesting one. The first is the test the
- * navy already uses — a pirate, or somebody her crown has come to hate — and it
- * is what makes a black-flagged captain unable to walk up to any named hull in
- * the Caribbean. The second is `harried`: **once she has been shot at, she runs
- * from everybody**, which is v0.34.0's counter made visible at sea. The first
- * interception is clean; every one after it has to be earned.
+ * The navy's own hostility test — a black flag, or a crown that has come to
+ * hate him — plus notoriety, which until now cost him nothing but extra patrols.
+ * Extracted so that the six named hulls and the anonymous traffic run from
+ * exactly the same man: two different answers to "is he dangerous" would show
+ * up on the water as a fluyt bolting past a merchantman that had not noticed.
+ */
+export function looksDangerous(world: WorldState, player: EntityState, crown: string): boolean {
+  const playerFaction = player.ship?.factionId as string;
+  if (playerFaction === "pirates") return true;
+  if ((world.player.reputation[crown] ?? 0) <= -60) return true;
+  return (world.player.notoriety ?? 0) > FLEE_NOTORIETY;
+}
+
+/**
+ * Whether this player is something *she* runs from.
+ *
+ * `looksDangerous`, plus the one thing only a named ship knows: `harried`.
+ * **Once she has been shot at, she runs from everybody**, which is v0.34.0's
+ * counter made visible at sea. The first interception is clean; every one after
+ * it has to be earned.
  */
 function fleesFrom(world: WorldState, player: EntityState, ship: NamedShip): boolean {
-  const rep = world.player.reputation[ship.crown] ?? 0;
-  const playerFaction = player.ship?.factionId as string;
-  if (playerFaction === "pirates" || rep <= -60) return true;
-  if ((world.player.notoriety ?? 0) > FLEE_NOTORIETY) return true;
-  return harryCount(ship) > 0;
+  return looksDangerous(world, player, ship.crown) || harryCount(ship) > 0;
 }
 
 /** A named merchantman: runs, or works her passage. */

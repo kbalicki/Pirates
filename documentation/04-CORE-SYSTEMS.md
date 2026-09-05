@@ -3204,3 +3204,48 @@ Statek, który po prostu znika sprzed dziobu, czyta się jak błąd, a nie jak u
 Celowo. Walka czegoś ją uczy; pościg, który wygrała, nie nauczył jej niczego, czego
 by nie wiedziała — a eskalowanie na tym pozwoliłoby graczowi, który nigdy nie trafił,
 rozbudować jej konwój i rozłożyć rozkład na kawałki samym pływaniem za nią.
+
+## Zwykły kupiec też ucieka (v0.36.0)
+
+v0.35.0 dała ucieczkę sześciu kadłubom, które mają nazwiska, bo to one miały powód
+bać się konkretnego kapitana. Reszta Morza Karaibskiego dalej sterowała na swój port,
+gdy opadała na nią czarna bandera — całość czytała się tak, jakby o nim nikt nie
+słyszał.
+
+### Jeden predykat dla wszystkich
+
+`NpcAiSystem.looksDangerous(world, player, crown)` — ten sam test wrogości, którego
+używa marynarka, plus notoriety:
+
+| Warunek | |
+|---|---|
+| gracz pod czarną banderą | |
+| reputacja u **jej** korony ≤ −60 | nie u cudzej |
+| `notoriety > FLEE_NOTORIETY` (50) | |
+
+`fleesFrom` (nazwane statki) = `looksDangerous` **plus** `harried > 0`. Wydzielone
+właśnie po to, żeby jedna i druga uciekała przed **tym samym** człowiekiem: dwie
+różne odpowiedzi na „czy on jest groźny" widać na wodzie jako fluyt pryskający obok
+merchantmana, który niczego nie zauważył.
+
+**Dla uczciwego kapitana nie zmienia się nic.** To jest cała bezpieczna strona tej
+zmiany i pilnuje jej test kontrolny: kupiec sto jednostek od gracza bez nazwiska
+zostaje w `travel` na swoich 0,75 żagla.
+
+### Ucieka **od niego**, nie **do** czegoś
+
+I to jedyne miejsce, w którym różni się od nazwanego statku — z dwóch powodów, oba
+konkretne:
+
+1. **Nie ma rozkładu**, więc nie ma czego trzymać w zgodzie i nie ma schronienia,
+   do którego musi dobić.
+2. **Jej ładownia jest winna konkretnemu magazynowi.** Krok DOCK w `NpcSpawnSystem`
+   wysypuje ładownię do portu docelowego; przekierowanie jej sprawiłoby, że cudzy
+   towar schodzi na ląd w niewłaściwym mieście.
+
+Dlatego `targetPortId` **nie jest ruszany**, a DOCK (tylko `travel`/`patrol`) sam z
+siebie odmawia zacumowania jej, dopóki ucieka. Gdy prześladowca zostaje w tyle,
+wraca do `travel`, do `TRADER_CRUISE_SAIL = 0.7` i do tego samego portu.
+
+Kurs liczy `bestVmgHeading` po namiarze **od gracza** — ta sama krzywa polarna, więc
+załadowany fluyt dalej jest załadowanym fluytem: kto pracuje wiatrem, ten go ma.

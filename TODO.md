@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.35.0.0 · **Branch:** `main`
-**Kod:** 193 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1471 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.36.0.0 · **Branch:** `main`
+**Kod:** 194 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1484 przechodzi, 0 failuje, 0 `todo`** w 41 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.35.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1471/1471 zielone; v0.34.0 dała nazwanemu statkowi odpowiedź, której mógł udzielić wyłącznie w porcie, a ta wersja daje mu drugą — **ucieka**, do jednego z własnych dwóch końców przeprawy, kursem o najlepszej prędkości uzyskanej po tej samej krzywej polarnej, którą płynie gracz; eskorty zawracają na ścigającego, a pod działami portu jest po wszystkim. Lista kandydatów na v0.36.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.36.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1484/1484 zielone; ucieczka przestała być przywilejem sześciu nazwanych kadłubów — **każdy kupiec ucieka przed groźnym kapitanem**, po tym samym predykacie (`looksDangerous`: czarna bandera, znienawidzona korona, notoriety > 50), więc dla uczciwego kapitana nie zmienia się nic, a wielkie nazwisko wreszcie coś kosztuje. **To jest zmiana odczucia i warto ją przegrać** — pokrętła to `FLEE_NOTORIETY` i `awarenessRadius`. Lista kandydatów na v0.37.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) i [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) i [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -78,6 +78,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Zdarzenie, które gracz spotyka | ✅ | `isPortClosed` w `PortApproachScene` (zamknięty port nie wpuszcza), `crewMul` w `generateAvailableCrew` (zaraza opróżnia tawernę), `ITEMS.gold` jako pierwszy towar `rare` |
 | Nazwany statek reaguje na pościg | ✅ | `harryNamedShip` + `answerHarrying`: walka, którą przeżyła, jest pamiętana i odpowiadana w porcie — postój, konsorta, a po drugim strachu inny szlak; mapa dalej rysuje trasę z raportu |
 | Pościg na wodzie | ✅ | `NpcAiSystem.bestVmgHeading` + `boltFor` + `makeShelter`: ucieka do jednego z własnych dwóch końców kursem o najlepszej prędkości uzyskanej, eskorty zawracają, pod działami portu jest po wszystkim |
+| Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 
 ### Nietknięte
 
@@ -1438,7 +1439,40 @@ jest pod ręką.
 
 ---
 
-### v0.36.0 — co dalej
+### ~~v0.36.0 — Morze zna twoje nazwisko~~ ✅ (v0.36.0.0)
+
+Kandydat **3** z poprzedniej listy, wraz z zastrzeżeniem, które przy niej stało:
+„czy uciekać ma **każdy** kupiec, czy tylko taki, który zdąży zobaczyć czarną
+banderę".
+
+**Odpowiedź nie była monetą do rzucenia** — predykat już był w kodzie.
+`looksDangerous(world, player, crown)` to ten sam test wrogości, którego od zawsze
+używa marynarka i którym v0.35.0 kazała uciekać nazwanym statkom: czarna bandera,
+reputacja u **jej** korony ≤ −60, notoriety > 50. `fleesFrom` dla nazwanych = to
+plus `harried > 0`.
+
+Wydzielenie nie jest kosmetyką: dwie różne odpowiedzi na „czy on jest groźny" widać
+na wodzie jako fluyt pryskający obok merchantmana, który niczego nie zauważył.
+
+**Dla uczciwego kapitana nie zmienia się nic** i pilnuje tego test kontrolny obok
+głównego. Zyskuje na tym **notoriety**, które do tej pory kupowało tylko więcej
+patroli i lepszy przemyt — liczba w profilu, której nie widać na wodzie, jest
+liczbą w profilu.
+
+**Ucieka OD gracza, nie DO czegoś**, i to z dwóch powodów, nie z lenistwa: nie ma
+rozkładu, który lądowanie gdzie indziej by zafałszowało, a jej ładownia jest winna
+**konkretnemu magazynowi** (krok DOCK). Dlatego `targetPortId` nie jest ruszany —
+a DOCK, działający tylko dla `travel`/`patrol`, sam odmawia zacumowania jej, dopóki
+ucieka, bez ani jednej linijki dopisanej w `NpcSpawnSystem`.
+
+**Pułapka:** v0.35.0 zostawiła asercję „anonimowy ruch zostaje taki, jaki był",
+którą ta wersja czyni fałszywą z premedytacją. Zamiast ją skasować, została
+przepisana na to, czego naprawdę pilnowała (dyspozytora). *Kiedy zmiana wywraca
+test, najpierw przeczytaj, po co ten test istniał.*
+
+---
+
+### v0.37.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1452,12 +1486,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    przestrzeni świata (jak sugeruje `project_ship_jitter`), czy ekranu
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Zwykły kupiec dalej nie ucieka.** Anonimowy ruch płynie na gracza jak
-   zawsze. Na razie to w porządku — spotkanie z nim jest całą pętlą łupiestwa i
-   uciekający wszyscy naraz zmieniliby ją nie do poznania — ale gdy przyjdzie do
-   tego wrócić, `bestVmgHeading` jest już napisane i nie zależy od niczego
-   nazwanego. Do rozstrzygnięcia najpierw: czy uciekać ma **każdy** kupiec, czy
-   tylko taki, który zdąży zobaczyć czarną banderę
+3. **Przegrać v0.36.0 i wyregulować pościg.** Ucieczka kupców jest zmianą
+   **odczucia**, a `FLEE_NOTORIETY = 50` i promień 120 jednostek
+   (`awarenessRadius` z szablonu kupca) to liczby wybrane z namysłem, nie
+   zmierzone przy graniu. Jeśli pościgi okażą się nużące albo przeciwnie —
+   niezauważalne — to są dwa pokrętła. Wymaga użytkownika, nie agenta
 4. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana**,
    przeskakiwana czwarty raz: „sojusz" może znaczyć list kaperski gracza albo
    przymierze dwóch koron, którego w modelu świata **nie ma**. Przed wzięciem

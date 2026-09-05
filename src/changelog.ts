@@ -6,6 +6,32 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.36.0.0",
+    date: "2026-09-05",
+    changes: [
+      "THE SEA KNOWS YOUR NAME",
+      "  EVERY MERCHANT RUNS FROM YOU NOW, not only the six with names.",
+      "  v0.35.0 taught the named hulls to run; the rest of the Caribbean went",
+      "  on steering at its destination while a black flag came down on it, as",
+      "  though nobody had heard of you",
+      "  NOTHING CHANGES FOR AN HONEST CAPTAIN. It is the same test the navy",
+      "  and the named ships already use: a black flag, a crown that has come",
+      "  to hate you, or a notoriety past 50. Below that, traders sail up to",
+      "  you exactly as they always have",
+      "  WHICH MAKES NOTORIETY COST SOMETHING AT LAST. Until now a great name",
+      "  bought you extra patrols and better smuggling; now it also means the",
+      "  merchant service will not stand still to be collected",
+      "  She runs AWAY from you rather than towards anywhere — she has no",
+      "  schedule to keep and her hold is owed to one particular warehouse, so",
+      "  her destination is never changed. Let her go and she picks the voyage",
+      "  up where she left it",
+      "  And she runs on the best point of sail she has, off the same polar",
+      "  curve your own ship uses. A laden fluyt is still a laden fluyt: work",
+      "  the wind and you will have her",
+      "  `?skip&notoriety=N` gives a captain a name before he has earned one",
+    ],
+  },
+  {
     version: "0.35.0.0",
     date: "2026-09-05",
     changes: [

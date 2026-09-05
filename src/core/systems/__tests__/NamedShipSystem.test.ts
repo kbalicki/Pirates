@@ -1230,9 +1230,12 @@ describe("she runs", () => {
     expect(hullOf(after, ship.id)![1].sailLevel).toBe(0.75);
   });
 
-  it("leaves the anonymous traffic exactly as it was", () => {
-    // The dispatch reads `namedShipId` before the behaviour switch; nothing
-    // without a name may have noticed (v0.35.0).
+  it("is dispatched on her name, before the behaviour switch", () => {
+    // v0.35.0 asserted here that anonymous traffic did NOT notice. v0.36.0 gave
+    // the running to every merchant (`NpcAiSystem.test.ts`), so what is left to
+    // hold is the dispatch itself: a hull with a name goes to her own handler
+    // and comes out fleeing, while the same world's nameless trader is answered
+    // by the trader handler and comes out fleeing too — from the same predicate.
     const w = seeded();
     const at = { x: 1000, y: 1000 };
     const anon = entityId("anon");
@@ -1248,7 +1251,7 @@ describe("she runs", () => {
         } as never,
       },
     };
-    expect(runAi(world).entities[anon as string].ai?.state).toBe("travel");
+    expect(runAi(world).entities[anon as string].ai?.state).toBe("flee");
   });
 });
 
