@@ -58,7 +58,11 @@ export function updateWeather(
 
   // --- Storm logic: season-aware ---
   let stormActive = weather.stormActive;
-  let stormTimer = weather.stormTimer - dtTicks;
+  // Clamped at nought, because it was not: once a squall ended, the timer went
+  // on being decremented every tick for the life of the save and reached five
+  // figures below zero (v0.38.0). Nothing read it, so nothing broke — which is
+  // exactly why it sat there.
+  let stormTimer = Math.max(0, weather.stormTimer - dtTicks);
 
   if (stormActive && stormTimer <= 0) {
     stormActive = false;

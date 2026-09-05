@@ -330,6 +330,19 @@ export class PreloadScene extends Phaser.Scene {
       }
       return;
     }
+    if (params.has("storm")) {
+      // A squall lasts six to thirty seconds of play and is rolled against a
+      // seasonal table at 1e-5 per tick, so waiting for one is not testing
+      // (v0.38.0). This starts inside one, with a frigate whose rigging has
+      // room to be torn.
+      // `?storm=N` sets the timer in ticks, so the squall PASSING — and the
+      // toast that says so — is reachable too. `?storm=1` reads as "a long one".
+      const ticks = Number(params.get("storm") ?? "");
+      const world = this.createStormWorld(Number.isFinite(ticks) && ticks > 1 ? ticks : 20000);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
     if (params.has("marque")) {
       const portKey = params.get("marque") || "petit_goave";
       const world = this.createMarqueWorld(portKey);
@@ -935,6 +948,24 @@ export class PreloadScene extends Phaser.Scene {
         location: { type: "port", portId: makePortId(portKey), pos: { ...def.pos } },
       },
     }, makePortId(portKey));
+  }
+
+  /** A world already inside a squall, for `?storm=1` (v0.38.0). */
+  private createStormWorld(ticks: number): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    return {
+      ...base,
+      // Default 20 000 ticks: long enough to watch the rigging go, rather than
+      // the six to thirty seconds a real one lasts.
+      weather: { ...base.weather, stormActive: true, stormTimer: ticks, windStrength: 0.9 },
+      entities: entity
+        // Under everything she has, which is the half of the decision worth
+        // looking at; `S` reefs her on screen.
+        ? { ...base.entities, [shipId]: { ...entity, sailLevel: 1, mode: "sailing" as const } }
+        : base.entities,
+    };
   }
 
   /**

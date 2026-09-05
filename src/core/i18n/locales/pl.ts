@@ -542,6 +542,12 @@ export const PL: LocaleData = {
 
   // -- New events --
   "event.letter_of_marque": "Otrzymano List Kaperski od {{faction}}.",
+  "weather.storm": "Szkwał — przeczekujemy.",
+  "weather.storm_canvas": "Szkwał — za dużo płótna!",
+  "weather.storm_toast": "Wpadliśmy w szkwał. Refuj albo zapłać stengami.",
+  "weather.storm_over": "Szkwał przeszedł.",
+  "weather.log_storm": "Wpłynięto w szkwał.",
+  "weather.log_storm_passed": "Szkwał przeszedł.",
   "event.recruited_crew": "Zwerbowano {{count}} członków załogi za {{cost}} Złoto.",
   "event.bought_drinks": "Postawiono kolejkę za {{cost}} Złoto. Morale podniesione!",
 

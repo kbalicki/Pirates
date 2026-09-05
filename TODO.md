@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.37.0.0 · **Branch:** `main`
-**Kod:** 196 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1503 przechodzi, 0 failuje, 0 `todo`** w 42 plikach
+**Stan na:** 2026-09-06 · **Wersja:** v0.38.0.0 · **Branch:** `main`
+**Kod:** 198 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1519 przechodzi, 0 failuje, 0 `todo`** w 43 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.37.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1503/1503 zielone; **list kaperski przestał być pamiątką** — pryz wzięty wrogowi patrona jest uznany za dobry (i tylko w połowie zapisany braciom), pryz wzięty komuś, z kim patron ma pokój, jest dla niego wstydem, a napad na samego patrona dziera list na miejscu; komisja jest **wyłączna** i gubernator mówi o tym przed podpisem. Dwie rzeczy z poprzednich wydań dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`) i decyzje z sekcji 6 o pixel arcie. Lista kandydatów na v0.38.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.38.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1519/1519 zielone; **szkwał, który był w każdym zapisie od pierwszego commita i którego nie czytało nic**, jest teraz zdarzeniem: drze płótno powyżej refów (konsortom tak samo), tnie lunetę do 55%, zaciemnia mapę i mówi na HUD, którą z dwóch rzeczy kapitan właśnie robi. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.39.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) i [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) i [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -80,6 +80,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Pościg na wodzie | ✅ | `NpcAiSystem.bestVmgHeading` + `boltFor` + `makeShelter`: ucieka do jednego z własnych dwóch końców kursem o najlepszej prędkości uzyskanej, eskorty zawracają, pod działami portu jest po wszystkim |
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
+| Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
 
 ### Nietknięte
 
@@ -1510,7 +1511,42 @@ startuje ją burta w burtę. Najtańsze domknięcie: `&far=1`.
 
 ---
 
-### v0.38.0 — co dalej
+### ~~v0.38.0 — Szkwał~~ ✅ (v0.38.0.0)
+
+**Nie z listy kandydatów** — wszystkie sześć pozycji na v0.38.0 czekało na
+użytkownika albo było osobnym modułem, więc zamiast wybierać z listy poszedłem
+sprawdzić, czy w module G nie leży coś już w połowie napisanego.
+
+**`stormActive` było w modelu od pierwszego commita i nie czytało go NIC.**
+`WeatherSystem` losował szkwał z sezonowej tabeli, prowadził go 120-600 ticków,
+dokładał 0,3 do wiatru i zapisywał do każdego save'a — a `grep` znajdował
+producenta i zero odbiorców. **Trzeci raz ta sama rzecz** po `crewMul` (v0.29.0)
+i `treaty_signed` (v0.30.0); reguła była w TODO od dwóch wydań, wystarczyło użyć
+jej jako *narzędzia wyszukiwania*, a nie tylko morału.
+
+**Obie połówki decyzji już leżały w kodzie:** `SailSystem` ma cztery nazwane
+poziomy pod jednym klawiszem, `ShipRepairSystem` ma naprawę na morzu, która miała
+znaczenie tylko po bitwie. `STORM_SAFE_SAIL = 0.5` to „Reefed" — poziom, który UI
+**już nazywa**; liczba, której ekran żagli nie nazywa, uczyniłaby regułę
+niewidzialną.
+
+Strata jako **udział `sailsMax`**, nie punkty (slup i galeon płacą ten sam ułamek).
+Konsorty tak samo, bo flota żegluje jako jedno wszędzie indziej. NPC nietykane —
+kadłuby na mapie są próbką ruchu.
+
+**`STORM_VISION_SHARE = 0.55`** jest tym, co sprawia, że pogoda zmienia *sposób
+grania na mapie*: szkwał to moment, w którym ścigany kupiec przechodzi obok.
+
+**Dwa stany na HUD, nie jeden.** Milczenie wobec zrefowanego kapitana byłoby
+gorsze: musi wiedzieć, że szkwał trwa, inaczej rozwinięcie żagli wygląda na darmowe.
+
+**Naprawione przy okazji:** `stormTimer` był odejmowany co tick także wtedy, gdy
+szkwału nie było, i schodził pięć cyfr poniżej zera na czas życia zapisu.
+Niewidoczne dokładnie dlatego, że nikt go nie czytał.
+
+---
+
+### v0.39.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1535,8 +1571,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
    pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
    wystawia korsarzy
-5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
-6. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
+5. **Reszta pogody z modułu G.** Szkwał (v0.38.0) był pierwszym z czterech i
+   jedynym, który był już w połowie napisany. Zostały: **huragany sezonowe** —
+   dziś `hurricane` jest zdarzeniem świata i nie ma **żadnego** związku z
+   `WeatherState`, więc to dwie osobne pogody w jednej grze; **mgła** jako stan
+   osobny od szkwału (samo cięcie lunety, bez darcia płótna); **prądy morskie**
+6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
+7. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
    usuniętą `PauseMenuScene`. Nic ich nie linkuje z `00-INDEX.md`. Do skasowania,
    ale to decyzja właściciela repo, nie agenta
@@ -1625,8 +1666,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Zmienna w logu jest napisem, nie kluczem.** `addLogEntry` trzyma `vars` i renderuje je dosłownie długo później, więc surowy klucz frakcji dociera na ekran jako „england". `event.letter_of_marque` robiło to źle od pierwszego dialogu z gubernatorem, choć ta sama reguła jest zastosowana w `huntQuest` (pieczenie nazw miast). Widać to wyłącznie w Dzienniku i żaden test tego nie łapał (v0.37.0).
 - **Jeśli czytnik radzi sobie ze starym kształtem, nową zasadę egzekwuj tylko tam, gdzie stan powstaje.** Wyłączność listu kaperskiego jest wymuszana **przy ladzie**, a `PrivateerSystem` pracuje na *zbiorze* listów — dzięki temu zapis sprzed wersji, niosący dwa, czyta się poprawnie i migracji nie ma. Ta sama reguła co `escorts?` w v0.33.0, tylko od strony odczytu (v0.37.0).
 - **Kara za nadużycie przywileju musi być większa niż nagroda za jego użycie**, inaczej przywilej jest darmowym bonusem, a wybór, który go daje, nie jest wyborem. `UNCOVERED_PATRON −8` przeciwko `PRIZE_PATRON_TRADER 5` (v0.37.0).
+- **„Producent bez odbiorcy" to nie morał, tylko narzędzie wyszukiwania.** Trzy razy ta sama rzecz: `crewMul` (v0.29.0), `treaty_signed` (v0.30.0), `stormActive` (v0.38.0) — ostatni siedział w modelu, w zapisach i w symulacji **od pierwszego commita**, robiąc jedno niewidoczne +0,3 na wietrze. Zanim wybierzesz zadanie z listy, przepuść `grep` po polach wspólnych typów i sprawdź, **kto je czyta** (v0.38.0).
+- **Pełnoekranowy efekt pogodowy należy do `UIOverlayScene`, na jej najniższej głębi.** Kamera overlay nigdy nie zoomuje ani nie przewija, więc prostokąt zaciemniający zakrywa mapę przy każdym zoomie bez mierzenia czegokolwiek, a kompas i HUD idą nad nim. Alfę **wygładzaj**, nie przełączaj — pogoda pojawiająca się między dwiema klatkami czyta się jak błąd renderowania (v0.38.0).
+- **Próg mechaniki wybieraj z liczb, które UI już nazywa.** `STORM_SAFE_SAIL = 0.5` to „Reefed" z `SailSystem`, więc reguła „refuj albo płać" jest czytelna bez tłumaczenia. Próg 0,45 byłby tą samą mechaniką i niewidzialną regułą (v0.38.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?storm=1|N`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

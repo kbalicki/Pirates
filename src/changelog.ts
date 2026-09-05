@@ -6,6 +6,29 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.38.0.0",
+    date: "2026-09-06",
+    changes: [
+      "THE SQUALL YOU HAVE BEEN SAILING THROUGH ALL ALONG",
+      "  THE STORM HAS BEEN IN EVERY SAVE SINCE THE FIRST COMMIT and nothing",
+      "  in the game has ever read it. The weather rolled for one, ran it,",
+      "  added a little wind and wrote it down; no warning, no danger, no",
+      "  reason to touch the sails",
+      "  NOW IT TEARS YOUR CANVAS. Rigging goes at a rate set by how much sail",
+      "  you are carrying above Reefed — and at Reefed or Furled, not at all.",
+      "  Run before it and pay in topmasts, or shorten sail and pay in hours",
+      "  Your consorts pay the same share. The fleet sails as one",
+      "  IT TAKES YOUR EYES TOO. The spyglass is cut to just over half its",
+      "  range while it blows, which is when a hunted merchantman gets past you",
+      "  AND YOU CAN SEE IT. The map darkens, and the HUD tells you which of",
+      "  the two things you are doing: riding it out, or carrying too much",
+      "  A line when it hits and a line when it passes",
+      "  `stormTimer` had been counting down past zero for the life of every",
+      "  save. Invisible precisely because nothing read it. Fixed",
+      "  `?storm=1` starts you inside one; `?storm=N` sets how long it lasts",
+    ],
+  },
+  {
     version: "0.37.0.0",
     date: "2026-09-05",
     changes: [

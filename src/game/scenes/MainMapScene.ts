@@ -5,6 +5,7 @@ import type { Transition } from "../../core/model/Events.ts";
 import { WorldEngine } from "../../core/engine/WorldEngine.ts";
 import { type TerrainType, findOpenSeaHeading } from "../../core/systems/NavigationSystem.ts";
 import { WorldRenderer, visionRangeForMast } from "../render/WorldRenderer.ts";
+import { stormVisionMultiplier, stormWarning } from "../../core/systems/StormSystem.ts";
 import { fleetMaxMastHeight } from "../../core/systems/FleetSystem.ts";
 import { CameraController } from "../render/CameraController.ts";
 // MinimapRenderer removed — map available in SPACE menu
@@ -936,7 +937,13 @@ export class MainMapScene extends Phaser.Scene {
     const maxMast = playerEntity?.ship
       ? fleetMaxMastHeight(playerEntity.ship.classId as string, this.worldState.player.fleet ?? [])
       : (playerShipClass?.mastHeight ?? 15);
-    const visionRange = visionRangeForMast(maxMast);
+    // A squall takes his eyes as well as his canvas (v0.38.0): the same circle
+    // the fog of war is cut from, so the world really does close in rather than
+    // the ring merely being drawn smaller.
+    const visionRange = visionRangeForMast(maxMast) * stormVisionMultiplier(this.worldState.weather);
+
+    const squall = stormWarning(this.worldState);
+    this.uiOverlay?.updateStorm(squall ? t(squall.key) : null, squall?.danger ?? false);
 
     // Render: direct position with gentle lerp (no prediction at 60Hz)
     this.worldRenderer.sync(this, this.worldState, visionRange);

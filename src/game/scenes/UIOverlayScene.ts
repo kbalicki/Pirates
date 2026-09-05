@@ -6,6 +6,10 @@ import { WindCompassWidget } from "../render/WindCompassWidget.ts";
 const MARGIN = 8;
 const COMPASS_SIZE = 100; // px on screen
 
+/** How dark a squall gets, and how quickly it gets there (v0.38.0). */
+const STORM_VEIL_ALPHA = 0.34;
+const STORM_VEIL_EASE = 0.04;
+
 /**
  * UI Overlay Scene — runs on top of MainMapScene.
  * Has its own camera that NEVER zooms or scrolls.
@@ -20,6 +24,18 @@ export class UIOverlayScene extends Phaser.Scene {
   private speedText!: Phaser.GameObjects.Text;
   private fleetText!: Phaser.GameObjects.Text;
   private blockadeText!: Phaser.GameObjects.Text;
+  private stormText!: Phaser.GameObjects.Text;
+  /**
+   * The squall itself (v0.38.0).
+   *
+   * A full-screen wash, and it lives here rather than in `MainMapScene` for the
+   * reason everything fixed does: this scene's camera never zooms or scrolls,
+   * so the veil covers the viewport at any zoom without being measured. It is
+   * given the lowest depth in the scene, so it darkens the whole map and passes
+   * *under* the compass and the HUD — which is where a weather effect belongs.
+   */
+  private stormVeil!: Phaser.GameObjects.Rectangle;
+  private stormAlpha = 0;
   private gridLabels: Phaser.GameObjects.Text[] = [];
 
   constructor() {
@@ -109,6 +125,20 @@ export class UIOverlayScene extends Phaser.Scene {
     this.blockadeText.setOrigin(1, 0);
     this.blockadeText.setDepth(30);
 
+    // The squall wash — below everything else this scene draws.
+    this.stormVeil = this.add.rectangle(0, 0, cam.width, cam.height, 0x0a1626, 0);
+    this.stormVeil.setOrigin(0, 0);
+    this.stormVeil.setDepth(-10);
+
+    // Weather warning — under the blockade line, and silent in fair weather.
+    this.stormText = this.add.text(cam.width - MARGIN, sailY + 72, "", {
+      ...txt(12, { bold: true, color: "#88aacc" }),
+      stroke: "#000000",
+      strokeThickness: 3,
+    });
+    this.stormText.setOrigin(1, 0);
+    this.stormText.setDepth(30);
+
     // Reposition on resize
     this.scale.on("resize", (gameSize: Phaser.Structs.Size) => {
       this.cameras.main.setSize(gameSize.width, gameSize.height);
@@ -129,6 +159,8 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
     if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 36);
     if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + 54);
+    if (this.stormText) this.stormText.setPosition(width - MARGIN, sailY + 72);
+    if (this.stormVeil) this.stormVeil.setSize(width, height);
   }
 
   /** Called from MainMapScene each frame with current date string */
@@ -188,6 +220,24 @@ export class UIOverlayScene extends Phaser.Scene {
     if (!this.blockadeText) return;
     this.blockadeText.setText(line);
     this.blockadeText.setColor(effective ? "#dd5544" : "#cc8844");
+  }
+
+  /**
+   * Called from MainMapScene each frame with the weather warning, if any
+   * (v0.38.0).
+   *
+   * The wash is eased rather than switched, because a squall that appeared
+   * between two frames would read as a rendering fault rather than as weather.
+   * `null` means fair weather and fades it back out.
+   */
+  updateStorm(line: string | null, danger: boolean): void {
+    const target = line === null ? 0 : STORM_VEIL_ALPHA;
+    this.stormAlpha += (target - this.stormAlpha) * STORM_VEIL_EASE;
+    if (this.stormVeil) this.stormVeil.setAlpha(this.stormAlpha);
+    if (this.stormText) {
+      this.stormText.setText(line ?? "");
+      this.stormText.setColor(danger ? "#dd7755" : "#88aacc");
+    }
   }
 
   /** Called from MainMapScene each frame with current zoom level */

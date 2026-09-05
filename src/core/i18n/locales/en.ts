@@ -542,6 +542,12 @@ export const EN: LocaleData = {
 
   // -- New events --
   "event.letter_of_marque": "Received Letter of Marque from {{faction}}.",
+  "weather.storm": "Squall — riding it out.",
+  "weather.storm_canvas": "Squall — too much canvas!",
+  "weather.storm_toast": "A squall is on you. Shorten sail or pay for it in topmasts.",
+  "weather.storm_over": "The squall has blown through.",
+  "weather.log_storm": "Sailed into a squall.",
+  "weather.log_storm_passed": "The squall blew through.",
   "event.recruited_crew": "Recruited {{count}} crew members for {{cost}} Gold.",
   "event.bought_drinks": "Bought a round of drinks for {{cost}} Gold. Morale boosted!",
 

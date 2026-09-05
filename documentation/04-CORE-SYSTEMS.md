@@ -16,6 +16,7 @@
 | NamedShip | `NamedShipSystem.ts` | Nazwane kupce z rozkładem: rekord, pozycja wyprowadzana, materializacja przy graczu |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Privateer | `PrivateerSystem.ts` | Co znaczy list kaperski: pryz dobry, pryz wstydliwy, zdrada patrona |
+| Storm | `StormSystem.ts` | Szkwał: co drze płótno, co zabiera z lunety, co mówi HUD |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -601,6 +602,68 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## StormSystem (v0.38.0)
+
+`WeatherState.stormActive` jest w modelu **od pierwszego commita**. `WeatherSystem`
+losuje szkwał z sezonowej tabeli, prowadzi go 120-600 ticków, dokłada 0,3 do siły
+wiatru i zapisuje go do każdego save'a. **Nie czytało go nic** — ani system, ani
+scena, ani renderer; `grep` znajdował producenta i zero odbiorców.
+
+Szkwał istniał więc jako mały dodatkowy pchnięcie na krzywej polarnej i jako nic
+poza tym: bez ostrzeżenia, bez ryzyka, bez powodu, żeby dotknąć żagli. Ten sam błąd
+co `crewMul` (v0.29.0) i `treaty_signed` (v0.30.0) — **trzeci raz w tej bazie**.
+
+### Decyzja, którą kupuje
+
+Obie połówki leżały już w kodzie: `SailSystem` ma cztery nazwane poziomy zmieniane
+jednym klawiszem, a `ShipRepairSystem` ma prowizoryczną naprawę na morzu, która
+miała znaczenie wyłącznie po bitwie.
+
+```
+STORM_SAFE_SAIL = 0.5          (czyli „Reefed", poziom, który UI już nazywa)
+STORM_RIG_SHARE_PER_TICK = 0.0004   (udział `sailsMax`, nie punkty)
+STORM_VISION_SHARE = 0.55
+```
+
+**Płótno jest tym, co szkwał drze.** Strata jest proporcjonalna do żagla powyżej
+`STORM_SAFE_SAIL`; przy Reefed i Furled **nie ma jej w ogóle**. Kapitan, który chce
+biec przed szkwałem, płaci stengami; ten, który refuje, płaci godzinami. Żadna
+odpowiedź nie jest darmowa i żadna nie jest zła.
+
+Udział `sailsMax`, a nie punkty życia — szkwał kosztuje slup i galeon ten sam
+**ułamek** płótna. Przy 120-600 tickach to 5-24% takielunku za przeczekanie
+jednego pod pełnymi żaglami.
+
+Konsorty płacą ten sam udział, przy poziomie żagli okrętu flagowego: flota żegluje
+jako jedno wszędzie indziej w tej bazie (`fleetSpeedMultiplier`,
+`fleetMaxMastHeight`), więc konsorta pod gołymi masztami obok admirała tracącego
+stengi byłaby dziwactwem.
+
+**Zabiera też oczy.** `STORM_VISION_SHARE` tnie lunetę — i to jest ta jedna rzecz,
+która sprawia, że pogoda zmienia sposób grania na mapie: szkwał to moment, w którym
+ścigany kupiec przechodzi obok.
+
+**Nie dotyka NPC.** Kadłuby na mapie są próbką ruchu; liczenie im takielunku byłoby
+księgowością, której gracz nie zobaczy, na statkach, które i tak znikają za rufą.
+
+### Na ekranie
+
+`stormWarning(world)` zwraca **dwa** stany, nie jeden: „przeczekujemy" (spokojny
+kolor) i „za dużo płótna!" (ostrzegawczy). Kapitan już zrefowany też musi wiedzieć,
+że szkwał trwa — inaczej rozwinięcie żagli z powrotem wygląda na darmowe.
+
+Zasłona (`stormVeil`) mieszka w `UIOverlayScene`, na **najniższej głębi tej sceny**:
+kamera overlay nigdy nie zoomuje ani nie przewija, więc pełnoekranowy prostokąt
+zaciemnia mapę przy każdym zoomie bez mierzenia czegokolwiek, a HUD i kompas idą nad
+nim. Alfa jest **wygładzana**, nie przełączana — szkwał pojawiający się między dwiema
+klatkami czytałby się jak błąd renderowania, nie jak pogoda.
+
+### Naprawione przy okazji
+
+`stormTimer` był odejmowany co tick **także wtedy, gdy szkwału nie było**, i schodził
+w rejony pięciu cyfr poniżej zera na czas życia zapisu. Niewidoczne dokładnie
+dlatego, że nikt go nie czytał.
 
 ## PrivateerSystem (v0.37.0)
 

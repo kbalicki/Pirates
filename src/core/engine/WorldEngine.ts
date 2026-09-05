@@ -4,6 +4,7 @@ import type { WorldEvent, Transition, EngineResult } from "../model/Events.ts";
 import { reduceCommand } from "./reducers.ts";
 import { advanceTime, dayToCalendar, daysInMonth, tickBoundaryCrossed } from "../systems/TimeSystem.ts";
 import { updateWeather } from "../systems/WeatherSystem.ts";
+import { tickStormDamage } from "../systems/StormSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
@@ -216,6 +217,16 @@ export class WorldEngine {
     const dim = daysInMonth(cal.month, cal.year);
     const weatherResult = updateWeather(world.weather, world.rng, dtTicks, cal.month, cal.dayOfMonth, dim);
 
+    // A squall arriving and a squall passing are both worth a line (v0.38.0).
+    // `stormActive` has been rolled, timed and saved since the first commit
+    // with nothing whatever reading it; this is the moment it becomes an event
+    // the captain meets rather than a quiet 0.3 on the wind.
+    if (weatherResult.weather.stormActive !== world.weather.stormActive) {
+      const arriving = weatherResult.weather.stormActive;
+      world = addLogEntry(world, arriving ? "weather.log_storm" : "weather.log_storm_passed");
+      allEvents.push({ type: "Toast", message: t(arriving ? "weather.storm_toast" : "weather.storm_over") });
+    }
+
     // 4. Update player ship navigation
     const playerShipId = world.player.shipId as string;
     const playerEntity = world.entities[playerShipId];
@@ -293,6 +304,13 @@ export class WorldEngine {
     // 6. NPC spawn/despawn
     world = { ...world, entities: updatedEntities, time: newTime, weather: weatherResult.weather };
     world = updateNpcSpawns(world, dtTicks);
+    updatedEntities = { ...world.entities };
+
+    // 6.0 A squall tears whatever canvas is set (v0.38.0). It has to run after
+    // line 305, which is where this tick's weather is committed to the world —
+    // and after navigation, so the sail level that actually drove the ship is
+    // the one paid for.
+    world = tickStormDamage(world, dtTicks);
     updatedEntities = { ...world.entities };
 
     // 6.1 Invasion squadrons (v0.17.0). After the generic spawner, because it

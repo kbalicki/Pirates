@@ -54,3 +54,4 @@
 - [SESSION-2026-09-05F.md](SESSION-2026-09-05F.md) — v0.34.0.0 → v0.35.0.0: ona ucieka — do jednego z własnych dwóch końców, kursem o najlepszej prędkości uzyskanej
 - [SESSION-2026-09-05G.md](SESSION-2026-09-05G.md) — v0.35.0.0 → v0.36.0.0: morze zna twoje nazwisko — każdy kupiec ucieka przed groźnym kapitanem, jeden predykat dla wszystkich
 - [SESSION-2026-09-05H.md](SESSION-2026-09-05H.md) — v0.36.0.0 → v0.37.0.0: komisja jest posadą — pryz pokryty, pryz wstydliwy, zdrada patrona, list wyłączny
+- [SESSION-2026-09-06.md](SESSION-2026-09-06.md) — v0.37.0.0 → v0.38.0.0: szkwał — pole, które było w każdym zapisie od pierwszego commita i którego nie czytało nic
