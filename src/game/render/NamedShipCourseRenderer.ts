@@ -25,6 +25,15 @@
  * the commission (the informer knows her book), a tavern within earshot saying
  * she has just cleared a harbour, and seeing her himself.
  *
+ * ## And since v0.34.0 it can actually be wrong
+ *
+ * A ship that has been in a fight and survived it answers that in harbour: she
+ * sails late, and after a second scare she works a different lane entirely.
+ * Neither is drawn. What is drawn is `reportedLane` and the reckoning off the
+ * report's own copy of her schedule, so the chart keeps saying what he was
+ * last told — a course she has abandoned, walked by a mark that is nowhere
+ * near her. That is not a bug in the reckoning; it is the reckoning working.
+ *
  * ## The mark goes stale
  *
  * A report older than `REPORT_LIFE_DAYS` is dropped by the core, and the mark
@@ -39,7 +48,7 @@
 
 import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
-import { livingReports, reckonedPos, laneOf, REPORT_LIFE_DAYS } from "../../core/systems/NamedShipSystem.ts";
+import { livingReports, reckonedPos, reportedLane, REPORT_LIFE_DAYS } from "../../core/systems/NamedShipSystem.ts";
 import { txt } from "../ui/textStyle.ts";
 import { t } from "../../core/i18n/index.ts";
 
@@ -109,7 +118,12 @@ export function drawNamedCourses(
   const scale = 1 / Math.max(0.1, zoom);
 
   for (const { ship, report } of livingReports(world)) {
-    const lane = laneOf(ship);
+    // The run he was *told* about, which since v0.34.0 is not always the run
+    // she is on: a ship who has been jumped twice changes her lane out of the
+    // next harbour, and his pencil stays where he put it until somebody says
+    // otherwise. Drawing `laneOf` here would silently correct his chart for
+    // him, which is the one thing this renderer exists not to do.
+    const lane = reportedLane(ship, report);
     const at = reckonedPos(world, ship, report);
     if (!lane || !at) continue;
 

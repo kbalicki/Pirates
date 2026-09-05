@@ -3048,3 +3048,80 @@ kantor naprawdę płaci.
 `?hunt=<port>&meet=1` wybiera teraz **statek z eskortą**, jeśli taki jest w zasięgu:
 konwój jest tą połową, na którą warto popatrzeć, a samotny fluyt nie pokazuje
 niczego, czego zrzut ekranu już nie widział.
+
+## Ona się dowiaduje (v0.34.0)
+
+Do v0.33.0 nazwany statek chodził swoim szlakiem bez względu na to, co go
+spotkało. Kapitan, który raz przerwał atak, znajdował ją tydzień później dokładnie
+tam, gdzie mapa mówiła — a to po cichu robiło z rachuby **tracker**, bo świat nie
+zawierał niczego, co mogłoby jej zaprzeczyć.
+
+`harryNamedShip(world, entity, hullSurvived)` liczy **nieodpowiedziany strach**:
+
+| Co się stało | Czy to strach |
+|---|---|
+| gracz przerwał walkę z nią (`disengaged`) | tak |
+| gracz przegrał z nią (`lose`) | tak |
+| walka z jej **eskortą**, ktokolwiek wygrał (`ai.namedEscortOf`) | tak |
+| poszła na dno albo została wzięta | nie — to `settleNamedShip` |
+
+`NamedShip.harried?` jest **opcjonalne** i czytane przez `harryCount()`, więc zapis
+z v0.32.0/v0.33.0 czyta się jako statek, którego nikt nie niepokoił. Bez migracji.
+
+### Odpowiada w porcie, nie na wodzie
+
+`answerHarrying(ship, arrived, rng)` — trzy odpowiedzi w eskalacji, wszystkie
+robione tam, gdzie gracz ich nie widzi, bo port jest jedynym miejscem, w którym
+kupiec może cokolwiek zrobić komukolwiek:
+
+```
+LAYOVER_PER_SCARE = 2   LAYOVER_MAX = 6   ESCORT_MAX = 2   REROUTE_AFTER_SCARES = 2
+```
+
+1. **Wychodzi później** — dwa dni postoju za każdy nieodpowiedziany strach, do
+   sześciu. To jest to, co stawia rachubę kapitana **przed** nią.
+2. **Bierze konsortę** — do tego samego sufitu dwóch, który galeon ma od v0.33.0.
+   Fluyt, którego raz naszedł, przestaje być tym łatwym; galeon już przy suficie
+   odpowiada wyłącznie datą wyjścia i szlakiem.
+3. **Zmienia szlak** — od drugiego strachu, `rerouteFrom` bierze inny szlak
+   **zaczynający się** w tym porcie (kurs czytany od `from`, więc szlak wstecz
+   postawiłby ją na złym końcu własnej przeprawy; brak kandydata = zostaje przy
+   swoim, co czyta się poprawnie).
+
+Potem licznik jest **wyzerowany**. Odpowiedziała; zmuszenie jej do tego jeszcze raz
+kosztuje kapitana kolejne spotkanie. Dwa strachy w jednej przeprawie znaczą, że
+naprawdę ją przycisnął: bił się z eskortą i z nią, albo wrócił po drugie podejście.
+
+### Postój bez drugiego pola
+
+`phaseAt` liczy `elapsed = max(0, day − progressDay)`. Ten jeden `max` **jest** całym
+postojem: rekord z `progressDay` w przyszłości to statek jeszcze przy nabrzeżu, a
+jego faza stoi tam, gdzie zostawił ją port. Żadnego nowego pola, żadnej migracji, i
+każdy odczyt pozycji dostaje to za darmo. `layingOver()` / `lyingAt()` odpowiadają
+na pytanie „stoi?" i „gdzie?", a `arrivalDay()` — kiedy dobija (ułamkowo, bo
+zaokrąglenie do pełnego dnia obcinałoby godziny z każdego obiegu).
+
+`tickNamedShips` woła to **między zapisem zwrotnym a decyzją o materializacji** i
+wyłącznie wtedy, gdy jej nie ma na mapie: statek pod działami gracza nigdzie nie
+zacumował, a jego zapis zwrotny i tak przesuwa arrival przed zegar. Statek stojący
+w porcie **nie jest stawiany na wodzie**, choćby gracz stał dokładnie na znaczniku.
+
+Dla statku, którego nikt nie niepokoił, wywołanie zwraca ten sam rekord — świat, w
+którym nikt nie poluje, tyka bit w bit tak, jak tykał w v0.33.0, i pilnuje tego test.
+
+### Mapa może się wreszcie mylić
+
+`NamedShipReport` niesie teraz `routeId?`, `passageDays?` i `holdUntil?`, a
+`reportedLane(ship, report)` jest jedynym sposobem, w jaki renderer pyta o trasę.
+Gdy ona zmieni szlak, mapa dalej rysuje **ten, o którym mu powiedziano**, a romb
+idzie po nim daleko od niej. `holdUntil` istnieje po to, żeby rachuba nie wyprowadzała
+jej z portu, w którym wciąż stoi — inaczej tawerna mówiłaby „stoi w Hawanie", a mapa
+na tym samym ekranie by temu zaprzeczała.
+
+### Kontra jest w tawernie
+
+`tavern.rumor_named_held` — miasto w zasięgu mówi, że ona **wciąż stoi** w porcie i
+że ktoś jej przymierzył z dział. Niesie `shipId`, więc przeczytanie plotki przerysowuje
+trasę od zera (`PortScene.handleRumors`), dokładnie tak jak plotka o wyjściu z portu.
+Zobaczenie jej robi to samo. Informacja kapitana jest **dokładnie tak dobra, jak
+ostatnia rzecz, którą mu powiedziano** — i o to w pościgu chodzi.

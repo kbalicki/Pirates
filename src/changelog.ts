@@ -6,6 +6,38 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.34.0.0",
+    date: "2026-09-05",
+    changes: [
+      "SHE FINDS OUT",
+      "  A NAMED SHIP REMEMBERS THE FIGHT SHE LIVED THROUGH. Until now she",
+      "  worked her run whatever happened to her: break off an attack and you",
+      "  would find her a week later exactly where the chart said, which made",
+      "  your reckoning a tracker that nothing in the world could contradict",
+      "  Now an engagement she survives is an unanswered scare, and she answers",
+      "  it in harbour, where you cannot see her do it",
+      "  SHE SAILS LATE. Two days alongside for every scare she is carrying, up",
+      "  to six. Sit exactly where your arithmetic puts her and you sit on",
+      "  empty water, because she has not left yet",
+      "  SHE TAKES ON A CONSORT. Up to the same two the galleon has always had:",
+      "  a fluyt you jumped once is no longer the easy one. A galleon already",
+      "  at the ceiling answers with her sailing date and her route instead",
+      "  SHE CHANGES HER RUN. From the second scare, her house works her out of",
+      "  that harbour on a different lane altogether — and your chart goes on",
+      "  drawing the course you were told about, with a mark walking along it",
+      "  that is nowhere near her",
+      "  Two scares means you pressed her: fought her escort and then her, or",
+      "  came back for a second attempt. One exchange of fire does not buy it",
+      "  THE TAVERN IS THE WAY BACK. A town within earshot will tell you she is",
+      "  still lying at Barbados and that somebody put a shot into her, and",
+      "  reading that redraws her run on your chart from scratch. Seeing her",
+      "  yourself does the same. Your information is exactly as good as the",
+      "  last thing you were told — which is the whole point of the hunt",
+      "  Every new field is optional, so a v0.33.0 save reads as a Caribbean",
+      "  nobody has been hunting in and migrations stay at v12",
+    ],
+  },
+  {
     version: "0.33.0.0",
     date: "2026-09-05",
     changes: [

@@ -43,7 +43,7 @@ import { ITEMS } from "../data/items.ts";
 import { baselineConsumptionRate } from "../data/economyBaselines.ts";
 import { townHunger, townIsHungry, reroutedOnto, supplierShutIn } from "./EconomyTickSystem.ts";
 import { disruptions, tradeRoutes } from "./TradeRouteSystem.ts";
-import { livingNamedShips, phaseAt, outbound } from "./NamedShipSystem.ts";
+import { livingNamedShips, phaseAt, outbound, lyingAt } from "./NamedShipSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { isPortClosed } from "./EventEffectsSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
@@ -217,6 +217,27 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
   //    gossip.
   for (const ship of livingNamedShips(world)) {
     const day = world.time.day;
+
+    // Still alongside, because somebody put a shot into her last week
+    // (v0.34.0). This is the counter-play to the whole of that release: his
+    // chart is walking a mark towards a rendezvous she is not going to keep,
+    // and the man at the back table is the only one who can tell him why. It
+    // carries `shipId` for the same reason the departure rumour does — reading
+    // it is what corrects the reckoning.
+    const alongside = lyingAt(ship, day);
+    if (alongside) {
+      if (!neighbours.includes(alongside) && alongside !== portKey) continue;
+      out.push({
+        key: "tavern.rumor_named_held",
+        vars: {
+          ship: ship.name,
+          port: CITIES[alongside]?.name ?? alongside,
+          shipId: ship.id,
+        },
+      });
+      break;
+    }
+
     const phase = phaseAt(ship, day);
     const legDay = (phase < 1 ? phase : phase - 1) * ship.passageDays;
     if (legDay > RUMOR_FRESH_DAYS) continue;

@@ -827,6 +827,7 @@ export const PL: LocaleData = {
   "named.encounter": "{{ship}}",
   "named.reckoned": "{{ship}} · {{days}} dni",
   "tavern.rumor_named": "{{ship}} wyszła z {{port}} nie dalej jak trzy dni temu, kursem na {{to}}.",
+  "tavern.rumor_named_held": "{{ship}} wciąż stoi w {{port}}. Ktoś jej przymierzył z dział, a jej ludziom nie spieszy się w morze.",
 
   "expedition.course_label": "{{soldiers}} ludzi · {{days}} dni",
   "expedition.log_scattered": "Wyprawa ({{faction}}) na {{port}} rozbita. Nikt nie zejdzie na brzeg.",

@@ -43,6 +43,26 @@
  * merchantman is a *target*: somebody's livelihood with a schedule, worth
  * intercepting because a house three hundred miles away will pay to see her
  * stopped. That is the commission this system exists for.
+ *
+ * ## She finds out (v0.34.0)
+ *
+ * Through v0.33.0 she worked her run no matter what happened to her. A captain
+ * who fought her convoy and broke off found her a week later exactly where the
+ * chart said she would be, which quietly made the reckoning a tracker after
+ * all: nothing in the world was capable of contradicting it.
+ *
+ * Now a fight she survives is remembered as an *unanswered scare*, and she
+ * answers them **in harbour**, because harbour is the only place a merchantman
+ * can do anything about anybody. She lies alongside longer than her schedule
+ * says (`layingOver`), she takes on a consort if her house can spare one, and
+ * after a second scare she works a different lane out of that port altogether.
+ * Then the count is spent: she has done what she can, and making her do it
+ * again costs the captain another engagement.
+ *
+ * None of it touches his chart, and that is the point. The mark is still the
+ * reckoning from the last thing he was told; it has simply become capable of
+ * being wrong. The counter-play is the three sources it always was — a tavern
+ * in earshot will say she is lying at Havana, and reading that redraws the run.
  */
 
 import type { WorldState, RngState, Vec2 } from "../model/WorldState.ts";
@@ -83,6 +103,41 @@ const ESCORTS_BY_CLASS: Record<string, number> = {
 
 /** Classes a crown puts on convoy duty. */
 const ESCORT_CLASSES = ["brigantine", "frigate"];
+
+/**
+ * Hulls in company with her, ceiling (v0.34.0).
+ *
+ * The same two v0.33.0 gave the galleon, and for the same reason: a third
+ * escort is not a harder decision, it is a battle the player declines. So a
+ * scare buys a fluyt her first consort and a merchantman her second, and buys
+ * the galleon — already at the ceiling — nothing but a later sailing and a new
+ * run. Her answer to being hunted is deliberately allowed to be *no answer* on
+ * the one axis where more of it would break the commission.
+ */
+export const ESCORT_MAX = 2;
+
+/**
+ * Days she lies alongside per unanswered scare, and the most she will.
+ *
+ * Two days is roughly a quarter of a leg on a middling lane — a couple of
+ * hundred units of water. Enough that a captain sitting exactly where his
+ * reckoning says finds empty sea, and not so much that the mark on his chart
+ * stops being worth drawing. Six is the ceiling because past a third of her
+ * circuit she is not late any more, she is missing.
+ */
+export const LAYOVER_PER_SCARE = 2;
+export const LAYOVER_MAX = 6;
+
+/**
+ * Scares before her house changes her run entirely.
+ *
+ * Two, not one, and the difference matters. Rerouting is the harshest thing she
+ * does — it makes the drawn lane wrong, not merely the mark on it — and it
+ * should cost the captain a real engagement rather than one exchange of fire.
+ * Two scares inside a single passage means he pressed her: fought her escort
+ * and then her, or fought her and came back for a second attempt.
+ */
+export const REROUTE_AFTER_SCARES = 2;
 
 /**
  * World units a named merchantman makes in a day.
@@ -136,6 +191,19 @@ export type NamedShip = {
    * a migration step.
    */
   escorts?: number;
+  /**
+   * Fights she has survived and not yet answered (v0.34.0).
+   *
+   * Counted up by `harryNamedShip` when an engagement ends with her still
+   * afloat, spent to nothing by `answerHarrying` the next time she makes
+   * harbour. A count of *outstanding* scares rather than a career total,
+   * because what it buys — a longer stay alongside, a consort, a new lane — is
+   * something she does once and is then done with.
+   *
+   * Optional, like everything else added to this record after it shipped: a
+   * save from v0.32.0 or v0.33.0 reads as a ship nobody has troubled.
+   */
+  harried?: number;
   /** Set once and never cleared; a ship on the bottom stays on the bottom. */
   fate?: NamedShipFate;
 };
@@ -143,6 +211,11 @@ export type NamedShip = {
 /** Hulls in company with her, defaulting a v0.32.0 save to sailing alone. */
 export function escortCount(ship: NamedShip): number {
   return Math.max(0, ship.escorts ?? 0);
+}
+
+/** Fights she has survived and not yet done anything about (v0.34.0). */
+export function harryCount(ship: NamedShip): number {
+  return Math.max(0, ship.harried ?? 0);
 }
 
 /** Every named hull the world knows about, afloat or not. */
@@ -172,9 +245,37 @@ export function laneOf(ship: NamedShip): TradeRoute | undefined {
  * would enjoy reading.
  */
 export function phaseAt(ship: NamedShip, day: number): number {
-  const elapsed = (day - ship.progressDay) / Math.max(0.5, ship.passageDays);
+  // Clamped at nought, and that one `max` is the whole of the layover (v0.34.0):
+  // a record whose `progressDay` is in the future is a ship still alongside, and
+  // her phase stays exactly where the harbour left it until the day comes round.
+  // No second field, no migration, and every read of her position gets it free.
+  const elapsed = Math.max(0, day - ship.progressDay) / Math.max(0.5, ship.passageDays);
   const raw = (ship.progress + elapsed) % 2;
   return raw < 0 ? raw + 2 : raw;
+}
+
+/** True while she is still alongside and her schedule has not started again. */
+export function layingOver(ship: NamedShip, day: number): boolean {
+  return day < ship.progressDay;
+}
+
+/** The harbour she is lying in, if she is lying in one. */
+export function lyingAt(ship: NamedShip, day: number): string | undefined {
+  if (!layingOver(ship, day)) return undefined;
+  return ship.progress < 1 ? ship.from : ship.to;
+}
+
+/**
+ * The day she makes the harbour she is standing towards.
+ *
+ * Derived from the record rather than stamped, like everything else about her
+ * schedule: the fraction of the leg she has left, times the days a leg takes.
+ * Fractional on purpose — rounding her arrival to a whole day would shave hours
+ * off every circuit and walk her schedule away from the one the informer sold.
+ */
+export function arrivalDay(ship: NamedShip): number {
+  const legLeft = 1 - (ship.progress % 1);
+  return ship.progressDay + legLeft * Math.max(0.5, ship.passageDays);
 }
 
 /** True when she is on the leg from `from` to `to` today. */
@@ -487,7 +588,34 @@ export function dematerializeNamed(world: WorldState, shipId: string): WorldStat
  */
 export const REPORT_LIFE_DAYS = 21;
 
-export type NamedShipReport = { day: number; progress: number };
+export type NamedShipReport = {
+  /** The day he was told. Staleness and the fading of the mark hang off this. */
+  day: number;
+  /** The phase she was at that day. */
+  progress: number;
+  /**
+   * The run the report was about, and how long a leg of it took (v0.34.0).
+   *
+   * Carried because she can change her lane now, and when she does, the chart
+   * must go on drawing the one he was told about. A mark walking along a course
+   * she has abandoned is exactly the kind of wrong a paper chart is: it is not
+   * the world lying to him, it is his own information going out of date, and
+   * the moment somebody tells him otherwise it is corrected.
+   *
+   * Optional, so a report written by v0.33.0 falls back on her current lane —
+   * which is what it meant when it was written.
+   */
+  routeId?: string;
+  passageDays?: number;
+  /**
+   * When she was said to be sailing again, if the report caught her alongside.
+   *
+   * Without it the reckoning would walk her out of a harbour she is still tied
+   * up in, and a tavern that has just said "she is lying at Havana" would be
+   * contradicted by the chart on the same screen.
+   */
+  holdUntil?: number;
+};
 
 export function namedReports(world: WorldState): Record<string, NamedShipReport> {
   return world.namedShipReports ?? {};
@@ -513,7 +641,16 @@ export function reportNamedShip(world: WorldState, shipId: string): WorldState {
     ...world,
     namedShipReports: {
       ...namedReports(world),
-      [shipId]: { day: world.time.day, progress: phaseAt(ship, world.time.day) },
+      [shipId]: {
+        day: world.time.day,
+        progress: phaseAt(ship, world.time.day),
+        // What he is told is her *book*, not just her whereabouts: which run
+        // she is working and how long she takes over a leg of it. That is what
+        // lets the mark keep walking a lane she has since abandoned (v0.34.0).
+        routeId: ship.routeId,
+        passageDays: ship.passageDays,
+        ...(layingOver(ship, world.time.day) ? { holdUntil: ship.progressDay } : {}),
+      },
     },
   };
 }
@@ -539,12 +676,149 @@ export function livingReports(world: WorldState): { ship: NamedShip; report: Nam
  * every hour he spends elsewhere is an hour it could have gone wrong.
  */
 export function reckonedPos(world: WorldState, ship: NamedShip, report: NamedShipReport): Vec2 | undefined {
-  const lane = laneOf(ship);
+  const lane = reportedLane(ship, report);
   if (!lane || lane.path.length === 0) return undefined;
-  const elapsed = (world.time.day - report.day) / Math.max(0.5, ship.passageDays);
+  // His arithmetic, on his information: her schedule as he was given it, from
+  // the day she was said to be sailing again rather than from the day he heard.
+  const days = Math.max(0.5, report.passageDays ?? ship.passageDays);
+  const from = Math.max(report.day, report.holdUntil ?? report.day);
+  const elapsed = Math.max(0, world.time.day - from) / days;
   const raw = (report.progress + elapsed) % 2;
   const phase = raw < 0 ? raw + 2 : raw;
   return pointAlong(lane.path, phase < 1 ? phase : 2 - phase);
+}
+
+/**
+ * The run a report described, which is not always the run she is on (v0.34.0).
+ *
+ * Everything drawn on the chart goes through here rather than through
+ * `laneOf`, so that a ship who has changed her lane since he last heard of her
+ * leaves his pencil marks where he made them.
+ */
+export function reportedLane(ship: NamedShip, report: NamedShipReport): TradeRoute | undefined {
+  if (report.routeId) {
+    const lane = tradeRoutes().find(r => r.id === report.routeId);
+    if (lane) return lane;
+  }
+  return laneOf(ship);
+}
+
+// ── She finds out ────────────────────────────────────
+
+/**
+ * Remember that she was in a fight and came out of it (v0.34.0).
+ *
+ * Called from the battle scene in the same breath as `settleNamedShip`, and the
+ * two are exclusive by construction: one records the end of her, the other that
+ * there was no end of her. `hullSurvived` is what tells them apart, and it is
+ * only consulted for her own hull — an engagement with one of her escorts is a
+ * scare for her whoever won it, because whatever else happened, somebody came
+ * out of the dark at her convoy.
+ *
+ * Returns the world unchanged for any other hull, which is what lets the call
+ * site be one unconditional line.
+ */
+export function harryNamedShip(
+  world: WorldState,
+  entity: EntityState | undefined,
+  hullSurvived: boolean,
+): WorldState {
+  const own = entity?.ai?.namedShipId;
+  const escorted = entity?.ai?.namedEscortOf;
+  const shipId = escorted ?? (hullSurvived ? own : undefined);
+  if (!shipId) return world;
+  const ship = namedShipById(world, shipId);
+  if (!ship || ship.fate) return world;
+
+  return {
+    ...world,
+    namedShips: namedShips(world).map(s =>
+      s.id !== shipId ? s : { ...s, harried: harryCount(s) + 1 }),
+  };
+}
+
+/**
+ * A different lane out of the harbour she is lying in.
+ *
+ * Only lanes that *start* here are candidates, because her record's `progress`
+ * is measured from `from` and a course walked backwards would put her at the
+ * wrong end of her own passage. Where no such lane exists — a town nobody ships
+ * out of — she keeps the run she has, which reads correctly: she had nowhere
+ * else to go.
+ */
+function rerouteFrom(ship: NamedShip, port: string, rng: RngState): { ship: NamedShip; rng: RngState } {
+  const options = tradeRoutes().filter(r =>
+    r.from === port && r.id !== ship.routeId && CITIES[r.to] && r.length > 0);
+  if (options.length === 0) return { ship, rng };
+
+  const roll = rngNextFloat(rng, 0, 1);
+  // `Math.floor(value * length)`, never `% length` — `rngNextFloat` returns a
+  // fraction and modulo on it hands back an index like 0.37.
+  const lane = options[Math.floor(roll.value * options.length)];
+  return {
+    ship: {
+      ...ship,
+      routeId: lane.id,
+      from: lane.from,
+      to: lane.to,
+      passageDays: Math.max(2, Math.round(lane.length / PASSAGE_SPEED)),
+    },
+    rng: roll.state,
+  };
+}
+
+/**
+ * What she does about it, done in harbour, once (v0.34.0).
+ *
+ * Three answers in escalation, all of them things a merchant house would
+ * actually do and none of them things the player can see happen:
+ *
+ * - **she sails late** — `LAYOVER_PER_SCARE` days per outstanding scare, which
+ *   is what puts the captain's reckoning ahead of her;
+ * - **she takes on a consort** — up to `ESCORT_MAX`, so a fluyt that has been
+ *   jumped is no longer the easy one;
+ * - **she changes her run** — from the second scare, which is the only one of
+ *   the three that makes the *drawn lane* wrong rather than the mark on it.
+ *
+ * Then the count is spent. She has answered; making her answer again costs
+ * another engagement. Returning the record unchanged for a ship nobody has
+ * troubled is deliberate — the settled world must be bit-for-bit what it was
+ * before this release, and it is.
+ */
+export function answerHarrying(
+  ship: NamedShip,
+  arrived: number,
+  rng: RngState,
+): { ship: NamedShip; rng: RngState } {
+  const scares = harryCount(ship);
+  if (scares <= 0) return { ship, rng };
+
+  // Which end she has just made, and therefore which phase she resumes from:
+  // outbound she is at `to` and starts back at 1, homeward she is at `from`
+  // and starts out again at 0.
+  const outboundLeg = ship.progress < 1;
+  const port = outboundLeg ? ship.to : ship.from;
+
+  const layover = Math.min(LAYOVER_MAX, LAYOVER_PER_SCARE * scares);
+  let answered: NamedShip = {
+    ...ship,
+    progress: outboundLeg ? 1 : 0,
+    progressDay: arrived + layover,
+    escorts: Math.min(ESCORT_MAX, escortCount(ship) + 1),
+    harried: 0,
+  };
+  let r = rng;
+
+  if (scares >= REROUTE_AFTER_SCARES) {
+    const rerouted = rerouteFrom(answered, port, r);
+    r = rerouted.rng;
+    // A new lane is walked from its own beginning, and its beginning is here.
+    answered = rerouted.ship.routeId === answered.routeId
+      ? rerouted.ship
+      : { ...rerouted.ship, progress: 0 };
+  }
+
+  return { ship: answered, rng: r };
 }
 
 // ── The end of her ───────────────────────────────────────
@@ -593,6 +867,11 @@ export function settleNamedShip(
  * Order is fixed and matters, exactly as it does for the expedition hulls:
  * write back what is afloat, then decide whether it should still be afloat.
  * Doing it the other way round loses whatever the player had just done to her.
+ *
+ * Between those two steps sits the harbour call (v0.34.0), and it sits there
+ * because it is the one moment a ship the player cannot see changes her mind.
+ * It does nothing at all to a ship nobody has troubled, which is what keeps a
+ * world with no hunting in it identical to the world v0.33.0 ticked.
  */
 export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
   const tick = world.time.tick;
@@ -616,8 +895,30 @@ export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
     }
 
     if (afloat) w = writeBackNamed(w, ship);
-    const current = namedShipById(w, ship.id);
+    let current = namedShipById(w, ship.id);
     if (!current) continue;
+
+    // She has made harbour with a fight behind her, and harbour is where she
+    // does something about it. Only while she is off the chart: a ship under
+    // the player's guns has not tied up anywhere, and her write-back keeps
+    // moving her arrival ahead of the clock for exactly as long as he is there.
+    if (!afloat && harryCount(current) > 0 && w.time.day >= arrivalDay(current)) {
+      const answered = answerHarrying(current, arrivalDay(current), w.rng);
+      current = answered.ship;
+      w = {
+        ...w,
+        rng: answered.rng,
+        namedShips: namedShips(w).map(x => x.id === current!.id ? current! : x),
+      };
+    }
+
+    // Alongside is not on the water. A captain who sits where his reckoning
+    // says finds nothing, because she has not sailed yet — and the tavern in
+    // the next town is the thing that can tell him so.
+    if (layingOver(current, w.time.day)) {
+      if (afloat) w = dematerializeNamed(w, current.id);
+      continue;
+    }
 
     const ideal = namedShipPos(w, current);
     if (!ideal) continue;

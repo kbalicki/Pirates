@@ -275,7 +275,7 @@ export type WorldState = {
    * between the moment and today. Optional and read through `namedReports()`,
    * so no migration step.
    */
-  namedShipReports?: Record<string, { day: number; progress: number }>;
+  namedShipReports?: Record<string, import("../systems/NamedShipSystem.ts").NamedShipReport>;
   playerName: string;
   eraId: string;
   startYear: number;

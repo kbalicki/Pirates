@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.33.0.0 · **Branch:** `main`
-**Kod:** 193 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1426 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.34.0.0 · **Branch:** `main`
+**Kod:** 193 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1450 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.33.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1426/1426 zielone; ta wersja domyka pościg z v0.32.0 z obu stron — mapa nosi jej **ostatni znany kurs** (rachubę, nie pozycję: znacznik podążający za nią zamieniłby przechwycenie w podążanie za strzałką), a najbogatsze kadłuby płyną w **konwoju**, więc dogonienie jej przestało być całą robotą; lista kandydatów na v0.34.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.34.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1450/1450 zielone; ta wersja naprawia dziurę, którą v0.33.0 zostawiła w samej sobie — rachuba na mapie **nie mogła się mylić**, bo nazwany statek chodził swoim szlakiem bez względu na wszystko, więc mapa była trackerem udającym, że nim nie jest. Teraz walka, którą przeżyła, jest pamiętana i odpowiadana **w porcie**: wychodzi później, bierze konsortę, a po drugim strachu zmienia szlak — a mapa dalej rysuje trasę, o której kapitanowi powiedziano. Lista kandydatów na v0.35.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0) i [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0) i [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój) i [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -76,6 +76,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Zdarzenia świata naprawdę działają | ✅ | `WorldEventSystem`: `Math.floor(v × n)` zamiast `v % n`, jedno zdarzenie danego typu na miasto, tabela efektów zmierzona i przeskalowana do `EVENT_WEALTH_CEILING` |
 | Plotka mówi, co się dzieje | ✅ | `RumorSystem`: sześć faktów ze świata w promieniu 1300, jeden dziennie, rotujący; stare opowieści tylko przy spokojnym świecie |
 | Zdarzenie, które gracz spotyka | ✅ | `isPortClosed` w `PortApproachScene` (zamknięty port nie wpuszcza), `crewMul` w `generateAvailableCrew` (zaraza opróżnia tawernę), `ITEMS.gold` jako pierwszy towar `rare` |
+| Nazwany statek reaguje na pościg | ✅ | `harryNamedShip` + `answerHarrying`: walka, którą przeżyła, jest pamiętana i odpowiadana w porcie — postój, konsorta, a po drugim strachu inny szlak; mapa dalej rysuje trasę z raportu |
 
 ### Nietknięte
 
@@ -1346,7 +1347,46 @@ opcjonalne, więc zapis z v0.32.0 czyta się jako „słyszał o niczym, płynie
 
 ---
 
-### v0.34.0 — co dalej
+### ~~v0.34.0 — Ona się dowiaduje~~ ✅ (v0.34.0.0)
+
+Kandydat **3** z poprzedniej listy, i jedyny z niej, który był zadaniem
+programistycznym.
+
+**Problem był w v0.33.0, nie obok niej.** Mapa rysuje rachubę, nie pozycję — i
+cała tamta notatka broni tej różnicy. Tyle że w tamtym świecie rachuba **nie
+mogła się pomylić**: nazwany statek chodził swoim szlakiem bez względu na to, co
+go spotkało. Mechanika, której nic nie jest w stanie zaprzeczyć, jest mechaniką
+na papierze — ta sama pułapka co „pole w kontrakcie bez odbiorcy", o piętro wyżej.
+
+**Nieodpowiedziany strach.** `harryNamedShip` liczy walkę, którą przeżyła:
+przerwany atak, przegraną gracza i **każde** starcie z jej eskortą, ktokolwiek
+wygrał. Zatopienie i wzięcie idą do `settleNamedShip` — te dwa są rozłączne z
+konstrukcji.
+
+**Odpowiada w porcie**, bo port jest jedynym miejscem, w którym kupiec może
+cokolwiek zrobić komukolwiek — i gracz nie widzi żadnej z trzech rzeczy:
+wychodzi później (2 dni za strach, do 6), bierze konsortę (do tego samego sufitu
+dwóch, co galeon), a od drugiego strachu **zmienia szlak**. Potem licznik jest
+wyzerowany.
+
+**Postój nie ma własnego pola.** `phaseAt` liczy `max(0, day − progressDay)`, więc
+`progressDay` w przyszłości *jest* statkiem przy nabrzeżu. Zero migracji, i każdy
+odczyt pozycji dostaje to za darmo.
+
+**Mapa może się wreszcie mylić.** Raport niesie `routeId`/`passageDays`/`holdUntil`,
+renderer pyta przez `reportedLane`, a kontrą jest tawerna: „wciąż stoi w Barbadosie,
+ktoś jej przymierzył z dział" — przeczytanie przerysowuje trasę od zera.
+
+**Pułapki:** świat, którego nikt nie niepokoi, musi tykać bit w bit tak samo
+(`answerHarrying` zwraca ten sam obiekt, test porównuje `JSON.stringify`);
+odpowiedź musi być bramkowana na „nie ma jej na mapie", inaczej write-back i postój
+biją się o `progressDay`; debugowy `&meet` musi stawiać kapitana tam, gdzie **mapa**
+mówi, bo cała wersja jest o różnicy między tymi dwoma punktami; `tavernRumor`
+rotuje po dniu, więc nowej linii nie widać pierwszego dnia.
+
+---
+
+### v0.35.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1360,10 +1400,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    przestrzeni świata (jak sugeruje `project_ship_jitter`), czy ekranu
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Nazwany statek nie zmienia trasy, kiedy jest ścigany.** Dziś chodzi swoim
-   szlakiem bez względu na to, ile razy została zaatakowana. Kapitan, który raz
-   ją przepuścił, znajdzie ją dokładnie tam, gdzie mapa mówi. Reakcja — zmiana
-   szlaku po ucieczce, dłuższy postój w porcie — dałaby pościgowi drugi ruch
+3. **Nazwany statek nie ucieka.** v0.34.0 dała jej odpowiedź w porcie — postój,
+   konsortę, inny szlak — ale spotkana **na wodzie** dalej idzie swoim kursem
+   prosto na gracza. Ucieczka pod wiatr, próba zerwania kontaktu, eskorta
+   zawracana na przechwycenie: to jest drugi ruch, ale już w `NpcAiSystem`,
+   nie w `NamedShipSystem`
 4. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana**,
    przeskakiwana czwarty raz: „sojusz" może znaczyć list kaperski gracza albo
    przymierze dwóch koron, którego w modelu świata **nie ma**. Przed wzięciem
@@ -1447,8 +1488,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Znacznik, który podąża za celem, zamienia przechwycenie w podążanie za strzałką.** Mapa rysuje **rachubę** — fazę z dnia, w którym kapitan usłyszał, przesuniętą o dni, które minęły — a nie pozycję. Jest prawdziwa, dopóki nic celowi nie przeszkodziło, i to możliwość pomyłki czyni trafienie coś wartym. Ta sama zasada rządzi tym, dlaczego znaki zdarzeń (v0.30.0) pokazują tylko to, o czym mu **powiedziano** (v0.33.0).
 - **Pole WYMAGANE w rekordzie, który już jest w czyimś zapisie, to migracja** — nawet jeśli rekord i system są nowe. `NamedShip.escorts` zaczęło jako `number` i złamałoby zapis z v0.32.0 wydanej tego samego dnia; optional + `escortCount()` rozwiązuje to bez kroku w łańcuchu (v0.33.0).
 - **Funkcja wybierająca „najlepszy" wynik psuje testy porównawcze.** `huntOffer` zwraca najlepiej płacącą ofertę, więc zdjęcie modyfikatora zmienia, **który** kandydat wygrywa, i porównanie mierzy dwa różne obiekty (wyszło 2520 = 2520). Porównuj na świecie zawężonym do jednego kandydata (v0.33.0).
+- **Mechanika, której nic nie jest w stanie zaprzeczyć, jest mechaniką na papierze.** v0.33.0 rysowała na mapie „rachubę, nie pozycję" i broniła tej różnicy całą notatką — ale nazwany statek chodził swoim szlakiem bez względu na wszystko, więc rachuba nigdy nie mogła się pomylić i mapa była trackerem udającym, że nim nie jest. To jest „pole w kontrakcie bez odbiorcy" o piętro wyżej: sprawdź `grep`-em nie tylko kto czyta i kto produkuje, ale i **co jest w stanie zaprzeczyć** temu, co system twierdzi (v0.34.0).
+- **Postój trzymaj w polu, które już masz.** „Statek stoi w porcie" nie wymaga drugiego pola: `progressDay` w przyszłości plus `elapsed = max(0, day − progressDay)` w jednym miejscu **jest** postojem, i dostają go za darmo wszystkie odczyty pozycji — mapa, plotka, oferta informatora. Ta sama rodzina co „ułamek trasy zamiast `{x, y}`" (v0.34.0).
+- **Świat, którego nikt nie zaburzył, musi tykać bit w bit tak samo.** Nowe zachowanie w dziennym ticku bramkuj na warunku, który w spokojnym świecie jest fałszywy, a funkcję, która nic nie robi, pisz tak, żeby zwracała **ten sam obiekt** (`toBe`), nie kopię. Test porównuje `JSON.stringify` całej listy przed i po. Ta sama dyscyplina co `laneCommitment` w v0.26.0 (v0.34.0).
+- **Świat debugowy ma pokazywać RÓŻNICĘ, o którą chodzi w wydaniu.** `?hunt=&meet=&harried=` stawiał kapitana tam, gdzie statek naprawdę jest, i pokazywał dokładnie nic — bo cała wersja jest o odległości między tym punktem a tym, który pokazuje mapa. Wariant reguły „świat debugowy musi robić to, co robi normalne wejście", od strony tego, co gracz **widzi** (v0.34.0).
+- **`tavernRumor` rotuje po `(day + hash(port)) % pool.length`.** Nowej plotki nie widać na zrzucie z pierwszego dnia i wygląda to jak niedziałająca mechanika. Weryfikując, przejdź kilka dni — a podmieniając dzień w registry pamiętaj, że **`MainMapScene` zapisuje własny świat przy `shutdown`**, więc zapis przed `scene.stop()` znika bez śladu (v0.34.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

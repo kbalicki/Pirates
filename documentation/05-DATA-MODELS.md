@@ -391,3 +391,24 @@ escorts?: number;
 // i zabrać cały konwój z mapy razem z nią
 ai.namedEscortOf?: string;
 ```
+
+## `NamedShip.harried?` i rozszerzony `NamedShipReport` (v0.34.0)
+
+Dalej bez migracji — wszystko opcjonalne, czytane przez `?? domyślna`.
+
+```ts
+// nieodpowiedziane walki, które przeżyła; brak = nikt jej nie niepokoił.
+// Liczy je harryNamedShip(), zeruje answerHarrying() przy najbliższym porcie
+harried?: number;
+
+type NamedShipReport = {
+  day: number;          // dzień, w którym usłyszał — od tego liczy się starzenie
+  progress: number;     // faza, w której wtedy była
+  routeId?: string;     // szlak, o KTÓRYM mu powiedziano — ona może już mieć inny
+  passageDays?: number; // jej rozkład, jak mu go podano
+  holdUntil?: number;   // kiedy miała wyjść, jeśli raport zastał ją przy nabrzeżu
+};
+```
+
+Postój nie ma własnego pola: `progressDay` w przyszłości **jest** postojem, bo
+`phaseAt` liczy `max(0, day − progressDay)`.

@@ -281,3 +281,10 @@ pewność, z jaką mapa mówi, spada razem z pewnością, którą kapitan ma pra
 **Staleness liczy dzień.** Inaczej niż znaki zdarzeń, ten znacznik rusza się
 **każdego dnia**, bo jest rachubą przesuwaną w przód, a nie stanem świata — dlatego
 `world.time.day` wchodzi do klucza porównania.
+
+**Trasa idzie z raportu, nie z rekordu (v0.34.0).** Renderer pyta o szlak przez
+`reportedLane(ship, report)`, a nie przez `laneOf(ship)`. Od v0.34.0 nazwany statek
+przyciśnięty dwa razy zmienia szlak w najbliższym porcie, a mapa ma dalej rysować
+**ten, o którym kapitanowi powiedziano** — z rombem idącym po kursie, którego ona
+już nie ma. Narysowanie `laneOf` po cichu poprawiałoby mu mapę, a to jest jedyna
+rzecz, której ten renderer istnieje żeby **nie** robić.

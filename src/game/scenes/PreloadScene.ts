@@ -13,7 +13,7 @@ import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
-import { seedNamedShips, livingNamedShips, namedShipPos, escortCount } from "../../core/systems/NamedShipSystem.ts";
+import { seedNamedShips, namedShips, namedShipById, livingNamedShips, namedShipPos, escortCount, reportNamedShip, namedReports, reckonedPos } from "../../core/systems/NamedShipSystem.ts";
 
 /** Crown ids are lower case in the data and title case on a noticeboard. */
 function capitalise(word: string): string {
@@ -316,7 +316,11 @@ export class PreloadScene extends Phaser.Scene {
     }
     if (params.has("hunt")) {
       const portKey = params.get("hunt") || "port_royal";
-      const world = this.createHuntWorld(portKey, params.has("meet"));
+      const world = this.createHuntWorld(
+        portKey,
+        params.has("meet"),
+        Math.max(0, Number(params.get("harried") ?? 0) || 0),
+      );
       this.registry.set("worldState", world);
       if (params.has("meet")) {
         this.scene.start("MainMapScene", { worldState: world });
@@ -800,8 +804,20 @@ export class PreloadScene extends Phaser.Scene {
    * The named hulls are seeded here by hand because the running game seeds them
    * on the first daily reckoning, and a debug world that starts on day one and
    * is looked at immediately never gets one.
+   *
+   * `&harried=N` hands her N unanswered scares and stands her one leg from
+   * harbour with a report already on the chart (v0.34.0). The first daily
+   * reckoning then does what a fight would have led to: she ties up, sails
+   * late, takes on a consort, and at N ≥ 2 works a different lane out — while
+   * the gold course and the mark on it go on describing the run he was told
+   * about. Reproducing that by actually fighting her twice is ten minutes of
+   * sailing, and the whole point of it is only visible on the chart.
    */
-  private createHuntWorld(portKey: string, meet: boolean): import("../../core/model/WorldState.ts").WorldState {
+  private createHuntWorld(
+    portKey: string,
+    meet: boolean,
+    harried = 0,
+  ): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];
     if (!def) return base;
@@ -824,8 +840,34 @@ export class PreloadScene extends Phaser.Scene {
     const quarry = foreign.find(s => escortCount(s) > 0) ?? foreign[0];
     if (!quarry) return world;
 
+    if (harried > 0) {
+      // Standing into harbour with a fight behind her: `progressDay` a whole
+      // leg back puts her arrival on today, so the tick has something to do on
+      // the first frame instead of in a fortnight's game time.
+      const day = world.time.day;
+      const scared = {
+        ...quarry,
+        progress: 0,
+        progressDay: day - quarry.passageDays,
+        harried,
+      };
+      world = {
+        ...world,
+        namedShips: namedShips(world).map(s => s.id === quarry.id ? scared : s),
+      };
+      // The report goes on the chart *before* she answers, which is the whole
+      // shape of the release: his information is exactly as good as the last
+      // thing he was told, and she is about to make it wrong.
+      world = reportNamedShip(world, quarry.id);
+    }
+
     if (meet) {
-      const at = namedShipPos(world, quarry);
+      // Where his *chart* says she is, which with `&harried=` is not where she
+      // is — that gap is the whole of v0.34.0 and standing him anywhere else
+      // would hide it.
+      const report = namedReports(world)[quarry.id];
+      const current = namedShipById(world, quarry.id) ?? quarry;
+      const at = report ? reckonedPos(world, current, report) : namedShipPos(world, quarry);
       const water = at ? nearestWater(at) : undefined;
       if (water) {
         const shipId = world.player.shipId as string;

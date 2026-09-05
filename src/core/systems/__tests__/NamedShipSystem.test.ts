@@ -22,6 +22,18 @@ import {
   namedReports,
   livingReports,
   reckonedPos,
+  reportedLane,
+  harryNamedShip,
+  harryCount,
+  answerHarrying,
+  layingOver,
+  lyingAt,
+  arrivalDay,
+  tickNamedShips,
+  ESCORT_MAX,
+  LAYOVER_PER_SCARE,
+  LAYOVER_MAX,
+  REROUTE_AFTER_SCARES,
   REPORT_LIFE_DAYS,
   NAMED_SHIP_COUNT,
   PASSAGE_SPEED,
@@ -39,6 +51,7 @@ import {
 import { buildQuestRegistry } from "../QuestRegistry.ts";
 import { advanceQuests } from "../QuestSystem.ts";
 import { CITIES } from "../../data/cities.ts";
+import { tradeRoutes } from "../TradeRouteSystem.ts";
 import { rumorsAt } from "../RumorSystem.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import { SHIP_NAMES } from "../../data/shipNames.ts";
@@ -687,5 +700,292 @@ describe("the convoy", () => {
     const gone = dematerializeNamed(afloat, ship.id);
     expect(hullOf(gone, ship.id)).toBeUndefined();
     expect(escortsOf(gone, ship.id)).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// She finds out (v0.34.0)
+// ===========================================================================
+
+/**
+ * Through v0.33.0 nothing that happened to her changed anything about her. A
+ * captain who fought her convoy and broke off found her a week later exactly
+ * where his chart said, which quietly made the reckoning a tracker after all:
+ * the world contained nothing capable of contradicting it.
+ *
+ * Everything below is about one thing being true — a fight she survives is
+ * remembered, and she answers it **in harbour**, out of the player's sight —
+ * and one thing staying true: a world nobody is hunting in ticks exactly as it
+ * did before, because the harbour call does nothing at all to an untroubled
+ * record.
+ */
+
+/** A hull on the water carrying a name, the way a battle sees one. */
+function hullFor(shipId: string) {
+  return {
+    id: entityId("h"),
+    kind: "ship" as const,
+    mode: "sailing" as const,
+    pos: { x: 0, y: 0 },
+    vel: { x: 0, y: 0 },
+    heading: 0,
+    sailLevel: 1,
+    depthOffset: 0,
+    ai: { behavior: "trader" as const, state: "travel" as const, namedShipId: shipId },
+  };
+}
+
+function escortFor(shipId: string) {
+  const e = hullFor(shipId);
+  return { ...e, ai: { ...e.ai, namedShipId: undefined, namedEscortOf: shipId } };
+}
+
+describe("a fight she lives through", () => {
+  it("is remembered when the player breaks off", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const after = harryNamedShip(w, hullFor(ship.id) as never, true);
+    expect(harryCount(namedShipById(after, ship.id)!)).toBe(1);
+  });
+
+  it("counts nothing off her own hull when she did not live through it", () => {
+    // The bottom is `settleNamedShip`'s business; the two are exclusive.
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    expect(harryNamedShip(w, hullFor(ship.id) as never, false)).toBe(w);
+  });
+
+  it("counts off one of her escorts whoever won", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s => escortCount(s) > 0)!;
+    const won = harryNamedShip(w, escortFor(ship.id) as never, false);
+    expect(harryCount(namedShipById(won, ship.id)!)).toBe(1);
+  });
+
+  it("leaves a world with an anonymous hull in it exactly as it was", () => {
+    const w = seeded();
+    const anonymous = { ...hullFor("x"), ai: { behavior: "trader" as const, state: "travel" as const } };
+    expect(harryNamedShip(w, anonymous as never, true)).toBe(w);
+    expect(harryNamedShip(w, undefined, true)).toBe(w);
+  });
+
+  it("reads a v0.33.0 record, which has no such field, as untroubled", () => {
+    const ship = { ...namedShips(seeded())[0] };
+    delete (ship as { harried?: number }).harried;
+    expect(harryCount(ship)).toBe(0);
+  });
+});
+
+describe("lying alongside", () => {
+  const ship = (over: Partial<NamedShip> = {}): NamedShip => ({
+    id: "named_x",
+    name: "Santa Ana",
+    crown: "spain",
+    classId: "fluyt",
+    routeId: "a__b",
+    from: "havana",
+    to: "cartagena",
+    progress: 0,
+    progressDay: 100,
+    passageDays: 10,
+    hullHp: 60,
+    sailsHp: 50,
+    escorts: 0,
+    ...over,
+  });
+
+  it("stops her clock while her sailing day is still ahead", () => {
+    const held = ship({ progress: 1, progressDay: 106 });
+    expect(layingOver(held, 103)).toBe(true);
+    expect(phaseAt(held, 103)).toBeCloseTo(1, 5);
+    expect(phaseAt(held, 106)).toBeCloseTo(1, 5);
+    // ...and starts it again on the day, not before and not twice.
+    expect(phaseAt(held, 111)).toBeCloseTo(1.5, 5);
+  });
+
+  it("says which harbour she is lying in, and nothing when she is at sea", () => {
+    expect(lyingAt(ship({ progress: 1, progressDay: 106 }), 103)).toBe("cartagena");
+    expect(lyingAt(ship({ progress: 0, progressDay: 106 }), 103)).toBe("havana");
+    expect(lyingAt(ship(), 103)).toBeUndefined();
+  });
+
+  it("puts her arrival at the end of the leg she is on", () => {
+    expect(arrivalDay(ship())).toBeCloseTo(110, 5);
+    expect(arrivalDay(ship({ progress: 0.5 }))).toBeCloseTo(105, 5);
+    expect(arrivalDay(ship({ progress: 1.25 }))).toBeCloseTo(107.5, 5);
+  });
+});
+
+describe("what she does about it", () => {
+  function quarry(over: Partial<NamedShip> = {}): { world: WorldState; ship: NamedShip } {
+    const w = seeded();
+    const base = namedShips(w)[0];
+    return { world: w, ship: { ...base, ...over } };
+  }
+
+  it("does nothing whatever to a ship nobody has troubled", () => {
+    const { world, ship } = quarry();
+    const answered = answerHarrying(ship, 110, world.rng);
+    expect(answered.ship).toBe(ship);
+    expect(answered.rng).toBe(world.rng);
+  });
+
+  it("sails late, by two days for every scare she is carrying", () => {
+    const { world, ship } = quarry({ progress: 0.4, harried: 1 });
+    const one = answerHarrying(ship, 110, world.rng).ship;
+    expect(one.progressDay).toBeCloseTo(110 + LAYOVER_PER_SCARE, 5);
+    expect(layingOver(one, 110)).toBe(true);
+
+    const three = answerHarrying({ ...ship, harried: 3 }, 110, world.rng).ship;
+    expect(three.progressDay).toBeCloseTo(110 + 3 * LAYOVER_PER_SCARE, 5);
+  });
+
+  it("will not lie alongside for ever, whatever he does to her", () => {
+    const { world, ship } = quarry({ harried: 40 });
+    const answered = answerHarrying(ship, 110, world.rng).ship;
+    expect(answered.progressDay - 110).toBeCloseTo(LAYOVER_MAX, 5);
+  });
+
+  it("resumes from the harbour she actually made, not from the one she left", () => {
+    const { world, ship } = quarry({ progress: 0.6, harried: 1 });
+    expect(answerHarrying(ship, 110, world.rng).ship.progress).toBeCloseTo(1, 5);
+    const home = answerHarrying({ ...ship, progress: 1.6 }, 110, world.rng).ship;
+    expect(home.progress).toBeCloseTo(0, 5);
+  });
+
+  it("takes on a consort, up to the ceiling and no further", () => {
+    const { world, ship } = quarry({ escorts: 0, harried: 1 });
+    expect(escortCount(answerHarrying(ship, 110, world.rng).ship)).toBe(1);
+    const full = answerHarrying({ ...ship, escorts: ESCORT_MAX }, 110, world.rng).ship;
+    expect(escortCount(full)).toBe(ESCORT_MAX);
+  });
+
+  it("spends the scares, so answering twice costs him a second engagement", () => {
+    const { world, ship } = quarry({ harried: 2 });
+    expect(harryCount(answerHarrying(ship, 110, world.rng).ship)).toBe(0);
+  });
+
+  it("keeps her run after one scare and changes it after two", () => {
+    // Out of a harbour that has somewhere else to send her — most do, and the
+    // ones that do not keep her, which reads correctly.
+    const w = seeded();
+    const ship = namedShips(w).find(s =>
+      tradeRoutes().some(r => r.from === s.to && r.id !== s.routeId))!;
+    expect(ship, "no seeded ship makes a port with a second lane out of it").toBeDefined();
+
+    const once = answerHarrying({ ...ship, progress: 0.9, harried: 1 }, 110, w.rng).ship;
+    expect(once.routeId).toBe(ship.routeId);
+
+    const twice = answerHarrying({ ...ship, progress: 0.9, harried: REROUTE_AFTER_SCARES }, 110, w.rng).ship;
+    expect(twice.routeId).not.toBe(ship.routeId);
+    // A new lane is walked from its own beginning, and its beginning is the
+    // harbour she is lying in.
+    expect(twice.from).toBe(ship.to);
+    expect(twice.progress).toBeCloseTo(0, 5);
+    expect(laneOf(twice)).toBeDefined();
+    expect(twice.passageDays).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("the harbour call, on the tick", () => {
+  /** One crossing of the named-ship interval, which is what the engine does. */
+  function beat(world: WorldState): WorldState {
+    return tickNamedShips({ ...world, time: { ...world.time, tick: 40 } }, 1);
+  }
+
+  it("leaves a world nobody is hunting in exactly where v0.33.0 left it", () => {
+    const w = seeded();
+    const before = JSON.stringify(namedShips(w));
+    expect(JSON.stringify(namedShips(beat(w)))).toBe(before);
+  });
+
+  it("ties her up when she makes harbour with a fight behind her", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const scared = { ...ship, progress: 0, progressDay: w.time.day - ship.passageDays, harried: 1 };
+    const after = beat({ ...w, namedShips: namedShips(w).map(s => s.id === ship.id ? scared : s) });
+
+    const now = namedShipById(after, ship.id)!;
+    expect(layingOver(now, after.time.day)).toBe(true);
+    expect(harryCount(now)).toBe(0);
+    expect(escortCount(now)).toBe(escortCount(ship) + (escortCount(ship) < ESCORT_MAX ? 1 : 0));
+  });
+
+  it("does not put a ship that is alongside on the water, however close he is", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const at = namedShipPos(w, ship)!;
+    const held = { ...ship, progress: 1, progressDay: w.time.day + 4 };
+    const after = beat({
+      ...w,
+      namedShips: namedShips(w).map(s => s.id === ship.id ? held : s),
+      player: { ...w.player, location: { type: "sea", pos: { ...at } } },
+    } as WorldState);
+    expect(hullOf(after, ship.id)).toBeUndefined();
+  });
+});
+
+describe("the chart is allowed to be wrong", () => {
+  it("remembers which run the report was about", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const told = reportNamedShip(w, ship.id);
+    const report = namedReports(told)[ship.id];
+    expect(report.routeId).toBe(ship.routeId);
+    expect(report.passageDays).toBe(ship.passageDays);
+  });
+
+  it("goes on drawing the run he was told about after she has changed hers", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s =>
+      tradeRoutes().some(r => r.from === s.to && r.id !== s.routeId))!;
+    const told = reportNamedShip(w, ship.id);
+    const report = namedReports(told)[ship.id];
+
+    const moved = answerHarrying({ ...ship, progress: 0.9, harried: REROUTE_AFTER_SCARES }, w.time.day, w.rng).ship;
+    expect(reportedLane(moved, report)!.id).toBe(ship.routeId);
+    expect(reportedLane(moved, report)!.id).not.toBe(laneOf(moved)!.id);
+  });
+
+  it("falls back on her present run for a v0.33.0 report, which is what it meant", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    expect(reportedLane(ship, { day: w.time.day, progress: 0.2 })!.id).toBe(ship.routeId);
+  });
+
+  it("does not walk the mark out of a harbour she is still tied up in", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const held = { ...ship, progress: 1, progressDay: w.time.day + 5 };
+    const told = reportNamedShip({ ...w, namedShips: [held] }, ship.id);
+    const report = namedReports(told)[ship.id];
+    expect(report.holdUntil).toBeCloseTo(w.time.day + 5, 5);
+
+    const twoDaysOn = { ...told, time: { ...told.time, day: w.time.day + 2 } };
+    const then = reckonedPos(twoDaysOn, held, report)!;
+    const now = reckonedPos(told, held, report)!;
+    expect(then.x).toBeCloseTo(now.x, 5);
+    expect(then.y).toBeCloseTo(now.y, 5);
+  });
+});
+
+describe("the tavern is the counter-play", () => {
+  it("says she is still lying there, and carries her id so it can be written down", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const held = { ...ship, progress: 1, progressDay: w.time.day + 4 };
+    const world = { ...w, namedShips: namedShips(w).map(s => s.id === ship.id ? held : s) };
+
+    const said = rumorsAt(world, ship.to);
+    const line = said.find(r => r.key === "tavern.rumor_named_held");
+    expect(line, "the town she is lying in says nothing about her").toBeDefined();
+    expect(line!.vars!.shipId).toBe(ship.id);
+    // ...and does not also claim she has just sailed.
+    expect(said.some(r => r.key === "tavern.rumor_named")).toBe(false);
+  });
+
+  it("has that line in both languages", () => {
+    expect(EN["tavern.rumor_named_held"]).toBeDefined();
+    expect(PL["tavern.rumor_named_held"]).toBeDefined();
   });
 });

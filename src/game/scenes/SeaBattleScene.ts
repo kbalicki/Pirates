@@ -29,7 +29,7 @@ import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
-import { settleNamedShip, namedShipFateFlag } from "../../core/systems/NamedShipSystem.ts";
+import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
@@ -1332,6 +1332,15 @@ export class SeaBattleScene extends Phaser.Scene {
         },
       };
     }
+
+    // A named ship that comes out of this afloat remembers it (v0.34.0). She
+    // answers it in harbour — later sailing, another consort, and after a
+    // second scare a different run — so the chart he is steering by can be
+    // wrong for the first time. Reading her escort's `namedEscortOf` is why
+    // this is one line and not four: fighting her convoy is a scare for her
+    // whoever won, and losing to her or breaking off is a scare from her own
+    // hull. A fight she does not survive goes to `settleNamed` instead.
+    w = harryNamedShip(w, enemyWorldEntity, outcome === "lose" || outcome === "disengaged");
 
     if (outcome === "win" || outcome === "surrender") {
       // Her hold and her purse first — `applyPrize` reads the enemy off the
