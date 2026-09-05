@@ -59,6 +59,23 @@ import { windSpeedModifier } from "./WeatherSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { boltFor, namedShipById, hullOf, harryCount, boundFor, type NamedShip } from "./NamedShipSystem.ts";
 import { weatherAt } from "./WeatherFieldSystem.ts";
+import { fogDensity, fogAwarenessMultiplier } from "./FogSystem.ts";
+
+/**
+ * How far this hull's lookout can see the player today (v0.40.0).
+ *
+ * `awarenessRadius` is what she can see in clear air; fog takes a share of it
+ * off. This is the half of fog that a hunted captain feels — a guarda costa
+ * that would have seen him at 120 units picks him up at 54 in a thick bank, and
+ * a trader that would have bolted keeps calmly on her lane.
+ *
+ * It is deliberately the same field read four times rather than four separate
+ * rules: whatever "she noticed him" means, it should mean the same thing to a
+ * merchantman, a navy sloop, an escort and a named ship's consort.
+ */
+function awarenessIn(world: WorldState, entity: EntityState): number {
+  return (entity.ai?.awarenessRadius ?? 0) * fogAwarenessMultiplier(fogDensity(world, entity.pos));
+}
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
 const PIRATE_CHASE_RADIUS = 200;
@@ -231,7 +248,7 @@ function updateTrader(
 ): { entity: EntityState; rng: typeof world.rng } {
   const ai = entity.ai!;
   const crown = entity.ship?.factionId as string;
-  const threatened = distToPlayer < ai.awarenessRadius && looksDangerous(world, player, crown);
+  const threatened = distToPlayer < awarenessIn(world, entity) && looksDangerous(world, player, crown);
 
   if (!threatened) {
     if (ai.state !== "flee") return updatePortToPort(entity, rng);
@@ -332,7 +349,7 @@ function updateNamedTrader(
   const ship = namedShipById(world, ai.namedShipId as string);
   if (!ship) return updatePortToPort(entity, rng);
 
-  const threatened = distToPlayer < ai.awarenessRadius && fleesFrom(world, player, ship);
+  const threatened = distToPlayer < awarenessIn(world, entity) && fleesFrom(world, player, ship);
 
   if (!threatened) {
     // He has fallen astern, or was never anything to her. She picks her passage
@@ -401,7 +418,7 @@ function updateNamedEscort(
   const ai = entity.ai!;
   const charge = hullOf(world, ai.namedEscortOf as string);
 
-  if (charge && charge[1].ai?.state === "flee" && distToPlayer < ai.awarenessRadius * 2) {
+  if (charge && charge[1].ai?.state === "flee" && distToPlayer < awarenessIn(world, entity) * 2) {
     return {
       entity: {
         ...entity,
@@ -434,7 +451,7 @@ function updateNavy(
   const playerFaction = player.ship?.factionId as string;
   const isHostile = playerRep <= -60 || playerFaction === "pirates";
 
-  if (isHostile && distToPlayer < ai.awarenessRadius) {
+  if (isHostile && distToPlayer < awarenessIn(world, entity)) {
     const heading = headingToward(entity.pos, player.pos);
     return {
       entity: {

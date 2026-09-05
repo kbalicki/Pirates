@@ -10,6 +10,12 @@ const COMPASS_SIZE = 100; // px on screen
 const STORM_VEIL_ALPHA = 0.34;
 /** How dark it gets at the eye of a hurricane (v0.39.0). */
 const STORM_VEIL_MAX = 0.62;
+/** Dark blue-grey for a storm; pale grey for fog (v0.40.0). */
+const STORM_VEIL_COLOUR = 0x0a1626;
+const FOG_VEIL_COLOUR = 0xb9c6cf;
+/** How white the world goes in a thick bank. Lower than a storm's wash: fog
+ *  hides by washing the map out, and a fog you cannot see past is not fog. */
+const FOG_VEIL_MAX = 0.5;
 const STORM_VEIL_EASE = 0.04;
 
 /**
@@ -128,7 +134,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.blockadeText.setDepth(30);
 
     // The squall wash — below everything else this scene draws.
-    this.stormVeil = this.add.rectangle(0, 0, cam.width, cam.height, 0x0a1626, 0);
+    this.stormVeil = this.add.rectangle(0, 0, cam.width, cam.height, STORM_VEIL_COLOUR, 0);
     this.stormVeil.setOrigin(0, 0);
     this.stormVeil.setDepth(-10);
 
@@ -232,14 +238,22 @@ export class UIOverlayScene extends Phaser.Scene {
    * between two frames would read as a rendering fault rather than as weather.
    * `null` means fair weather and fades it back out.
    */
-  updateStorm(line: string | null, danger: boolean, severity = 0): void {
+  updateStorm(line: string | null, danger: boolean, severity = 0, fog = 0): void {
     // A hurricane is darker than a squall, in proportion to how deep into it
     // the ship is (v0.39.0) — so the wash itself is a reading of how bad this
     // is, and standing out of the circle visibly lightens the sea before the
     // warning line goes away.
-    const target = line === null
-      ? 0
-      : STORM_VEIL_ALPHA + (STORM_VEIL_MAX - STORM_VEIL_ALPHA) * Math.max(0, Math.min(1, severity));
+    //
+    // Fog washes the same rectangle the other way (v0.40.0): pale instead of
+    // dark, because a fog bank is bright and a squall is not, and the two never
+    // meet — fog wants calm air and a storm is the opposite of that.
+    const thick = Math.max(0, Math.min(1, fog));
+    if (this.stormVeil) this.stormVeil.setFillStyle(thick > 0 ? FOG_VEIL_COLOUR : STORM_VEIL_COLOUR);
+    const target = thick > 0
+      ? FOG_VEIL_MAX * thick
+      : line === null
+        ? 0
+        : STORM_VEIL_ALPHA + (STORM_VEIL_MAX - STORM_VEIL_ALPHA) * Math.max(0, Math.min(1, severity));
     this.stormAlpha += (target - this.stormAlpha) * STORM_VEIL_EASE;
     if (this.stormVeil) this.stormVeil.setAlpha(this.stormAlpha);
     if (this.stormText) {

@@ -20,6 +20,7 @@ function capitalise(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
+import { fogPatch, fogNight } from "../../core/systems/FogSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -339,6 +340,19 @@ export class PreloadScene extends Phaser.Scene {
       // toast that says so — is reachable too. `?storm=1` reads as "a long one".
       const ticks = Number(params.get("storm") ?? "");
       const world = this.createStormWorld(Number.isFinite(ticks) && ticks > 1 ? ticks : 20000);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("fog")) {
+      // Fog needs three things to line up — calm air, the small hours and a
+      // bank that happens to lie here — so waiting for one is not testing
+      // (v0.40.0). This drops the wind, sets the clock to four in the morning
+      // and then searches the first weeks of the calendar for a night whose
+      // bank sits over the ship, rather than moving her: the noise field is
+      // keyed on the night, so picking the date is the one lever that cannot
+      // put her on a beach.
+      const world = this.createFogWorld();
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -967,6 +981,33 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   /** A world already inside a squall, for `?storm=1` (v0.38.0). */
+  private createFogWorld(): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity) return base;
+
+    const HOUR = 4;
+    let bestDay = base.time.day;
+    let best = -1;
+    for (let day = base.time.day; day < base.time.day + 60; day++) {
+      const v = fogPatch(fogNight(day, HOUR), entity.pos);
+      if (v > best) { best = v; bestDay = day; }
+    }
+
+    return {
+      ...base,
+      time: { ...base.time, day: bestDay, hour: HOUR, minute: 0 },
+      // Flat calm. `FOG_MAX_WIND` is 0.35 and the seasonal mean is around a
+      // half, so this is the rare morning rather than the usual one.
+      weather: { ...base.weather, windStrength: 0.04, stormActive: false, stormTimer: 0 },
+      entities: {
+        ...base.entities,
+        [shipId]: { ...entity, mode: "sailing" as const },
+      },
+    };
+  }
+
   private createHurricaneWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
     const staged = this.createEventWorld("hurricane", portKey);
     const def = CITIES[portKey];

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-06 · **Wersja:** v0.39.0.0 · **Branch:** `main`
-**Kod:** 199 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1550 przechodzi, 0 failuje, 0 `todo`** w 44 plikach
+**Stan na:** 2026-09-06 · **Wersja:** v0.40.0.0 · **Branch:** `main`
+**Kod:** 202 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1569 przechodzi, 0 failuje, 0 `todo`** w 45 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,13 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.39.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1550/1550 zielone; **pogoda dostała miejsce na mapie** — gra miała dotąd dwie pogody, które nigdy sobie nie zostały przedstawione (jeden wiatr na całe Karaiby i huragan, który był nagłówkiem i szpilką na mapie, a nigdy nie dotknął wody). Teraz `weatherAt(world, pos)` łączy je: huragan bierze płótno przy każdym żaglu **i kadłub**, wiatr krąży wokół jego oka, więc kompas jest namiarem na środek sztormu, a pas pasatów wreszcie ciągnie wiatr, bo `windDirBias` z `MAP_ZONES` doczekał się pierwszego odbiorcy. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.40.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.40.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1569/1569 zielone; **mgła** — trzeci rodzaj pogody i pierwszy, który nie jest zagrożeniem: nie zabiera statkowi nic, zabiera **oczy obu stronom**, więc jest katastrofą, gdy polujesz, i darem, gdy ktoś poluje na ciebie. Wyprowadzona z ciszy, godziny i pola szumu — **zero nowych pól w save'ie**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.41.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.39.0.0):** v0.39.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1550/1550 zielone; **pogoda dostała miejsce na mapie** — gra miała dotąd dwie pogody, które nigdy sobie nie zostały przedstawione (jeden wiatr na całe Karaiby i huragan, który był nagłówkiem i szpilką na mapie, a nigdy nie dotknął wody). Teraz `weatherAt(world, pos)` łączy je: huragan bierze płótno przy każdym żaglu **i kadłub**, wiatr krąży wokół jego oka, więc kompas jest namiarem na środek sztormu, a pas pasatów wreszcie ciągnie wiatr, bo `windDirBias` z `MAP_ZONES` doczekał się pierwszego odbiorcy. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.40.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) i [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) i [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -81,6 +83,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Mgła po obu stronach | ✅ | `FogSystem`: nie zabiera statkowi nic, tnie lunetę gracza **i** `awarenessRadius` NPC; wyprowadzona z ciszy + godziny + pola szumu, zero nowych pól |
 | Pogoda ma miejsce na mapie | ✅ | `WeatherFieldSystem`: `weatherAt(world, pos)` — strefy wiatru mapy wreszcie ciągną pasat, a huragan ze zdarzenia świata jest prawdziwym sztormem z krążącym wiatrem, kadłubem i podłogami na progach, które HUD już nazywa |
 
 ### Nietknięte
@@ -1590,7 +1593,43 @@ zdarzenia w próżnię. Usunięcie zmieni strumień RNG, więc to osobna decyzja
 
 ---
 
-### v0.40.0 — co dalej
+### ~~v0.40.0 — Mgła~~ ✅ (v0.40.0.0)
+
+Pozycja 5 z listy kandydatów, wreszcie z listy. Model jest już czysty z
+„producentów bez odbiorcy" — przepuszczenie `grep`a po polach wszystkich typów w
+`model/` i `data/` zostawiło tylko `retirementScore` i `targetEntityId`, drobiazgi.
+
+**Trzeci rodzaj pogody i pierwszy, który nie jest zagrożeniem.** Szkwał odpowiada
+się żaglami, huragan sterem, **mgły nie odpowiada się wcale** — nie zabiera
+statkowi niczego. Zmienia to, kto kogo widzi, i tnie w **obie** strony: luneta
+gracza do 35%, `awarenessRadius` NPC do 45%. Katastrofa, gdy polujesz na nazwany
+statek; dar, gdy masz za rufą coś szybszego. Ta sama pogoda, dwa znaczenia.
+
+`FOG_AWARENESS_SHARE` jest celowo łaskawsze niż udział gracza: to gracz jest
+ścigany dostatecznie często, żeby zauważyć właśnie tę połowę.
+
+**Zero nowych pól.** Mgła = cisza (`FOG_MAX_WIND` 0,35 — poniżej sezonowej
+średniej) × godzina (tworzy się po północy, wypala do 10:00) × pole szumu
+kluczowane **nocą**, nie datą. Trzy warunki naraz, więc mglisty poranek się
+*zdarza*, a nie chodzi z zegarkiem. Efekt uboczny, którego nie trzeba było pisać:
+**żaden sztorm nie jest mglisty**, bo szkwał dokłada 0,3 do wiatru, a huragan
+przybija go do 1.
+
+**`isDaytime` zostaje nieczytane celowo.** Siedzi w `TimeSystem` od pierwszego
+commita i wygląda na znajomy zapach — nie jest nim. Doba trwa **sześćdziesiąt
+sekund realnego czasu**, więc ciemność zabierająca lunetę zabierałaby ją na 20 s
+z każdej minuty gry, bez żadnej decyzji. To metronom, nie mechanika. Zegar jest
+użyty wyłącznie jako jeden z trzech warunków mgły.
+
+**Znalezione pomiarem, nie testem:** pierwsza wersja miała jeden próg i dziennik
+dostał **trzy** wpisy w dwie godziny gry, bo gęstość wędruje wokół progu razem z
+wiatrem. Histereza (`FOG_VISIBLE` 0,12 wejście / `FOG_LIFTED` 0,05 wyjście) na
+fladze w `worldFlags` — worek, który już istnieje, więc dalej bez migracji. Ta
+sama lekcja co przy toastach blokady: **próg zdarzenia to nie to samo co zero**.
+
+---
+
+### v0.41.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1615,14 +1654,15 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
    pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
    wystawia korsarzy
-5. **Reszta pogody z modułu G.** Szkwał (v0.38.0) i huragan (v0.39.0) zrobione.
-   Zostały: **mgła** jako stan osobny od szkwału — samo cięcie lunety, bez darcia
-   płótna, i pierwszy stan pogody, który jest *korzystny* dla ściganego; **prądy
-   morskie** (`MAP_ZONES` ma już prostokąty, brakuje pola wektorowego i pytania,
-   czy prąd ma znosić statek, czy tylko zmieniać prędkość nad dnem). Huragan
-   **wędrujący** — dziś oko stoi nad miastem przez 3-7 dni, bo `WorldEventState`
-   trzyma porty, nie pozycję; ruchome oko wymagałoby albo pola w zdarzeniu, albo
-   wyprowadzenia toru z `startDay` (wzorzec „progress, nie pozycja" z v0.33.0)
+5. **Reszta pogody z modułu G.** Szkwał (v0.38.0), huragan (v0.39.0) i mgła
+   (v0.40.0) zrobione. Zostały: **prądy morskie** — `MAP_ZONES` ma już prostokąty,
+   brakuje pola wektorowego i rozstrzygnięcia, czy prąd ma **znosić** statek
+   (zmiana `pos` niezależna od kursu, widoczna i irytująca), czy tylko zmieniać
+   prędkość nad dnem (niewidoczna, ale uczciwa). Huragan **wędrujący** — dziś oko
+   stoi nad miastem 3-7 dni, bo `WorldEventState` trzyma porty, nie pozycję;
+   ruchome oko wymagałoby albo pola w zdarzeniu, albo wyprowadzenia toru z
+   `startDay` (wzorzec „progress, nie pozycja" z v0.33.0). **Deszcz i pioruny** z
+   roadmapy to czysta warstwa wizualna — nic nie zmieniają w decyzjach
 6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
 7. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
@@ -1717,12 +1757,15 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Pełnoekranowy efekt pogodowy należy do `UIOverlayScene`, na jej najniższej głębi.** Kamera overlay nigdy nie zoomuje ani nie przewija, więc prostokąt zaciemniający zakrywa mapę przy każdym zoomie bez mierzenia czegokolwiek, a kompas i HUD idą nad nim. Alfę **wygładzaj**, nie przełączaj — pogoda pojawiająca się między dwiema klatkami czyta się jak błąd renderowania (v0.38.0).
 - **Próg mechaniki wybieraj z liczb, które UI już nazywa.** `STORM_SAFE_SAIL = 0.5` to „Reefed" z `SailSystem`, więc reguła „refuj albo płać" jest czytelna bez tłumaczenia. Próg 0,45 byłby tą samą mechaniką i niewidzialną regułą (v0.38.0).
 - **`MainMapScene.create()` zawsze buduje `new SailSystem(0)` i ignoruje `entity.sailLevel`.** Znalezione przy weryfikacji v0.39.0: żaden świat debugowy nie startuje „pod pełnymi żaglami", cokolwiek wpisze w encję, a wczytany zapis z pełnymi żaglami też startuje ze zwiniętymi. Wyjście z portu ustawia refy jawnie (linia 397), więc to nie jest tam potrzebne. Zaszycie poziomu z encji to jedna linijka, ale **zmienia odczucie po wczytaniu zapisu** — do przegrania przez użytkownika, nie do zrobienia mimochodem.
+- **Nie każde pole bez odbiorcy jest błędem — czasem cisza jest decyzją.** `isDaytime` leży w `TimeSystem` nieczytane od pierwszego commita i wygląda dokładnie jak `stormActive` sprzed v0.38.0. Ale doba w tej grze trwa **60 sekund realnego czasu**, więc mechanika nocy zabierałaby graczowi lunetę na 20 s z każdej minuty, bez decyzji — metronom. Zanim „naprawisz" martwe pole, policz, **jak często gracz by to spotykał** (v0.40.0).
+- **Zdarzenie na progu potrzebuje dwóch progów.** Mgła z jednym progiem wpisała do dziennika trzy zdarzenia w dwie godziny gry, bo gęstość wędruje wokół niego razem z wiatrem. Histereza wejście/wyjście, flaga w `worldFlags` (worek już istnieje → dalej bez migracji). Trzeci raz ta sama rodzina co toasty blokady i licznik szkwału (v0.40.0).
+- **Efekt pełnoekranowy skaluj surową wielkością, a linię HUD progiem.** Zasłona mgły idzie z `local.fog` wprost, więc gaśnie razem z ławicą; napis znika na progu. Odwrotnie — zasłona sterowana progiem — mrugałaby na krawędzi ławicy (v0.40.0).
 - **Dwa systemy, które opisują tę samą rzecz, to jeden system, którego brakuje.** `hurricane` (zdarzenie świata) i `WeatherState` (pogoda) współistniały przez cały projekt, nie wiedząc o sobie; z każdej strony osobno kod wyglądał na kompletny. Szukaj **rzeczownika, który występuje w dwóch warstwach** — to inny wariant tego samego zapachu co producent bez odbiorcy (v0.39.0).
 - **Fizyczne prawo, które gracz może odczytać przyrządem, jest lepsze od komunikatu.** Wiatr krążący wokół oka huraganu (Buys Ballot) czyni z kompasu — widżetu obecnego od pierwszego wydania — namiar na środek sztormu. Zero nowego UI, a decyzja „którym halsem wychodzić" jest podejmowalna (v0.39.0).
 - **Podłogi obrażeń bierz z progów, które HUD już nazywa.** Huragan schodzi dokładnie do `FOUNDERING_THRESHOLD` i do progu „torn" z `RIG_TIERS`, nie do wymyślonych 0,3/0,45. Gracz widzi *crippled* i *torn* na ekranie uszkodzeń i rozumie, gdzie się zatrzymał (v0.39.0).
 - **Zanim dodasz pole do save'a, sprawdź, czy nie da się go wyprowadzić.** Cała miejscowa pogoda v0.39.0 to funkcja `(zapisany wiatr, pozycja, lista zdarzeń)` — zero nowych pól, migracje dalej na v12, a save z v0.38.0 wchodzi w huragan tak samo jak nowy (v0.39.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?storm=1|N`, `?hurricane=<port>`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?storm=1|N`, `?hurricane=<port>`, `?fog=1`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.

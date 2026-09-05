@@ -6,6 +6,7 @@ import { advanceTime, dayToCalendar, daysInMonth, tickBoundaryCrossed } from "..
 import { updateWeather } from "../systems/WeatherSystem.ts";
 import { tickStormDamage } from "../systems/StormSystem.ts";
 import { weatherAt, hurricaneAt } from "../systems/WeatherFieldSystem.ts";
+import { fogDensity, inFogNow, FOG_FLAG } from "../systems/FogSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
@@ -221,6 +222,14 @@ export class WorldEngine {
       world,
       world.entities[world.player.shipId as string]?.pos ?? world.player.location.pos,
     );
+    // Fog is read the same way and for the same reason (v0.40.0), and it can
+    // cross the threshold two ways: he sails into a bank, or the hour brings
+    // one down on a ship lying still. One line covers both, which is why it
+    // does not say "sailed into".
+    // The flag is the hysteresis: he is in fog until it is properly gone, not
+    // until it dips a hair under the line. Without it the journal took three
+    // entries in two game hours as the wind wandered (measured, v0.40.0).
+    const fogBefore = world.worldFlags?.[FOG_FLAG] === true;
 
     // 3. Update weather (season-aware)
     const cal = dayToCalendar(newTime.day, world.startYear);
@@ -336,6 +345,16 @@ export class WorldEngine {
     } else if (!stormNow && stormBefore) {
       world = addLogEntry(world, "weather.log_hurricane_passed");
       allEvents.push({ type: "Toast", message: t("weather.hurricane_over") });
+    }
+
+    const fogNow = inFogNow(
+      fogDensity(world, world.entities[playerShipId]?.pos ?? world.player.location.pos),
+      fogBefore,
+    );
+    if (fogNow !== fogBefore) {
+      world = { ...world, worldFlags: { ...world.worldFlags, [FOG_FLAG]: fogNow } };
+      world = addLogEntry(world, fogNow ? "weather.log_fog" : "weather.log_fog_lifted");
+      allEvents.push({ type: "Toast", message: t(fogNow ? "weather.fog_toast" : "weather.fog_over") });
     }
 
     // 6.1 Invasion squadrons (v0.17.0). After the generic spawner, because it

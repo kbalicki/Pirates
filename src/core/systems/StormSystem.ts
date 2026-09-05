@@ -61,6 +61,7 @@ import {
   HURRICANE_VISION_SHARE,
   type LocalWeather,
 } from "./WeatherFieldSystem.ts";
+import { FOG_VISIBLE, fogVisionMultiplier } from "./FogSystem.ts";
 
 /**
  * Sail a squall can be carried under without loss.
@@ -90,7 +91,7 @@ export const STORM_VISION_SHARE = 0.55;
  * has no hurricane in it, which is true of nearly all of the sea nearly all of
  * the time.
  */
-type AnyWeather = WeatherState & { hurricane?: number };
+type AnyWeather = WeatherState & { hurricane?: number; fog?: number };
 
 export function isStormy(weather: AnyWeather): boolean {
   return weather.stormActive === true;
@@ -105,13 +106,17 @@ export function isStormy(weather: AnyWeather): boolean {
  */
 export function stormVisionMultiplier(weather: AnyWeather): number {
   const eye = weather.hurricane ?? 0;
+  // Fog is its own cause and multiplies with the rest (v0.40.0). In practice the
+  // two never coincide — fog wants calm air — so this is arithmetic for the
+  // edge case rather than a state anyone will meet.
+  const haze = fogVisionMultiplier(weather.fog ?? 0);
   if (eye > 0) {
-    return Math.min(
+    return haze * Math.min(
       isStormy(weather) ? STORM_VISION_SHARE : 1,
       1 - (1 - HURRICANE_VISION_SHARE) * eye,
     );
   }
-  return isStormy(weather) ? STORM_VISION_SHARE : 1;
+  return haze * (isStormy(weather) ? STORM_VISION_SHARE : 1);
 }
 
 /**
@@ -218,18 +223,34 @@ export function tickStormDamage(world: WorldState, dtTicks: number): WorldState 
  * `severity` is how deep into a hurricane he is, 0 for a plain squall, and it
  * is what the map's wash is drawn from.
  */
-export function stormWarning(world: WorldState): { key: string; danger: boolean; severity: number } | null {
+export function stormWarning(
+  world: WorldState,
+): { key: string; danger: boolean; severity: number; fog: number } | null {
   const local = weatherAtPlayer(world);
-  if (!isStormy(local)) return null;
+  if (!isStormy(local)) {
+    // Fog takes nothing off the ship, so it is never `danger` (v0.40.0). It is
+    // the one weather line on this HUD that is not a warning: it is a fact
+    // about what anyone can see, and whether that is good news depends on who
+    // is chasing whom.
+    if (local.fog >= FOG_VISIBLE) {
+      return {
+        key: local.fog >= 0.5 ? "weather.fog_thick" : "weather.fog",
+        danger: false,
+        severity: 0,
+        fog: local.fog,
+      };
+    }
+    return null;
+  }
   const entity = world.entities[world.player.shipId as string];
   const carrying = (entity?.sailLevel ?? 0) > STORM_SAFE_SAIL && entity?.mode === "sailing";
   // "Claw off" is an order to a ship. A captain ashore with his boats on the
   // beach takes no damage from any of this (`tickStormDamage` leaves him alone),
   // so telling him his hull is going would be the HUD lying to him.
   if (local.hurricane > 0 && entity?.mode === "sailing") {
-    return { key: "weather.hurricane", danger: true, severity: local.hurricane };
+    return { key: "weather.hurricane", danger: true, severity: local.hurricane, fog: 0 };
   }
   return carrying
-    ? { key: "weather.storm_canvas", danger: true, severity: 0 }
-    : { key: "weather.storm", danger: false, severity: 0 };
+    ? { key: "weather.storm_canvas", danger: true, severity: 0, fog: 0 }
+    : { key: "weather.storm", danger: false, severity: 0, fog: 0 };
 }

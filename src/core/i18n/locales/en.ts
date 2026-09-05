@@ -553,6 +553,12 @@ export const EN: LocaleData = {
   "weather.hurricane_over": "Clear of the hurricane.",
   "weather.log_hurricane": "Caught in the hurricane off {{port}}.",
   "weather.log_hurricane_passed": "Stood clear of the hurricane.",
+  "weather.fog": "Haze on the water — the horizon is closing in.",
+  "weather.fog_thick": "Thick fog — nothing in sight, and nothing sees us.",
+  "weather.log_fog": "Fog closed in around us.",
+  "weather.log_fog_lifted": "The fog lifted.",
+  "weather.fog_toast": "Fog closing in. Nothing will see us — and we shall see nothing.",
+  "weather.fog_over": "The fog has lifted.",
   "event.recruited_crew": "Recruited {{count}} crew members for {{cost}} Gold.",
   "event.bought_drinks": "Bought a round of drinks for {{cost}} Gold. Morale boosted!",
 

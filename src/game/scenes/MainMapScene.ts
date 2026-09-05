@@ -964,6 +964,9 @@ export class MainMapScene extends Phaser.Scene {
       squall ? t(squall.key) : null,
       squall?.danger ?? false,
       squall?.severity ?? 0,
+      // The raw local density, not the line's thresholded copy: the wash should
+      // fade out with the bank rather than snap off when the warning goes quiet.
+      this.localWeather()?.fog ?? 0,
     );
 
     // Render: direct position with gentle lerp (no prediction at 60Hz)

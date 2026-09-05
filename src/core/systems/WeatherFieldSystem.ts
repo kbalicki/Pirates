@@ -22,11 +22,17 @@
  * ## Zones stop being decoration
  *
  * `MAP_ZONES` has carried `windDirBias` and `windStrengthBias` on the trade
- * belt and the Gulf since the map was drawn, and the only thing that ever read
- * the table was `EncounterSystem.checkEncounters` — which nothing calls. The
- * fourth producer-with-no-consumer in this codebase after `crewMul`,
- * `treaty_signed` and `stormActive`, and the one that had a whole data file
- * behind it.
+ * belt and the Gulf since the map was drawn, and the only thing that ever
+ * reached for the table — `EncounterSystem` — reads `zone.kind` and `zone.risk`
+ * and never touched the wind fields at all. The fourth producer-with-no-consumer
+ * in this codebase after `crewMul`, `treaty_signed` and `stormActive`, and the
+ * one that had a whole data file behind it.
+ *
+ * (`EncounterSystem` itself is a variant of the same illness one notch subtler:
+ * `WorldEngine` *does* call it every tick, but the `Encounter` events it emits
+ * have no handler anywhere — `NpcSpawnSystem` took that job over long ago. Left
+ * alone because removing it would change the RNG stream. Check both sides: the
+ * call site **and** the event.)
  *
  * Now the belt is a road: inside it the wind is pulled toward the easterly the
  * trades actually blow and held steadier than the open sea, so a passage west
@@ -67,6 +73,7 @@ import { CITIES } from "../data/cities.ts";
 import { MAP_ZONES } from "../data/mapZones.ts";
 import { normalizeHeading, headingDiff, pointInRect, vecToHeading } from "../services/Geometry.ts";
 import { FOUNDERING_THRESHOLD, RIG_TIERS } from "./DamageSystem.ts";
+import { fogDensity } from "./FogSystem.ts";
 
 /**
  * How hard a wind zone pulls the prevailing wind toward its own bias.
@@ -128,6 +135,13 @@ export const HURRICANE_VISION_SHARE = 0.3;
 export type LocalWeather = WeatherState & {
   /** 0 outside the circle, 1 at the eye. */
   hurricane: number;
+  /**
+   * How thick the fog is here, 0..1 (v0.40.0).
+   *
+   * Independent of the storm: fog needs calm air, so the two never overlap in
+   * practice, and no rule was written to keep them apart.
+   */
+  fog: number;
   /** Where the eye is, when there is one within reach. */
   eye?: Vec2;
   /** The town it is named over, for a line of log. */
@@ -201,9 +215,11 @@ export function weatherAt(world: WorldState, pos: Vec2): LocalWeather {
   }
 
   // --- A hurricane standing over a town -----------------------------------
+  const fog = fogDensity(world, pos);
+
   const storm = hurricaneAt(world, pos);
   if (!storm) {
-    return { ...base, windDirRad, windStrength, hurricane: 0 };
+    return { ...base, windDirRad, windStrength, hurricane: 0, fog };
   }
 
   // Counter-clockwise around the eye. `windDirRad` is the bearing the wind
@@ -219,6 +235,7 @@ export function weatherAt(world: WorldState, pos: Vec2): LocalWeather {
     windStrength: windStrength + (HURRICANE_WIND - windStrength) * storm.intensity,
     stormActive: true,
     hurricane: storm.intensity,
+    fog,
     eye: storm.pos,
     eyePort: storm.port,
   };

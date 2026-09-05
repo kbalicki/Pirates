@@ -6,6 +6,29 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.40.0.0",
+    date: "2026-09-06",
+    changes: [
+      "FOG — THE WEATHER THAT IS ON YOUR SIDE",
+      "  A squall is answered with the sails. A hurricane is answered with the",
+      "  helm. Fog is not answered at all: it takes nothing off your ship",
+      "  WHAT IT TAKES IS EYES, AND IT TAKES THEIRS TOO. Your spyglass is cut",
+      "  to a third in a thick bank — and a guarda costa that would have seen",
+      "  you at two miles picks you up at one, while a merchantman that would",
+      "  have bolted keeps calmly on her lane",
+      "  So it is a disaster when you are hunting a named ship and a gift when",
+      "  something faster than you is astern. The same weather, both ways",
+      "  IT FORMS WHERE FOG FORMS. Calm air, the small hours, and a bank that",
+      "  happens to lie here: three things that have to line up, so a foggy",
+      "  morning is a thing that happens to you rather than a timetable",
+      "  Banks are a few hundred leagues across and lie somewhere else the next",
+      "  night. The world goes pale rather than dark, and closes in slowly",
+      "  Nothing about it is stored. Your saves are unchanged",
+      "  `?fog=1` drops the wind, sets the clock to four in the morning and",
+      "  finds you a night with a bank overhead",
+    ],
+  },
+  {
     version: "0.39.0.0",
     date: "2026-09-06",
     changes: [

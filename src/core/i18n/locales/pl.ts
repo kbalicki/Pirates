@@ -553,6 +553,12 @@ export const PL: LocaleData = {
   "weather.hurricane_over": "Wyszliśmy z huraganu.",
   "weather.log_hurricane": "Złapani przez huragan pod {{port}}.",
   "weather.log_hurricane_passed": "Wyszliśmy z huraganu.",
+  "weather.fog": "Mgiełka nad wodą — horyzont się zamyka.",
+  "weather.fog_thick": "Gęsta mgła — nic nie widać i nikt nie widzi nas.",
+  "weather.log_fog": "Mgła zamknęła się wokół nas.",
+  "weather.log_fog_lifted": "Mgła podniosła się.",
+  "weather.fog_toast": "Mgła się zamyka. Nikt nas nie zobaczy — i my nie zobaczymy nikogo.",
+  "weather.fog_over": "Mgła się podniosła.",
   "event.recruited_crew": "Zwerbowano {{count}} członków załogi za {{cost}} Złoto.",
   "event.bought_drinks": "Postawiono kolejkę za {{cost}} Złoto. Morale podniesione!",
 

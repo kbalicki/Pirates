@@ -18,6 +18,7 @@
 | Privateer | `PrivateerSystem.ts` | Co znaczy list kaperski: pryz dobry, pryz wstydliwy, zdrada patrona |
 | Storm | `StormSystem.ts` | Szkwał: co drze płótno, co zabiera z lunety, co mówi HUD |
 | WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
+| Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -603,6 +604,66 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## FogSystem (v0.40.0)
+
+Trzeci rodzaj pogody w tej grze i pierwszy, który **nie jest zagrożeniem**.
+
+- **szkwał** odpowiada się żaglami (v0.38.0);
+- **huragan** odpowiada się sterem (v0.39.0);
+- **mgły nie odpowiada się wcale.** Nie zabiera statkowi niczego. Zmienia to,
+  **kto kogo widzi** — i tnie w obie strony, i to jest cały sens.
+
+Ta symetria jest funkcją. Każda inna pogoda w tej bazie jest kosztem; ta jest
+*warunkiem*, a czy dobrym, czy złym — zależy wyłącznie od tego, co kapitan akurat
+robi. Mgła jest katastrofą, gdy polujesz na nazwany statek, i darem, gdy masz za
+rufą coś szybszego od siebie.
+
+### Nic nie jest zapisywane, znowu
+
+Ta sama reguła co w v0.39.0: **zanim dodasz pole do save'a, sprawdź, czy nie da
+się go wyprowadzić**. Mgła jest czystą funkcją tego, co świat i tak wie:
+
+1. **cisza.** `FOG_MAX_WIND = 0.35` leży wyraźnie poniżej sezonowej średniej, więc
+   mglisty poranek wymaga, żeby wiatr zawędrował w dół — co zdarza się od czasu
+   do czasu, a nie według rozkładu. To też powód, dla którego **żaden sztorm nie
+   jest mglisty i nie trzeba było o tym pisać reguły**: szkwał dokłada 0,3 do
+   wiatru, a huragan przybija go do 1.
+2. **godzina.** Tworzy się po północy, jest najgęstsza przed świtem, wypala się
+   do 10:00.
+3. **miejsce.** Pole szumu wartościowego kluczowane **nocą** (nie datą — inaczej
+   każda ławica przeskakiwałaby o północy) i komórką mapy `FOG_CELL = 420`, więc
+   mgła leży ławicami, a nie nad całymi Karaibami naraz, i jutro leży gdzie indziej.
+
+### Dlaczego noc sama w sobie NIE jest mechaniką
+
+`isDaytime` siedzi w `TimeSystem` od pierwszego commita bez odbiorcy i kusi, żeby
+uznać to za znajomy zapach. **To nie to.** Doba to 1440 ticków, a mapa idzie 24
+ticki na sekundę — **doba trwa sześćdziesiąt sekund realnego czasu**. Gdyby
+ciemność zabierała lunetę, zabierałaby ją na dwadzieścia sekund z każdej minuty
+gry, na zawsze, bez żadnej decyzji. To metronom, nie mechanika.
+
+Zegar jest więc użyty wyłącznie jako **jeden z trzech warunków** powstania mgły.
+`isDaytime` zostaje nieczytane celowo — i to jest udokumentowana decyzja, a nie
+przeoczenie.
+
+### Liczby
+
+```
+FOG_MAX_WIND        = 0.35   (powyżej — nie ma mgły, o żadnej porze)
+FOG_VISION_SHARE    = 0.35   (co zostaje z lunety gracza w gęstej ławicy)
+FOG_AWARENESS_SHARE = 0.45   (co zostaje z obserwacji NPC)
+FOG_CELL            = 420    (rozmiar ławicy w jednostkach świata)
+FOG_PATCH_FLOOR     = 0.55   (ile pola szumu w ogóle liczy się jako mgła)
+```
+
+`FOG_AWARENESS_SHARE` jest **celowo łaskawsze** niż udział gracza. To gracz jest
+ścigany dostatecznie często, żeby zauważyć właśnie tę połowę, a mgła oślepiająca
+go bardziej niż ich byłaby karą, nie osłoną.
+
+`awarenessIn(world, entity)` w `NpcAiSystem` jest jednym miejscem czytanym przez
+cztery zachowania (kupiec, marynarka, eskorta, konsorta nazwanego statku) —
+„zauważyła go" ma znaczyć to samo dla każdego z nich.
 
 ## WeatherFieldSystem (v0.39.0)
 
