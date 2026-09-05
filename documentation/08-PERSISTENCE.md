@@ -152,6 +152,8 @@ Nie są częścią zapisów gry — przechowywane osobno:
 | `pc_lang` | string | "en", "pl" | "en" |
 | `pc_debug` | string | "1" / "0" (null = włączone) | włączone |
 | `pc_fog` | string | "1" / "0" — mgła wojny / zasięg lunety | włączone |
+| `pc_lanes` | string | "1" / "0" — szlaki handlowe na mapie (klawisz **T**) | włączone |
+| `pc_marks` | string | "1" / "0" — znaki zdarzeń na mapie (klawisz **N**, v0.30.0) | włączone |
 | `pc_vol_wind` | number | 0-10 | 5 |
 | `pc_vol_seagulls` | number | 0-10 | 5 |
 | `pc_vol_music` | number | 0-10 | 5 |

@@ -27,6 +27,12 @@ import {
   type TradeLaneResult,
 } from "../render/TradeLaneRenderer.ts";
 import {
+  drawEventMarkers,
+  markersStale,
+  clearEventMarkers,
+  type EventMarkerResult,
+} from "../render/MapEventMarkerRenderer.ts";
+import {
   harbourInReach,
   blockadeDays,
   blockadeEffective,
@@ -127,6 +133,9 @@ export class MainMapScene extends Phaser.Scene {
   /** The invasion courses pencilled on the chart, redrawn when they go stale. */
   private expeditionCourses: ExpeditionCourseResult | null = null;
   private tradeLanes: TradeLaneResult | null = null;
+  private eventMarkers: EventMarkerResult | null = null;
+  /** Pin the events he has heard of on the chart? Toggled with N. */
+  private marksVisible = localStorage.getItem("pc_marks") !== "0";
   /** Chart the shipping lanes? Toggled with T, remembered across sessions. */
   private lanesVisible = localStorage.getItem("pc_lanes") !== "0";
   private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
@@ -267,6 +276,19 @@ export class MainMapScene extends Phaser.Scene {
         }]);
       });
 
+      this.input.keyboard.on("keydown-N", () => {
+        this.marksVisible = !this.marksVisible;
+        localStorage.setItem("pc_marks", this.marksVisible ? "1" : "0");
+        clearEventMarkers(this.eventMarkers);
+        this.eventMarkers = this.marksVisible
+          ? drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions)
+          : null;
+        this.worldRenderer.applyEvents(this, [{
+          type: "Toast",
+          message: t(this.marksVisible ? "mapevent.shown" : "mapevent.hidden"),
+        }]);
+      });
+
       this.input.keyboard.on("keydown-X", () => {
         this.digForTreasure();
       });
@@ -378,6 +400,9 @@ export class MainMapScene extends Phaser.Scene {
     this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
     if (this.lanesVisible) {
       this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
+    if (this.marksVisible) {
+      this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
     }
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
@@ -867,6 +892,14 @@ export class MainMapScene extends Phaser.Scene {
     if (this.lanesVisible && lanesStale(this.tradeLanes, this.worldState, this.cameras.main.zoom)) {
       clearTradeLanes(this.tradeLanes);
       this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
+
+    // A mark appears the moment a tavern or a passing captain tells him about
+    // the event, counts its days down, and vanishes when the event lifts. Every
+    // size in it is in screen pixels, so a zoom redraws the lot.
+    if (this.marksVisible && markersStale(this.eventMarkers, this.worldState, this.cameras.main.zoom)) {
+      clearEventMarkers(this.eventMarkers);
+      this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
     }
 
     if (result.transitions) {

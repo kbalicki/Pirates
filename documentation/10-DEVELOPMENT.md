@@ -267,7 +267,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | Parametr | Efekt |
 |----------|-------|
 | `?skip` | Pomija tworzenie postaci |
-| `?zoom=N` | Startowy poziom zoomu |
+| `?zoom=z10` | Startowy poziom zoomu (`z1`..`z14`). Od v0.30.0 działa **za pierwszym razem** — wcześniej zapis szedł prosto do `localStorage`, a `initZoomSetting()` odczytuje go w `BootScene`, czyli wcześniej |
 | `?debug=1` | Tryb debug (wyłącza mgłę wojny) |
 | `?battle=1` | Bitwa testowa z losowym przeciwnikiem |
 | `?battle=trader\|navy\|pirate\|hunter` | Bitwa testowa z konkretnym typem |
@@ -283,6 +283,9 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 | `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
 | `?blockade=havana` | Fregata na stanowisku pod tym portem, kordon dzień przed zaciśnięciem |
+| `?famine=tortuga` | Kapitan stoi w mieście, którego dostawca jest pod czarną banderą; miasto od dwóch tygodni głoduje |
+| `&stand=cover` | Stoi zamiast tego w porcie, który przejął cudze kursy — razem z `?famine=` |
+| `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie |
 
 ## Deploy produkcyjny
 

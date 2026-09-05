@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.25.0.0 | **Ostatnia aktualizacja:** 2026-09-04
+**Wersja:** 0.30.0.0 | **Ostatnia aktualizacja:** 2026-09-05
 
 ---
 

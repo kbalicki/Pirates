@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { advanceTime, tickBoundaryCrossed } from "../TimeSystem.ts";
+import { advanceTime, tickBoundaryCrossed, dayToCalendar, calendarToDay } from "../TimeSystem.ts";
 import { hourBoundaryCrossed } from "../CrewConsumptionSystem.ts";
 import type { GameTime } from "../../model/WorldState.ts";
 
@@ -116,5 +116,41 @@ describe("tickBoundaryCrossed", () => {
 
   it("treats a zero interval as every frame rather than dividing by it", () => {
     expect(tickBoundaryCrossed(1, 1.4, 0)).toBe(true);
+  });
+});
+
+// ===========================================================================
+// calendarToDay — the inverse, and why it had to exist (v0.30.0)
+// ===========================================================================
+
+/**
+ * The historical wars stored their end as `startDay + years * 365 + months * 30`
+ * against a calendar that keeps leap years, so every one of them expired a few
+ * days short of its own end date and no peace was ever declared. What matters
+ * here is only that the two functions agree, over a span long enough for the
+ * drift to show — the Eighty Years' War is eighty of them.
+ */
+describe("calendarToDay", () => {
+  it("inverts dayToCalendar across eighty years, leap days and all", () => {
+    for (let day = 1; day < 365 * 80; day += 11) {
+      const cal = dayToCalendar(day, 1560);
+      expect(calendarToDay(cal.year, cal.month, cal.dayOfMonth, 1560), `day ${day}`).toBe(day);
+    }
+  });
+
+  it("puts the first of January of the start year on day 1", () => {
+    expect(calendarToDay(1680, 1, 1, 1680)).toBe(1);
+  });
+
+  it("does not drift the way the old estimate did", () => {
+    // 1568-05 to 1648-01 by the old arithmetic: 80 * 365 + (1 - 5) * 30.
+    const estimate = 1 + (1648 - 1568) * 365 + (1 - 5) * 30;
+    const exact = calendarToDay(1648, 1, 1, 1568);
+    expect(exact).toBeGreaterThan(estimate);
+    expect(exact - estimate).toBeGreaterThan(15);
+  });
+
+  it("clamps a date that is behind the start of the game", () => {
+    expect(calendarToDay(1600, 6, 12, 1680)).toBe(1);
   });
 });

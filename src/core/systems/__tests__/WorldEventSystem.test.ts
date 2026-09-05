@@ -49,7 +49,7 @@ function makePort(key: string): PortRuntimeState {
   };
 }
 
-function makeWorld(seed = 1): WorldState {
+function makeWorld(seed = 1, startYear = 1690): WorldState {
   const ports: Record<string, PortRuntimeState> = {};
   for (const key of Object.keys(CITIES)) ports[key] = makePort(key);
   return {
@@ -79,9 +79,24 @@ function makeWorld(seed = 1): WorldState {
     knownEventIds: [],
     playerName: "Captain",
     eraId: "pirates_sunset",
-    startYear: 1690,
+    startYear,
     gameSpeed: 1.2,
   } as unknown as WorldState;
+}
+
+/**
+ * Run the event machine (only) forward, one day at a time.
+ *
+ * The day is advanced before each update, exactly as `WorldEngine` does it, so
+ * `n` steps from a fresh world land on day `1 + n`.
+ */
+function runEventDays(world: WorldState, days: number): WorldState {
+  let w = world;
+  for (let d = 0; d < days; d++) {
+    w = { ...w, time: { ...w.time, day: w.time.day + 1 } };
+    w = updateWorldEvents(w);
+  }
+  return w;
 }
 
 describe("seedInitialEvents — the world starts with five things happening", () => {
@@ -283,5 +298,85 @@ describe("the balance of the event table", () => {
       expect(lively, `seed ${seed}`).toBeGreaterThan(quiet * 0.9);
       expect(lively, `seed ${seed}`).toBeLessThan(quiet * 1.1);
     }
+  });
+});
+
+// ===========================================================================
+// The historical wars, and the peace that ends them (v0.30.0)
+// ===========================================================================
+
+/**
+ * Two things were wrong and each hid the other.
+ *
+ * A war's `endDay` was `startDay + years * 365 + months * 30` against a
+ * calendar with leap years in it, so `expireEvents` deleted the war a few days
+ * before its own end date; the end-of-war branch only runs for a war it can
+ * still see, so it never ran. And what that branch did was delete the event and
+ * write a line in the log — which meant `treaty_signed`, a type with a headline
+ * in two languages and a row in the effects table since v0.9.7, had never once
+ * been produced by anything. Peace was the only thing in this world that
+ * happened without happening anywhere.
+ *
+ * The War of Devolution (May 1667 - May 1668) is the shortest in the table and
+ * the cheapest to run past.
+ */
+const DEVOLUTION_START = 121;   // 1 May 1667, counting from 1 January 1667
+const DEVOLUTION_END = 487;     // 1 May 1668
+
+describe("a war on the calendar", () => {
+  it("starts on its own date and not before", () => {
+    const before = runEventDays(makeWorld(1, 1667), DEVOLUTION_START - 2);  // day 120
+    expect(before.worldEvents.some(ev => ev.id === "war_war_of_devolution")).toBe(false);
+    const after = runEventDays(before, 2);
+    expect(after.worldEvents.some(ev => ev.id === "war_war_of_devolution")).toBe(true);
+  });
+
+  it("survives to its own end date instead of evaporating a few days short", () => {
+    const w = runEventDays(makeWorld(1, 1667), DEVOLUTION_END - 2);  // day 486
+    const war = w.worldEvents.find(ev => ev.id === "war_war_of_devolution");
+    expect(war).toBeDefined();
+    expect(war!.endDay).toBe(DEVOLUTION_END);
+  });
+
+  it("is gone the day the peace is signed", () => {
+    const w = runEventDays(makeWorld(1, 1667), DEVOLUTION_END - 1);  // day 487
+    expect(w.worldEvents.some(ev => ev.id === "war_war_of_devolution")).toBe(false);
+  });
+});
+
+describe("the peace that ends it", () => {
+  const signed = () => runEventDays(makeWorld(1, 1667), DEVOLUTION_END - 1);
+
+  it("puts a treaty in the world, which nothing in this game had ever done", () => {
+    const treaty = signed().worldEvents.find(ev => ev.type === "treaty_signed");
+    expect(treaty).toBeDefined();
+    expect(treaty!.factions.sort()).toEqual(["france", "spain"]);
+  });
+
+  it("covers the towns of both crowns and nobody else's", () => {
+    const treaty = signed().worldEvents.find(ev => ev.type === "treaty_signed")!;
+    expect(treaty.ports.length).toBeGreaterThan(5);
+    for (const key of treaty.ports) {
+      expect(["france", "spain"], key).toContain(CITIES[key].factionId as unknown as string);
+    }
+  });
+
+  it("reaches the effects table, whose treaty row had never run", () => {
+    const w = signed();
+    const port = w.worldEvents.find(ev => ev.type === "treaty_signed")!.ports[0];
+    expect(getAggregatedEffects(w, port).importMul).toBeGreaterThan(1);
+  });
+
+  it("is news a tavern in either country can print", () => {
+    const w = signed();
+    const port = w.worldEvents.find(ev => ev.type === "treaty_signed")!.ports[0];
+    const heard = getPortNews(w, port).map(n => n.headline);
+    expect(heard).toContain("news.treaty_signed");
+    expect(EN["news.treaty_signed"]).toBeTruthy();
+  });
+
+  it("lifts, because a treaty is a reopening and not a new normal", () => {
+    const w = runEventDays(signed(), 90);
+    expect(w.worldEvents.some(ev => ev.type === "treaty_signed")).toBe(false);
   });
 });

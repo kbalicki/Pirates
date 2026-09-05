@@ -115,6 +115,47 @@ export function dayToCalendar(gameDay: number, startYear?: number): CalendarDate
   return { year, month, dayOfMonth: day };
 }
 
+/**
+ * Convert a calendar date back to a game day — the inverse of `dayToCalendar`.
+ *
+ * Written for the historical wars (v0.30.0), which had been storing their end
+ * as `startDay + years * 365 + months * 30`. The calendar this game keeps has
+ * leap years in it, so that estimate runs about a day short every four years:
+ * the Nine Years' War came out four days short of its own end date and the
+ * Eighty Years' War twenty. `expireEvents` deletes an event the day after its
+ * `endDay`, and `checkHistoricalWars` only announces a peace for a war it can
+ * still see — so every war in the table quietly evaporated a few days before
+ * anyone could sign anything, and the peace has never once been declared.
+ *
+ * Dates before the start of the game return day 1 rather than a negative day;
+ * a war that was already running when the captain was born is not this
+ * function's problem.
+ */
+export function calendarToDay(
+  year: number,
+  month: number,
+  dayOfMonth: number,
+  startYear?: number,
+): number {
+  const from = startYear ?? DEFAULT_START_YEAR;
+  const target = year * 12 + month;
+  let cursor = from * 12 + GAME_START_MONTH;
+  if (target < cursor) return 1;
+
+  // Whole months first, then the days within the target month. The first month
+  // is short by however far into it the game starts.
+  let day = 1 - (GAME_START_DAY - 1);
+  let y = from;
+  let m = GAME_START_MONTH;
+  while (cursor < target) {
+    day += daysInMonth(m, y);
+    m++;
+    if (m > 12) { m = 1; y++; }
+    cursor++;
+  }
+  return Math.max(1, day + dayOfMonth - 1);
+}
+
 export function getMonthName(month: number): string {
   const names = t("time.month_names").split(",");
   return names[month - 1] ?? `Month ${month}`;

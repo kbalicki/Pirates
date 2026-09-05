@@ -8,7 +8,7 @@
 
 import type { WorldState, WorldEventState, WorldEventType } from "../model/WorldState.ts";
 import type { NewsItem } from "../model/EntityState.ts";
-import { dayToCalendar } from "./TimeSystem.ts";
+import { dayToCalendar, calendarToDay } from "./TimeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { rngNext, rngNextFloat } from "../services/RNG.ts";
 import { PORTS } from "../data/ports.ts";
@@ -372,6 +372,18 @@ export function giveNpcPortNews(world: WorldState, entityId: string, portId: str
 
 // ── Internal helpers ─────────────────────────────────────
 
+/**
+ * How long the peace itself is an event (v0.30.0).
+ *
+ * A treaty is not a new normal, it is the fortnight or two in which convoys
+ * that had been laid up sail again and the underwriters come back. Sixty days
+ * of `treaty_signed` (production and imports ×1.15, half a point of wealth a
+ * day) is worth about twenty points of settled wealth to each town by the time
+ * it lifts — the same order as any other good news, and deliberately less than
+ * the war it ends took away.
+ */
+const TREATY_DAYS = 60;
+
 function checkHistoricalWars(world: WorldState, cal: { year: number; month: number; dayOfMonth: number }): WorldState {
   let w = world;
 
@@ -381,7 +393,13 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
 
     // War start
     if (!alreadyActive && cal.year === war.startYear && cal.month === war.startMonth && cal.dayOfMonth === 1) {
-      const endDay = w.time.day + (war.endYear - war.startYear) * 365 + (war.endMonth - war.startMonth) * 30;
+      // Off the calendar, not off an estimate. This used to be
+      // `day + years * 365 + months * 30`, which is short by a day every four
+      // years, and `expireEvents` deletes an event the day after its `endDay`
+      // — so every war in this table vanished a few days before its own end
+      // date, `alreadyActive` was false when the date came round, and the peace
+      // below has never once been declared in the history of this module.
+      const endDay = calendarToDay(war.endYear, war.endMonth, 1, w.startYear);
       const newEvent: WorldEventState = {
         id: activeId,
         type: "war_start",
@@ -402,11 +420,29 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
 
     // War end (check if active war has ended by calendar date)
     if (alreadyActive && cal.year === war.endYear && cal.month === war.endMonth && cal.dayOfMonth === 1) {
+      const vars = { faction1: factionName(war.factions[0]), faction2: factionName(war.factions[1]) };
+      // The peace is an event of its own, and it has to be, for two reasons.
+      // `EventEffectsSystem` has had a `treaty_signed` row since v0.9.7 that
+      // nothing ever produced — the mirror of the dead fields v0.29.0 went
+      // looking for — and `getPortNews` only carries what is in `worldEvents`,
+      // so a war that simply disappeared was news no tavern ever printed and no
+      // captain at sea ever passed on. War is something the whole map feels;
+      // peace was a line in the captain's own log and nothing else.
+      const treaty: WorldEventState = {
+        id: `treaty_${war.id}`,
+        type: "treaty_signed",
+        startDay: w.time.day,
+        endDay: w.time.day + TREATY_DAYS,
+        ports: Object.keys(PORTS).filter(k => war.factions.includes(PORTS[k].factionId as string)),
+        factions: [...war.factions],
+        severity: 1,
+        headline: "news.treaty_signed",
+        vars,
+      };
       w = {
         ...w,
-        worldEvents: w.worldEvents.filter(ev => ev.id !== activeId),
+        worldEvents: [...w.worldEvents.filter(ev => ev.id !== activeId), treaty],
       };
-      const vars = { faction1: factionName(war.factions[0]), faction2: factionName(war.factions[1]) };
       w = addLogEntry(w, "news.war_end", vars);
     }
   }

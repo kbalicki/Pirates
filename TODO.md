@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-04 · **Wersja:** v0.29.0.0 · **Branch:** `main`
-**Kod:** 186 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1320 przechodzi, 0 failuje, 0 `todo`** w 37 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.30.0.0 · **Branch:** `main`
+**Kod:** 189 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1351 przechodzi, 0 failuje, 0 `todo`** w 38 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.29.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1320/1320 zielone; ta wersja robi ze zdarzeń świata coś, co gracz **spotyka**: zamknięty port naprawdę go nie wpuszcza, zaraza opróżnia ławę w tawernie, a odkryte złoto jest wreszcie towarem, po który się płynie — trzy rzeczy, które zdarzenia deklarowały, a których **nic w grze nie czytało**; lista kandydatów na v0.30.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.30.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1351/1351 zielone; ta wersja daje mapie głos — miasto, o którym kapitan słyszał, nosi szpilkę z nazwą zdarzenia, a zamknięty port przerywany pierścień — i sprawia, że **pokój w ogóle następuje**: każda wojna historyczna parowała kilka dni przed własną datą końca, więc traktatu nie podpisano ani razu; lista kandydatów na v0.31.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-04F.md](documentation/SESSION-2026-09-04F.md) — audyt „co z tego, co zdarzenie deklaruje, jest w ogóle czytane" (trzy pola bez odbiorcy), dlaczego złoto musiało zostać towarem **rzadkim**, i dlaczego test złota spadł, mając rację. Poprzednia: [SESSION-2026-09-04E.md](documentation/SESSION-2026-09-04E.md).
+> **Notatka z tej sesji:** [documentation/SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) — znaki zdarzeń na mapie (i pułapka „co jest w pikselach ekranowych, a co w jednostkach świata"), oraz dlaczego żadna wojna historyczna nigdy nie skończyła się pokojem. Poprzednia: [SESSION-2026-09-04F.md](documentation/SESSION-2026-09-04F.md).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -1131,7 +1131,63 @@ otworzył się sam.
 
 ---
 
-### v0.30.0 — co dalej
+### ~~v0.30.0 — Mapa mówi, i pokój wreszcie następuje~~ ✅ (v0.30.0.0)
+
+Kandydat **3** z poprzedniej listy, plus jedna rzecz znaleziona po drodze, która
+okazała się większa od niego.
+
+**1. Znaki zdarzeń na mapie świata.** v0.28.0 sprawiła, że zdarzenia trafiają w
+miasta, v0.29.0 dała graczowi co z nimi robić — a mapa milczała: czterdzieści
+pięć identycznych miasteczek bez względu na to, co się w nich dzieje. Miasto, o
+którym gracz **słyszał**, nosi teraz szpilkę z nazwą zdarzenia (rdza = kłopot,
+złoto = okazja, łupek = zmiana okoliczności), a zamknięta przystań dostaje
+przerywany pierścień, który widać z daleka.
+
+Nowy `MapEventSystem.knownPortEvents` (czysty rdzeń) + `MapEventMarkerRenderer`.
+Reguły są w całości o tym, **co odpada**:
+
+- tylko `knownEventIds` — ta sama zasada co kursy wypraw. To nie mgła wojny;
+- **≤ 4 porty** (`MARK_MAX_PORTS`) — dekret królewski obejmuje 24 miasta,
+  a 24 identyczne szpilki nie mówią nic ponad flagi i zasłaniają jeden huragan;
+- `reconquest` / `campaign` rysuje już `ExpeditionCourseRenderer`;
+- jeden znak na miasto: zamknięty > groźniejszy > **krótszy** (huragan za trzy
+  dni to news, kopalnia od roku to stały fakt mapy), reszta jako `+N`.
+
+**N** chowa warstwę, tak jak **T** chowa szlaki (`pc_marks`).
+
+**2. Pokój — czternaście wydań bez ani jednego traktatu.** Wojna historyczna
+zapisywała koniec jako `startDay + lata × 365 + miesiące × 30`, a kalendarz gry
+ma lata przestępne: dryf dzień na cztery lata. `expireEvents` kasuje zdarzenie
+dzień po `endDay`, a gałąź kończąca wojnę wymaga, żeby wojnę dało się jeszcze
+zobaczyć — więc **żadna wojna w tabeli nigdy nie doszła do własnej daty końca**,
+a `treaty_signed` (typ, nagłówek w dwóch językach, wiersz w tabeli efektów od
+v0.9.7) nie było produkowane przez **nic**. Lustrzane odbicie martwych pól z
+v0.29.0: tam konsument bez producenta, tu producent bez zdarzenia.
+
+Koniec liczy teraz `TimeSystem.calendarToDay()`, a pokój jest zdarzeniem na 60
+dni na portach obu koron — jest więc na tablicach w tawernach i roznoszą go NPC.
+
+**Pomiar** (1667, wojna dewolucyjna, 700 dni z pełnym tickiem): wojna dnia 121,
+traktat dnia 487; suma bogactwa 20 905 wobec 21 269 w świecie bez wojny (−1,7%).
+
+**Pułapki z tej sesji:**
+
+1. **Ikony miast to jedyna rzecz na tej mapie rysowana w stałym rozmiarze
+   ŚWIATA** (22 / 15 / 10 jednostek), a wszystkie adnotacje mają stały rozmiar
+   ekranowy. Szpilka postawiona 15 px ekranowych nad środkiem miasta jest
+   poprawna nad wioską przy z2 i **wewnątrz** sprite'u Hawany przy z6. Co ma
+   ominąć sprite, musi być mierzone od sprite'u (`townRadius`).
+2. **`?zoom=` działało dopiero przy następnym załadowaniu strony** —
+   `initZoomSetting()` czyta klucz w `BootScene`, która startuje przed
+   `PreloadScene`, więc zapis prosto do `localStorage` nie zdążał. Wszystko, co
+   prowadzi grę headlessowo, po cichu oglądało zapisany zoom zamiast żądanego.
+3. **Brakujący klucz w `vars` drukuje surowe `{{faction1}}` na tablicy w
+   tawernie** — znalezione na zrzucie ekranu, w świecie debugowym `?event=`,
+   który podawał tylko `port`/`faction`. Żaden test tego nie widział.
+
+---
+
+### v0.31.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1141,13 +1197,19 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    trzeba rozstrzygnąć zanim ktokolwiek narysuje pierwszą klatkę
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Zdarzenia na mapie.** v0.29.0 daje im skutki w porcie, ale mapa świata dalej
-   o nich milczy: huragan, zaraza czy odkrycie złota nie mają żadnego znacznika
-   przy mieście. Ikona przy etykiecie portu (dla zdarzeń, o których gracz
-   **słyszał** — `knownEventIds` już istnieje) byłaby tanim domknięciem i
-   pierwszym powodem, żeby patrzeć na mapę inaczej niż jako na siatkę kursów
-4. **Sojusz z koroną nie otwiera niczego** — wojna obcina import mnożnikiem
-   (`importMul`), ale sojusz nie daje żadnej symetrycznej korzyści
+3. **Wojna trwająca w dniu rozpoczęcia gry nigdy się nie zaczyna.**
+   `checkHistoricalWars` tworzy wojnę wyłącznie w dniu jej daty startu, więc
+   kampania zaczęta w 1620 nie wie, że wojna osiemdziesięcioletnia (1568–1648)
+   właśnie trwa — trzy z sześciu er startują w środku wojny i mają spokój.
+   Zasianie ich przy tworzeniu świata **zmienia balans** (`importMul` 0.7 na
+   portach obu koron + podwojony spawn marynarki), więc wymaga pomiaru przed
+   napisaniem. Domyślnej ery `pirates_sunset` (1680) to nie dotyczy — 1680 jest
+   w tej tabeli rokiem pokoju
+4. **Sojusz z koroną nie otwiera niczego.** Uwaga: pozycja jest **niedoprecyzowana**
+   i dlatego przeskoczona w v0.30.0 — „sojusz" może znaczyć list kaperski gracza
+   (który daje tylko prawo do bicia się i nic w handlu) albo przymierze dwóch
+   koron (którego w modelu świata **w ogóle nie ma**: są wojny i od v0.30.0
+   traktaty, nie ma sojuszy). Przed wzięciem tego trzeba rozstrzygnąć które
 5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
    wymaga trwałego, nazwanego NPC, bo dziś kadłuby spawnują się w promieniu
    gracza i znikają. To nie jest tanie i dlatego czeka
@@ -1212,6 +1274,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Świat debugowy musi robić to, co robi normalne wejście.** `?famine=` startuje `PortScene` wprost i omija `PortApproachScene`, która zapełnia ławę w tawernie (`generateAvailableCrew`) — bez dołożenia tego ręcznie mechanika była na ekranie niewidoczna, choć w kodzie działała.
 - **Etykieta pozycji w menu portu urywa się wizualnie powyżej ~64 znaków.** Wychodzi poza ramkę okna i nic o tym nie mówi — `setupActionList` nie zawija. Długie oferty (fracht, informator) trzeba skracać, a szczegóły przenosić do komunikatu potwierdzenia albo do Dziennika.
 - **Sufit bogactwa dla miasta pod czarną banderą był próbowany trzy razy i trzy razy jest błędem** (v0.19.0 udział 0.42 → bogactwo 5; v0.25.0 udział 0.62 → 0; v0.25.0 stały upkeep → 0). Osiadła wartość = `cel − presja / RECOVERY_WEALTH`, a presja z niedoborów zjada już całą lukę 380. **Nie próbuj czwarty raz** — dźwignią jest to, co dociera na nabrzeże (`blackFlagImportShare`), nie cel.
+- **Ikony miast są jedyną rzeczą na mapie w stałym rozmiarze ŚWIATA** (`CityIconRenderer`: 22 / 15 / 10 jednostek według wielkości), a każda adnotacja — etykiety, flagi, kursy wypraw, znaki zdarzeń — ma stały rozmiar **ekranowy**. Zoom idzie od 1,5× do 12×, więc cokolwiek ma ominąć sprite miasta, musi być mierzone **od sprite'u**, nie od stałej liczby pikseli ekranowych: szpilka 15 px nad środkiem miasta jest nad wioską przy z2 i wewnątrz Hawany przy z6 (v0.30.0).
+- **Producent bez zdarzenia to ten sam błąd co pole bez odbiorcy.** `treaty_signed` miał typ, nagłówek w dwóch językach i wiersz w tabeli efektów od v0.9.7, a nie tworzyło go **nic**, bo gałąź kończąca wojnę nigdy się nie wykonała. Przy dokładaniu typu do wspólnego enuma sprawdź `grep`-em nie tylko kto go czyta, ale i **kto go w ogóle produkuje** (v0.30.0).
+- **Data w kalendarzu z latami przestępnymi to nie `lata × 365`.** Wojny historyczne zapisywały koniec tą arytmetyką i każda wygasała kilka dni przed własną datą (wojna 9-letnia o 4 dni, 80-letnia o 20). Odwrotność `dayToCalendar` to `TimeSystem.calendarToDay()` — używaj jej (v0.30.0).
+- **Brakujący klucz w `vars` drukuje surowe `{{faction1}}`, nie rzuca wyjątkiem.** Widać to wyłącznie na ekranie; żaden test tego nie łapie. Świat debugowy stemplujący zdarzenie musi podać komplet zmiennych dla każdego nagłówka, jaki może wystawić (v0.30.0).
+- **`?zoom=` musi iść przez `setZoomLevel()`, nie prosto do `localStorage`** — `initZoomSetting()` czyta klucz w `BootScene`, która startuje przed `PreloadScene`, więc zapis nie zdąża i skutkuje dopiero przy następnym załadowaniu strony. Ta sama pułapka czeka każde ustawienie czytane raz przy starcie (v0.30.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.

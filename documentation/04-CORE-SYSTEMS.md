@@ -11,7 +11,8 @@
 | Economy | `EconomySystem.ts` | Handel, transakcje kupna/sprzedaży |
 | EconomyTick | `EconomyTickSystem.ts` | Dzienny tick żywej ekonomii miast |
 | EventEffects | `EventEffectsSystem.ts` | Przełożenie wydarzeń świata na dzienne delty |
-| WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia |
+| WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia + traktaty pokojowe |
+| MapEvent | `MapEventSystem.ts` | Wyprowadza znaki na mapie ze zdarzeń, o których gracz słyszał |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
@@ -2688,3 +2689,90 @@ dokładnie na nim, na tyle blisko, że dialog zbliżania otwiera się sam
 (`findNearPort` ma promień **6 px** wokół pozycji przyciągniętej do brzegu, więc
 najbliższy kafel wody to za daleko). Dla `gold_discovery` dosypuje tygodniowy
 urobek do magazynu, bo `applyOneShotEffects` odpala się tylko w dniu wystąpienia.
+
+---
+
+# v0.30.0 — mapa mówi, i pokój wreszcie następuje
+
+## MapEventSystem — znaki na mapie świata
+
+`knownPortEvents(world): PortEventMark[]` — czysta funkcja, jedyna warstwa
+rdzenia tej zmiany. Wyprowadza z `worldEvents` krótką listę znaków, jakie
+kapitan naniósłby sam na swoją mapę. Rysuje je `MapEventMarkerRenderer`
+(zob. [07-RENDERING.md](07-RENDERING.md)).
+
+Reguły są w całości o tym, co **odpada** — mapa oznaczająca wszystko przestaje
+być mapą:
+
+| Warunek | Dlaczego |
+|---|---|
+| `endDay >= time.day` | wygasłe zdarzenie to nie news |
+| `id ∈ knownEventIds` | ta sama zasada co kursy wypraw: rysuje się to, co **powiedziano** kapitanowi (tablica w tawernie, zagadany kapitan), a nie to, co widzi bocianie gniazdo. To nie jest mgła wojny |
+| `ports.length ≤ MARK_MAX_PORTS` (**4**) | dekret królewski obejmuje 24 porty, flota skarbów wszystkie hiszpańskie. Dwadzieścia cztery identyczne szpilki nie mówią nic ponad to, co mówią flagi, i zasłaniają jeden huragan, który jest naprawdę ważny. Huragan obejmuje 3 miasta, zbiory 2, reszta 1 |
+| typ ∉ `NOT_A_TOWN_MARK` | `reconquest` / `campaign` rysuje już `ExpeditionCourseRenderer` (kurs + pierścień na celu) — ten sam fakt dwa razy. `war_start` / `war_end` / `treaty_signed` mają puste `ports`, bo dotyczą koron |
+| port istnieje w `world.ports` | odporność na klucz spoza mapy |
+
+**Jeden znak na miasto.** Dwa zdarzenia mogą pokrywać ten sam port, a sprite
+miasta ma 10–22 jednostek świata szerokości. Wygrywa to, co najbardziej zmienia
+decyzję kapitana, reszta idzie w licznik `extra`:
+
+```
+zamknięty port  >  wyższa severity  >  krótszy pozostały czas  >  id (stabilność)
+```
+
+Krótszy przed dłuższym celowo: huragan, który minie za trzy dni, jest newsem;
+kopalnia złota pracująca od roku jest stałym faktem mapy.
+
+`markValence(type)` odpowiada na **jedno** pytanie — płynąć tam czy stamtąd:
+`bad` (zaraza, głód, huragan, bunt, napad, najazd), `good` (złoto, koniunktura,
+zbiory, flota skarbów), `neutral` (nowy gubernator, dekret).
+
+`closed` czytane jest **z portu** (`isPortClosed`), nie ze zdarzenia: miasto może
+być zamknięte przez którekolwiek z kilku naraz, a kapitan potrzebuje wiedzieć,
+czy drzwi są otwarte, nie która pogoda je zamknęła.
+
+## Pokój — czternaście wydań bez ani jednego traktatu
+
+Dwie usterki, z których każda zasłaniała drugą.
+
+**1. Wojna znikała przed własną datą końca.** `checkHistoricalWars` zapisywał
+koniec jako `startDay + lata × 365 + miesiące × 30`, a kalendarz gry ma lata
+przestępne. Błąd rośnie o dzień na cztery lata: wojna dziewięcioletnia wychodziła
+**4 dni** za krótka, wojna osiemdziesięcioletnia **20**. `expireEvents` kasuje
+zdarzenie dzień po `endDay`, a gałąź kończąca wojnę wymaga, żeby wojnę **dało się
+jeszcze zobaczyć** — więc nigdy się nie wykonała.
+
+Koniec liczy teraz `calendarToDay(rok, miesiąc, 1, world.startYear)`
+(`TimeSystem.ts`, odwrotność `dayToCalendar`, przetestowana na 80 latach dni).
+
+**2. `treaty_signed` nie było produkowane przez nic.** Typ istniał, nagłówek
+`news.treaty_signed` istniał w dwóch językach, wiersz w tabeli `EventEffectsSystem`
+(produkcja i import ×1.15, `wealthDelta` +0.5) istniał od v0.9.7 — i nie było
+producenta. To lustrzane odbicie martwych pól z v0.29.0.
+
+Koniec wojny tworzy teraz zdarzenie `treaty_signed` na **`TREATY_DAYS = 60`**,
+obejmujące porty obu koron. Wcześniej pokój był linijką w dzienniku kapitana i
+niczym więcej: `getPortNews` czyta wyłącznie `worldEvents`, więc żadna tawerna
+nigdy nie wydrukowała wiadomości o pokoju i żaden NPC jej nie rozniósł. Wojna
+była czymś, co czuła cała mapa; pokój nie działał się nigdzie.
+
+**Pomiar** (świat od 1667, wojna dewolucyjna V 1667 – V 1668, 700 dni z pełnym
+`economyDailyTick`): wojna zaczyna się dnia 121, traktat podpisany dnia 487.
+Suma bogactwa Karaibów 20 905 wobec 21 269 w świecie bez osiągalnej wojny
+(−1,7%) — wojna zabiera trochę przez rok `importMul` 0.7, traktat oddaje część.
+Traktat jest **zaburzeniem, nie nowym baseline'em**: 60 dni × 0,5 punktu to około
++20 punktów osiadłego bogactwa na miasto, mniej niż wojna zabrała.
+
+### Parametry debugowania
+
+`?event=<typ>&port=<klucz>` dokłada teraz do `knownEventIds` **zarówno**
+stemplowane zdarzenie, **jak i** wszystkie zasiane przy tworzeniu świata — bez
+tego znaki na mapie są niewidoczne dokładnie w świecie zbudowanym po to, żeby na
+nie popatrzeć. `vars` niesie też `faction1` / `faction2`, bo nagłówki wojny i
+traktatu interpolują dwie korony, a brakujący klucz drukuje na tablicy w tawernie
+surowe `{{faction1}}` (znalezione na zrzucie ekranu).
+
+`?zoom=` działa od tej wersji **za pierwszym razem**: `initZoomSetting()` czyta
+klucz w `BootScene`, która startuje przed `PreloadScene`, więc zapis prosto do
+`localStorage` odnosił skutek dopiero przy następnym załadowaniu strony. Idzie
+teraz przez `setZoomLevel()`.

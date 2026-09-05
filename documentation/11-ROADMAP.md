@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-04 | **Wersja kodu:** 0.29.0.0
+**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.30.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.29)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.30)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -70,12 +70,13 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.27.0.0 | **Głód ma twarz** — miasto zapisuje, czego mu wczoraj zabrakło; ludzie wyjeżdżają, a ci, co zostają, zaciągają się za chleb. **Miejski spichlerz**: gubernator kupuje z ładowni na miejscu i płaci reputacją | ✅ |
 | 0.28.0.0 | **Zdarzenia świata zaczęły się dziać** — jedna linijka (`roll % length` na ułamku) sprawiała, że żadne nigdy nie trafiało w port; tabela efektów zmierzona i przeskalowana. **Plotki w tawernie mówią, co się naprawdę dzieje** w promieniu 1300 | ✅ |
 | 0.29.0.0 | **Zdarzenie, które gracz spotyka** — zamknięty port naprawdę nie wpuszcza, zaraza opróżnia tawernę, a odkryte złoto jest towarem, po który się płynie (pierwszy towar `rare`) | ✅ |
+| 0.30.0.0 | **Mapa mówi, co się dzieje** — miasto, o którym kapitan słyszał, nosi znak zdarzenia, zamknięta przystań przerywany pierścień. **Pokój wreszcie następuje**: każda wojna historyczna wygasała przed własną datą końca, więc traktatu nie podpisano ani razu | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 
 - **Statki NPC na mapie** — spawn z portów i despawn w portach, 5 typów zachowań, limit 30 jednostek, mgła wojny, zasięg obserwacji zależny od najwyższego masztu floty
 - **Bitwy morskie** — arena 3× viewport, łuki ostrzału ±60°, kule / łańcuchówki / kartacze, przeładowanie zależne od stanu załogi, kapitulacja, abordaż z przejęciem statku
-- **Wydarzenia i ekonomia** — 10 wojen historycznych 1568-1697, 15 typów wydarzeń, dzienna symulacja produkcji, konsumpcji i cen w 45 portach, wojna zmienia ruch morski
+- **Wydarzenia i ekonomia** — 10 wojen historycznych 1568-1697 z traktatem pokojowym na końcu każdej, 15 typów wydarzeń, dzienna symulacja produkcji, konsumpcji i cen w 45 portach, wojna zmienia ruch morski, a mapa nosi znaki tego, o czym kapitan słyszał
 - **Obieg informacji** — wydarzenie → news w porcie → NPC jako kurier → gracz
 - **Flota gracza** — do 3 własnych statków, prędkość eskadry = najwolniejsza jednostka
 - **Ruchoma mapa polityczna** — korony odbijają utracone kolonie i biją się między sobą, wyprawy płyną realną wodą i dają się przechwycić, zdobyte miasto trzeba obronić

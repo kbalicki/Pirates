@@ -11,6 +11,12 @@ import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
+import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
+
+/** Crown ids are lower case in the data and title case on a noticeboard. */
+function capitalise(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
@@ -194,7 +200,12 @@ export class PreloadScene extends Phaser.Scene {
     //                    the town is already a fortnight hungry and the hold is full
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
-      localStorage.setItem("pc_zoom_level", params.get("zoom")!);
+      // Through the setter, not straight into localStorage: `initZoomSetting`
+      // has already read the key in `BootScene`, which runs before this, so a
+      // bare write only took effect on the *next* load of the page. Anything
+      // driving the game headless gets one load and was silently looking at
+      // the stored zoom rather than the one it asked for (v0.30.0).
+      setZoomLevel(params.get("zoom")! as ZoomLevel);
     }
     if (params.has("debug")) {
       localStorage.setItem("pc_debug", params.get("debug")!);
@@ -682,8 +693,29 @@ export class PreloadScene extends Phaser.Scene {
           factions: [def.factionId as unknown as string],
           severity: 2 as const,
           headline: `news.${type}`,
-          vars: { port: def.name, faction: def.factionId as unknown as string, duration: 60 },
+          // Every headline this can stamp, not just the town-shaped ones: the
+          // war and treaty strings interpolate two crowns, and a `vars` bag
+          // that is missing a key prints the raw `{{faction1}}` on the tavern
+          // noticeboard rather than failing (v0.30.0 — seen on a screenshot).
+          vars: {
+            port: def.name,
+            faction: def.factionId as unknown as string,
+            faction1: capitalise(def.factionId as unknown as string),
+            faction2: "England",
+            duration: 60,
+          },
         },
+      ],
+      // Everything the world already seeded counts as heard, plus the staged
+      // one (v0.30.0). The chart only pencils in what a tavern or a passing
+      // captain has told him about, so without this the marks are invisible in
+      // exactly the world built to look at them — and a handful of seeded
+      // events scattered over the Caribbean is the picture the feature is
+      // about, rather than one pin under the bowsprit.
+      knownEventIds: [
+        ...base.knownEventIds,
+        ...base.worldEvents.map(ev => ev.id),
+        `debug_${type}_${portKey}`,
       ],
     };
 

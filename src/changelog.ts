@@ -6,6 +6,34 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.30.0.0",
+    date: "2026-09-05",
+    changes: [
+      "THE CHART SAYS WHAT IS HAPPENING, AND PEACE HAPPENS AT ALL",
+      "  MARKS ON THE MAP. v0.28.0 made world events land on towns and v0.29.0",
+      "  gave you things to do about them, and between the two the map itself",
+      "  said nothing: forty-five identical towns whatever was going on in",
+      "  them. A town you have heard something about now carries a pin and the",
+      "  name of the thing — rust for trouble, gold for an opportunity — and a",
+      "  harbour that is shut gets a broken ring you can read from a mile off",
+      "  Only what you have been told. The marks come from the same set as the",
+      "  expedition courses: a tavern noticeboard or a captain you hailed. A",
+      "  crown-wide decree is not marked, because it is news about a flag and",
+      "  twenty-four identical pins would bury the one hurricane that matters",
+      "  N hides them, the way T hides the trade lanes",
+      "  PEACE. Every historical war stored its end as years times 365, against",
+      "  a calendar that keeps leap days — so each one quietly evaporated a few",
+      "  days before its own end date, the end-of-war branch never ran, and the",
+      "  treaty it was supposed to sign has never once existed. The peace is an",
+      "  event now: sixty days of reopened routes across both crowns, on the",
+      "  news boards of every town in them, and the effects table row that had",
+      "  sat unused since v0.9.7 finally does something",
+      "  Debug: ?zoom= took effect on the next load of the page rather than",
+      "  this one, so anything driving the game headless was silently looking",
+      "  at the stored zoom instead of the one it asked for",
+    ],
+  },
+  {
     version: "0.29.0.0",
     date: "2026-09-04",
     changes: [

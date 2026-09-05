@@ -207,3 +207,51 @@ siedzi w wodzie.
 alfy — tint rysował niebieskie prostokąty wokół każdego kadłuba. To był powód
 usunięcia tintu frakcyjnego w v0.19.0 i nie zmieni się, dopóki arkusz statków
 nie zostanie przerysowany (sekcja 6 w TODO.md).
+
+## MapEventMarkerRenderer — znaki zdarzeń na mapie świata (v0.30.0)
+
+Rysuje jeden znak na miasto dla zdarzeń, o których gracz **słyszał**; listę
+wyprowadza `MapEventSystem.knownPortEvents` (zob.
+[04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md)).
+
+| Element | Depth | Rozmiar |
+|---|---|---|
+| pierścień zamkniętego portu + szpilka | 550 | `radius + 5 px ekranowych`, szpilka `r = 4.5 px` |
+| etykieta nazwy zdarzenia | 601 | `txt(12, bold)`, `setScale(1 / zoom)` |
+
+Depth 550 leży **nad** grafiką portów (500) i **pod** ich etykietami (600);
+etykieta znaku na 601 jest jedyną rzeczą nad nazwą miasta, i tak ma być, bo
+jest tym, po co się patrzy.
+
+**Kolor odpowiada na jedno pytanie** — płynąć tam czy stamtąd. Nie zieleń i
+czerwień: mapa niesie już cztery kolory frakcji, z czego dwa są czerwone.
+
+| Wydźwięk | Kolor | Zdarzenia |
+|---|---|---|
+| `bad` | `0xb03a2e` (rdza) | zaraza, głód, huragan, bunt, napad piratów, najazd |
+| `good` | `0xd4a017` (złoto) | odkrycie złota, koniunktura, zbiory, flota skarbów |
+| `neutral` | `0x6b7a8f` (łupek) | nowy gubernator, dekret królewski |
+
+### Pułapka: co jest w pikselach ekranowych, a co nie
+
+Wszystkie adnotacje na tej mapie mają **stały rozmiar ekranowy** (dzielone przez
+zoom, tak jak `ExpeditionCourseRenderer` i etykiety miast). Ale ikony miast są
+jedyną rzeczą rysowaną w **stałym rozmiarze świata** — `CityIconRenderer` skaluje
+je do 22 / 15 / 10 jednostek świata według wielkości miasta — więc rosną
+ośmiokrotnie na całym zakresie zoomu 1.5×–12×.
+
+Pierwsza wersja stawiała szpilkę 15 pikseli ekranowych nad środkiem miasta i
+pierścień o promieniu 17 px: nad wioską przy z2 wyglądało to poprawnie, a przy
+Hawanie na z6 szpilka siedziała **wewnątrz** sprite'u, a pierścienia w ogóle nie
+było widać. **Cokolwiek ma ominąć sprite miasta, musi być mierzone od sprite'u**:
+`townRadius(portKey)` daje połowę jego szerokości w jednostkach świata, a dopiero
+odstęp nad nim jest ekranowy.
+
+### Widoczność
+
+Znaki gasną razem z ikonami miast: `alpha = 0` poniżej zoomu 2, liniowo do 1 przy
+zoomie 3. Przy przeglądowym zoomie mieści się na ekranie czterdzieści pięć miast
+i znaki byłyby dywanem słów na Karaibach, nie mapą.
+
+Klawisz **N** chowa i pokazuje całą warstwę (`pc_marks` w `localStorage`), tak
+jak **T** chowa szlaki handlowe.
