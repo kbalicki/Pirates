@@ -315,6 +315,70 @@ export function seedInitialEvents(world: WorldState): WorldState {
   return { ...w, rng };
 }
 
+/**
+ * Put the wars that were already being fought on the map (v0.31.0).
+ *
+ * `checkHistoricalWars` creates a war only on the exact day its start date comes
+ * round, which is the right rule for a war that breaks out during a career and
+ * the wrong one for the day the career begins. Three of the six eras open inside
+ * a war — 1600 inside two, 1620 inside the Eighty Years' War, 1640 inside two —
+ * and every one of them opened in perfect peace, with the news boards silent and
+ * the fighting only ever mentioned in the past tense.
+ *
+ * `startDay` is **negative** — the real number of days back to the outbreak —
+ * and that is the whole reason this is safe to do at all. `EventEffectsSystem`
+ * reads it through `warBite`, so a war that has been going on for thirty-two
+ * years arrives with its economic bite already spent, and the towns sit on the
+ * baselines that a generation of it made of them. Everything about the war as a
+ * live situation is untouched: the news boards carry it, `areFactionsAtWar`
+ * answers yes, and `NpcSpawnSystem` doubles the navy and puts privateers out.
+ *
+ * Seeded with the flat bite the table used to apply, this took **39% off the
+ * wealth of the entire Caribbean** in the 1600 and 1640 eras and held it there
+ * for decades. Measure before believing an event is small.
+ *
+ * The end comes off the calendar, exactly as for a war declared in play.
+ *
+ * Called once, from `createNewWorldState`, alongside `seedInitialEvents`.
+ */
+export function seedHistoricalWars(world: WorldState): WorldState {
+  const startMonths = world.startYear * 12 + 1;
+  const live = HISTORICAL_WARS.filter(war => {
+    const from = war.startYear * 12 + war.startMonth;
+    const to = war.endYear * 12 + war.endMonth;
+    return from <= startMonths && startMonths < to;
+  });
+  if (live.length === 0) return world;
+
+  const events: WorldEventState[] = live.map(war => ({
+    id: `war_${war.id}`,
+    type: "war_start",
+    // Days back to the outbreak, both ends measured from 1 January of the year
+    // the war began so the subtraction is exact rather than an estimate.
+    startDay: 1 - (
+      calendarToDay(world.startYear, 1, 1, war.startYear)
+      - calendarToDay(war.startYear, war.startMonth, 1, war.startYear)
+    ),
+    endDay: calendarToDay(war.endYear, war.endMonth, 1, world.startYear),
+    ports: [],
+    factions: [...war.factions],
+    severity: 3,
+    // Not `war.headline`: "War declared!" is a lie about a war that has been
+    // going on for fifty-two years, and the tavern noticeboard of a Spanish town
+    // in 1620 was saying exactly that. Seen on a screenshot, like the last two.
+    headline: "news.war_ongoing",
+    vars: {
+      faction1: factionName(war.factions[0]),
+      faction2: factionName(war.factions[1]),
+      since: war.startYear,
+    },
+  }));
+
+  let w: WorldState = { ...world, worldEvents: [...world.worldEvents, ...events] };
+  for (const ev of events) w = addLogEntry(w, "news.war_ongoing", ev.vars);
+  return w;
+}
+
 /** Call once per game day. Returns updated world with new events. */
 export function updateWorldEvents(world: WorldState): WorldState {
   const cal = dayToCalendar(world.time.day, world.startYear);

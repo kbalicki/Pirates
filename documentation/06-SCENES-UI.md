@@ -15,7 +15,6 @@ CharacterCreationScene ── [Nowa gra] ──→ MainMapScene
 MainMapScene (główna pętla)  ── równolegle działa UIOverlayScene (kompas, data, zoom)
     │
     ├── [SPACE] ──→ OptionsMenuScene (kabina, flota, ustawienia, zapis/odczyt)
-    ├── [ESC]   ──→ PauseMenuScene
     ├── [H]     ──→ HelpScene (Sterowanie / Statki / Żeglowanie / Świat / Ekonomia)
     ├── [I na mieście] ──→ CityInfoScene
     ├── [X na lądzie] ──→ kopanie skarbu ──→ DuelScene (jeśli zasadzka)
@@ -181,11 +180,6 @@ Dialog zbliżania do portu:
 ### CityInfoScene
 
 Podgląd miasta bez wchodzenia do portu: populacja, zamożność i obrona z trendem (↑/↓ względem baseline'u) oraz lista aktywnych wydarzeń dotykających ten port.
-
-### PauseMenuScene
-
-- Overlay na MainMapScene
-- ESC = resume
 
 ### OptionsMenuScene
 

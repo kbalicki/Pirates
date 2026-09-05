@@ -6,6 +6,36 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.31.0.0",
+    date: "2026-09-05",
+    changes: [
+      "THE WARS YOU WERE BORN INTO",
+      "  A historical war was only ever created on the exact day its start date",
+      "  came round, which is right for a war that breaks out during a career",
+      "  and wrong for the day the career begins. Three of the six eras open",
+      "  inside a war — 1600 inside two, 1620 inside the Eighty Years' War,",
+      "  1640 inside two — and every one of them opened in perfect peace, with",
+      "  the fighting mentioned only in the past tense",
+      "  They are on the map now. The tavern says how long it has been going on",
+      "  rather than announcing a fifty-two-year-old war as fresh news, the navy",
+      "  of both crowns is out in double strength, and privateers are at sea",
+      "  A WAR HURTS TRADE WORST WHEN IT BREAKS OUT. Seeding those wars with a",
+      "  flat penalty took 39% off the wealth of the entire Caribbean and held",
+      "  it there for decades — an eighty-year perturbation is not a",
+      "  perturbation, it is the setting. So the bite fades over two years as",
+      "  neutral bottoms are chartered and new routes settle",
+      "  You will feel this in play: the Nine Years' War now costs English",
+      "  colonies about a third of their wealth in the first months and lets",
+      "  them recover while the fighting goes on, instead of holding both crowns",
+      "  at half their worth for eight straight years",
+      "  Removed the pause menu — 112 lines of scene that nothing has been able",
+      "  to open since the first commit; SPACE has done the job for months",
+      "  Fixed: the Polish governor no longer forgets which crown he serves when",
+      "  he hands over a letter of marque",
+      "  Debug: ?era=<id> with ?skip to start in any of the six historical eras",
+    ],
+  },
+  {
     version: "0.30.0.0",
     date: "2026-09-05",
     changes: [

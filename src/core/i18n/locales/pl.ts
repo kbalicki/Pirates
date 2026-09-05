@@ -189,9 +189,6 @@ export const PL: LocaleData = {
   "rep.allied": "SPRZYMIERZONY",
 
   // -- Pause --
-  "pause.title": "PAUZA",
-  "pause.resume": "[ WZNÓW ]",
-  "pause.save_load": "[ ZAPIS/ODCZYT ]",
 
   // -- Options Menu --
   "menu.title": "Dziennik Kapitana",
@@ -473,7 +470,7 @@ export const PL: LocaleData = {
   "retire.title_privateer": "Kaper o skromnej sławie",
   "retire.title_sailor": "Uczciwy marynarz",
   "retire.title_pauper": "Biedak z morskimi opowieściami",
-  "governor.letter_granted_reply": "\"Podpisane i opieczętowane. Łup wrogów korony, a my odwrócimy wzrok.\"",
+  "governor.letter_granted_reply": "\"Podpisane i opieczętowane. Łup wrogów, jakich ma {{faction}}, a korona odwróci wzrok.\"",
   "governor.standing_reply": "\"{{faction}} — notowania: {{level}} ({{value}}). Twoja ranga: {{rank}}.\"",
   "governor.reputation_label": "Stosunki z {{faction}}: {{level}} ({{value}})",
   "governor.letter_available": "Gubernator oferuje ci List Kaperski!",
@@ -578,6 +575,7 @@ export const PL: LocaleData = {
 
   // -- World Events / News --
   "news.war_start": "Wojna! {{faction1}} wypowiedziała wojnę {{faction2}}!",
+  "news.war_ongoing": "{{faction1}} i {{faction2}} są w stanie wojny od {{since}} roku.",
   "news.war_end": "Pokój między {{faction1}} a {{faction2}}.",
   "news.epidemic": "Epidemia w {{port}}! Wielu zachorowało.",
   "news.pirate_raid": "Piraci napadli na {{port}}! Handel przerwany.",

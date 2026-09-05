@@ -1,8 +1,16 @@
 import { describe, it, expect } from "vitest";
-import { seedInitialEvents, updateWorldEvents, getPortNews } from "../WorldEventSystem.ts";
-import { getAggregatedEffects, MAX_WEALTH_DELTA } from "../EventEffectsSystem.ts";
+import { seedInitialEvents, seedHistoricalWars, updateWorldEvents, getPortNews } from "../WorldEventSystem.ts";
+import {
+  getAggregatedEffects,
+  areFactionsAtWar,
+  warSpawnMultipliers,
+  warBite,
+  MAX_WEALTH_DELTA,
+  WAR_ADAPTATION_DAYS,
+} from "../EventEffectsSystem.ts";
 import { economyDailyTick } from "../EconomyTickSystem.ts";
 import { CITIES } from "../../data/cities.ts";
+import { calendarToDay } from "../TimeSystem.ts";
 import { FACTIONS } from "../../data/factions.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
@@ -378,5 +386,153 @@ describe("the peace that ends it", () => {
   it("lifts, because a treaty is a reopening and not a new normal", () => {
     const w = runEventDays(signed(), 90);
     expect(w.worldEvents.some(ev => ev.type === "treaty_signed")).toBe(false);
+  });
+});
+
+// ===========================================================================
+// The wars that were already being fought (v0.31.0)
+// ===========================================================================
+
+/**
+ * `checkHistoricalWars` creates a war only on the exact day its start date comes
+ * round — the right rule for a war that breaks out during a career and the wrong
+ * one for the day the career begins. Three of the six eras open inside a war:
+ * 1600 inside two, 1620 inside the Eighty Years' War, 1640 inside two. All three
+ * opened in perfect peace.
+ *
+ * Seeding them is only safe because of the second half of this change. A war's
+ * table row describes an *outbreak*, and applied flat to an eighty-year war it
+ * took **39% off the wealth of the whole Caribbean** and held it there for
+ * decades. `warBite` fades the trade multipliers over two years, so a war that
+ * has been running since before the captain was born arrives with its bite
+ * spent — and is still, in every other respect, a war.
+ */
+describe("seedHistoricalWars", () => {
+  it("opens the 1620 era inside the Eighty Years' War", () => {
+    const w = seedHistoricalWars(makeWorld(1, 1620));
+    const wars = w.worldEvents.filter(ev => ev.type === "war_start");
+    expect(wars.map(ev => ev.id)).toEqual(["war_eighty_years_war"]);
+    expect(wars[0].factions.sort()).toEqual(["netherlands", "spain"]);
+  });
+
+  it("opens the 1600 and 1640 eras inside two wars each", () => {
+    expect(seedHistoricalWars(makeWorld(1, 1600)).worldEvents).toHaveLength(2);
+    expect(seedHistoricalWars(makeWorld(1, 1640)).worldEvents).toHaveLength(2);
+  });
+
+  it("leaves the years of peace at peace", () => {
+    for (const year of [1560, 1660, 1680]) {
+      expect(seedHistoricalWars(makeWorld(1, year)).worldEvents, `${year}`).toEqual([]);
+    }
+  });
+
+  it("dates the outbreak where it actually happened, decades before day 1", () => {
+    const war = seedHistoricalWars(makeWorld(1, 1620)).worldEvents[0];
+    // May 1568 to January 1620 — a little over 51 years.
+    expect(war.startDay).toBeLessThan(0);
+    expect(-war.startDay / 365).toBeGreaterThan(51);
+    expect(-war.startDay / 365).toBeLessThan(52);
+  });
+
+  it("ends it on its own calendar date, not a day sooner", () => {
+    const war = seedHistoricalWars(makeWorld(1, 1620)).worldEvents[0];
+    // 1 January 1648, counting from 1 January 1620.
+    expect(war.endDay).toBe(calendarToDay(1648, 1, 1, 1620));
+  });
+
+  it("puts it on the news board, because the captain has to hear of it somewhere", () => {
+    const w = seedHistoricalWars(makeWorld(1, 1620));
+    // Not "War declared!" — that is a lie about a war fifty-two years old.
+    expect(w.eventLog.some(e => e.key === "news.war_ongoing")).toBe(true);
+    expect(w.eventLog.some(e => e.key === "news.war_start")).toBe(false);
+    expect(EN["news.war_ongoing"]).toContain("{{since}}");
+    expect(w.worldEvents[0].vars.since).toBe(1568);
+  });
+
+  it("is a war in every sense the rest of the game asks about", () => {
+    const w = seedHistoricalWars(makeWorld(1, 1620));
+    expect(areFactionsAtWar(w, "spain", "netherlands")).toBe(true);
+    expect(warSpawnMultipliers(w).spain).toBe(2);
+  });
+
+  it("but has no bite left in it, so the towns keep their baselines", () => {
+    const w = seedHistoricalWars(makeWorld(1, 1620));
+    const spanish = Object.keys(w.ports).find(k => CITIES[k].factionId as unknown as string === "spain")!;
+    const effects = getAggregatedEffects(w, spanish);
+    expect(effects.importMul).toBeCloseTo(1, 5);
+    expect(effects.productionMul).toBeCloseTo(1, 5);
+  });
+});
+
+describe("warBite — a war hurts trade worst when it breaks out", () => {
+  it("is whole on the day war is declared", () => {
+    expect(warBite(100, 100)).toBe(1);
+  });
+
+  it("is spent once trade has had two years to work round it", () => {
+    expect(warBite(1, 1 + WAR_ADAPTATION_DAYS)).toBe(0);
+    expect(warBite(1, 1 + WAR_ADAPTATION_DAYS * 3)).toBe(0);
+  });
+
+  it("halves in a year", () => {
+    expect(warBite(1, 1 + WAR_ADAPTATION_DAYS / 2)).toBeCloseTo(0.5, 5);
+  });
+
+  it("cuts imports hard at the outbreak and lets them back afterwards", () => {
+    let w = makeWorld(1, 1690);
+    const war = {
+      id: "war_test", type: "war_start" as const, startDay: 1, endDay: 4000,
+      ports: [], factions: ["spain", "england"], severity: 3 as const,
+      headline: "news.war_start", vars: {},
+    };
+    w = { ...w, worldEvents: [war] };
+    const spanish = Object.keys(w.ports).find(k => CITIES[k].factionId as unknown as string === "spain")!;
+    const at = (day: number) =>
+      getAggregatedEffects({ ...w, time: { ...w.time, day } }, spanish).importMul;
+    expect(at(1)).toBeCloseTo(0.7, 5);
+    expect(at(1 + WAR_ADAPTATION_DAYS / 2)).toBeCloseTo(0.85, 5);
+    expect(at(1 + WAR_ADAPTATION_DAYS)).toBeCloseTo(1, 5);
+  });
+
+  it("does not touch a town of a crown that is not in it", () => {
+    let w = makeWorld(1, 1690);
+    w = { ...w, worldEvents: [{
+      id: "war_test", type: "war_start", startDay: 1, endDay: 4000,
+      ports: [], factions: ["england", "netherlands"], severity: 3,
+      headline: "news.war_start", vars: {},
+    }] };
+    const french = Object.keys(w.ports).find(k => CITIES[k].factionId as unknown as string === "france")!;
+    expect(getAggregatedEffects(w, french).importMul).toBe(1);
+  });
+});
+
+describe("the measurement that decided the shape of this", () => {
+  /**
+   * The guard that caught it. Seeding the wars with the flat bite the table used
+   * to apply put every era that opens inside one 20-40% below the era that does
+   * not — silently, for decades of game time, decided by nothing but which era
+   * the player picked off the character screen.
+   *
+   * A year is enough: the divergence was visible inside four hundred days.
+   */
+  it("leaves an era that opens inside a war as rich as one that does not", () => {
+    const YEAR_DAYS = 400;
+    function settle(startYear: number, seedWars: boolean): number {
+      let w = makeWorld(5, startYear);
+      if (seedWars) w = seedHistoricalWars(w);
+      for (let d = 0; d < YEAR_DAYS; d++) {
+        w = { ...w, time: { ...w.time, day: w.time.day + 1 } };
+        w = updateWorldEvents(w);
+        w = economyDailyTick(w);
+      }
+      return Object.values(w.ports).reduce((sum, p) => sum + p.wealth, 0);
+    }
+    // 1600 and 1640 open inside two wars each, 1620 inside one.
+    for (const year of [1600, 1620, 1640]) {
+      const quiet = settle(year, false);
+      const atWar = settle(year, true);
+      expect(atWar / quiet, `era ${year}`).toBeGreaterThan(0.95);
+      expect(atWar / quiet, `era ${year}`).toBeLessThan(1.05);
+    }
   });
 });

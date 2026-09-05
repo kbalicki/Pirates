@@ -206,6 +206,45 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
  * Aggregate effects from all active events on a given port.
  * Multipliers compound, deltas sum.
  */
+/**
+ * How long a war goes on hurting trade before trade works round it (v0.31.0).
+ *
+ * The war row in the table above describes an *outbreak*: convoys laid up,
+ * underwriters refusing the risk, hulls requisitioned, the other side's
+ * privateers on every route. None of that is a permanent condition. Neutral
+ * bottoms are chartered, smugglers find the gap, new routes settle, and after a
+ * couple of years the quay is busy again — under a different flag and at a worse
+ * rate, but busy.
+ *
+ * The distinction was invisible while the only wars that existed were declared
+ * in play, and it stopped being invisible the moment v0.31.0 put the wars that
+ * were *already being fought* on the map. Measured with a flat bite, seeding
+ * them took **39% off the wealth of the whole Caribbean** in the 1600 and 1640
+ * eras and held it there for decades: the Eighty Years' War runs eighty years,
+ * and an eighty-year perturbation is not a perturbation, it is the setting.
+ *
+ * So the bite fades. A war seeded at world creation has been running for
+ * thirty-two years and its multipliers are already spent — the town's baseline
+ * *is* what a generation of that war made of it — while the fighting itself is
+ * as real as ever: `areFactionsAtWar`, the doubled navy spawns, the privateers
+ * and the news boards do not read this at all.
+ */
+export const WAR_ADAPTATION_DAYS = 730;
+
+/**
+ * Share of the outbreak still being felt, 1 on the day war is declared and 0
+ * once trade has had `WAR_ADAPTATION_DAYS` to work round it.
+ */
+export function warBite(startDay: number, today: number): number {
+  const elapsed = Math.max(0, today - startDay);
+  return Math.max(0, 1 - elapsed / WAR_ADAPTATION_DAYS);
+}
+
+/** Ease a multiplier back toward 1 as the outbreak wears off. */
+function fade(mul: number, bite: number): number {
+  return 1 + (mul - 1) * bite;
+}
+
 export function getAggregatedEffects(world: WorldState, portKey: string): EventDailyEffects {
   let agg: EventDailyEffects = { ...NEUTRAL };
   const day = world.time.day;
@@ -221,7 +260,17 @@ export function getAggregatedEffects(world: WorldState, portKey: string): EventD
     }
     if (!affects) continue;
 
-    const e = effectsForType(ev.type, ev.severity);
+    let e = effectsForType(ev.type, ev.severity);
+    // A war's bite is at its outbreak; everything else in the table is a
+    // condition that lasts as long as the event does.
+    if (ev.type === "war_start") {
+      const bite = warBite(ev.startDay, day);
+      e = { ...e,
+        productionMul: fade(e.productionMul, bite),
+        importMul: fade(e.importMul, bite),
+        priceMul: fade(e.priceMul, bite),
+      };
+    }
     agg = {
       productionMul: agg.productionMul * e.productionMul,
       consumptionMul: agg.consumptionMul * e.consumptionMul,

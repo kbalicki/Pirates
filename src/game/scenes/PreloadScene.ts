@@ -4,6 +4,7 @@ import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
+import { ERAS } from "../../core/data/eras.ts";
 import { factionId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
@@ -321,7 +322,15 @@ export class PreloadScene extends Phaser.Scene {
       return;
     }
     if (params.has("skip")) {
-      const world = createNewWorldState(Date.now());
+      // `?era=` picks the historical era `?skip` would otherwise leave at the
+      // default (v0.31.0). Three of the six open inside a war that has been
+      // running for decades, and there is no other way to reach one of those
+      // worlds without going through character creation by hand.
+      const eraKey = params.get("era") ?? "";
+      const era = ERAS[eraKey];
+      const world = era
+        ? createNewWorldState(Date.now(), "Captain", era.id, era.startYear)
+        : createNewWorldState(Date.now());
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
     } else {

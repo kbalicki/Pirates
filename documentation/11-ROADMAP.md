@@ -1,6 +1,6 @@
 # 11 — Roadmapa rozwoju
 
-**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.30.0.0
+**Aktualizacja:** 2026-09-05 | **Wersja kodu:** 0.31.0.0
 
 ## Wizja
 
@@ -49,7 +49,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.12.0.0 | **System questów** (FSM) i **mapy skarbów** — kupno w tawernie, kopanie, zasadzki | ✅ |
 | 0.12.1.0 | Proceduralne uszkodzenia na sprite'cie statku; ocena LoRA v2, zbiór v3 | ✅ |
 
-### Beta 2 — świat, który się broni i handluje (v0.13 – v0.30)
+### Beta 2 — świat, który się broni i handluje (v0.13 – v0.31)
 
 | Wersja | Opis | Status |
 |--------|------|--------|
@@ -71,6 +71,7 @@ Odtworzenie pełnej mechaniki **Sid Meier's Pirates!** (Amiga, 1987) w nowoczesn
 | 0.28.0.0 | **Zdarzenia świata zaczęły się dziać** — jedna linijka (`roll % length` na ułamku) sprawiała, że żadne nigdy nie trafiało w port; tabela efektów zmierzona i przeskalowana. **Plotki w tawernie mówią, co się naprawdę dzieje** w promieniu 1300 | ✅ |
 | 0.29.0.0 | **Zdarzenie, które gracz spotyka** — zamknięty port naprawdę nie wpuszcza, zaraza opróżnia tawernę, a odkryte złoto jest towarem, po który się płynie (pierwszy towar `rare`) | ✅ |
 | 0.30.0.0 | **Mapa mówi, co się dzieje** — miasto, o którym kapitan słyszał, nosi znak zdarzenia, zamknięta przystań przerywany pierścień. **Pokój wreszcie następuje**: każda wojna historyczna wygasała przed własną datą końca, więc traktatu nie podpisano ani razu | ✅ |
+| 0.31.0.0 | **Wojny, w które gracz się rodzi** — trzy z sześciu er otwierają się w środku wojny i żadna o tym nie wiedziała; przy okazji `warBite`: wojna bije w handel na wybuchu, a nie przez osiemdziesiąt lat | ✅ |
 
 **Zrealizowane moduły w ujęciu tematycznym:**
 

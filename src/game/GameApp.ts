@@ -21,7 +21,6 @@ import { DuelScene } from "./scenes/DuelScene.ts";
 import { CityAssaultScene } from "./scenes/CityAssaultScene.ts";
 import { CityDefenseScene } from "./scenes/CityDefenseScene.ts";
 import { RetirementScene } from "./scenes/RetirementScene.ts";
-import { PauseMenuScene } from "./scenes/PauseMenuScene.ts";
 import { PortApproachScene } from "./scenes/PortApproachScene.ts";
 import { ShipEncounterScene } from "./scenes/ShipEncounterScene.ts";
 import { OptionsMenuScene } from "./scenes/OptionsMenuScene.ts";
@@ -29,7 +28,7 @@ import { UIOverlayScene } from "./scenes/UIOverlayScene.ts";
 import { CityInfoScene } from "./scenes/CityInfoScene.ts";
 import { HelpScene } from "./scenes/HelpScene.ts";
 import { BattleHelpScene } from "./scenes/BattleHelpScene.ts";
-import { seedInitialEvents } from "../core/systems/WorldEventSystem.ts";
+import { seedInitialEvents, seedHistoricalWars } from "../core/systems/WorldEventSystem.ts";
 
 export function createNewWorldState(
   seed: number,
@@ -153,8 +152,10 @@ export function createNewWorldState(
     captain: captainProfile,
   };
 
-  // Seed initial events so NPCs already have news to share on day 1
-  return seedInitialEvents(world);
+  // Seed initial events so NPCs already have news to share on day 1, and put
+  // the wars that were already being fought on the map (v0.31.0) — three of the
+  // six eras open inside one and every one of them used to open in peace.
+  return seedInitialEvents(seedHistoricalWars(world));
 }
 
 export function launchGame(containerId: string): Phaser.Game {
@@ -183,7 +184,6 @@ export function launchGame(containerId: string): Phaser.Game {
       CityAssaultScene,
       CityDefenseScene,
       RetirementScene,
-      PauseMenuScene,
       OptionsMenuScene,
       UIOverlayScene,
       CityInfoScene,

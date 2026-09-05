@@ -189,9 +189,6 @@ export const EN: LocaleData = {
   "rep.allied": "ALLIED",
 
   // -- Pause --
-  "pause.title": "PAUSED",
-  "pause.resume": "[ RESUME ]",
-  "pause.save_load": "[ SAVE/LOAD ]",
 
   // -- Options Menu --
   "menu.title": "Captain's Log",
@@ -578,6 +575,7 @@ export const EN: LocaleData = {
 
   // -- World Events / News --
   "news.war_start": "War declared! {{faction1}} vs {{faction2}}!",
+  "news.war_ongoing": "{{faction1}} and {{faction2}} have been at war since {{since}}.",
   "news.war_end": "Peace treaty signed between {{faction1}} and {{faction2}}.",
   "news.epidemic": "Epidemic in {{port}}! Many have fallen ill.",
   "news.pirate_raid": "Pirates raided {{port}}! Trade disrupted.",

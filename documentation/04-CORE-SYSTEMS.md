@@ -2776,3 +2776,86 @@ surowe `{{faction1}}` (znalezione na zrzucie ekranu).
 klucz w `BootScene`, która startuje przed `PreloadScene`, więc zapis prosto do
 `localStorage` odnosił skutek dopiero przy następnym załadowaniu strony. Idzie
 teraz przez `setZoomLevel()`.
+
+---
+
+# v0.31.0 — wojny, w które gracz się rodzi
+
+## Zasianie wojen trwających w dniu rozpoczęcia gry
+
+`WorldEventSystem.seedHistoricalWars(world)` — wołane raz, z
+`createNewWorldState`, obok `seedInitialEvents`.
+
+`checkHistoricalWars` tworzy wojnę **wyłącznie w dniu jej daty startu**. To
+poprawna reguła dla wojny wybuchającej w trakcie kariery i błędna dla dnia, w
+którym kariera się zaczyna. Trzy z sześciu er otwierają się w środku wojny:
+
+| Era | Rok | Wojny trwające 1 stycznia |
+|---|---|---|
+| `silver_empire` | 1560 | — |
+| `merchants_smugglers` | 1600 | osiemdziesięcioletnia (do 1648), angielsko-hiszpańska I (do 1604) |
+| `new_colonists` | 1620 | osiemdziesięcioletnia (do 1648) |
+| `war_for_profit` | 1640 | osiemdziesięcioletnia (do 1648), francusko-hiszpańska (do 1659) |
+| `buccaneer_heroes` | 1660 | — |
+| `pirates_sunset` | 1680 | — |
+
+`startDay` jest **ujemny** — prawdziwa liczba dni wstecz do wybuchu, liczona
+dwukrotnym wywołaniem `calendarToDay` od 1 stycznia roku wybuchu, żeby odejmowanie
+było dokładne, a nie oszacowane. Dla ery 1620 wychodzi −18871, czyli 51,7 roku.
+
+Nagłówek to `news.war_ongoing` („{{faction1}} i {{faction2}} są w stanie wojny od
+{{since}} roku"), a **nie** `news.war_start`: „Wojna wypowiedziana!" to nieprawda
+o wojnie trwającej pół wieku, i dokładnie to wypisywała tablica ogłoszeń w
+hiszpańskim mieście w 1620 roku.
+
+## `warBite` — wojna najmocniej bije w handel w chwili wybuchu
+
+Wiersz wojny w tabeli `EventEffectsSystem` opisuje **wybuch**: konwoje w porcie,
+ubezpieczyciele odmawiający ryzyka, zarekwirowane kadłuby, korsarze przeciwnika na
+każdej trasie. Nic z tego nie jest stanem trwałym — czarteruje się neutralne
+bandery, przemytnicy znajdują lukę, nowe trasy się układają.
+
+```ts
+WAR_ADAPTATION_DAYS = 730
+warBite(startDay, today) = max(0, 1 - (today - startDay) / 730)
+```
+
+`getAggregatedEffects` interpoluje `productionMul`, `importMul` i `priceMul` ku 1
+proporcjonalnie do `warBite`. `popDelta`, `wealthDelta` i reszta wiersza nie są
+ruszane, bo wojna ich nie ma.
+
+**Dlaczego to musiało powstać razem z zasianiem.** Zmierzone przy płaskiej karze,
+400 dni z pełnym `economyDailyTick`:
+
+| Era | Bogactwo Karaibów bez zasianych wojen | Z zasianymi (płasko) |
+|---|---|---|
+| 1600 | 21 093 | 12 805 (**−39%**) |
+| 1620 | 21 113 | 16 683 (**−21%**) |
+| 1640 | 21 298 | 13 206 (**−38%**) |
+
+Hiszpania w erze 1600 wychodziła na `importMul` 0.49 (dwie wojny naraz mnożą się)
+i **−48% bogactwa**, i siedziała tam czterdzieści osiem lat. Wybór ery na ekranie
+tworzenia postaci po cichu decydowałby o zamożności połowy mapy na dekady. Po
+wprowadzeniu zaniku te same pomiary dają **od −0,9% do +0,6%**, a strzeże tego
+test regresji.
+
+**Co to zmienia dla wojny wypowiedzianej w trakcie gry** (wojna dziewięcioletnia,
+1689–1697, kariera od 1680; średnie bogactwo portu):
+
+| | Francja | Anglia |
+|---|---|---|
+| przed wojną | 377 | 339 |
+| płasko, 2,6 roku wojny | 167 (−56%) | 191 (−44%) |
+| płasko, 6,6 roku wojny | 239 | 206 |
+| **z zanikiem**, 8 miesięcy | 282 (−24%) | 229 (−35%) |
+| **z zanikiem**, 4,6 roku | 337 | 378 |
+
+Czyli: ostry cios na wybuchu, którego gracz nie przeoczy, i powrót do normy,
+podczas gdy wojna dalej trwa — z podwojoną marynarką, korsarzami i listami
+kaperskimi, bo **`warBite` nie dotyka niczego poza handlem**.
+
+### Parametr debugowania
+
+`?skip&era=<id>` — startuje w wybranej erze historycznej (`ERAS`). Bez tego nie
+da się w ogóle dojść do świata otwierającego się w środku wojny inaczej niż
+ręcznie przez ekran tworzenia postaci.

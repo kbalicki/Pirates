@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.30.0.0 · **Branch:** `main`
-**Kod:** 189 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1351 przechodzi, 0 failuje, 0 `todo`** w 38 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.31.0.0 · **Branch:** `main`
+**Kod:** 189 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1377 przechodzi, 0 failuje, 0 `todo`** w 39 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.30.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1351/1351 zielone; ta wersja daje mapie głos — miasto, o którym kapitan słyszał, nosi szpilkę z nazwą zdarzenia, a zamknięty port przerywany pierścień — i sprawia, że **pokój w ogóle następuje**: każda wojna historyczna parowała kilka dni przed własną datą końca, więc traktatu nie podpisano ani razu; lista kandydatów na v0.31.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.31.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1377/1377 zielone; ta wersja stawia na mapie wojny, które w danej erze **już trwają** (trzy z sześciu er otwierały się w środku wojny i żadna o tym nie wiedziała), a przy okazji zmienia to, czym wojna jest dla ekonomii: bije w handel na **wybuchu**, a nie równo przez osiemdziesiąt lat — bez tego samo zasianie zabierało Karaibom 39% bogactwa na dekady; lista kandydatów na v0.32.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [documentation/SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) — znaki zdarzeń na mapie (i pułapka „co jest w pikselach ekranowych, a co w jednostkach świata"), oraz dlaczego żadna wojna historyczna nigdy nie skończyła się pokojem. Poprzednia: [SESSION-2026-09-04F.md](documentation/SESSION-2026-09-04F.md).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0 — znaki na mapie, pokój) i [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0 — wojny trwające w dniu startu, `warBite`, audyt martwych kontraktów).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -1187,33 +1187,91 @@ traktat dnia 487; suma bogactwa 20 905 wobec 21 269 w świecie bez wojny (−1,7
 
 ---
 
-### v0.31.0 — co dalej
+### ~~v0.31.0 — Wojny, w które gracz się rodzi~~ ✅ (v0.31.0.0)
+
+Kandydat **3** z poprzedniej listy, plus audyt, który znalazł martwą scenę.
+
+**1. Wojny trwające w dniu rozpoczęcia gry.** `checkHistoricalWars` tworzy wojnę
+wyłącznie w dniu jej daty startu — poprawnie dla wojny wybuchającej w trakcie
+kariery, błędnie dla dnia, w którym kariera się zaczyna. 1600 otwiera się w środku
+dwóch wojen, 1620 w środku osiemdziesięcioletniej, 1640 w środku dwóch, i wszystkie
+trzy zaczynały się w idealnym pokoju. `seedHistoricalWars` stawia je na mapie z
+**ujemnym** `startDay` (prawdziwa data wybuchu) i nagłówkiem `news.war_ongoing`,
+bo „Wojna wypowiedziana!" to nieprawda o wojnie trwającej pół wieku.
+
+**2. `warBite` — i to jest właściwa treść tej wersji.** Wiersz wojny w tabeli
+efektów opisuje **wybuch**. Zastosowany płasko do wojny osiemdziesięcioletniej
+zabierał Karaibom **39% bogactwa** i trzymał je tam dekadami: wybór ery na ekranie
+tworzenia postaci po cichu decydowałby o zamożności połowy mapy. Bite zanika teraz
+przez `WAR_ADAPTATION_DAYS = 730` (neutralne bandery, przemyt, nowe trasy), co
+dotyka **wyłącznie** `productionMul` / `importMul` / `priceMul` — podwojona
+marynarka, korsarze, listy kaperskie i `areFactionsAtWar` nie czytają tego wcale.
+
+Zmierzone: zasiane ery wychodzą teraz na −0,9%..+0,6% zamiast −21%..−39%
+(strzeże tego test regresji). Wojna dziewięcioletnia dla gracza od 1680: Anglia
+−35% w pierwszych miesiącach i powrót do normy w trakcie wojny, zamiast −44%
+trzymanego przez osiem lat.
+
+**3. Audyt martwych kontraktów.** Trzy przebiegi mechaniczne:
+
+- **i18n czyste** — 807/807 parytetu, wszystkie rodziny kluczy budowanych w
+  runtime (`port.<key>.name`, `item.`, `ship.`, `rank.<f>.<n>`, `mapevent.` …)
+  się rozwiązują. Zamienione na **stały test**
+  `src/core/i18n/__tests__/keys.test.ts`, bo `t()` nie rzuca na nieznanym kluczu,
+  tylko wypisuje go na ekran — czyli jedyną kontrolą jest zrzut ekranu, a ta sesja
+  kosztowała dwa takie. Test od razu znalazł jeden przypadek: polski gubernator
+  gubił nazwę korony przy wręczaniu listu kaperskiego (`{{faction}}` tylko po
+  angielsku).
+- **`PauseMenuScene` usunięta** — 112 linii sceny z klawiaturą, ramką i
+  tłumaczeniami w dwóch językach, zarejestrowanej w `GameApp` i **nieotwieralnej
+  przez nic** od pierwszego commita; SPACJA → `OptionsMenuScene` robi to samo od
+  miesięcy. Dokumentacja twierdziła, że otwiera ją ESC — nieprawda, ESC na mapie
+  nie jest obsługiwany.
+- **`DialogueEffect.set_flag` nie ma producenta** (żadne drzewo go nie emituje),
+  ale jest przetestowany i to ta sama sytuacja co `reach_port` przed v0.17.0 —
+  wpis w słowniku czekający na pierwszego użytkownika. **Zostawiony celowo.**
+
+**Pułapki z tej sesji:**
+
+1. **Zmiana ekonomiczna zmierzona PRZED napisaniem uratowała tę wersję.** Tabela
+   „ile ta era traci, jeśli zasiać jej wojny" dała −39% w pięć minut i wymusiła cały
+   model `warBite`. Bez pomiaru wyszłaby wersja, w której wybór ery po cichu psuje
+   ekonomię, i nikt by nie wiedział dlaczego.
+2. **`news.war_start` na zasianej wojnie kłamie**, i widać to wyłącznie na ekranie.
+   Trzeci raz z rzędu w tej sesji coś istotnego wyszło ze zrzutu.
+3. **Dokumentacja opisywała wejście do sceny, którego nigdy nie było**
+   (`[ESC] → PauseMenuScene`). Nieaktualny dokument nie jest neutralny — jest
+   fałszywym tropem, który utrzymywał przy życiu 112 martwych linii.
+
+---
+
+### v0.32.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
 1. **Sprite'y statków w pixel arcie** — 9 klas × 8 klatek = 72 klatki, sekcja 6.
-   Jedyna pozycja na tej liście, która zmienia to, **jak gra wygląda**; odblokowuje
-   też retrening LoRA v3. Dwie pułapki techniczne (rozdzielczość, `roundPixels`)
-   trzeba rozstrzygnąć zanim ktokolwiek narysuje pierwszą klatkę
+   Jedyna pozycja, która zmienia to, **jak gra wygląda**. Blokują ją dwie decyzje
+   techniczne z sekcji 6, a druga z nich (**`roundPixels`**) jest zmianą
+   *odczucia* (jitter statku) i wymaga playtestu użytkownika — agent nie powinien
+   jej rozstrzygać sam. Propozycja do sprawdzenia: zaokrąglać **przewijanie
+   kamery** do pełnych pikseli ekranu (`scrollX = round(scrollX * zoom) / zoom`),
+   a nie pozycje sprite'ów; do zweryfikowania empirycznie, czy Phaser zaokrągla w
+   przestrzeni świata (jak sugeruje `project_ship_jitter`), czy ekranu
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Wojna trwająca w dniu rozpoczęcia gry nigdy się nie zaczyna.**
-   `checkHistoricalWars` tworzy wojnę wyłącznie w dniu jej daty startu, więc
-   kampania zaczęta w 1620 nie wie, że wojna osiemdziesięcioletnia (1568–1648)
-   właśnie trwa — trzy z sześciu er startują w środku wojny i mają spokój.
-   Zasianie ich przy tworzeniu świata **zmienia balans** (`importMul` 0.7 na
-   portach obu koron + podwojony spawn marynarki), więc wymaga pomiaru przed
-   napisaniem. Domyślnej ery `pirates_sunset` (1680) to nie dotyczy — 1680 jest
-   w tej tabeli rokiem pokoju
-4. **Sojusz z koroną nie otwiera niczego.** Uwaga: pozycja jest **niedoprecyzowana**
-   i dlatego przeskoczona w v0.30.0 — „sojusz" może znaczyć list kaperski gracza
-   (który daje tylko prawo do bicia się i nic w handlu) albo przymierze dwóch
-   koron (którego w modelu świata **w ogóle nie ma**: są wojny i od v0.30.0
-   traktaty, nie ma sojuszy). Przed wzięciem tego trzeba rozstrzygnąć które
-5. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
-   wymaga trwałego, nazwanego NPC, bo dziś kadłuby spawnują się w promieniu
-   gracza i znikają. To nie jest tanie i dlatego czeka
-6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
+3. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana** i dlatego
+   przeskakiwana drugi raz: „sojusz" może znaczyć list kaperski gracza (dziś daje
+   wyłącznie prawo do bicia się) albo przymierze dwóch koron, którego w modelu
+   świata **nie ma** — są wojny i od v0.30.0 traktaty. Przed wzięciem trzeba
+   rozstrzygnąć które
+4. **Trzeci typ zlecenia informatora: konkretny kadłub.** „Utop *Santa Anę*" —
+   wymaga trwałego, nazwanego NPC, bo dziś kadłuby spawnują się w promieniu gracza
+   i znikają. To nie jest tanie i dlatego czeka
+5. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
+6. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
+   — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
+   usuniętą `PauseMenuScene`. Nic ich nie linkuje z `00-INDEX.md`. Do skasowania,
+   ale to decyzja właściciela repo, nie agenta
 
 ---
 
@@ -1279,6 +1337,9 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Data w kalendarzu z latami przestępnymi to nie `lata × 365`.** Wojny historyczne zapisywały koniec tą arytmetyką i każda wygasała kilka dni przed własną datą (wojna 9-letnia o 4 dni, 80-letnia o 20). Odwrotność `dayToCalendar` to `TimeSystem.calendarToDay()` — używaj jej (v0.30.0).
 - **Brakujący klucz w `vars` drukuje surowe `{{faction1}}`, nie rzuca wyjątkiem.** Widać to wyłącznie na ekranie; żaden test tego nie łapie. Świat debugowy stemplujący zdarzenie musi podać komplet zmiennych dla każdego nagłówka, jaki może wystawić (v0.30.0).
 - **`?zoom=` musi iść przez `setZoomLevel()`, nie prosto do `localStorage`** — `initZoomSetting()` czyta klucz w `BootScene`, która startuje przed `PreloadScene`, więc zapis nie zdąża i skutkuje dopiero przy następnym załadowaniu strony. Ta sama pułapka czeka każde ustawienie czytane raz przy starcie (v0.30.0).
+- **Czas trwania zdarzenia jest częścią jego siły.** „Zdarzenie jest zaburzeniem, nie nowym baseline'em" (v0.28.0) ma drugą połowę: wiersz w tabeli efektów opisuje **wybuch**, a zastosowany płasko do wojny osiemdziesięcioletniej opisuje osiemdziesiąt lat. `warBite` zanika przez `WAR_ADAPTATION_DAYS = 730` i dotyka wyłącznie mnożników handlu; wszystko, co czyni wojnę wojną (spawn marynarki, korsarze, `areFactionsAtWar`), jest od tego niezależne (v0.31.0).
+- **`t()` nie rzuca na nieznanym kluczu — wypisuje go na ekran.** Klucz wpisany wprost jest bezpieczny; groźne są budowane z danych w miejscu wywołania (`t("port." + key + ".name")`), bo nic nie łączy tabeli portów z tabelą napisów. Tym połączeniem jest `src/core/i18n/__tests__/keys.test.ts` — **dopisując nową rodzinę kluczy budowanych w runtime, dopisz tam sprawdzenie** (v0.31.0).
+- **Nieaktualny dokument utrzymuje martwy kod przy życiu.** `06-SCENES-UI.md` twierdził, że `[ESC] → PauseMenuScene`; ESC na mapie nie jest obsługiwany i nigdy nie był, a scena przeżyła dzięki temu 112 linii i dwa komplety tłumaczeń od pierwszego commita (v0.31.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
 - Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.

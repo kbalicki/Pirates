@@ -31,6 +31,7 @@ Parsowane w `src/game/scenes/PreloadScene.ts`. Używaj ich zamiast klikania prze
 |---|---|
 | `?skip` | Pomija tworzenie postaci, wchodzi prosto na mapę |
 | `?zoom=z10` | Startowy poziom zoomu `z1`..`z14`. Idzie przez `setZoomLevel()`, więc działa za pierwszym razem (v0.30.0) |
+| `?era=<id>` | Era historyczna dla `?skip`; trzy z sześciu otwierają się w środku wojny (v0.31.0) |
 | `?debug=1` | Tryb debug — wyłącza mgłę wojny |
 | `?battle=1\|trader\|navy\|pirate\|hunter` | Bitwa testowa |
 | `?siege=<port>` | Szturm na miasto (fregata + konsorta + list kaperski) |
