@@ -308,8 +308,10 @@ export class WorldEngine {
     // AI, for the same two reasons: the generic spawner must not have touched
     // them, and a named ship the player has just mauled has to have her damage
     // written into her record before anything else reads it.
-    world = tickNamedShips(world, dtTicks);
+    const named = tickNamedShips(world, dtTicks);
+    world = named.world;
     updatedEntities = { ...world.entities };
+    allEvents.push(...named.events);
 
     // 6.5 NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);

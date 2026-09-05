@@ -412,3 +412,17 @@ type NamedShipReport = {
 
 Postój nie ma własnego pola: `progressDay` w przyszłości **jest** postojem, bo
 `phaseAt` liczy `max(0, day − progressDay)`.
+
+## Ucieczka nie dokłada ani jednego pola (v0.35.0)
+
+Cały stan pościgu mieści się w tym, co `EntityState.ai` miało od początku:
+
+```ts
+state: "flee";          // wartość istniała w unii od pierwszego commita i nie miała producenta
+targetPortId: PortId;   // koniec przeprawy, do którego się zdecydowała — trzymany, nie przeliczany
+```
+
+Nic z tego nie idzie do zapisu, bo kadłub nie idzie do zapisu: gdy gracz odpadnie,
+`writeBackNamed` rzutuje ją na szlak i po pościgu zostaje sam `progress`. Wynik
+ucieczki — że dobiła do portu — jest zapisany tam, gdzie zapisuje się każde inne
+przybycie: `progress` na granicy i `progressDay` w przyszłości.

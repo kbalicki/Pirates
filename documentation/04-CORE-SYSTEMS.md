@@ -3125,3 +3125,82 @@ na tym samym ekranie by temu zaprzeczała.
 trasę od zera (`PortScene.handleRumors`), dokładnie tak jak plotka o wyjściu z portu.
 Zobaczenie jej robi to samo. Informacja kapitana jest **dokładnie tak dobra, jak
 ostatnia rzecz, którą mu powiedziano** — i o to w pościgu chodzi.
+
+## Ona ucieka (v0.35.0)
+
+v0.34.0 dała jej odpowiedź, której mogła udzielić wyłącznie w porcie. Spotkana na
+wodzie dalej szła swoim kursem prosto na to, co się do niej zbliżało — bo nazwany
+kupiec to kadłub `behavior: "trader"`, a trader steruje na swój port docelowy i na
+nic więcej.
+
+### Ucieka do jednego z **własnych dwóch końców**
+
+`boltFor(ship, her, threat)` wybiera ten koniec przeprawy, do którego ma większą
+przewagę w wyścigu: `dist(schronienie, on) − dist(schronienie, ona)`.
+
+Oba końce leżą **na jej szlaku**, więc pościg nigdy nie rozjeżdża jej rekordu z jej
+położeniem — to ta sama troska, która w v0.32.0 kazała trzymać ułamek trasy zamiast
+`{x, y}`. Wybór jest przy tym decyzją, którą gracz podejmuje **sterem**: ustaw się
+między nią a bliższym schronieniem, a zmusisz ją na długą przeprawę.
+
+Schronienie jest wybierane **raz** i trzymane (`ai.state === "flee"` plus
+`targetPortId`). Przeliczanie go co sekundę kazałoby jej miotać się między dwoma
+portami, ilekroć gracz zmieni burtę — to wygląda jak statek, który nie umie się
+zdecydować, a nie jak taki, który się zdecydował.
+
+### Pościg jest zadaniem z wiatru
+
+`NpcAiSystem.bestVmgHeading(wanted, wind, strength, minWindAngle)` — próbkuje cały
+kompas (`FLEE_SAMPLES = 36`) i bierze kurs o najlepszej **prędkości uzyskanej**
+w żądanym kierunku:
+
+```
+score(h) = windSpeedModifier(h, wiatr, siła, martwa strefa) × cos(h − wanted)
+```
+
+To jest cała treść pościgu. Reszta pliku steruje na punkt i pozwala
+`NavigationSystem` policzyć, co z tego wyszło; statek uciekający nie może sobie na to
+pozwolić, bo krzywa polarna robi między dwoma kursami różnicę rzędu trzykrotnej
+prędkości. Ona jest wolniejsza niż prawie wszystko, co ją goni — ma za to **prawo
+wyboru halsu**, a przeciwko rejowcowi z martwą strefą 60° uciekającemu do portu
+leżącego prosto pod wiatr jest to warte więcej niż węzeł.
+
+Żagle idą na maksimum (`sailLevel: 1`). Handel „refowane = wolniej, ale zwrotniej"
+nie ma nic do zaoferowania statkowi, którego cały plan to prosta do portu.
+
+### Przed kim ucieka
+
+| Warunek | Skąd |
+|---|---|
+| gracz pod czarną banderą albo reputacja u jej korony ≤ −60 | ten sam test, którego używa marynarka |
+| notoriety > 50 | `FLEE_NOTORIETY` |
+| **`harried > 0`** | v0.34.0: raz do niej strzelano, więc ucieka **przed każdym** |
+
+Ostatni wiersz jest tym ciekawym: **pierwsze przechwycenie jest czyste, każde
+następne trzeba sobie zapracować**.
+
+### Eskorty zawracają
+
+`updateNamedEscort` czyta stan swojej podopiecznej (`hullOf`) i gdy ta ucieka —
+zawraca na gracza **niezależnie od jego reputacji**. Po to jest konwój. Bez tej
+linijki eskorty płyną obok niej i konwój jest dekoracją: gracz po prostu wyjmuje ją
+ze środka.
+
+### Pod działami portu jest po wszystkim
+
+`SHELTER_RANGE = 90` (przeciwko zasięgowi spotkania 18: trzeba być naprawdę przy
+burcie, żeby ją zatrzymać). `makeShelter` stempluje przybycie **na końcu, do którego
+uciekała**, trzyma ją `SHELTER_LAYOVER = 2` dni i zdejmuje z mapy razem z konwojem.
+Zaległe strachy są tu odpowiadane w zwykły sposób — jest w porcie, a to jedyne
+miejsce, gdzie na cokolwiek odpowiada — i dlatego `answerHarrying` przyjmuje teraz
+**jawny koniec przeprawy**: rekord jest już ostemplowany, więc wyprowadzanie końca
+z `progress` odczytałoby przybycie do `to` jako przybycie do `from`.
+
+`tickNamedShips` zwraca od tej wersji `{ world, events }` i wystawia `Toast`.
+Statek, który po prostu znika sprzed dziobu, czyta się jak błąd, a nie jak ucieczka.
+
+### Bycie ściganym **nie** jest strachem
+
+Celowo. Walka czegoś ją uczy; pościg, który wygrała, nie nauczył jej niczego, czego
+by nie wiedziała — a eskalowanie na tym pozwoliłoby graczowi, który nigdy nie trafił,
+rozbudować jej konwój i rozłożyć rozkład na kawałki samym pływaniem za nią.

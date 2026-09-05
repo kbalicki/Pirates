@@ -318,11 +318,12 @@ export class PreloadScene extends Phaser.Scene {
       const portKey = params.get("hunt") || "port_royal";
       const world = this.createHuntWorld(
         portKey,
-        params.has("meet"),
+        params.has("meet") || params.has("chase"),
         Math.max(0, Number(params.get("harried") ?? 0) || 0),
+        params.has("chase"),
       );
       this.registry.set("worldState", world);
-      if (params.has("meet")) {
+      if (params.has("meet") || params.has("chase")) {
         this.scene.start("MainMapScene", { worldState: world });
       } else {
         this.scene.start("PortScene", { worldState: world, portId: portKey });
@@ -793,6 +794,12 @@ export class PreloadScene extends Phaser.Scene {
    * saying so.
    */
   /**
+   * How far off her wake `&chase=1` stands the captain (v0.35.0): inside her
+   * horizon, well outside the eighteen units an encounter takes.
+   */
+  private static readonly CHASE_OFFSET = 90;
+
+  /**
    * A tavern with a name on the table, for `?hunt=` (v0.32.0).
    *
    * Two things need looking at and they are in different places. Without
@@ -812,11 +819,17 @@ export class PreloadScene extends Phaser.Scene {
    * the gold course and the mark on it go on describing the run he was told
    * about. Reproducing that by actually fighting her twice is ten minutes of
    * sailing, and the whole point of it is only visible on the chart.
+   *
+   * `&chase=1` stands him a cable off where she **actually is**, with one scare
+   * already on her record so that she runs from anybody (v0.35.0). That is the
+   * one debug world where his chart is beside the point: what is being looked
+   * at is her heading, her canvas, and which of her own two harbours she picks.
    */
   private createHuntWorld(
     portKey: string,
     meet: boolean,
     harried = 0,
+    chase = false,
   ): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];
@@ -840,7 +853,17 @@ export class PreloadScene extends Phaser.Scene {
     const quarry = foreign.find(s => escortCount(s) > 0) ?? foreign[0];
     if (!quarry) return world;
 
-    if (harried > 0) {
+    if (chase) {
+      // One scare is all it takes: `fleesFrom` runs from everybody after that,
+      // so the tester does not have to arrive under a black flag to see it.
+      world = {
+        ...world,
+        namedShips: namedShips(world).map(s =>
+          s.id === quarry.id ? { ...s, harried: Math.max(1, harried) } : s),
+      };
+    }
+
+    if (harried > 0 && !chase) {
       // Standing into harbour with a fight behind her: `progressDay` a whole
       // leg back puts her arrival on today, so the tick has something to do on
       // the first frame instead of in a fortnight's game time.
@@ -864,11 +887,14 @@ export class PreloadScene extends Phaser.Scene {
     if (meet) {
       // Where his *chart* says she is, which with `&harried=` is not where she
       // is — that gap is the whole of v0.34.0 and standing him anywhere else
-      // would hide it.
-      const report = namedReports(world)[quarry.id];
+      // would hide it. `&chase=` wants the opposite: her actual wake, close
+      // enough that she has already seen him (v0.35.0).
+      const report = chase ? undefined : namedReports(world)[quarry.id];
       const current = namedShipById(world, quarry.id) ?? quarry;
-      const at = report ? reckonedPos(world, current, report) : namedShipPos(world, quarry);
-      const water = at ? nearestWater(at) : undefined;
+      const at = report ? reckonedPos(world, current, report) : namedShipPos(world, current);
+      const water = at
+        ? nearestWater(chase ? { x: at.x + PreloadScene.CHASE_OFFSET, y: at.y + PreloadScene.CHASE_OFFSET } : at)
+        : undefined;
       if (water) {
         const shipId = world.player.shipId as string;
         const entity = world.entities[shipId];

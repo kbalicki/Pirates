@@ -63,9 +63,33 @@
  * reckoning from the last thing he was told; it has simply become capable of
  * being wrong. The counter-play is the three sources it always was — a tavern
  * in earshot will say she is lying at Havana, and reading that redraws the run.
+ *
+ * ## She runs (v0.35.0)
+ *
+ * v0.34.0 gave her an answer she could only give in harbour. Met at sea she
+ * still stood on, straight at whatever was closing on her, because a named
+ * merchantman is a `behavior: "trader"` hull and a trader steers for its
+ * destination and nothing else.
+ *
+ * Now she bolts — for **one of the two ends of her own passage**, whichever she
+ * has the better head start to, and that choice is the whole of the mechanic.
+ * Both ends are on her lane, so a chase never puts her record out of step with
+ * her; and cutting her off from the near refuge is a *decision the player makes
+ * with his ship's position*, not a die roll.
+ *
+ * Reaching it (`SHELTER_RANGE`) is an escape: she is stamped as having made
+ * that harbour, kept in for `SHELTER_LAYOVER` days, and taken off the chart.
+ * A chase he loses therefore costs him the ship *and* puts his reckoning wrong,
+ * which is v0.34.0's currency.
+ *
+ * Being chased is deliberately **not** a scare. A fight is what teaches her
+ * something; a chase she won taught her nothing she did not already know, and
+ * escalating on it would let a player who never lands a shot drive her convoy
+ * up and her schedule to pieces.
  */
 
 import type { WorldState, RngState, Vec2 } from "../model/WorldState.ts";
+import type { WorldEvent } from "../model/Events.ts";
 import type { EntityState } from "../model/EntityState.ts";
 import { entityId, factionId as makeFactionId, portId as makePortId } from "../model/ids.ts";
 import { CITIES } from "../data/cities.ts";
@@ -74,6 +98,9 @@ import { shipName } from "../data/shipNames.ts";
 import { tradeRoutes, type TradeRoute } from "./TradeRouteSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { pointAlong, nearestWater, MATERIALIZE_RANGE } from "./ExpeditionFleetSystem.ts";
+import { getPortWaterPos } from "./PortWaterPositions.ts";
+import { addLogEntry } from "./EventLogSystem.ts";
+import { t } from "../i18n/index.ts";
 import { rngNextFloat } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
@@ -138,6 +165,26 @@ export const LAYOVER_MAX = 6;
  * and then her, or fought her and came back for a second attempt.
  */
 export const REROUTE_AFTER_SCARES = 2;
+
+/**
+ * How near the harbour she is running for counts as being under its guns
+ * (v0.35.0).
+ *
+ * Ninety units against an encounter range of eighteen: he has to be genuinely
+ * alongside to stop her, and a stern chase that closes slowly runs out of sea
+ * rather than ending in a boarding. That is the shape a chase should have.
+ */
+export const SHELTER_RANGE = 90;
+
+/**
+ * Days she stays in after running from somebody, when she was never fought.
+ *
+ * A flat two, and it is not `answerHarrying`'s layover — a ship that has been
+ * chased has not been *taught* anything (see the module header), so she does not
+ * take on a consort or change her run over it. She simply does not put to sea
+ * again the same afternoon, which is enough to make his chart wrong.
+ */
+export const SHELTER_LAYOVER = 2;
 
 /**
  * World units a named merchantman makes in a day.
@@ -789,6 +836,16 @@ export function answerHarrying(
   ship: NamedShip,
   arrived: number,
   rng: RngState,
+  /**
+   * The end she made, when the caller already knows (v0.35.0).
+   *
+   * The harbour call on the tick does not: it infers the end from the leg she
+   * was on, because she got there by sailing her schedule. A ship who **ran**
+   * for one of her two harbours knows exactly which, and the record it hands in
+   * has already been stamped — inferring from that stamp would read her arrival
+   * at `to` as an arrival at `from` and turn her circuit inside out.
+   */
+  at?: "from" | "to",
 ): { ship: NamedShip; rng: RngState } {
   const scares = harryCount(ship);
   if (scares <= 0) return { ship, rng };
@@ -796,7 +853,7 @@ export function answerHarrying(
   // Which end she has just made, and therefore which phase she resumes from:
   // outbound she is at `to` and starts back at 1, homeward she is at `from`
   // and starts out again at 0.
-  const outboundLeg = ship.progress < 1;
+  const outboundLeg = at ? at === "to" : ship.progress < 1;
   const port = outboundLeg ? ship.to : ship.from;
 
   const layover = Math.min(LAYOVER_MAX, LAYOVER_PER_SCARE * scares);
@@ -819,6 +876,67 @@ export function answerHarrying(
   }
 
   return { ship: answered, rng: r };
+}
+
+/**
+ * Which end of her own passage she runs for (v0.35.0).
+ *
+ * Both ends, and only her own two ends, because they are the two points on the
+ * water where her record and her position are the same thing. A merchantman who
+ * bolted for the nearest friendly harbour would arrive somewhere her schedule
+ * has never heard of, and `progress` would be a lie from that moment on.
+ *
+ * The score is a race: how much of a head start she has on him to that refuge
+ * (`dist(refuge, him) − dist(refuge, her)`). It reads exactly as it should —
+ * she runs from him, and she runs *towards* the shorter of her two remaining
+ * passages, and putting the player between her and the near end is what forces
+ * her onto the long one.
+ */
+export function boltFor(ship: NamedShip, her: Vec2, threat: Vec2): "from" | "to" | undefined {
+  const lane = laneOf(ship);
+  if (!lane || lane.path.length === 0) return undefined;
+
+  const ends: ["from" | "to", Vec2][] = [
+    ["from", lane.path[0]],
+    ["to", lane.path[lane.path.length - 1]],
+  ];
+
+  let best: { end: "from" | "to"; lead: number } | undefined;
+  for (const [end, at] of ends) {
+    const lead = Math.hypot(at.x - threat.x, at.y - threat.y)
+      - Math.hypot(at.x - her.x, at.y - her.y);
+    if (!best || lead > best.lead) best = { end, lead };
+  }
+  return best?.end;
+}
+
+/**
+ * She has got in. Stamp the arrival, keep her in, take her off the chart.
+ *
+ * The arrival is stamped at the **end of the leg she ran for**, so a chase
+ * leaves her schedule coherent: she made that harbour, early, and the rest of
+ * her circuit runs from there. Any scares she is carrying are answered here in
+ * the ordinary way — she is in harbour, which is the only place she answers
+ * anything — and a ship who was merely chased gets `SHELTER_LAYOVER` instead.
+ */
+export function makeShelter(
+  world: WorldState,
+  ship: NamedShip,
+  end: "from" | "to",
+  rng: RngState,
+): { world: WorldState; rng: RngState } {
+  const arrived = world.time.day;
+  const landed: NamedShip = { ...ship, progress: end === "to" ? 1 : 0, progressDay: arrived };
+
+  const answered = harryCount(landed) > 0
+    ? answerHarrying(landed, arrived, rng, end)
+    : { ship: { ...landed, progressDay: arrived + SHELTER_LAYOVER }, rng };
+
+  const w = {
+    ...world,
+    namedShips: namedShips(world).map(x => x.id === ship.id ? answered.ship : x),
+  };
+  return { world: dematerializeNamed(w, ship.id), rng: answered.rng };
 }
 
 // ── The end of her ───────────────────────────────────────
@@ -873,9 +991,13 @@ export function settleNamedShip(
  * It does nothing at all to a ship nobody has troubled, which is what keeps a
  * world with no hunting in it identical to the world v0.33.0 ticked.
  */
-export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
+export function tickNamedShips(
+  world: WorldState,
+  dtTicks: number,
+): { world: WorldState; events: WorldEvent[] } {
   const tick = world.time.tick;
-  if (!tickBoundaryCrossed(tick - dtTicks, tick, NAMED_INTERVAL_TICKS)) return world;
+  const events: WorldEvent[] = [];
+  if (!tickBoundaryCrossed(tick - dtTicks, tick, NAMED_INTERVAL_TICKS)) return { world, events };
 
   const seeded = seedNamedShips(world, world.rng);
   let w = seeded.world;
@@ -897,6 +1019,25 @@ export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
     if (afloat) w = writeBackNamed(w, ship);
     let current = namedShipById(w, ship.id);
     if (!current) continue;
+
+    // She has run for one end of her own passage and got there (v0.35.0). The
+    // chase is over and he has lost her: she is stamped as having made that
+    // harbour — early, but at a point her schedule knows — kept in, and taken
+    // off the chart. The toast exists because a ship that simply vanished off
+    // his bow reads as a bug rather than as an escape.
+    const hull = afloat ? hullOf(w, current.id) : undefined;
+    const bolting = hull?.[1].ai?.state === "flee" ? hull[1].ai?.targetPortId as string | undefined : undefined;
+    if (hull && bolting && (bolting === current.from || bolting === current.to)) {
+      const haven = getPortWaterPos(bolting);
+      if (Math.hypot(hull[1].pos.x - haven.x, hull[1].pos.y - haven.y) <= SHELTER_RANGE) {
+        const got = makeShelter(w, current, bolting === current.to ? "to" : "from", w.rng);
+        w = { ...got.world, rng: got.rng };
+        const where = CITIES[bolting]?.name ?? bolting;
+        w = addLogEntry(w, "named.log_escaped", { ship: current.name, port: where });
+        events.push({ type: "Toast", message: t("named.escaped", { ship: current.name, port: where }) });
+        continue;
+      }
+    }
 
     // She has made harbour with a fight behind her, and harbour is where she
     // does something about it. Only while she is off the chart: a ship under
@@ -932,5 +1073,5 @@ export function tickNamedShips(world: WorldState, dtTicks: number): WorldState {
     }
   }
 
-  return w;
+  return { world: w, events };
 }

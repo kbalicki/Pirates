@@ -30,6 +30,10 @@ import {
   lyingAt,
   arrivalDay,
   tickNamedShips,
+  boltFor,
+  makeShelter,
+  SHELTER_RANGE,
+  SHELTER_LAYOVER,
   ESCORT_MAX,
   LAYOVER_PER_SCARE,
   LAYOVER_MAX,
@@ -52,6 +56,9 @@ import { buildQuestRegistry } from "../QuestRegistry.ts";
 import { advanceQuests } from "../QuestSystem.ts";
 import { CITIES } from "../../data/cities.ts";
 import { tradeRoutes } from "../TradeRouteSystem.ts";
+import { updateNpcAi, bestVmgHeading } from "../NpcAiSystem.ts";
+import { windSpeedModifier } from "../WeatherSystem.ts";
+import { getPortWaterPos } from "../PortWaterPositions.ts";
 import { rumorsAt } from "../RumorSystem.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import { SHIP_NAMES } from "../../data/shipNames.ts";
@@ -890,7 +897,7 @@ describe("what she does about it", () => {
 describe("the harbour call, on the tick", () => {
   /** One crossing of the named-ship interval, which is what the engine does. */
   function beat(world: WorldState): WorldState {
-    return tickNamedShips({ ...world, time: { ...world.time, tick: 40 } }, 1);
+    return tickNamedShips({ ...world, time: { ...world.time, tick: 40 } }, 1).world;
   }
 
   it("leaves a world nobody is hunting in exactly where v0.33.0 left it", () => {
@@ -987,5 +994,344 @@ describe("the tavern is the counter-play", () => {
   it("has that line in both languages", () => {
     expect(EN["tavern.rumor_named_held"]).toBeDefined();
     expect(PL["tavern.rumor_named_held"]).toBeDefined();
+  });
+});
+
+// ===========================================================================
+// She runs (v0.35.0)
+// ===========================================================================
+
+/**
+ * v0.34.0 gave her an answer she could only give in harbour. Met at sea she
+ * still stood on, straight at whatever was closing, because a named
+ * merchantman is a `trader` hull and a trader steers at its destination.
+ *
+ * Two things are under test here and they are different in kind. One is
+ * arithmetic — `bestVmgHeading` is the whole chase and either it beats steering
+ * straight at the harbour or the mechanic is decoration. The other is
+ * bookkeeping — she runs for one of her **own two ends**, so a chase can never
+ * leave her record out of step with her, and getting in stamps an arrival her
+ * schedule already knew about.
+ */
+
+/** The player's own hull, as the AI sees it. */
+function playerHull(pos: { x: number; y: number }, faction = "england") {
+  return {
+    id: entityId("player_ship"),
+    kind: "ship" as const,
+    mode: "sailing" as const,
+    pos,
+    vel: { x: 0, y: 0 },
+    heading: 0,
+    sailLevel: 1,
+    depthOffset: 0,
+    ship: {
+      classId: "sloop",
+      factionId: faction,
+      hullHp: 100, hullMax: 100, sailsHp: 60, sailsMax: 60,
+      cannons: 8, cargo: {}, cargoCap: 40,
+      crew: { current: 40, max: 60, morale: 0.8 },
+    },
+  };
+}
+
+/** Enough ticks that every hull's staggered AI slot has come round. */
+function runAi(world: WorldState, ticks = 45): WorldState {
+  let w = world;
+  for (let i = 0; i < ticks; i++) {
+    w = updateNpcAi({ ...w, time: { ...w.time, tick: w.time.tick + 1 } }, 1);
+  }
+  return w;
+}
+
+/** Her afloat, the player where you put him, and nothing else in the way. */
+function chase(over: { faction?: string; harried?: number; playerAt?: { x: number; y: number } } = {}) {
+  const w = seeded();
+  const ship = { ...namedShips(w)[0], harried: over.harried ?? 0 };
+  const at = namedShipPos(w, ship)!;
+  const playerAt = over.playerAt ?? { x: at.x + 60, y: at.y + 60 };
+  const withShip = materializeNamed(
+    { ...w, namedShips: namedShips(w).map(x => x.id === ship.id ? ship : x) },
+    ship,
+    at,
+  );
+  const world: WorldState = {
+    ...withShip,
+    player: { ...withShip.player, location: { type: "sea", pos: playerAt } },
+    entities: {
+      ...withShip.entities,
+      [withShip.player.shipId as string]: playerHull(playerAt, over.faction ?? "england") as never,
+    },
+  };
+  return { world, ship, at };
+}
+
+describe("the best point of sail", () => {
+  const N = 0;                    // wind from/along -y in this model's terms
+  const E = Math.PI / 2;
+
+  it("steers straight at it when there is no wind to think about", () => {
+    // Strength 0 flattens the polar to 1.0 everywhere, so the only term left is
+    // how much of the heading points where she wants: the bearing itself.
+    const want = 1.1;
+    const got = bestVmgHeading(want, N, 0, 30);
+    expect(Math.abs(got - want)).toBeLessThan(Math.PI / 18 + 1e-9);
+  });
+
+  it("never points a square rig into her own dead zone", () => {
+    // Asked for a bearing dead to windward with a 60° dead zone, she has to
+    // come back with something she can actually sail.
+    const got = bestVmgHeading(N, N, 1, 60);
+    const off = Math.abs(Math.atan2(Math.sin(got - N), Math.cos(got - N))) * (180 / Math.PI);
+    expect(off).toBeGreaterThanOrEqual(60);
+    expect(windSpeedModifier(got, N, 1, 60)).toBeGreaterThan(0);
+  });
+
+  it("beats steering straight at the harbour, which is the whole mechanic", () => {
+    for (const dead of [30, 55, 60]) {
+      for (const want of [0, 0.7, 2.2, 4.4]) {
+        const got = bestVmgHeading(want, E, 1, dead);
+        const madeGood = (h: number) => windSpeedModifier(h, E, 1, dead) * Math.cos(h - want);
+        expect(madeGood(got), `dead ${dead}, bearing ${want}`).toBeGreaterThanOrEqual(madeGood(want) - 1e-9);
+      }
+    }
+  });
+
+  it("still returns a heading when every course loses ground", () => {
+    expect(Number.isFinite(bestVmgHeading(N, N, 1, 179))).toBe(true);
+  });
+});
+
+describe("which way she bolts", () => {
+  it("runs for the end she has the better head start to", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const lane = laneOf(ship)!;
+    const from = lane.path[0];
+    const to = lane.path[lane.path.length - 1];
+
+    // Sitting on top of the `from` end with him far away past `to`.
+    expect(boltFor(ship, from, { x: to.x, y: to.y })).toBe("from");
+    expect(boltFor(ship, to, { x: from.x, y: from.y })).toBe("to");
+  });
+
+  it("is pushed onto the long passage by a player who cuts off the near one", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const lane = laneOf(ship)!;
+    const from = lane.path[0];
+    const to = lane.path[lane.path.length - 1];
+    // Just short of `to`, but he is sitting in the mouth of it.
+    const her = { x: to.x + (from.x - to.x) * 0.15, y: to.y + (from.y - to.y) * 0.15 };
+    expect(boltFor(ship, her, to)).toBe("from");
+  });
+
+  it("says nothing when her lane has gone out of the network", () => {
+    const ship = { ...namedShips(seeded())[0], routeId: "nowhere__nowhere" };
+    expect(boltFor(ship, { x: 0, y: 0 }, { x: 1, y: 1 })).toBeUndefined();
+  });
+});
+
+describe("getting in", () => {
+  it("stamps the arrival at the end she actually ran for", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    expect(makeShelter(w, ship, "to", w.rng).world.namedShips!.find(s => s.id === ship.id)!.progress)
+      .toBeCloseTo(1, 5);
+    expect(makeShelter(w, ship, "from", w.rng).world.namedShips!.find(s => s.id === ship.id)!.progress)
+      .toBeCloseTo(0, 5);
+  });
+
+  it("keeps her in for a couple of days, without teaching her anything", () => {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const after = makeShelter(w, ship, "to", w.rng).world;
+    const now = namedShipById(after, ship.id)!;
+    expect(now.progressDay).toBeCloseTo(w.time.day + SHELTER_LAYOVER, 5);
+    expect(layingOver(now, w.time.day)).toBe(true);
+    // A chase she won is not a scare: no consort, no new run.
+    expect(escortCount(now)).toBe(escortCount(ship));
+    expect(now.routeId).toBe(ship.routeId);
+  });
+
+  it("answers the scares she was already carrying, at the right harbour", () => {
+    const w = seeded();
+    const ship = { ...namedShips(w)[0], harried: 1, escorts: 0 };
+    const after = makeShelter(w, ship, "to", w.rng).world;
+    const now = namedShipById(after, ship.id)!;
+    expect(now.progress).toBeCloseTo(1, 5);           // `to`, not flipped to `from`
+    expect(now.progressDay).toBeCloseTo(w.time.day + LAYOVER_PER_SCARE, 5);
+    expect(escortCount(now)).toBe(1);
+    expect(harryCount(now)).toBe(0);
+  });
+
+  it("takes her and her convoy off the chart", () => {
+    const w = seeded();
+    const ship = namedShips(w).find(s => escortCount(s) > 0)!;
+    const afloat = materializeNamed(w, ship, namedShipPos(w, ship)!);
+    const after = makeShelter(afloat, ship, "to", afloat.rng).world;
+    expect(hullOf(after, ship.id)).toBeUndefined();
+    expect(escortsOf(after, ship.id)).toEqual([]);
+  });
+});
+
+describe("she runs", () => {
+  it("bolts from a pirate, under everything she has, for one of her own ends", () => {
+    const { world, ship } = chase({ faction: "pirates" });
+    const after = runAi(world);
+    const hull = hullOf(after, ship.id)!;
+    expect(hull[1].ai?.state).toBe("flee");
+    expect(hull[1].sailLevel).toBe(1);
+    expect([ship.from, ship.to]).toContain(hull[1].ai?.targetPortId as unknown as string);
+  });
+
+  it("stands on for an honest captain she has never been shot at by", () => {
+    const { world, ship } = chase({ faction: "england" });
+    const after = runAi(world);
+    expect(hullOf(after, ship.id)![1].ai?.state).not.toBe("flee");
+  });
+
+  it("runs from anybody once somebody has put a shot into her", () => {
+    const { world, ship } = chase({ faction: "england", harried: 1 });
+    const after = runAi(world);
+    expect(hullOf(after, ship.id)![1].ai?.state).toBe("flee");
+  });
+
+  it("holds the refuge she picked instead of dithering between her two", () => {
+    const { world, ship, at } = chase({ faction: "pirates" });
+    const first = runAi(world);
+    const chosen = hullOf(first, ship.id)![1].ai?.targetPortId as unknown as string;
+
+    // He crosses to her other quarter; she is already committed.
+    const moved: WorldState = {
+      ...first,
+      entities: {
+        ...first.entities,
+        [first.player.shipId as string]: playerHull({ x: at.x - 400, y: at.y - 400 }, "pirates") as never,
+      },
+    };
+    expect(hullOf(runAi(moved), ship.id)![1].ai?.targetPortId as unknown as string).toBe(chosen);
+  });
+
+  it("picks her passage back up when he falls astern", () => {
+    const { world, ship } = chase({ faction: "pirates" });
+    const fleeing = runAi(world);
+    expect(hullOf(fleeing, ship.id)![1].ai?.state).toBe("flee");
+
+    const gone: WorldState = {
+      ...fleeing,
+      entities: {
+        ...fleeing.entities,
+        [fleeing.player.shipId as string]: playerHull({ x: 20, y: 20 }, "england") as never,
+      },
+    };
+    const after = runAi(gone);
+    expect(hullOf(after, ship.id)![1].ai?.state).toBe("travel");
+    expect(hullOf(after, ship.id)![1].sailLevel).toBe(0.75);
+  });
+
+  it("leaves the anonymous traffic exactly as it was", () => {
+    // The dispatch reads `namedShipId` before the behaviour switch; nothing
+    // without a name may have noticed (v0.35.0).
+    const w = seeded();
+    const at = { x: 1000, y: 1000 };
+    const anon = entityId("anon");
+    const world: WorldState = {
+      ...w,
+      player: { ...w.player, location: { type: "sea", pos: at } },
+      entities: {
+        [w.player.shipId as string]: playerHull(at, "pirates") as never,
+        [anon as string]: {
+          ...playerHull({ x: at.x + 40, y: at.y }, "spain"),
+          id: anon,
+          ai: { behavior: "trader", state: "travel", aggression: 0.05, awarenessRadius: 200 },
+        } as never,
+      },
+    };
+    expect(runAi(world).entities[anon as string].ai?.state).toBe("travel");
+  });
+});
+
+describe("her escorts", () => {
+  it("turn back on him the moment she runs, whatever his standing is", () => {
+    const w = seeded();
+    const ship = { ...namedShips(w).find(s => escortCount(s) > 0)!, harried: 1 };
+    const at = namedShipPos(w, ship)!;
+    const playerAt = { x: at.x + 60, y: at.y + 60 };
+    const afloat = materializeNamed(
+      { ...w, namedShips: namedShips(w).map(x => x.id === ship.id ? ship : x) },
+      ship, at,
+    );
+    const world: WorldState = {
+      ...afloat,
+      player: { ...afloat.player, location: { type: "sea", pos: playerAt } },
+      entities: {
+        ...afloat.entities,
+        // Friendly: without the convoy rule these would ignore him entirely.
+        [afloat.player.shipId as string]: playerHull(playerAt, "england") as never,
+      },
+    };
+    const after = runAi(world);
+    expect(hullOf(after, ship.id)![1].ai?.state).toBe("flee");
+    for (const [, e] of escortsOf(after, ship.id)) expect(e.ai?.state).toBe("chase");
+  });
+});
+
+describe("the chase ends at the harbour mouth", () => {
+  /** One crossing of the named-ship interval. */
+  function beat(world: WorldState) {
+    return tickNamedShips({ ...world, time: { ...world.time, tick: 40 } }, 1);
+  }
+
+  /** Her afloat, fleeing for `end`, standing `gap` units off its water. */
+  function bolting(end: "from" | "to", gap: number) {
+    const w = seeded();
+    const ship = namedShips(w)[0];
+    const port = end === "to" ? ship.to : ship.from;
+    const haven = getPortWaterPos(port);
+    const afloat = materializeNamed(w, ship, namedShipPos(w, ship)!);
+    const [id, hull] = hullOf(afloat, ship.id)!;
+    return {
+      ship,
+      port,
+      world: {
+        ...afloat,
+        entities: {
+          ...afloat.entities,
+          [id]: {
+            ...hull,
+            pos: { x: haven.x + gap, y: haven.y },
+            ai: { ...hull.ai!, state: "flee" as const, targetPortId: port as never },
+          },
+        },
+      } as WorldState,
+    };
+  }
+
+  it("lets her go when she gets under the guns, and says so", () => {
+    const { world, ship, port } = bolting("to", SHELTER_RANGE - 10);
+    const beaten = beat(world);
+    expect(hullOf(beaten.world, ship.id)).toBeUndefined();
+    const now = namedShipById(beaten.world, ship.id)!;
+    expect(now.progress).toBeCloseTo(1, 5);
+    expect(layingOver(now, beaten.world.time.day)).toBe(true);
+    // A ship that simply vanished off his bow reads as a bug, not an escape.
+    expect(beaten.events.some(e => e.type === "Toast")).toBe(true);
+    expect(beaten.world.eventLog.some(e => e.key === "named.log_escaped")).toBe(true);
+    expect(CITIES[port]).toBeDefined();
+  });
+
+  it("does not let her go from outside it", () => {
+    const { world, ship } = bolting("to", SHELTER_RANGE + 400);
+    const beaten = beat(world);
+    expect(namedShipById(beaten.world, ship.id)!.progress).not.toBeCloseTo(1, 5);
+    expect(beaten.events).toEqual([]);
+  });
+
+  it("has that line in both languages", () => {
+    expect(EN["named.escaped"]).toBeDefined();
+    expect(PL["named.escaped"]).toBeDefined();
+    expect(EN["named.log_escaped"]).toBeDefined();
+    expect(PL["named.log_escaped"]).toBeDefined();
   });
 });

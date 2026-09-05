@@ -4,8 +4,25 @@
  * - Traders & Navy: sail between ports (heading toward targetPortId)
  * - Pirates: lurk near wealthy ports / busy shipping lanes, chase non-pirate ships
  * - Pirate Hunters: patrol shipping lanes, chase pirate ships
+ * - Named merchantmen: run for one end of their own passage (v0.35.0)
  *
  * NPC ships that arrive at their target port are removed by NpcSpawnSystem (docking).
+ *
+ * ## The chase (v0.35.0)
+ *
+ * Everything else in here steers at a point and lets `NavigationSystem` work out
+ * how fast that turns out to be. A ship running for her life cannot afford
+ * that: the polar curve makes the difference between two headings a factor of
+ * three, and picking the one that merely *points* at safety is how a merchantman
+ * ends up beating into the wind with a sloop walking up her wake.
+ *
+ * `bestVmgHeading` samples the whole compass and takes the heading with the best
+ * speed **made good** towards where she wants to be. It is four lines, it uses
+ * the same `windSpeedModifier` the player's own ship uses, and it is the reason
+ * a chase in this game is a wind problem rather than a comparison of two numbers
+ * in `ships.ts`. She is slower than almost anything that would chase her; what
+ * she has is the right to choose the point of sail, and against a square rig
+ * running for a harbour dead upwind, that is worth more than a knot.
  */
 import type { WorldState, Vec2 } from "../model/WorldState.ts";
 import type { EntityState } from "../model/EntityState.ts";
@@ -16,12 +33,27 @@ import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 import { tradeRoutes } from "./TradeRouteSystem.ts";
+import { windSpeedModifier } from "./WeatherSystem.ts";
+import { SHIP_CLASSES } from "../data/ships.ts";
+import { boltFor, namedShipById, hullOf, harryCount, boundFor, type NamedShip } from "./NamedShipSystem.ts";
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
 const PIRATE_CHASE_RADIUS = 200;
 const HUNTER_CHASE_RADIUS = 250;
 const LOITER_TURN_CHANCE = 0.05;     // chance per AI tick to adjust heading when loitering
 const WAYPOINT_RADIUS = 70;          // how close counts as "rounded that corner"
+
+/**
+ * How finely she looks for her best point of sail (v0.35.0).
+ *
+ * Thirty-six is every ten degrees, which is finer than the curve's own features
+ * (a thirty-degree dead zone, a sixty-degree reach band) and cheap enough to run
+ * for one ship on one AI tick.
+ */
+const FLEE_SAMPLES = 36;
+
+/** Notoriety past which a named merchantman does not wait to be introduced. */
+const FLEE_NOTORIETY = 50;
 
 /**
  * Update AI decisions for all NPC ships.
@@ -70,6 +102,13 @@ function updateSingleNpc(
 ): { entity: EntityState; rng: typeof world.rng } {
   const ai = entity.ai!;
   const distToPlayer = vec2Dist(entity.pos, player.pos);
+
+  // A hull with a name and a house behind her, and the hulls paid to keep her
+  // afloat (v0.35.0). Both are ordinary `trader`/`navy` behaviours underneath;
+  // what they have that nothing else does is a reason to care which particular
+  // ship is closing on them.
+  if (ai.namedShipId) return updateNamedTrader(entity, player, distToPlayer, world, rng);
+  if (ai.namedEscortOf) return updateNamedEscort(entity, player, distToPlayer, world, rng);
 
   switch (ai.behavior) {
     case "trader":
@@ -137,6 +176,146 @@ function updatePortToPort(
   const waterPos = getPortWaterPos(targetPortKey);
   const heading = headingToward(entity.pos, waterPos);
   return { entity: { ...entity, heading }, rng };
+}
+
+// ===== NAMED MERCHANTMEN (v0.35.0) =====
+
+/**
+ * The heading with the best speed *made good* toward a bearing.
+ *
+ * `score = polar(heading) × cos(heading − wanted)`: how fast she goes on that
+ * heading, times how much of it is in the direction she wants. Exported because
+ * it is the whole of the chase and deserves its own assertions — a square rig
+ * with a sixty-degree dead zone asked for a bearing dead to windward must come
+ * back with something forty-five degrees off it, not with the bearing itself.
+ */
+export function bestVmgHeading(
+  wanted: number,
+  windDirRad: number,
+  windStrength: number,
+  minWindAngle: number,
+): number {
+  let best = wanted;
+  let bestScore = -Infinity;
+  for (let i = 0; i < FLEE_SAMPLES; i++) {
+    const h = normalizeHeading((i / FLEE_SAMPLES) * Math.PI * 2);
+    const made = windSpeedModifier(h, windDirRad, windStrength, minWindAngle) * Math.cos(h - wanted);
+    if (made > bestScore) { bestScore = made; best = h; }
+  }
+  return best;
+}
+
+/**
+ * Whether this player is something she runs from.
+ *
+ * Two answers, and the second is the interesting one. The first is the test the
+ * navy already uses — a pirate, or somebody her crown has come to hate — and it
+ * is what makes a black-flagged captain unable to walk up to any named hull in
+ * the Caribbean. The second is `harried`: **once she has been shot at, she runs
+ * from everybody**, which is v0.34.0's counter made visible at sea. The first
+ * interception is clean; every one after it has to be earned.
+ */
+function fleesFrom(world: WorldState, player: EntityState, ship: NamedShip): boolean {
+  const rep = world.player.reputation[ship.crown] ?? 0;
+  const playerFaction = player.ship?.factionId as string;
+  if (playerFaction === "pirates" || rep <= -60) return true;
+  if ((world.player.notoriety ?? 0) > FLEE_NOTORIETY) return true;
+  return harryCount(ship) > 0;
+}
+
+/** A named merchantman: runs, or works her passage. */
+function updateNamedTrader(
+  entity: EntityState,
+  player: EntityState,
+  distToPlayer: number,
+  world: WorldState,
+  rng: typeof world.rng,
+): { entity: EntityState; rng: typeof world.rng } {
+  const ai = entity.ai!;
+  const ship = namedShipById(world, ai.namedShipId as string);
+  if (!ship) return updatePortToPort(entity, rng);
+
+  const threatened = distToPlayer < ai.awarenessRadius && fleesFrom(world, player, ship);
+
+  if (!threatened) {
+    // He has fallen astern, or was never anything to her. She picks her passage
+    // up where she left it — her *record* still knows where that is, so nothing
+    // has to be remembered on the hull.
+    if (ai.state !== "flee") return updatePortToPort(entity, rng);
+    return updatePortToPort({
+      ...entity,
+      sailLevel: 0.75,
+      ai: { ...ai, state: "travel", targetPortId: boundFor(ship, world.time.day) as unknown as PortId },
+    }, rng);
+  }
+
+  // The refuge is chosen ONCE and held. Recomputing it every second would have
+  // her swing between her two harbours as he manoeuvres, which looks like a
+  // ship that cannot make up its mind rather than one that has committed.
+  const already = ai.state === "flee" ? (ai.targetPortId as string | undefined) : undefined;
+  const end = already === ship.from || already === ship.to
+    ? already
+    : (() => {
+        const pick = boltFor(ship, entity.pos, player.pos);
+        return pick === "to" ? ship.to : pick === "from" ? ship.from : undefined;
+      })();
+  if (!end) return updatePortToPort(entity, rng);
+
+  const haven = getPortWaterPos(end);
+  const cls = SHIP_CLASSES[entity.ship?.classId as string];
+  const heading = bestVmgHeading(
+    headingToward(entity.pos, haven),
+    world.weather.windDirRad,
+    world.weather.windStrength,
+    cls?.minWindAngle ?? 30,
+  );
+
+  return {
+    entity: {
+      ...entity,
+      heading,
+      // Everything she has. A merchantman under chase is not economising on
+      // canvas, and the reefed-is-handier trade has nothing to offer a ship
+      // whose whole plan is a straight line to a harbour.
+      sailLevel: 1,
+      ai: { ...ai, state: "flee", targetPortId: end as unknown as PortId },
+    },
+    rng,
+  };
+}
+
+/**
+ * One of her escorts.
+ *
+ * Ordinary navy behaviour, except for the line that matters: **when the charge
+ * runs, the escort turns back**, whatever the player's standing is. That is what
+ * a convoy is for, and it is the only thing in this file that reads another
+ * ship's state to decide its own. Without it the escorts run alongside her and
+ * the convoy is decoration — the player simply picks her out of the middle of it.
+ */
+function updateNamedEscort(
+  entity: EntityState,
+  player: EntityState,
+  distToPlayer: number,
+  world: WorldState,
+  rng: typeof world.rng,
+): { entity: EntityState; rng: typeof world.rng } {
+  const ai = entity.ai!;
+  const charge = hullOf(world, ai.namedEscortOf as string);
+
+  if (charge && charge[1].ai?.state === "flee" && distToPlayer < ai.awarenessRadius * 2) {
+    return {
+      entity: {
+        ...entity,
+        heading: headingToward(entity.pos, player.pos),
+        sailLevel: 1,
+        ai: { ...ai, state: "chase" },
+      },
+      rng,
+    };
+  }
+
+  return updateNavy(entity, player, distToPlayer, world, rng);
 }
 
 // ===== NAVY =====

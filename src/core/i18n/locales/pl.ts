@@ -826,6 +826,8 @@ export const PL: LocaleData = {
   "quest.hunt_cold": "{{ship}} dalej pływa, a kantor przestał czekać.",
   "named.encounter": "{{ship}}",
   "named.reckoned": "{{ship}} · {{days}} dni",
+  "named.escaped": "{{ship}} schroniła się pod działami {{port}}.",
+  "named.log_escaped": "{{ship}} wśliznęła się do {{port}} przed nami.",
   "tavern.rumor_named": "{{ship}} wyszła z {{port}} nie dalej jak trzy dni temu, kursem na {{to}}.",
   "tavern.rumor_named_held": "{{ship}} wciąż stoi w {{port}}. Ktoś jej przymierzył z dział, a jej ludziom nie spieszy się w morze.",
 

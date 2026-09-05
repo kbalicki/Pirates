@@ -826,6 +826,8 @@ export const EN: LocaleData = {
   "quest.hunt_cold": "The {{ship}} is still sailing, and the house has stopped waiting.",
   "named.encounter": "the {{ship}}",
   "named.reckoned": "{{ship}} · {{days}} d",
+  "named.escaped": "The {{ship}} has got in under the guns of {{port}}.",
+  "named.log_escaped": "The {{ship}} slipped into {{port}} ahead of us.",
   "tavern.rumor_named": "The {{ship}} cleared {{port}} not three days since, standing for {{to}}.",
   "tavern.rumor_named_held": "The {{ship}} is still lying at {{port}}. Somebody put a shot into her, and her people are in no hurry to sail.",
 

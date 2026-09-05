@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-05 · **Wersja:** v0.34.0.0 · **Branch:** `main`
-**Kod:** 193 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1450 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
+**Stan na:** 2026-09-05 · **Wersja:** v0.35.0.0 · **Branch:** `main`
+**Kod:** 193 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **1471 przechodzi, 0 failuje, 0 `todo`** w 40 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,11 +14,11 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.34.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1450/1450 zielone; ta wersja naprawia dziurę, którą v0.33.0 zostawiła w samej sobie — rachuba na mapie **nie mogła się mylić**, bo nazwany statek chodził swoim szlakiem bez względu na wszystko, więc mapa była trackerem udającym, że nim nie jest. Teraz walka, którą przeżyła, jest pamiętana i odpowiadana **w porcie**: wychodzi później, bierze konsortę, a po drugim strachu zmienia szlak — a mapa dalej rysuje trasę, o której kapitanowi powiedziano. Lista kandydatów na v0.35.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.35.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1471/1471 zielone; v0.34.0 dała nazwanemu statkowi odpowiedź, której mógł udzielić wyłącznie w porcie, a ta wersja daje mu drugą — **ucieka**, do jednego z własnych dwóch końców przeprawy, kursem o najlepszej prędkości uzyskanej po tej samej krzywej polarnej, którą płynie gracz; eskorty zawracają na ścigającego, a pod działami portu jest po wszystkim. Lista kandydatów na v0.36.0 jest niżej.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój) i [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) i [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -77,6 +77,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Plotka mówi, co się dzieje | ✅ | `RumorSystem`: sześć faktów ze świata w promieniu 1300, jeden dziennie, rotujący; stare opowieści tylko przy spokojnym świecie |
 | Zdarzenie, które gracz spotyka | ✅ | `isPortClosed` w `PortApproachScene` (zamknięty port nie wpuszcza), `crewMul` w `generateAvailableCrew` (zaraza opróżnia tawernę), `ITEMS.gold` jako pierwszy towar `rare` |
 | Nazwany statek reaguje na pościg | ✅ | `harryNamedShip` + `answerHarrying`: walka, którą przeżyła, jest pamiętana i odpowiadana w porcie — postój, konsorta, a po drugim strachu inny szlak; mapa dalej rysuje trasę z raportu |
+| Pościg na wodzie | ✅ | `NpcAiSystem.bestVmgHeading` + `boltFor` + `makeShelter`: ucieka do jednego z własnych dwóch końców kursem o najlepszej prędkości uzyskanej, eskorty zawracają, pod działami portu jest po wszystkim |
 
 ### Nietknięte
 
@@ -1386,7 +1387,58 @@ rotuje po dniu, więc nowej linii nie widać pierwszego dnia.
 
 ---
 
-### v0.35.0 — co dalej
+### ~~v0.35.0 — Ona ucieka~~ ✅ (v0.35.0.0)
+
+Kandydat **3** z poprzedniej listy — pozycja, którą v0.34.0 sama tam wpisała
+przy własnym domknięciu.
+
+**Kupiec, który nie ucieka, nie jest ścigany — jest zbierany.** v0.34.0 dała jej
+odpowiedź, której mogła udzielić wyłącznie w porcie; na wodzie dalej szła swoim
+kursem prosto na to, co się zbliżało.
+
+**Ucieka do jednego z WŁASNYCH dwóch końców** (`boltFor`, przewaga w wyścigu
+`dist(schronienie, on) − dist(schronienie, ona)`). Wysłanie jej do najbliższego
+przyjaznego portu byłoby błędem, który ta baza zna od v0.32.0: jej pozycja **jest**
+ułamkiem trasy, więc kupiec dobijający gdziekolwiek indziej ląduje tam, o czym
+jego rozkład nigdy nie słyszał. Wybór jest przy okazji decyzją podejmowaną
+**sterem** — stań między nią a bliższym schronieniem, a zmusisz ją na długą
+przeprawę. Raz wybrany koniec jest **trzymany**, bo statek przeliczający to co
+sekundę wygląda, jakby nie umiał się zdecydować.
+
+**Pościg jest zadaniem z wiatru.** `bestVmgHeading` próbkuje cały kompas i bierze
+kurs o najlepszej prędkości **uzyskanej**: `polar(h) × cos(h − namiar)`. Ona jest
+wolniejsza niż prawie wszystko, co ją goni — ma za to prawo wyboru halsu, a
+przeciwko rejowcowi z martwą strefą 60° uciekającemu do portu prosto pod wiatr
+jest to warte więcej niż węzeł.
+
+**Eskorty zawracają** niezależnie od reputacji gracza — po to jest konwój.
+**`SHELTER_RANGE` 90** przeciwko zasięgowi spotkania 18: pościg, który zamyka
+dystans powoli, kończy się brakiem morza, nie abordażem. Przegrany pościg kosztuje
+statek **i** stawia rachubę w błędzie, czyli walutę v0.34.0.
+
+**Bycie ściganym celowo nie jest strachem**: walka czegoś ją uczy, wygrany przez
+nią pościg nie — inaczej gracz, który nigdy nie trafił, rozbudowałby jej konwój
+samym pływaniem za nią.
+
+**Zero nowych pól w modelu.** Ucieczka mieści się w `ai.state = "flee"` (wartość
+istniała w unii od pierwszego commita i nie miała producenta) i `ai.targetPortId`.
+
+**Pułapki:** funkcja wyprowadzająca koniec przeprawy z `progress` psuje się, gdy
+dostaje rekord **już ostemplowany** (`answerHarrying` czytała przybycie do `to`
+jako przybycie do `from`) — jawny parametr; i nie edytuj `src/` w trakcie pomiaru,
+bo Vite przeładuje stronę w środku sześciotysięcznego pościgu.
+
+**Czego NIE widziałem na ekranie:** samego dobicia do portu. Pilnują go trzy testy,
+ale sondy w przeglądarce padły trzy razy — ekran spotkania z eskortą **pauzuje
+`MainMapScene`**, więc pompowanie klatek przestaje ruszać świat, a podmiana
+`progress` w registry nie działa, bo `MainMapScene` trzyma własną kopię świata.
+Gdyby ktoś chciał to domknąć: potrzebny jest świat debugowy stawiający ją **tuż
+przed jej własnym portem**, zbudowany w `PreloadScene`, gdzie `getPortWaterPos`
+jest pod ręką.
+
+---
+
+### v0.36.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1400,11 +1452,12 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    przestrzeni świata (jak sugeruje `project_ship_jitter`), czy ekranu
 2. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. To **nie jest
    zadanie programistyczne**: brakuje plików audio, nie kodu
-3. **Nazwany statek nie ucieka.** v0.34.0 dała jej odpowiedź w porcie — postój,
-   konsortę, inny szlak — ale spotkana **na wodzie** dalej idzie swoim kursem
-   prosto na gracza. Ucieczka pod wiatr, próba zerwania kontaktu, eskorta
-   zawracana na przechwycenie: to jest drugi ruch, ale już w `NpcAiSystem`,
-   nie w `NamedShipSystem`
+3. **Zwykły kupiec dalej nie ucieka.** Anonimowy ruch płynie na gracza jak
+   zawsze. Na razie to w porządku — spotkanie z nim jest całą pętlą łupiestwa i
+   uciekający wszyscy naraz zmieniliby ją nie do poznania — ale gdy przyjdzie do
+   tego wrócić, `bestVmgHeading` jest już napisane i nie zależy od niczego
+   nazwanego. Do rozstrzygnięcia najpierw: czy uciekać ma **każdy** kupiec, czy
+   tylko taki, który zdąży zobaczyć czarną banderę
 4. **Sojusz z koroną nie otwiera niczego.** Pozycja **niedoprecyzowana**,
    przeskakiwana czwarty raz: „sojusz" może znaczyć list kaperski gracza albo
    przymierze dwóch koron, którego w modelu świata **nie ma**. Przed wzięciem
@@ -1493,8 +1546,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Świat, którego nikt nie zaburzył, musi tykać bit w bit tak samo.** Nowe zachowanie w dziennym ticku bramkuj na warunku, który w spokojnym świecie jest fałszywy, a funkcję, która nic nie robi, pisz tak, żeby zwracała **ten sam obiekt** (`toBe`), nie kopię. Test porównuje `JSON.stringify` całej listy przed i po. Ta sama dyscyplina co `laneCommitment` w v0.26.0 (v0.34.0).
 - **Świat debugowy ma pokazywać RÓŻNICĘ, o którą chodzi w wydaniu.** `?hunt=&meet=&harried=` stawiał kapitana tam, gdzie statek naprawdę jest, i pokazywał dokładnie nic — bo cała wersja jest o odległości między tym punktem a tym, który pokazuje mapa. Wariant reguły „świat debugowy musi robić to, co robi normalne wejście", od strony tego, co gracz **widzi** (v0.34.0).
 - **`tavernRumor` rotuje po `(day + hash(port)) % pool.length`.** Nowej plotki nie widać na zrzucie z pierwszego dnia i wygląda to jak niedziałająca mechanika. Weryfikując, przejdź kilka dni — a podmieniając dzień w registry pamiętaj, że **`MainMapScene` zapisuje własny świat przy `shutdown`**, więc zapis przed `scene.stop()` znika bez śladu (v0.34.0).
+- **Funkcja wyprowadzająca fakt ze stanu musi dostać ten fakt od tego, kto już go zna.** `answerHarrying` czytała, do którego portu statek dobił, z `ship.progress < 1`; `makeShelter` podaje jej rekord **już ostemplowany** na granicy, więc przybycie do `to` czytało się jako przybycie do `from` i obracało obieg na drugą stronę. Jawny parametr, nie sprytniejsze wyprowadzenie (v0.35.0).
+- **Statek uciekający nie może sterować na punkt.** Reszta `NpcAiSystem` steruje na cel i pozwala `NavigationSystem` policzyć, co z tego wyszło; przy krzywej polarnej robiącej między dwoma kursami różnicę rzędu trzykrotnej prędkości to jest sposób, w jaki kupiec zaczyna halsować pod wiatr ze slupem na rufie. `bestVmgHeading` = `argmax polar(h) × cos(h − namiar)` (v0.35.0).
+- **Nie edytuj `src/` w trakcie pomiaru w przeglądarce.** Vite przeładuje stronę i puppeteer padnie na `Execution context was destroyed` w połowie przebiegu. Druga strona reguły „skrypt w katalogu głównym jest obserwowany przez Vite" — tam winny był plik pomocniczy, tu zwykły bump wersji (v0.35.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
