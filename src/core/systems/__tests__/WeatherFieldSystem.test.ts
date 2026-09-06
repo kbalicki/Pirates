@@ -4,6 +4,9 @@ import {
   weatherAtPlayer,
   hurricaneAt,
   hurricaneEyes,
+  hurricaneTrack,
+  hurricaneProgress,
+  knownHurricanes,
   hurricaneRigLoss,
   hurricaneHullLoss,
   stormFloored,
@@ -243,6 +246,132 @@ describe("a hurricane is on the water now, not only in the news", () => {
   });
 });
 
+// ===========================================================================
+// The eye walks (v0.45.0)
+// ===========================================================================
+
+/**
+ * A hurricane used to be three stationary circles that stood over three
+ * harbours for a week. The event already carried an ordered list of ports and
+ * a start and an end day; between them that is a road, and nothing read it as
+ * one.
+ */
+describe("the eye walks its road", () => {
+  /** Three towns strung west along the Main, which is what a storm crosses. */
+  const ROAD = ["cartagena", "santa_marta", "rio_de_la_hacha"].filter(k => CITIES[k]);
+  const walking = (over: Parameters<typeof makeWorld>[0] = {}) => makeWorld({
+    events: [{ ports: ROAD, startDay: 10, endDay: 20 }],
+    day: 10,
+    ...over,
+  });
+  const at = (w: WorldState, day: number, hour = 0) =>
+    hurricaneEyes({ ...w, time: { ...w.time, day, hour, minute: 0 } })[0];
+
+  it("has three towns on its road and exactly one eye", () => {
+    const w = walking();
+    expect(ROAD.length).toBe(3);
+    expect(hurricaneTrack(w.worldEvents[0])).toHaveLength(3);
+    // The whole of the change in one assertion: before v0.45.0 this was three.
+    expect(hurricaneEyes(w)).toHaveLength(1);
+  });
+
+  it("makes its first landfall where the headline names it and ends over the last town", () => {
+    const w = walking();
+    const first = CITIES[ROAD[0]].pos;
+    const last = CITIES[ROAD[2]].pos;
+    expect(at(w, 10).pos.x).toBeCloseTo(first.x, 3);
+    expect(at(w, 10).pos.y).toBeCloseTo(first.y, 3);
+    const end = at(w, 19, 23).pos;
+    expect(Math.hypot(end.x - last.x, end.y - last.y)).toBeLessThan(5);
+  });
+
+  it("moves inside a single day, because it is doing damage every tick", () => {
+    // `time.day` is an integer. An eye reading it would teleport at midnight
+    // and be a different storm on either side — which for a squadron nobody can
+    // see is harmless and for this is not.
+    const w = walking();
+    const dawn = at(w, 14, 0).pos;
+    const dusk = at(w, 14, 12).pos;
+    expect(Math.hypot(dusk.x - dawn.x, dusk.y - dawn.y)).toBeGreaterThan(0);
+  });
+
+  it("only ever goes forward along the road", () => {
+    const w = walking();
+    let last = 0;
+    for (let d = 10; d < 20; d++) {
+      const p = hurricaneProgress({ ...w, time: { ...w.time, day: d } }, w.worldEvents[0]);
+      expect(p).toBeGreaterThanOrEqual(last);
+      last = p;
+    }
+    expect(last).toBeGreaterThan(0.8);
+  });
+
+  it("says which town it has passed and which it is standing towards", () => {
+    const w = walking();
+    const early = at(w, 10);
+    expect(early.port).toBe(CITIES[ROAD[0]].name);
+    expect(early.bound).toBe(CITIES[ROAD[1]].name);
+  });
+
+  it("a storm with nowhere to go names itself twice, and the HUD checks for it", () => {
+    // Bermuda is the one port on this map with no neighbour within reach, so a
+    // storm there is a single stationary circle — the old behaviour, correctly.
+    const w = makeWorld({ events: [{ ports: ["cartagena"], startDay: 10, endDay: 20 }], day: 12 });
+    const eye = hurricaneEyes(w)[0];
+    expect(eye.port).toBe(eye.bound);
+  });
+
+  it("catches a ship that never moved off a town at the far end of a long road", () => {
+    // The point of the release, stated as a ship's week: lying off the far end
+    // of the road she is clear when it makes landfall and buried by the time it
+    // lifts, without either of them having moved a yard toward the other.
+    const long = ["vera_cruz", "havana"];
+    const far = CITIES[long[1]].pos;
+    const w = makeWorld({
+      pos: far,
+      events: [{ ports: long, startDay: 10, endDay: 20 }],
+      day: 10,
+    });
+    expect(hurricaneAt({ ...w, time: { ...w.time, day: 10 } }, far)).toBeNull();
+    const late = hurricaneAt({ ...w, time: { ...w.time, day: 19, hour: 12 } }, far);
+    expect(late).not.toBeNull();
+    expect(late!.intensity).toBeGreaterThan(0.5);
+  });
+
+  it("sits on all of a tight cluster instead, and that is the honest answer", () => {
+    // Half the roads this map can produce are shorter than one storm radius —
+    // Cartagena to Río de la Hacha is two hundred units and the circle is two
+    // hundred and sixty. A storm crossing a huddle of towns covers the lot for
+    // its whole life, and pretending otherwise would be a mechanic the geography
+    // does not support. It moves; it does not always move *away*.
+    const road = [CITIES[ROAD[0]].pos, CITIES[ROAD[2]].pos];
+    expect(Math.hypot(road[1].x - road[0].x, road[1].y - road[0].y))
+      .toBeLessThan(HURRICANE_RADIUS);
+    const w = walking({ pos: CITIES[ROAD[2]].pos });
+    for (const day of [10, 14, 19]) {
+      expect(hurricaneAt({ ...w, time: { ...w.time, day } }, CITIES[ROAD[2]].pos)).not.toBeNull();
+    }
+  });
+
+  it("blows on a captain who has never heard of it, and is drawn only for one who has", () => {
+    // The chart carries what he was told; the weather does not consult him.
+    const w = walking({ day: 14 });
+    expect(hurricaneEyes(w)).toHaveLength(1);
+    expect(knownHurricanes(w)).toHaveLength(0);
+    expect(knownHurricanes({ ...w, knownEventIds: ["ev_0"] })).toHaveLength(1);
+  });
+
+  it("hands the chart the road it will actually walk", () => {
+    const w = { ...walking({ day: 14 }), knownEventIds: ["ev_0"] } as WorldState;
+    const drawn = knownHurricanes(w)[0];
+    expect(drawn.road).toHaveLength(3);
+    expect(drawn.road[0]).toEqual(CITIES[ROAD[0]].pos);
+    expect(drawn.daysLeft).toBe(6);
+    const eye = hurricaneEyes(w)[0];
+    expect(drawn.eye.x).toBeCloseTo(eye.pos.x, 6);
+  });
+});
+
 describe("what a hurricane does to a ship", () => {
   it("takes canvas whatever the sail, which a squall never does", () => {
     // The whole distinction between the two: a squall is answered with
@@ -376,6 +505,11 @@ describe("what the captain is told", () => {
       "weather.hurricane_over",
       "weather.log_hurricane",
       "weather.log_hurricane_passed",
+      // v0.45.0 — a storm that is going somewhere, and the chart saying so.
+      "weather.hurricane_toast_bound",
+      "weather.log_hurricane_bound",
+      "weather.chart_storm",
+      "weather.chart_storm_bound",
     ]) {
       expect(EN[key], key).toBeDefined();
       expect(PL[key], key).toBeDefined();

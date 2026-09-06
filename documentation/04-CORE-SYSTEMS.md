@@ -17,10 +17,10 @@
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
 | Privateer | `PrivateerSystem.ts` | Co znaczy list kaperski: pryz dobry, pryz wstydliwy, zdrada patrona |
 | Storm | `StormSystem.ts` | Szkwał: co drze płótno, co zabiera z lunety, co mówi HUD |
-| WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
+| WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm z **wędrującym okiem** |
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
-| Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony |
+| Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
@@ -607,6 +607,90 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## Sztorm wędruje (v0.45.0)
+
+Ostatni ogon modułu G. Huragan był **trzema nieruchomymi okręgami** — po jednym
+na każde ostrzeżone miasto — które stały nad trzema przystaniami przez trzy do
+siedmiu dni i znikały. Zdarzenie od zawsze niosło **uporządkowaną listę portów**
+oraz dzień początku i końca; między nimi to jest droga, tylko nikt nigdy tak jej
+nie odczytał.
+
+### Jedno oko zamiast trzech okręgów
+
+`hurricaneTrack(ev)` to porty zdarzenia zamienione na punkty, a
+`hurricaneProgress(world, ev)` to `(dzień − startDay) / (endDay − startDay)`.
+Pozycja oka = `pointAlong(track, progress)`. Wyprowadzone, nic nie dochodzi do
+zapisu — ten sam wzorzec co „progress, nie pozycja" (v0.33.0) i
+`expeditionCourse` (v0.17.0).
+
+Nogi są **proste, nie `findSeaPath`**, i to nie jest lenistwo: huragan przechodzi
+nad Kubą, a wyginanie jego drogi wokół przylądka modelowałoby go jak statek.
+
+### Dzień ułamkowy, bo to działa co tick
+
+`time.day` jest liczbą całkowitą. Oko czytające ją teleportowałoby się o trzysta
+jednostek o północy — dla eskadry, której gracz nie widzi, to nieszkodliwe, dla
+czegoś, co co tick zabiera kadłub statkowi stojącemu w środku, nie jest.
+`TimeSystem.dayFraction(time)` dokłada godziny i minuty.
+
+### Warunek wstępny: „w pobliżu" naprawdę znaczy w pobliżu
+
+Wędrujące oko nie miało prawa działać, dopóki trzy porty zdarzenia były trzema
+kropkami zamiast drogą. W czterech linijkach `WorldEventSystem` siedziały **trzy
+osobne błędy**, od napisania systemu zdarzeń:
+
+1. **To nie były porty w pobliżu.** Zmienna nazywała się `nearby`, komentarz
+   mówił „Add nearby ports", a lista, z której losowano, to były **wszystkie
+   porty mapy**, nieposortowane. Huragan nad Cartageną uderzał też w Bermudy.
+   Zmierzone: średnia odległość „sąsiada" wynosiła **985 jednostek** (maks. 2643).
+2. **Nie szły przez ziarno.** `sort(() => 0.5 - Math.random())` było jedynym
+   wywołaniem `Math.random` pozostawionym w **deterministycznym ticku świata**,
+   więc dwa odtworzenia tego samego ziarna dawały inny świat. (Nie jest to też
+   równomierne tasowanie, ale przy reszcie to drobiazg.)
+3. **Ignorowały filtr własnego szablonu.** `harvest` jest ograniczony do miast
+   uprawiających trzcinę albo żywność; jego drugie miasto losowano z całości,
+   więc mogło trafić w takie, które nie uprawia żadnego z nich.
+
+`pickNeighbours(pool, mainPort, count, rng)` naprawia wszystkie trzy: losuje
+z **puli po filtrze**, z krótkiej listy `NEIGHBOUR_SHORTLIST = 6` najbliższych
+w promieniu `NEIGHBOUR_REACH = 700`, przez `rngNextInt`, i porządkuje wynik
+**na zewnątrz od pierwszego miasta** — co dopiero czyni z tego drogę.
+
+Miasto bez sąsiada w zasięgu (na tej mapie takie są **Bermudy**) dostaje mniej
+portów, niż szablon prosi, i to jest poprawna odpowiedź, nie awaria.
+
+### Zmierzone na prawdziwej mapie
+
+```
+45 portów, 1 bez sąsiada w promieniu 700 (Bermudy)
+długość drogi: min 30  p25 239  mediana 407  p75 793  maks 1621
+prędkość oka:  136 j./dzień przy 3 dniach, 58 przy 7
+stara „bliskość": mediana 985, maks 2643
+Cartagena → Santa Marta (113), Río de la Hacha (205), Maracaibo (276), Puerto Bello (305)
+```
+
+**Uczciwe zastrzeżenie zapisane w teście:** promień huraganu to 260, a połowa
+dróg jest krótsza. Sztorm przechodzący nad ciasną grupką miast **siedzi na
+wszystkich naraz** przez całe życie zdarzenia. Rusza się; na takiej geografii
+nie zawsze rusza się *dalej*.
+
+### Droga jest na czarcie, bo inaczej to nie pogoda, tylko kostka
+
+`StormCourseRenderer` (nowy) rysuje kreskowaną drogę między ostrzeżonymi
+miastami i oko w **jednostkach świata** — jedyna adnotacja na tej mapie, która
+nie jest stałym rozmiarem ekranowym, bo `HURRICANE_RADIUS` to nie znak na
+papierze, tylko 260 jednostek prawdziwego morza. Skutek: pierścień czyta się
+dopiero po oddaleniu, a z bliska jest łukiem przecinającym wodę przed dziobem —
+czyli dokładnie tym, czym sztorm jest widziany od środka. **Etykieta wisi przy
+znaku środka, nie nad pierścieniem** (nad pierścieniem była trzy tysiące pikseli
+poza ekranem).
+
+Rysowane są wyłącznie sztormy z `knownEventIds`; sama pogoda nigdy nie pyta,
+o czym gracz słyszał.
+
+Nieświeżość drawingu liczy się **przebytym dystansem** (`EYE_STEP = 8`), a nie
+datą — jako jedyna rzecz na tym czarcie oko przesuwa się w sposób ciągły.
 
 ## Jej rejs ma długą i krótką połowę (v0.44.0)
 

@@ -345,8 +345,17 @@ export class WorldEngine {
     // touched the water it was named over.
     const stormNow = hurricaneAt(world, world.entities[playerShipId]?.pos ?? world.player.location.pos);
     if (stormNow && !stormBefore) {
-      world = addLogEntry(world, "weather.log_hurricane", { port: stormNow.port });
-      allEvents.push({ type: "Toast", message: t("weather.hurricane_toast", { port: stormNow.port }) });
+      // Where she is and where she is going, since v0.45.0 she is going
+      // somewhere. A storm whose road has one town on it (an island with no
+      // neighbour inside `NEIGHBOUR_REACH`) reports the way it always did,
+      // because "off Bermuda, standing on for Bermuda" is worse than silence.
+      const moving = stormNow.bound !== stormNow.port;
+      const vars = { port: stormNow.port, bound: stormNow.bound };
+      world = addLogEntry(world, moving ? "weather.log_hurricane_bound" : "weather.log_hurricane", vars);
+      allEvents.push({
+        type: "Toast",
+        message: t(moving ? "weather.hurricane_toast_bound" : "weather.hurricane_toast", vars),
+      });
     } else if (!stormNow && stormBefore) {
       world = addLogEntry(world, "weather.log_hurricane_passed");
       allEvents.push({ type: "Toast", message: t("weather.hurricane_over") });

@@ -84,7 +84,16 @@ export const CAMPAIGN_COOLDOWN_DAYS = 90;
  */
 export const CAMPAIGN_DEFENSE_CEILING = 70;
 
-const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
+/**
+ * Bounds first, value last — the **opposite** order to `services/Geometry.clamp`.
+ *
+ * Renamed from `clamp` in v0.45.0 because the collision was live ammunition:
+ * both take three numbers, so moving a function that used this one into a
+ * module that imports the other compiles clean and silently computes nonsense.
+ * That is exactly what happened to `pointAlong`, and the only symptom was two
+ * distant tests going red.
+ */
+const clampTo = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 
 // ── Who is fighting whom ──────────────────────────────────
 
@@ -151,7 +160,7 @@ export function targetWeight(world: WorldState, portKey: string): number {
   const def = CITIES[portKey];
   if (!def) return 0;
   const port = world.ports[portKey];
-  const defense = clamp(0, 100, port?.defense ?? getPortBaseline(portKey).defense);
+  const defense = clampTo(0, 100, port?.defense ?? getPortBaseline(portKey).defense);
   const softness = 1.05 - defense / 100;
   return softness * softness * SIZE_PRIORITY[def.population];
 }
@@ -165,8 +174,8 @@ export function campaignChance(world: WorldState, war: CrownWar): number {
   if (mine <= 0) return 0;
   // A crown that is winning the wider war presses; one being stripped of its
   // own colonies has nothing to spare for anyone else's.
-  const momentum = clamp(0.4, 1.6, 0.6 + (mine - theirs) * 1.2);
-  return CAMPAIGN_DAILY_BASE * clamp(0.3, 1.2, 0.3 + mine * 0.9) * momentum;
+  const momentum = clampTo(0.4, 1.6, 0.6 + (mine - theirs) * 1.2);
+  return CAMPAIGN_DAILY_BASE * clampTo(0.3, 1.2, 0.3 + mine * 0.9) * momentum;
 }
 
 // ── Picking a town and fitting out for it ─────────────────
@@ -216,7 +225,7 @@ export function launchCampaign(
   rng: RngState,
 ): { world: WorldState; event: WorldEventState; rng: RngState } {
   const def = CITIES[portKey];
-  const strength = clamp(0.5, 1.2, 0.4 + crownStrength(world, war.attacker) * 0.8);
+  const strength = clampTo(0.5, 1.2, 0.4 + crownStrength(world, war.attacker) * 0.8);
   const sizeRoll = rngNextFloat(rng, 0.85, 1.35);
   const soldiers = Math.max(
     25,
@@ -225,7 +234,7 @@ export function launchCampaign(
   // One roll, as before — but what varies is the fitting out, not the voyage.
   const sailRoll = rngNextInt(sizeRoll.state, -CAMPAIGN_FIT_JITTER, CAMPAIGN_FIT_JITTER);
   const departure = expeditionDeparture(world, portKey, war.attacker as string);
-  const sailDays = clamp(
+  const sailDays = clampTo(
     CAMPAIGN_SAIL_DAYS[0],
     CAMPAIGN_SAIL_DAYS[1],
     CAMPAIGN_FIT_DAYS + (departure?.passageDays ?? 5) + sailRoll.value,

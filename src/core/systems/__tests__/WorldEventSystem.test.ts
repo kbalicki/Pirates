@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { seedInitialEvents, seedHistoricalWars, updateWorldEvents, getPortNews } from "../WorldEventSystem.ts";
+import { PORTS } from "../../data/ports.ts";
 import {
   getAggregatedEffects,
   areFactionsAtWar,
@@ -211,6 +212,59 @@ describe("the events the world spawns as it runs", () => {
   it("attach themselves to ports that exist", () => {
     for (const ev of runYear(11).worldEvents) {
       for (const key of ev.ports) expect(CITIES[key], `${ev.id} -> ${key}`).toBeDefined();
+    }
+  });
+
+  it("puts a multi-town event on towns near each other, not scattered over the map", () => {
+    // Three bugs lived in the four lines this checks. The one that showed was
+    // that a "nearby" port was drawn from EVERY port on the map: a hurricane
+    // over Cartagena also struck Bermuda, two thousand units away.
+    for (const seed of [3, 5, 11, 17]) {
+      for (const ev of runYear(seed).worldEvents) {
+        if (ev.ports.length < 2 || ev.ports.length > 3) continue;   // not a faction-wide one
+        const first = CITIES[ev.ports[0]];
+        if (!first) continue;
+        for (const key of ev.ports.slice(1)) {
+          const d = Math.hypot(CITIES[key].pos.x - first.pos.x, CITIES[key].pos.y - first.pos.y);
+          expect(d, `${ev.id}: ${ev.ports[0]} -> ${key}`).toBeLessThanOrEqual(700);
+        }
+      }
+    }
+  });
+
+  it("orders those towns outward from the first, which is what makes them a road", () => {
+    // `WeatherFieldSystem.hurricaneTrack` walks this list in order. A list that
+    // was not ordered would send a storm back and forth over the same water.
+    for (const ev of runYear(7).worldEvents) {
+      if (ev.ports.length < 3 || ev.ports.length > 3) continue;
+      const first = CITIES[ev.ports[0]];
+      if (!first) continue;
+      const away = ev.ports.slice(1).map(k =>
+        Math.hypot(CITIES[k].pos.x - first.pos.x, CITIES[k].pos.y - first.pos.y));
+      for (let i = 1; i < away.length; i++) expect(away[i]).toBeGreaterThanOrEqual(away[i - 1]);
+    }
+  });
+
+  it("spawns the same world twice from the same seed", () => {
+    // `sort(() => 0.5 - Math.random())` was the one call to Math.random left
+    // inside the deterministic world tick, so this could not have passed.
+    const a = runYear(23);
+    const b = runYear(23);
+    expect(a.worldEvents.map(e => `${e.id}|${e.ports.join(",")}`))
+      .toEqual(b.worldEvents.map(e => `${e.id}|${e.ports.join(",")}`));
+  });
+
+  it("keeps a filtered event inside its own filter, on every town it touches", () => {
+    // `harvest` is restricted to towns that grow sugar or food. Its second town
+    // used to be drawn from the unfiltered list, so it could land on neither.
+    for (const seed of [3, 5, 11]) {
+      for (const ev of runYear(seed).worldEvents) {
+        if (ev.type !== "harvest") continue;
+        for (const key of ev.ports) {
+          const grows = PORTS[key]?.produces ?? [];
+          expect(grows.includes("sugar_cane") || grows.includes("food"), `${ev.id}: ${key}`).toBe(true);
+        }
+      }
     }
   });
 

@@ -6,11 +6,11 @@
  * Random events fire with weighted probability.
  */
 
-import type { WorldState, WorldEventState, WorldEventType } from "../model/WorldState.ts";
+import type { WorldState, WorldEventState, WorldEventType, RngState } from "../model/WorldState.ts";
 import type { NewsItem } from "../model/EntityState.ts";
 import { dayToCalendar, calendarToDay } from "./TimeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
-import { rngNext, rngNextFloat } from "../services/RNG.ts";
+import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { PORTS } from "../data/ports.ts";
 
 // ── Historical Wars ──────────────────────────────────────
@@ -514,6 +514,76 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
   return w;
 }
 
+/**
+ * How far a multi-port event may reach past the town it is named for.
+ *
+ * A hurricane crossing the sea at fifteen knots covers about four hundred
+ * units of this map in a day and runs for three to seven, so a second landfall
+ * seven hundred units on is a storm doing what a storm does. Beyond that it is
+ * two storms.
+ */
+const NEIGHBOUR_REACH = 700;
+
+/**
+ * How many of the nearest candidates the roll chooses between.
+ *
+ * Taking the single nearest every time would make a hurricane at Cartagena
+ * always the same three towns; drawing from the nearest handful keeps it a
+ * region rather than a fixture.
+ */
+const NEIGHBOUR_SHORTLIST = 6;
+
+/**
+ * The other towns a multi-port event touches: near the first one, and rolled.
+ *
+ * Three separate bugs lived in the four lines this replaces, and they had been
+ * there since the event system was written:
+ *
+ * 1. **They were not nearby.** The variable was called `nearby` and the comment
+ *    said "Add nearby ports", but the list it drew from was *every port on the
+ *    map*, unsorted. A hurricane over Cartagena also struck Bermuda.
+ * 2. **They were not seeded.** `sort(() => 0.5 - Math.random())` is the one
+ *    call to `Math.random` that was left inside the deterministic world tick,
+ *    so two replays of the same seed produced different worlds. (It is not a
+ *    uniform shuffle either, but that hardly mattered next to the rest.)
+ * 3. **They ignored the template's own filter.** `harvest` is restricted to
+ *    towns that grow sugar or food; its second town was drawn from everything,
+ *    so a harvest could land on a port that grows neither.
+ *
+ * Drawing from `pool` fixes the third, sorting by distance the first, and
+ * `rngNextInt` the second. The result is ordered **outward from the first
+ * town**, which is what makes it a road rather than a scatter — see
+ * `WeatherFieldSystem.hurricaneTrack`.
+ */
+export function pickNeighbours(
+  pool: string[],
+  mainPort: string,
+  count: number,
+  rng: RngState,
+): { ports: string[]; rng: RngState } {
+  if (count <= 0) return { ports: [], rng };
+  const here = PORTS[mainPort]?.pos;
+  if (!here) return { ports: [], rng };
+
+  const dist = (k: string) => Math.hypot(PORTS[k].pos.x - here.x, PORTS[k].pos.y - here.y);
+  const shortlist = pool
+    .filter(k => k !== mainPort && PORTS[k] && dist(k) <= NEIGHBOUR_REACH)
+    .sort((a, b) => dist(a) - dist(b))
+    .slice(0, NEIGHBOUR_SHORTLIST);
+
+  const chosen: string[] = [];
+  let r = rng;
+  // Fewer neighbours than asked for is the right answer for an isolated town,
+  // not a failure: a hurricane over Bermuda has nowhere else to go.
+  while (chosen.length < count && shortlist.length > 0) {
+    const roll = rngNextInt(r, 0, shortlist.length - 1);
+    r = roll.state;
+    chosen.push(shortlist.splice(roll.value, 1)[0]);
+  }
+  chosen.sort((a, b) => dist(a) - dist(b));
+  return { ports: chosen, rng: r };
+}
+
 function expireEvents(world: WorldState): WorldState {
   const active = world.worldEvents.filter(ev => ev.endDay >= world.time.day);
   if (active.length === world.worldEvents.length) return world;
@@ -582,15 +652,9 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
     const targetFaction = chosen.type === "treasure_fleet" ? "spain" : (portDef?.factionId as string);
     affectedPorts = allPorts.filter(k => PORTS[k].factionId === targetFaction);
   } else {
-    affectedPorts = [mainPort];
-    // Add nearby ports for multi-port events
-    if (chosen.affectsPorts > 1) {
-      const nearby = allPorts
-        .filter(k => k !== mainPort)
-        .sort(() => 0.5 - Math.random())
-        .slice(0, chosen.affectsPorts - 1);
-      affectedPorts.push(...nearby);
-    }
+    const picked = pickNeighbours(pool, mainPort, chosen.affectsPorts - 1, rng);
+    rng = picked.rng;
+    affectedPorts = [mainPort, ...picked.ports];
   }
 
   // One of a kind per town (v0.28.0). A crown does not issue three tariff

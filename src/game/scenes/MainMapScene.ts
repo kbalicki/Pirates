@@ -42,6 +42,12 @@ import {
   type NamedCourseResult,
 } from "../render/NamedShipCourseRenderer.ts";
 import {
+  drawStormCourses,
+  stormCoursesStale,
+  clearStormCourses,
+  type StormCourseResult,
+} from "../render/StormCourseRenderer.ts";
+import {
   harbourInReach,
   blockadeDays,
   blockadeEffective,
@@ -159,6 +165,7 @@ export class MainMapScene extends Phaser.Scene {
   private tradeLanes: TradeLaneResult | null = null;
   private eventMarkers: EventMarkerResult | null = null;
   private namedCourses: NamedCourseResult | null = null;
+  private stormCourses: StormCourseResult | null = null;
   /** Pin the events he has heard of on the chart? Toggled with N. */
   private marksVisible = localStorage.getItem("pc_marks") !== "0";
   /** Chart the shipping lanes? Toggled with T, remembered across sessions. */
@@ -446,6 +453,7 @@ export class MainMapScene extends Phaser.Scene {
       this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
     }
     this.namedCourses = drawNamedCourses(this, this.worldState, this.cameras.main.zoom);
+    this.stormCourses = drawStormCourses(this, this.worldState, this.cameras.main.zoom);
     // OSM geographic labels removed — only port names shown
     this.worldRenderer.sync(this, this.worldState);
   }
@@ -956,6 +964,14 @@ export class MainMapScene extends Phaser.Scene {
     if (namedCoursesStale(this.namedCourses, this.worldState, this.cameras.main.zoom)) {
       clearNamedCourses(this.namedCourses);
       this.namedCourses = drawNamedCourses(this, this.worldState, this.cameras.main.zoom);
+    }
+
+    // A storm's eye moves *continuously*, not once a day like everything else
+    // pencilled on this chart, so its drawing goes stale on distance travelled
+    // rather than on the date (v0.45.0).
+    if (stormCoursesStale(this.stormCourses, this.worldState, this.cameras.main.zoom)) {
+      clearStormCourses(this.stormCourses);
+      this.stormCourses = drawStormCourses(this, this.worldState, this.cameras.main.zoom);
     }
 
     if (result.transitions) {

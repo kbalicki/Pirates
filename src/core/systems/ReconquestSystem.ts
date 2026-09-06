@@ -167,7 +167,16 @@ export const HELD_POPULATION_SHARE = 0.62;
 export const DEFENSE_HELD_FLAG = "defense_held_";
 export const DEFENSE_LOST_FLAG = "defense_lost_";
 
-const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
+/**
+ * Bounds first, value last — the **opposite** order to `services/Geometry.clamp`.
+ *
+ * Renamed from `clamp` in v0.45.0 because the collision was live ammunition:
+ * both take three numbers, so moving a function that used this one into a
+ * module that imports the other compiles clean and silently computes nonsense.
+ * That is exactly what happened to `pointAlong`, and the only symptom was two
+ * distant tests going red.
+ */
+const clampTo = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 
 // ── What a town that changed hands can rebuild ────────────
 
@@ -353,7 +362,7 @@ export function reliefChance(world: WorldState, portKey: string): number {
 
   return RELIEF_DAILY_BASE
     * SIZE_PRIORITY[CITIES[portKey].population]
-    * clamp(0.3, 1.2, 0.3 + strength * 0.9)
+    * clampTo(0.3, 1.2, 0.3 + strength * 0.9)
     * (crownAtWar(world, claimant) ? AT_WAR_PENALTY : 1);
 }
 
@@ -389,7 +398,7 @@ export function expeditionFor(
   // it climb past 1 made a freshly sacked large town unholdable no matter how
   // many men were left in it, which is the one outcome that empties the
   // "keep it for the brethren" ending of meaning.
-  const strength = clamp(0.5, 1.0, 0.4 + crownStrength(world, claimant) * 0.6);
+  const strength = clampTo(0.5, 1.0, 0.4 + crownStrength(world, claimant) * 0.6);
 
   const sizeRoll = rngNextFloat(rng, 0.8, 1.3);
   const soldiers = Math.max(
@@ -400,7 +409,7 @@ export function expeditionFor(
   // is the *fitting out* that varies now, not the whole voyage (v0.43.0).
   const sailRoll = rngNextInt(sizeRoll.state, -RELIEF_FIT_JITTER, RELIEF_FIT_JITTER);
   const departure = expeditionDeparture(world, portKey, claimant);
-  const sailDays = clamp(
+  const sailDays = clampTo(
     RELIEF_SAIL_DAYS[0],
     RELIEF_SAIL_DAYS[1],
     RELIEF_FIT_DAYS + (departure?.passageDays ?? 3) + sailRoll.value,
@@ -507,9 +516,9 @@ export function fleetDefenceContribution(world: WorldState): number {
   if (men <= 0) return 0;
   return Math.round(
     men
-    * (0.6 + clamp(0, 1, force.morale) * 0.6)
+    * (0.6 + clampTo(0, 1, force.morale) * 0.6)
     * (1 + force.fencing / 14)
-    * (0.85 + clamp(0, 1, force.training) * 0.3)
+    * (0.85 + clampTo(0, 1, force.training) * 0.3)
     * PRESENCE_PENALTY,
   );
 }
@@ -527,7 +536,7 @@ export function defenceStrength(world: WorldState, portKey: string, playerPresen
   const def = CITIES[portKey];
   if (!def) return 0;
   const fort = garrisonFor(world, portKey);
-  const wallFactor = 0.5 + clamp(0, 1, fort.walls / TYPE_WALL_CAP[def.type]) * 0.8;
+  const wallFactor = 0.5 + clampTo(0, 1, fort.walls / TYPE_WALL_CAP[def.type]) * 0.8;
   const gunFactor = 1 + fort.guns * 0.02;
   const town = fort.soldiers * wallFactor * gunFactor;
   return Math.round(town + (playerPresent ? fleetDefenceContribution(world) : 0));

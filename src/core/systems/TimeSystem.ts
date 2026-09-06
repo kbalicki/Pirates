@@ -6,6 +6,20 @@ import { t } from "../i18n/index.ts";
 const MINUTES_PER_HOUR = 60;
 const HOURS_PER_DAY = 24;
 
+/**
+ * The clock as one number: whole days plus the part of today that has run.
+ *
+ * `time.day` is an integer and everything reading a schedule off it therefore
+ * moves in daily jumps. That was invisible while the only things walking a
+ * course were off the chart between jumps — a squadron the player cannot see,
+ * a named ship whose record is only consulted when she materialises. A
+ * hurricane is not: it is doing damage per tick to a ship standing in it, and
+ * an eye that teleported 300 units at midnight would be a different storm.
+ */
+export function dayFraction(time: GameTime): number {
+  return time.day + (time.hour * MINUTES_PER_HOUR + time.minute) / (HOURS_PER_DAY * MINUTES_PER_HOUR);
+}
+
 export function advanceTime(time: GameTime, dtTicks: number): GameTime {
   let { day, hour, minute, tick } = time;
   tick += dtTicks;

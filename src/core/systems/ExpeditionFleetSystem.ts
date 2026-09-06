@@ -56,7 +56,7 @@ import type { WorldEvent } from "../model/Events.ts";
 import type { PortId } from "../model/ids.ts";
 import { entityId, factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES } from "../data/cities.ts";
-import { findSeaPath, findSeaPassage, pathLength, SEA_CELL } from "../services/Pathfinding.ts";
+import { findSeaPath, findSeaPassage, pointAlong, SEA_CELL } from "../services/Pathfinding.ts";
 import { currentAt } from "./CurrentSystem.ts";
 import { FACTIONS } from "../data/factions.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
@@ -115,7 +115,16 @@ const TRANSPORT_CLASSES = ["fluyt", "merchantman", "galleon"];
 /** Escort classes, lightest first — picked by how many guns it is covering. */
 const ESCORT_CLASSES = ["brigantine", "frigate", "fast_galleon"];
 
-const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
+/**
+ * Bounds first, value last — the **opposite** order to `services/Geometry.clamp`.
+ *
+ * Renamed from `clamp` in v0.45.0 because the collision was live ammunition:
+ * both take three numbers, so moving a function that used this one into a
+ * module that imports the other compiles clean and silently computes nonsense.
+ * That is exactly what happened to `pointAlong`, and the only symptom was two
+ * distant tests going red.
+ */
+const clampTo = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 
 // ── Where the fleet is ────────────────────────────────────
 
@@ -277,7 +286,7 @@ export function originPortFor(world: WorldState, event: WorldEventState): string
 export function expeditionProgress(world: WorldState, event: WorldEventState): number {
   const span = event.endDay - event.startDay;
   if (span <= 0) return 1;
-  return clamp(0, 1, (world.time.day - event.startDay) / span);
+  return clampTo(0, 1, (world.time.day - event.startDay) / span);
 }
 
 /**
@@ -319,25 +328,6 @@ export function expeditionPos(world: WorldState, event: WorldEventState): Vec2 |
   return pointAlong(course, expeditionProgress(world, event));
 }
 
-/** The point a fraction of the way along a polyline, by distance. */
-export function pointAlong(path: Vec2[], fraction: number): Vec2 {
-  if (path.length === 1) return path[0];
-  const total = pathLength(path);
-  if (total <= 0) return path[0];
-  let want = clamp(0, 1, fraction) * total;
-  for (let i = 1; i < path.length; i++) {
-    const a = path[i - 1];
-    const b = path[i];
-    const leg = Math.hypot(b.x - a.x, b.y - a.y);
-    if (want <= leg || i === path.length - 1) {
-      const t = leg > 0 ? want / leg : 0;
-      return { x: a.x + (b.x - a.x) * Math.min(1, t), y: a.y + (b.y - a.y) * Math.min(1, t) };
-    }
-    want -= leg;
-  }
-  return path[path.length - 1];
-}
-
 /** True when the player is close enough for the squadron to be on the chart. */
 export function withinReach(world: WorldState, pos: Vec2): boolean {
   if (world.player.location.type === "port") return false;
@@ -373,8 +363,8 @@ export function planHulls(soldiers: number, guns: number): HullPlan[] {
   const men = Math.max(0, Math.round(soldiers));
   const cannon = Math.max(0, Math.round(guns));
 
-  let transports = men > 0 ? clamp(1, 2, Math.ceil(men / SOLDIERS_PER_TRANSPORT)) : 0;
-  let escorts = cannon > 0 ? clamp(1, 2, Math.ceil(cannon / GUNS_PER_ESCORT)) : 0;
+  let transports = men > 0 ? clampTo(1, 2, Math.ceil(men / SOLDIERS_PER_TRANSPORT)) : 0;
+  let escorts = cannon > 0 ? clampTo(1, 2, Math.ceil(cannon / GUNS_PER_ESCORT)) : 0;
   // An expedition with no men and no guns is not an expedition.
   if (transports + escorts === 0) return [];
   while (transports + escorts > MAX_EXPEDITION_HULLS) {
@@ -412,7 +402,7 @@ export function planHulls(soldiers: number, guns: number): HullPlan[] {
 
 /** Bigger loads get bigger hulls, off a short list rather than a formula. */
 function classFor(classes: string[], load: number, perHull: number): string {
-  const step = clamp(0, classes.length - 1, Math.floor(load / Math.max(1, perHull * 0.6)));
+  const step = clampTo(0, classes.length - 1, Math.floor(load / Math.max(1, perHull * 0.6)));
   return classes[step];
 }
 

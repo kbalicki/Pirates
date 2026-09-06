@@ -199,7 +199,7 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 
 - **Wioski Indian** — lokacje nie-portowe, handel egzotyką, wskazówki do skarbów i rodziny
 - **Misje jezuickie** — leczenie załogi, informacje o regionie, konwersja piratów
-- **Pogoda rozszerzona** — ✅ szkwał (v0.38.0) i ✅ huragany sezonowe jako prawdziwy sztorm na wodzie, z krążącym wiatrem i strefami wiatru mapy (v0.39.0). ✅ mgła (v0.40.0 — tnie zasięg graczowi **i** NPC, bez darcia płótna). ✅ prądy morskie (v0.41.0 — sześć pasm, znoszą statek, `C` rysuje je na mapie). Prąd nauczył potem żeglugę liczyć w dniach: szlaki handlowe (v0.42.0), wyprawy koronne (v0.43.0) i rozkład nazwanych statków (v0.44.0 — obieg ma długą i krótką połowę). Zostały: deszcz i pioruny (czysta wizualia) oraz **wędrujące oko** huraganu
+- **Pogoda rozszerzona** — ✅ szkwał (v0.38.0) i ✅ huragany sezonowe jako prawdziwy sztorm na wodzie, z krążącym wiatrem i strefami wiatru mapy (v0.39.0). ✅ mgła (v0.40.0 — tnie zasięg graczowi **i** NPC, bez darcia płótna). ✅ prądy morskie (v0.41.0 — sześć pasm, znoszą statek, `C` rysuje je na mapie). Prąd nauczył potem żeglugę liczyć w dniach: szlaki handlowe (v0.42.0), wyprawy koronne (v0.43.0) i rozkład nazwanych statków (v0.44.0 — obieg ma długą i krótką połowę). ✅ wędrujące oko huraganu (v0.45.0 — jedno oko idące drogą przez ostrzeżone miasta, droga na czarcie). Został tylko deszcz i pioruny (czysta wizualia)
 - **Specjalizacje statków** — ulepszenia żagli, kadłuba i uzbrojenia, galion (bonus morale), balast (stabilność vs prędkość)
 - **Pathfinding A\*** — prawdziwe szlaki handlowe zamiast reaktywnego sterowania NPC
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden; brakuje ścieżek dla żeglugi, portu, tawerny i bitwy

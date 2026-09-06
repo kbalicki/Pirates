@@ -128,7 +128,16 @@ export const DEFENCE_CLAIMANT_REP = -15;
 /** Reputation a crown pays for a colony you saved that was never yours. */
 export const ALLY_DEFENCE_REP = 25;
 
-const clamp = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
+/**
+ * Bounds first, value last — the **opposite** order to `services/Geometry.clamp`.
+ *
+ * Renamed from `clamp` in v0.45.0 because the collision was live ammunition:
+ * both take three numbers, so moving a function that used this one into a
+ * module that imports the other compiles clean and silently computes nonsense.
+ * That is exactly what happened to `pointAlong`, and the only symptom was two
+ * distant tests going red.
+ */
+const clampTo = (lo: number, hi: number, v: number) => Math.max(lo, Math.min(hi, v));
 
 // ── State ─────────────────────────────────────────────────
 
@@ -209,7 +218,7 @@ export function expeditionOf(state: DefenseState): Expedition {
  */
 export function fleetGuns(state: DefenseState, crewStart: number): number {
   if (!state.fleetEngaged) return 0;
-  const manned = crewStart > 0 ? clamp(0, 1, state.force.crew / crewStart) : 0;
+  const manned = crewStart > 0 ? clampTo(0, 1, state.force.crew / crewStart) : 0;
   return Math.round(state.force.cannons * manned);
 }
 
@@ -221,7 +230,7 @@ export function fleetGuns(state: DefenseState, crewStart: number): number {
  */
 export function transportExposure(state: DefenseState): number {
   const escort = state.squadron.gunsMax > 0
-    ? clamp(0, 1, state.squadron.guns / state.squadron.gunsMax)
+    ? clampTo(0, 1, state.squadron.guns / state.squadron.gunsMax)
     : 0;
   return 1 - ESCORT_COVER * escort;
 }
@@ -387,7 +396,7 @@ export function landMen(state: DefenseState): DefenseState {
 export function townStrength(state: DefenseState): number {
   const def = CITIES[state.portKey];
   const cap = def ? TYPE_WALL_CAP[def.type] : state.fort.wallsMax;
-  const wallFactor = 0.5 + clamp(0, 1, state.fort.walls / Math.max(1, cap)) * 0.8;
+  const wallFactor = 0.5 + clampTo(0, 1, state.fort.walls / Math.max(1, cap)) * 0.8;
   const gunFactor = 1 + state.fort.guns * 0.02;
   return Math.round(state.fort.soldiers * wallFactor * gunFactor);
 }
@@ -449,7 +458,7 @@ export function resolveDefenseAssault(state: DefenseState, rng: RngState): Defen
   for (let i = 0; i < MAX_WAVES && town > 0 && landing > 0; i++) {
     const roll = rngNext(rngState);
     rngState = roll.state;
-    const swing = clamp(0, 1, townShare * (0.75 + roll.value * 0.5));
+    const swing = clampTo(0, 1, townShare * (0.75 + roll.value * 0.5));
 
     const landingLosses = Math.min(landing, Math.max(1, Math.round(landing * WAVE_INTENSITY * swing * 2)));
     const townLosses = Math.min(town, Math.max(1, Math.round(town * WAVE_INTENSITY * (1 - swing) * 2)));
@@ -506,7 +515,7 @@ export function splitTownLosses(
     return { garrisonAfter: 0, partySurvivors: Math.round(state.landed * ROUTED_PARTY_SURVIVAL) };
   }
   const before = Math.max(1, state.fort.soldiers);
-  const survival = clamp(0, 1, townLeft / before);
+  const survival = clampTo(0, 1, townLeft / before);
   return {
     garrisonAfter: Math.round(state.stationed * survival),
     partySurvivors: Math.round(state.landed * survival),

@@ -34,6 +34,26 @@
  * alone because removing it would change the RNG stream. Check both sides: the
  * call site **and** the event.)
  *
+ * ## The eye walks (v0.45.0)
+ *
+ * A hurricane used to be **three stationary circles** — one per warned town —
+ * that stood still for three to seven days and then vanished. The event already
+ * carried an ordered list of ports and a start and an end day; between them
+ * that is a road, and nothing had ever read it as one.
+ *
+ * Now it is **one** eye that makes its first landfall at the town the headline
+ * names and is over the last of them when the event lifts. The warnings on the
+ * chart are unchanged — those towns really do get it — but the weather on the
+ * water has to be **outrun**, not merely avoided, and a harbour that was safe
+ * this morning is where the storm is going.
+ *
+ * Nothing new is stored, again. What made this possible was `pickNeighbours`
+ * in `WorldEventSystem`: the "nearby" towns of a multi-port event were drawn
+ * from the whole map with `Math.random`, so the three ports were three dots
+ * rather than a road, and a walking eye would have teleported across the
+ * Caribbean. **A derived track is only as good as the order of what it is
+ * derived from.**
+ *
  * Now the belt is a road: inside it the wind is pulled toward the easterly the
  * trades actually blow and held steadier than the open sea, so a passage west
  * along the north coast is genuinely faster than the same distance south of
@@ -74,6 +94,8 @@ import { MAP_ZONES } from "../data/mapZones.ts";
 import { normalizeHeading, headingDiff, pointInRect, vecToHeading } from "../services/Geometry.ts";
 import { FOUNDERING_THRESHOLD, RIG_TIERS } from "./DamageSystem.ts";
 import { fogDensity } from "./FogSystem.ts";
+import { pointAlong } from "../services/Pathfinding.ts";
+import { dayFraction } from "./TimeSystem.ts";
 
 /**
  * How hard a wind zone pulls the prevailing wind toward its own bias.
@@ -144,23 +166,126 @@ export type LocalWeather = WeatherState & {
   fog: number;
   /** Where the eye is, when there is one within reach. */
   eye?: Vec2;
-  /** The town it is named over, for a line of log. */
+  /** The town it has last passed, for a line of log. */
   eyePort?: string;
+  /** The town it is standing towards, which is the half worth acting on. */
+  eyeBound?: string;
 };
 
-/** Every hurricane the world has running today, as an eye and a town. */
-export function hurricaneEyes(world: WorldState): { pos: Vec2; port: string }[] {
+/**
+ * The road a hurricane walks: the towns it is warned over, in order (v0.45.0).
+ *
+ * Derived, never stored. The event already carries an ordered list of ports and
+ * a start and end day; between them that is a track, and it only ever failed to
+ * be one because nothing read it that way. Same shape as `progress, not
+ * position` (v0.33.0) and `expeditionCourse` (v0.17.0).
+ *
+ * Ordered outward from the town the headline names, which `pickNeighbours`
+ * guarantees: the storm makes its first landfall where it is named and moves on
+ * from there.
+ *
+ * Straight legs, not `findSeaPath`, and that is not laziness — a hurricane
+ * crosses Cuba, and bending its road round a headland would be modelling it as
+ * a ship.
+ */
+export function hurricaneTrack(ev: { ports?: string[] }): { pos: Vec2; port: string }[] {
+  const stops: { pos: Vec2; port: string }[] = [];
+  for (const portKey of ev.ports ?? []) {
+    const city = CITIES[portKey];
+    if (city) stops.push({ pos: city.pos, port: city.name });
+  }
+  return stops;
+}
+
+/**
+ * How far along its road a storm is today, 0..1.
+ *
+ * On the **fractional** day, not `time.day`. An eye that jumped three hundred
+ * units at midnight would be a different storm on either side of it, and unlike
+ * a squadron or a named ship this is a thing doing damage per tick to whoever
+ * is standing in it.
+ */
+export function hurricaneProgress(world: WorldState, ev: { startDay: number; endDay: number }): number {
+  const span = ev.endDay - ev.startDay;
+  if (span <= 0) return 0;
+  return Math.max(0, Math.min(1, (dayFraction(world.time) - ev.startDay) / span));
+}
+
+/**
+ * Every hurricane the world has running today: **one** eye each, on its road.
+ *
+ * Until v0.45.0 this returned one eye per named town, so a hurricane was three
+ * stationary circles that stood over three harbours for a week and then
+ * vanished. It is now one circle that starts at the first town and is over the
+ * last one when the event lifts — which is why the same three towns are still
+ * warned, and why the danger has to be outrun rather than merely avoided.
+ */
+export function hurricaneEyes(
+  world: WorldState,
+): { pos: Vec2; port: string; bound: string }[] {
   const day = world.time.day;
-  const eyes: { pos: Vec2; port: string }[] = [];
+  const eyes: { pos: Vec2; port: string; bound: string }[] = [];
   for (const ev of world.worldEvents ?? []) {
     if (ev.type !== "hurricane") continue;
     if (day < ev.startDay || day >= ev.endDay) continue;
-    for (const portKey of ev.ports ?? []) {
-      const city = CITIES[portKey];
-      if (city) eyes.push({ pos: city.pos, port: city.name });
-    }
+    const track = hurricaneTrack(ev);
+    if (track.length === 0) continue;
+    const progress = hurricaneProgress(world, ev);
+    const pos = pointAlong(track.map(s => s.pos), progress);
+    // Which town she has passed and which she is standing towards. A storm
+    // named for one harbour and already off another has to be able to say so,
+    // or the toast is describing a place she left three days ago.
+    const leg = Math.min(track.length - 1, Math.floor(progress * (track.length - 1)));
+    eyes.push({
+      pos,
+      port: track[leg].port,
+      bound: track[Math.min(track.length - 1, leg + 1)].port,
+    });
   }
   return eyes;
+}
+
+/**
+ * The storms the captain has been told about, with their road and today's eye.
+ *
+ * Separate from `hurricaneEyes` and it has to be: the weather is real whether
+ * he has heard of it or not, and the simulation must never consult
+ * `knownEventIds`. This is the chart's copy — the same discipline the town pins
+ * (v0.30.0) and the reckoned mark (v0.33.0) are drawn under.
+ *
+ * A moving eye that is not drawn would read as unfairness rather than as
+ * weather: the captain stayed well clear of the pin and the storm found him
+ * anyway. Drawing the road is what turns three warnings into a schedule.
+ */
+export function knownHurricanes(world: WorldState): {
+  id: string;
+  road: Vec2[];
+  eye: Vec2;
+  daysLeft: number;
+  port: string;
+  bound: string;
+}[] {
+  const known = new Set(world.knownEventIds ?? []);
+  const day = world.time.day;
+  const out: { id: string; road: Vec2[]; eye: Vec2; daysLeft: number; port: string; bound: string }[] = [];
+  for (const ev of world.worldEvents ?? []) {
+    if (ev.type !== "hurricane" || !known.has(ev.id)) continue;
+    if (day < ev.startDay || day >= ev.endDay) continue;
+    const track = hurricaneTrack(ev);
+    if (track.length === 0) continue;
+    const road = track.map(s => s.pos);
+    const progress = hurricaneProgress(world, ev);
+    const leg = Math.min(track.length - 1, Math.floor(progress * (track.length - 1)));
+    out.push({
+      id: ev.id,
+      road,
+      eye: pointAlong(road, progress),
+      daysLeft: Math.max(0, ev.endDay - day),
+      port: track[leg].port,
+      bound: track[Math.min(track.length - 1, leg + 1)].port,
+    });
+  }
+  return out;
 }
 
 /**
@@ -173,14 +298,14 @@ export function hurricaneEyes(world: WorldState): { pos: Vec2; port: string }[] 
 export function hurricaneAt(
   world: WorldState,
   pos: Vec2,
-): { intensity: number; pos: Vec2; port: string } | null {
-  let best: { intensity: number; pos: Vec2; port: string } | null = null;
+): { intensity: number; pos: Vec2; port: string; bound: string } | null {
+  let best: { intensity: number; pos: Vec2; port: string; bound: string } | null = null;
   for (const eye of hurricaneEyes(world)) {
     const dist = Math.hypot(pos.x - eye.pos.x, pos.y - eye.pos.y);
     if (dist >= HURRICANE_RADIUS) continue;
     const intensity = 1 - dist / HURRICANE_RADIUS;
     if (!best || intensity > best.intensity) {
-      best = { intensity, pos: eye.pos, port: eye.port };
+      best = { intensity, pos: eye.pos, port: eye.port, bound: eye.bound };
     }
   }
   return best;
@@ -238,6 +363,7 @@ export function weatherAt(world: WorldState, pos: Vec2): LocalWeather {
     fog,
     eye: storm.pos,
     eyePort: storm.port,
+    eyeBound: storm.bound,
   };
 }
 

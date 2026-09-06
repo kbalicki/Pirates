@@ -436,6 +436,37 @@ export function passageCost(path: Vec2[], setAt?: SetQuery, speed = PASSAGE_SPEE
   return total;
 }
 
+/**
+ * The point a fraction of the way along a polyline, **by distance**.
+ *
+ * Measured by distance rather than by leg, so a course that doubles back round
+ * a headland does not make whatever is walking it sprint down the short leg and
+ * crawl along the long one.
+ *
+ * Lived in `ExpeditionFleetSystem` until v0.45.0, because a squadron was the
+ * first thing that walked a course. It is now the third — a named ship walks
+ * her lane and a hurricane walks its road — and a weather module reaching into
+ * an expedition module for a line of geometry was the wrong shape. It belongs
+ * next to `pathLength`, which it uses.
+ */
+export function pointAlong(path: Vec2[], fraction: number): Vec2 {
+  if (path.length === 1) return path[0];
+  const total = pathLength(path);
+  if (total <= 0) return path[0];
+  let want = clamp(fraction, 0, 1) * total;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const leg = Math.hypot(b.x - a.x, b.y - a.y);
+    if (want <= leg || i === path.length - 1) {
+      const t = leg > 0 ? want / leg : 0;
+      return { x: a.x + (b.x - a.x) * Math.min(1, t), y: a.y + (b.y - a.y) * Math.min(1, t) };
+    }
+    want -= leg;
+  }
+  return path[path.length - 1];
+}
+
 /** Length of a course in world units. */
 export function pathLength(path: Vec2[]): number {
   let total = 0;

@@ -288,3 +288,48 @@ przyciśnięty dwa razy zmienia szlak w najbliższym porcie, a mapa ma dalej rys
 **ten, o którym kapitanowi powiedziano** — z rombem idącym po kursie, którego ona
 już nie ma. Narysowanie `laneOf` po cichu poprawiałoby mu mapę, a to jest jedyna
 rzecz, której ten renderer istnieje żeby **nie** robić.
+
+## StormCourseRenderer — droga sztormu (v0.45.0)
+
+Od v0.45.0 huragan ma **jedno wędrujące oko** zamiast trzech nieruchomych
+okręgów. Zmiana jest uczciwa tylko wtedy, gdy widać ją nadchodzącą: ruchome
+zagrożenie, którego nie da się nanieść na czart, nie jest pogodą, tylko rzutem
+kostką — kapitan omija szpilkę szerokim łukiem, sztorm i tak go znajduje, a nic
+na ekranie nigdy nie tłumaczy dlaczego.
+
+| Element | Depth | Rozmiar |
+|---|---|---|
+| droga (kreskowana, blada) | 445 | `DASH 6 / GAP 7` px ekranowych |
+| oko (postrzępiony pierścień + krzyżyk środka) | 445 | **`HURRICANE_RADIUS` w jednostkach ŚWIATA** |
+| etykieta `Huragan, idzie na {{port}} — {{days}} dni` | 603 | `txt(11, bold)`, `setScale(1 / zoom)` |
+
+### Jedyna adnotacja na tym czarcie w jednostkach świata
+
+Wszystko inne rysowane nad morzem — etykiety, flagi, kursy, szpilki — ma stały
+rozmiar **ekranowy** dzielony przez zoom, bo jest **znakiem na papierze**, a znak
+nie rośnie, gdy się pochylisz bliżej. `HURRICANE_RADIUS` znakiem nie jest: to 260
+jednostek prawdziwego morza, w którym prawdziwe płótno idzie w strzępy.
+Narysowanie go w innej skali byłoby kłamstwem czartu o tym, ile jest miejsca,
+żeby go opłynąć.
+
+Skutek jest taki, że **pierścień czyta się dopiero po oddaleniu** (przy z1 mieści
+się na ekranie), a przy zoomie, jakim się pływa, jest łukiem przecinającym wodę
+przed dziobem — czyli dokładnie tym, czym sztorm jest widziany od środka.
+
+**Etykieta wisi przy krzyżyku środka, nie nad pierścieniem.** Zawieszona na
+górnej krawędzi pierścienia lądowała trzy tysiące pikseli poza ekranem i nikt jej
+nigdy nie zobaczył. Złapane na zrzucie ekranu, nie przez test.
+
+### Staleness liczy dystans, nie datę
+
+Oko jest jedyną rzeczą na tym czarcie, która przesuwa się **w sposób ciągły** —
+inne znaczniki ruszają się raz na dobę. Kluczem porównania jest więc pozycja
+zaokrąglona do `EYE_STEP = 8` jednostek: niewidoczne oku, a przy medianowym
+tempie sztormu to około dwudziestu przerysowań dziennie.
+
+### Tylko sztormy, o których wie
+
+`knownHurricanes` filtruje po `knownEventIds`; sama pogoda **nigdy** tego nie
+robi. Ta sama zasada co szpilki zdarzeń (v0.30.0) i romb rachuby (v0.33.0):
+czart niesie to, co kapitanowi powiedziano, a sztorm, o którym nikt nie
+wspomniał, jest niespodzianką, do której ma prawo.

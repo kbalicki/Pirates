@@ -4,6 +4,7 @@ import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
+import { pickNeighbours } from "../../core/systems/WorldEventSystem.ts";
 import { ERAS } from "../../core/data/eras.ts";
 import { factionId, portId as makePortId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
@@ -782,6 +783,37 @@ export class PreloadScene extends Phaser.Scene {
    * the town and puts the ship on the water outside it, close enough that the
    * approach dialogue opens by itself.
    */
+  /**
+   * Turn the staged one-town hurricane into the three-town road a real one has.
+   *
+   * `createEventWorld` stamps a single port for sixty days, which for every
+   * other event type is exactly right and for this one is the world **before**
+   * v0.45.0: one town, no road, an eye that never moves. A debug world that
+   * shows the release's own behaviour is worth more than a tidy helper — the
+   * lesson `?hunt=&meet=` taught in v0.34.0.
+   *
+   * The neighbours come from `pickNeighbours`, the same function the generator
+   * uses, so the staged road is a road the world could really have produced.
+   */
+  private stageStormRoad(
+    world: import("../../core/model/WorldState.ts").WorldState,
+    portKey: string,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    const id = `debug_hurricane_${portKey}`;
+    const picked = pickNeighbours(Object.keys(CITIES), portKey, 2, world.rng);
+    const day = world.time.day;
+    return {
+      ...world,
+      rng: picked.rng,
+      worldEvents: world.worldEvents.map(ev => ev.id !== id ? ev : {
+        ...ev,
+        ports: [portKey, ...picked.ports],
+        startDay: day,
+        endDay: day + PreloadScene.STORM_DEBUG_DAYS,
+      }),
+    };
+  }
+
   private createEventWorld(
     type: string,
     portKey: string,
@@ -1057,8 +1089,16 @@ export class PreloadScene extends Phaser.Scene {
     };
   }
 
+  /**
+   * The road a staged hurricane walks, and how long it takes over it.
+   *
+   * Five days is the middle of the table's own 3-7, so the eye crosses the
+   * staged road at the pace the world actually produces one.
+   */
+  private static readonly STORM_DEBUG_DAYS = 5;
+
   private createHurricaneWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
-    const staged = this.createEventWorld("hurricane", portKey);
+    const staged = this.stageStormRoad(this.createEventWorld("hurricane", portKey), portKey);
     const def = CITIES[portKey];
     const shipId = staged.player.shipId as string;
     const entity = staged.entities[shipId];

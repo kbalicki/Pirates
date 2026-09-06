@@ -6,6 +6,32 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.45.0.0",
+    date: "2026-09-06",
+    changes: [
+      "THE STORM WALKS",
+      "  A hurricane used to be three circles of ruin that stood perfectly",
+      "  still over three harbours for a week and then vanished. It has an",
+      "  eye now, and the eye makes its first landfall at the town in the",
+      "  headline and is over the last of them when the weather lifts",
+      "  ITS ROAD IS ON THE CHART, dashed between the towns it will cross,",
+      "  with the eye drawn at the reach it truly has. That is not decoration:",
+      "  a danger that moves and cannot be plotted is not weather, it is a",
+      "  dice roll, and the three warnings are a schedule now rather than a list",
+      "  AND THE TOWNS IT CROSSES ARE NEIGHBOURS AT LAST. A hurricane over",
+      "  Cartagena used to strike Bermuda in the same breath: the harbours a",
+      "  storm 'also hit' were drawn from the whole map, so they were three",
+      "  dots and not a road. They now lie within a day's blow of each other",
+      "  Which mends two more things nobody had noticed. Those harbours were",
+      "  rolled outside the world's own dice, so a saved game replayed itself",
+      "  differently; and a harvest could bless a town that grew neither sugar",
+      "  nor food, because only the first town was ever asked",
+      "  A storm crossing a huddle of towns still sits on the lot of them. It",
+      "  moves; on that geography it does not move away, and it says so",
+      "  Nothing new is stored. Your saves are unchanged",
+    ],
+  },
+  {
     version: "0.44.0.0",
     date: "2026-09-06",
     changes: [
