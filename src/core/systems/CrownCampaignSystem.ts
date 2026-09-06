@@ -51,6 +51,7 @@ import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { portFaction, SIZE_SOLDIERS } from "./SiegeSystem.ts";
 import { crownStrength, activeExpeditionFor, SIZE_PRIORITY } from "./ReconquestSystem.ts";
+import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
 
 // ── Constants ─────────────────────────────────────────────
 
@@ -60,6 +61,17 @@ export const CAMPAIGN_DAILY_BASE = 0.03;
 export const MAX_CAMPAIGNS_IN_FLIGHT = 2;
 /** Days the expedition is at sea, and the warning everyone gets. */
 export const CAMPAIGN_SAIL_DAYS: [number, number] = [10, 20];
+
+/**
+ * Days spent fitting out an invasion before it sails (v0.43.0).
+ *
+ * Longer than a relief squadron's: this is an armament raised for a war, not a
+ * garrison scraped together for a town that has just fallen. The passage itself
+ * is added to it and the band above clamps the result, so a campaign against
+ * the next island is quick and one across the whole sea is not.
+ */
+export const CAMPAIGN_FIT_DAYS = 10;
+export const CAMPAIGN_FIT_JITTER = 2;
 /** Days a town is left alone after any expedition has been fought over it. */
 export const CAMPAIGN_COOLDOWN_DAYS = 90;
 /**
@@ -210,7 +222,14 @@ export function launchCampaign(
     25,
     Math.round(SIZE_SOLDIERS[def.population] * sizeRoll.value * strength),
   );
-  const sailRoll = rngNextInt(sizeRoll.state, CAMPAIGN_SAIL_DAYS[0], CAMPAIGN_SAIL_DAYS[1]);
+  // One roll, as before — but what varies is the fitting out, not the voyage.
+  const sailRoll = rngNextInt(sizeRoll.state, -CAMPAIGN_FIT_JITTER, CAMPAIGN_FIT_JITTER);
+  const departure = expeditionDeparture(world, portKey, war.attacker as string);
+  const sailDays = clamp(
+    CAMPAIGN_SAIL_DAYS[0],
+    CAMPAIGN_SAIL_DAYS[1],
+    CAMPAIGN_FIT_DAYS + (departure?.passageDays ?? 5) + sailRoll.value,
+  );
 
   const vars: Record<string, string | number> = {
     port: def.name,
@@ -218,8 +237,9 @@ export function launchCampaign(
     holder: FACTIONS[war.defender]?.name ?? war.defender,
     soldiers,
     guns: Math.max(4, Math.round(soldiers / 4)),
-    days: sailRoll.value,
+    days: sailDays,
   };
+  if (departure?.origin) vars.origin = departure.origin;
 
   const involved = Object.keys(CITIES).filter(k => {
     const owner = portFaction(world, k) as string;
@@ -230,7 +250,7 @@ export function launchCampaign(
     id: `campaign_${portKey}_${world.time.day}`,
     type: "campaign",
     startDay: world.time.day,
-    endDay: world.time.day + sailRoll.value,
+    endDay: world.time.day + sailDays,
     ports: [portKey, ...involved],
     // Same order `resolveRelief` reads: the one coming, then the one holding.
     factions: [war.attacker, war.defender],

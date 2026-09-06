@@ -59,6 +59,7 @@ import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
+import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
 import {
   portFaction,
   portChangedHands,
@@ -80,8 +81,28 @@ export const RELIEF_GRACE_DAYS = 12;
 export const RELIEF_COOLDOWN_DAYS = 45;
 /** Daily chance of a squadron sailing, before every modifier below. */
 export const RELIEF_DAILY_BASE = 0.06;
-/** Days the squadron is at sea, and the warning the player gets. */
+/**
+ * Days the squadron is at sea, and the warning the player gets.
+ *
+ * Since v0.43.0 this is a **band, not a roll**: the days are the fitting-out
+ * below plus the real passage from the harbour she sails from, and this pair
+ * clamps the answer into the envelope the rest of the module was balanced
+ * against. Nothing lands outside it, and where inside it a town lands is now
+ * decided by where the town *is*.
+ */
 export const RELIEF_SAIL_DAYS: [number, number] = [6, 14];
+
+/**
+ * Days spent fitting out before she sails at all.
+ *
+ * Most of what the old dice roll was measuring. A relief squadron for a
+ * neighbouring island was never a fortnight at sea; it was a fortnight finding
+ * men, powder and a captain, and then two days' sail.
+ */
+export const RELIEF_FIT_DAYS = 7;
+
+/** How much the fitting-out varies, either way. The one roll left in it. */
+export const RELIEF_FIT_JITTER = 2;
 
 /**
  * How much a crown wants each kind of town back.
@@ -342,6 +363,8 @@ export type Expedition = {
   soldiers: number;
   guns: number;
   sailDays: number;
+  /** The harbour she was fitted out in, settled once and stamped (v0.43.0). */
+  origin?: string;
 };
 
 /**
@@ -373,10 +396,23 @@ export function expeditionFor(
     20,
     Math.round(SIZE_SOLDIERS[def.population] * sizeRoll.value * escalation * strength),
   );
-  const sailRoll = rngNextInt(sizeRoll.state, RELIEF_SAIL_DAYS[0], RELIEF_SAIL_DAYS[1]);
+  // One roll, as before, so the RNG stream advances exactly as it did — but it
+  // is the *fitting out* that varies now, not the whole voyage (v0.43.0).
+  const sailRoll = rngNextInt(sizeRoll.state, -RELIEF_FIT_JITTER, RELIEF_FIT_JITTER);
+  const departure = expeditionDeparture(world, portKey, claimant);
+  const sailDays = clamp(
+    RELIEF_SAIL_DAYS[0],
+    RELIEF_SAIL_DAYS[1],
+    RELIEF_FIT_DAYS + (departure?.passageDays ?? 3) + sailRoll.value,
+  );
 
   return {
-    expedition: { soldiers, guns: Math.max(4, Math.round(soldiers / 4)), sailDays: sailRoll.value },
+    expedition: {
+      soldiers,
+      guns: Math.max(4, Math.round(soldiers / 4)),
+      sailDays,
+      origin: departure?.origin,
+    },
     rng: sailRoll.state,
   };
 }
@@ -406,6 +442,11 @@ export function launchExpedition(
     guns: expedition.guns,
     days: expedition.sailDays,
   };
+  // The harbour she sailed from, recorded rather than re-derived: a departure
+  // worked out afresh every frame moves when the world moves, and a squadron
+  // whose course jumps because her home port changed hands mid-voyage is a
+  // squadron the chart is lying about (v0.43.0).
+  if (expedition.origin) vars.origin = expedition.origin;
 
   const event: WorldEventState = {
     id: `reconquest_${portKey}_${world.time.day}`,

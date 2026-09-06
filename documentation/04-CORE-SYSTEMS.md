@@ -21,6 +21,7 @@
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość |
+| ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -606,6 +607,60 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## Odpowiedź korony przechodzi przez to samo morze (v0.43.0)
+
+Do v0.43.0 eskadra ratunkowa dla Vera Cruz była na morzu **dokładnie tyle samo**,
+co eskadra dla sąsiedniej wyspy: `sailDays` był rzutem `rngNextInt(6, 14)` bez
+żadnego odniesienia do mapy. Świat miał geografię, a korona z niej nie korzystała.
+
+Do tego port wyjścia był **wyprowadzany od nowa przy każdym rysowaniu** —
+najbliższa kolonia w linii prostej. Kurs eskadry przeskakiwał, gdy jej port
+macierzysty zmieniał ręce w trakcie rejsu.
+
+### `expeditionDeparture(world, target, claimant)`
+
+Jedna funkcja odpowiada na oba pytania, **raz**, w chwili wydania rozkazu:
+
+1. Odległość w linii prostej wybiera **krótką listę** (`DEPARTURE_SHORTLIST` 4) —
+   jest darmowa i mniej więcej trafna. Port trzymany bije port tylko założony,
+   dokładnie jak przedtem.
+2. Dla tej czwórki liczony jest **prawdziwy koszt przejścia z prądem**
+   (`findSeaPassage(..., currentAt)`) i wygrywa najkrótszy w **dniach**.
+3. `passageDays = cost × SEA_CELL / SQUADRON_SPEED`, gdzie `SQUADRON_SPEED = 120`
+   — to samo 120 co u nazwanych statków, bo eskadra idzie tempem swoich
+   transportowców, a transportowce to kupcy z żołnierzami w ładowni.
+
+**Efekt sprawdzalny na czarcie:** najbliższym hiszpańskim portem Cartageny jest
+Puerto Bello, 300 jednostek na zachód. Puerto Cabello leży 534 jednostki na
+wschód — a Prąd Karaibski biegnie na zachód, więc eskadra z Puerto Cabello
+**zjeżdża** do Cartageny, a ta z Puerto Bello **halsuje pod prąd**. Dalszy port
+jest szybszy, i to on jest wybierany.
+
+### Dni: kostka na uzbrojenie, mapa na rejs
+
+```
+RELIEF_FIT_DAYS   = 7  ± RELIEF_FIT_JITTER 2     clamp [6, 14]
+CAMPAIGN_FIT_DAYS = 10 ± CAMPAIGN_FIT_JITTER 2   clamp [10, 20]
+```
+
+Stare pasma zostają jako **twarde ograniczenia**, więc nic nie wypada poza
+obwiednię, do której reszta modułu była wyważona. Zmienia się tylko to, **gdzie
+w paśmie** ląduje dane miasto — i decyduje o tym, gdzie ono leży.
+
+Pomiar na prawdziwej linii brzegowej: przejście własnej korony ma medianę **2 dni**
+(max 12), obcej korony medianę **4 dni** (max 20). Reszta starego rzutu 6-14 to
+było w istocie uzbrajanie, nie żeglowanie — i teraz jest tym nazwane.
+
+**Rzut RNG jest dalej dokładnie jeden**, żeby strumień losowy przesuwał się tak
+samo jak przedtem.
+
+### Port wyjścia jest stemplowany, nie zgadywany
+
+`vars.origin` zapisany w chwili rozkazu; `originPortFor` czyta go pierwszy, a
+dawne wyprowadzanie zostaje **wyłącznie** jako awaryjne dla zapisów sprzed tej
+wersji. To reguła „fakt stempluj przy zdarzeniu" z TODO — wyprowadzanie go z
+dzisiejszego świata przepisuje historię.
 
 ## Kurs liczony czasem, nie odległością (v0.42.0)
 

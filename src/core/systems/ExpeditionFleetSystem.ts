@@ -56,7 +56,8 @@ import type { WorldEvent } from "../model/Events.ts";
 import type { PortId } from "../model/ids.ts";
 import { entityId, factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES } from "../data/cities.ts";
-import { findSeaPath, pathLength } from "../services/Pathfinding.ts";
+import { findSeaPath, findSeaPassage, pathLength, SEA_CELL } from "../services/Pathfinding.ts";
+import { currentAt } from "./CurrentSystem.ts";
 import { FACTIONS } from "../data/factions.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { LANDMASSES } from "../data/geography.ts";
@@ -162,7 +163,89 @@ export function nearestWater(pos: Vec2): Vec2 | undefined {
  * `launchCampaign` predate this module and stay unaware of it, so an expedition
  * already at sea in an old save gets a route the same way a new one does.
  */
+/**
+ * World units a squadron makes good in a day (v0.43.0).
+ *
+ * The same 120 the named ships keep to, and for the same reason: a squadron
+ * sails at the pace of its transports, transports are merchantmen with soldiers
+ * in them, and a hull crossing the Caribbean on business does not make her
+ * best speed for twenty-four hours a day.
+ */
+export const SQUADRON_SPEED = 120;
+
+/** How many candidate harbours are costed properly before one is chosen. */
+const DEPARTURE_SHORTLIST = 4;
+
+/**
+ * Where a crown would actually fit out for this town, and how long the passage
+ * takes (v0.43.0).
+ *
+ * Until now the answer to the first question was "the nearest port as the crow
+ * flies" and the answer to the second was **a dice roll with no reference to
+ * the map at all** — a relief squadron for Vera Cruz was at sea exactly as long
+ * as one for the next island. The world had a geography and the crown did not
+ * use it.
+ *
+ * Both are settled here, once, at the moment the squadron is ordered — and
+ * stamped into the event, because a departure derived afresh every frame moves
+ * when the world moves (see TODO: derived vs recorded facts). The straight-line
+ * distance still picks the shortlist, because it is free and roughly right; the
+ * passage is then costed properly for those few, **with the current**, because
+ * that is the difference between the nearest harbour and the nearest harbour
+ * *to windward*.
+ */
+export function expeditionDeparture(
+  world: WorldState,
+  targetKey: string,
+  claimant: string,
+): { origin: string; passageDays: number } | undefined {
+  const target = CITIES[targetKey];
+  if (!target) return undefined;
+
+  const candidates: { key: string; d2: number; held: boolean }[] = [];
+  for (const [key, def] of Object.entries(CITIES)) {
+    if (key === targetKey) continue;
+    const held = (portFaction(world, key) as string) === claimant;
+    const founded = (def.factionId as unknown as string) === claimant;
+    if (!held && !founded) continue;
+    const dx = def.pos.x - target.pos.x;
+    const dy = def.pos.y - target.pos.y;
+    candidates.push({ key, d2: dx * dx + dy * dy, held });
+  }
+  if (candidates.length === 0) return undefined;
+
+  // A harbour the crown actually holds beats one it merely founded, exactly as
+  // before; distance only decides within each group.
+  const anyHeld = candidates.some(c => c.held);
+  const pool = (anyHeld ? candidates.filter(c => c.held) : candidates)
+    .sort((a, b) => a.d2 - b.d2)
+    .slice(0, DEPARTURE_SHORTLIST);
+
+  const to = nearestWater(target.pos) ?? target.pos;
+  let best: { origin: string; passageDays: number } | undefined;
+  let bestCost = Infinity;
+  for (const c of pool) {
+    const from = nearestWater(CITIES[c.key].pos) ?? CITIES[c.key].pos;
+    const passage = findSeaPassage(from, to, currentAt);
+    if (!passage) continue;
+    if (passage.cost < bestCost) {
+      bestCost = passage.cost;
+      best = {
+        origin: c.key,
+        passageDays: Math.max(1, Math.round((passage.cost * SEA_CELL) / SQUADRON_SPEED)),
+      };
+    }
+  }
+  return best ?? { origin: pool[0].key, passageDays: 1 };
+}
+
 export function originPortFor(world: WorldState, event: WorldEventState): string | undefined {
+  // The harbour the squadron actually sailed from, stamped when it was ordered
+  // (v0.43.0). Derived afresh below only for a save written before that, or an
+  // event that never carried one.
+  const stamped = event.vars?.origin;
+  if (typeof stamped === "string" && CITIES[stamped]) return stamped;
+
   const targetKey = event.ports[0];
   const target = CITIES[targetKey];
   const claimant = event.factions[0];
@@ -218,7 +301,9 @@ export function expeditionCourse(world: WorldState, event: WorldEventState): Vec
 
   const from = nearestWater(origin.pos) ?? origin.pos;
   const to = nearestWater(target.pos) ?? target.pos;
-  return findSeaPath(from, to) ?? [origin.pos, target.pos];
+  // The course a squadron would really steer, riding the water where it can
+  // (v0.43.0) — the same sea the trade has been crossing since v0.42.0.
+  return findSeaPath(from, to, currentAt) ?? [origin.pos, target.pos];
 }
 
 /**

@@ -11,6 +11,8 @@ import {
   syncLedger,
   scatterExpedition,
   tickExpeditionFleets,
+  expeditionDeparture,
+  SQUADRON_SPEED,
   MATERIALIZE_RANGE,
   SOLDIERS_PER_TRANSPORT,
   GUNS_PER_ESCORT,
@@ -156,7 +158,86 @@ function makeWorld(over: {
 
 // ── Where it is ───────────────────────────────────────────
 
+describe("expeditionDeparture — the harbour, and how long the water takes", () => {
+  // Until v0.43.0 the second half of this did not exist: `sailDays` was a dice
+  // roll with no reference to the map, so a relief squadron for Vera Cruz was
+  // at sea exactly as long as one for the next island. The world had a
+  // geography and the crown did not use it.
+
+  it("sails from a harbour of its own crown", () => {
+    const d = expeditionDeparture(makeWorld(), TARGET, "spain")!;
+    expect(d).toBeDefined();
+    expect(CITIES[d.origin].factionId as unknown as string).toBe("spain");
+    expect(d.origin).not.toBe(TARGET);
+  });
+
+  it("sails from the harbour to windward, not the nearer one to leeward", () => {
+    // The whole point, and it is checkable on the chart. Cartagena's nearest
+    // Spanish harbour is Porto Bello, 300 units west of it. Puerto Cabello is
+    // 534 units east — and the Caribbean Current runs west, so a squadron from
+    // Puerto Cabello runs down to Cartagena while one from Porto Bello beats up
+    // against it. The further harbour is the quicker one.
+    const dist = (k: string) => Math.hypot(
+      CITIES[k].pos.x - CITIES[TARGET].pos.x,
+      CITIES[k].pos.y - CITIES[TARGET].pos.y,
+    );
+    // Leave Spain exactly two harbours to choose between.
+    const ports: Record<string, PortRuntimeState> = {
+      [TARGET]: makePort(TARGET, { factionId: factionId("pirates"), capturedDay: 60 }),
+    };
+    for (const key of Object.keys(CITIES)) {
+      if (key === TARGET || key === NEIGHBOUR || key === "puerto_cabello") continue;
+      if ((CITIES[key].factionId as unknown as string) !== "spain") continue;
+      ports[key] = makePort(key, { factionId: factionId("england") });
+    }
+    const d = expeditionDeparture(makeWorld({ ports }), TARGET, "spain")!;
+    expect(d.origin).toBe("puerto_cabello");
+    expect(dist("puerto_cabello")).toBeGreaterThan(dist(NEIGHBOUR));
+  });
+
+  it("still will not sail from a harbour the crown has lost", () => {
+    const ports: Record<string, PortRuntimeState> = {
+      [TARGET]: makePort(TARGET, { factionId: factionId("pirates"), capturedDay: 60 }),
+      puerto_cabello: makePort("puerto_cabello", { factionId: factionId("england") }),
+    };
+    const d = expeditionDeparture(makeWorld({ ports }), TARGET, "spain")!;
+    expect(d.origin).not.toBe("puerto_cabello");
+    expect(d.origin).not.toBe(TARGET);
+  });
+
+  it("counts the passage in days, and a longer one takes longer", () => {
+    const near = expeditionDeparture(makeWorld(), TARGET, "spain")!;
+    const far = expeditionDeparture(makeWorld(), "vera_cruz", "england")!;
+    expect(near.passageDays).toBeGreaterThanOrEqual(1);
+    expect(far.passageDays).toBeGreaterThan(near.passageDays);
+  });
+
+  it("reckons a squadron at its transports' pace, not a frigate's", () => {
+    expect(SQUADRON_SPEED).toBe(120);
+  });
+
+  it("says nothing when the crown has nowhere at all to sail from", () => {
+    expect(expeditionDeparture(makeWorld(), TARGET, "nobody")).toBeUndefined();
+  });
+});
+
 describe("originPortFor — which harbour the squadron sailed from", () => {
+  it("uses the harbour stamped on the event, not today's nearest", () => {
+    // A departure worked out afresh every frame moves when the world moves.
+    // Stamped once at the order, the chart stops lying about where she came
+    // from when her home port changes hands mid-voyage (v0.43.0).
+    const event = reconquestEvent({
+      vars: { ...reconquestEvent().vars, origin: "vera_cruz" },
+    });
+    expect(originPortFor(makeWorld(), event)).toBe("vera_cruz");
+  });
+
+  it("ignores a stamp that names no town at all", () => {
+    const event = reconquestEvent({ vars: { ...reconquestEvent().vars, origin: "atlantis" } });
+    expect(originPortFor(makeWorld(), event)).not.toBe("atlantis");
+    expect(originPortFor(makeWorld(), event)).toBeDefined();
+  });
+
   it("picks the nearest colony the sending crown actually holds", () => {
     const w = makeWorld();
     const origin = originPortFor(w, reconquestEvent())!;

@@ -446,6 +446,48 @@ describe("launchExpedition", () => {
     expect(daysUntilRelief(next, FORT)).toBe(Number(event.vars.days));
   });
 
+  it("records the harbour she sailed from instead of re-deriving it", () => {
+    // v0.43.0: a departure worked out afresh every frame moves when the world
+    // moves. Stamped once, the chart stops lying about her course.
+    const { event } = launchExpedition(makeWorld(), FORT, makeWorld().rng);
+    expect(typeof event.vars.origin).toBe("string");
+    expect(CITIES[event.vars.origin as string]).toBeDefined();
+    expect(event.vars.origin).not.toBe(FORT);
+  });
+
+  it("keeps the days inside the band the module was balanced against", () => {
+    // The dice used to decide the whole voyage; now they decide the fitting out
+    // and the map decides the passage. The band is unchanged either way.
+    for (let seed = 1; seed <= 40; seed++) {
+      const w = { ...makeWorld(), rng: { seed, state: seed } };
+      const { event } = launchExpedition(w, FORT, w.rng);
+      const days = Number(event.vars.days);
+      expect(days, `seed ${seed}`).toBeGreaterThanOrEqual(RELIEF_SAIL_DAYS[0]);
+      expect(days, `seed ${seed}`).toBeLessThanOrEqual(RELIEF_SAIL_DAYS[1]);
+    }
+  });
+
+  it("takes longer to reach a town on the other side of the sea", () => {
+    // The thing that did not exist before: geography in the crown's answer.
+    const near = { ...makeWorld(), rng: { seed: 7, state: 7 } };
+    const days = (portKey: string) => {
+      const w = {
+        ...near,
+        ports: {
+          ...near.ports,
+          [portKey]: {
+            ...(near.ports[portKey] ?? near.ports[FORT]),
+            portKey,
+            factionId: factionId("pirates"),
+            capturedDay: 1,
+          },
+        },
+      } as typeof near;
+      return Number(launchExpedition(w, portKey, w.rng).event.vars.days);
+    };
+    expect(days("vera_cruz")).toBeGreaterThan(days("santa_marta"));
+  });
+
   it("names the crown that lost the town, not the one holding it", () => {
     const world = makeWorld();
     const { event } = launchExpedition(world, FORT, world.rng);

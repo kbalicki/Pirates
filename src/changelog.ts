@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.43.0.0",
+    date: "2026-09-06",
+    changes: [
+      "THE CROWN HAS TO CROSS THE SAME SEA",
+      "  A relief squadron for Vera Cruz used to be at sea exactly as long as",
+      "  one for the next island: the days were a dice roll with no reference",
+      "  to the map at all. The world had a geography and the crown did not use it",
+      "  NOW THE DICE DECIDE THE FITTING OUT AND THE MAP DECIDES THE VOYAGE.",
+      "  Where in the old band a squadron lands is settled by where the town is",
+      "  — and the band itself is unchanged, so nothing arrives sooner or later",
+      "  than it could before",
+      "  SHE SAILS FROM THE HARBOUR TO WINDWARD, not the nearest one. A relief",
+      "  for Cartagena now comes from Puerto Cabello, five hundred units east",
+      "  and downhill on the Caribbean Current, instead of Porto Bello three",
+      "  hundred units west and dead against it",
+      "  A squadron is reckoned at her transports' pace, not a frigate's",
+      "  AND HER DEPARTURE IS RECORDED, NOT GUESSED. The harbour she sailed",
+      "  from is stamped the day she is ordered, so her course on the chart no",
+      "  longer jumps when her home port changes hands behind her",
+      "  Her course rides the water now, like everybody else's since v0.41.0",
+      "  Nothing new is stored: the harbour goes in the event she already had",
+    ],
+  },
+  {
     version: "0.42.0.0",
     date: "2026-09-06",
     changes: [

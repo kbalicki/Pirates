@@ -22,6 +22,7 @@ function capitalise(word: string): string {
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { fogPatch, fogNight } from "../../core/systems/FogSystem.ts";
 import { CURRENTS } from "../../core/data/currents.ts";
+import { expeditionDeparture } from "../../core/systems/ExpeditionFleetSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -560,7 +561,21 @@ export class PreloadScene extends Phaser.Scene {
           factions: [def.factionId as string, "pirates"],
           severity: 3 as const,
           headline: "news.reconquest",
-          vars: { port: def.name, faction: def.factionId as string, soldiers, guns: Math.round(soldiers / 4), days: 8 },
+          // The harbour the real launcher would have chosen (v0.43.0), so the
+          // debug world draws the course the game would draw rather than
+          // whichever port is nearest as the crow flies. `days` stays at eight
+          // on purpose: `endDay` is today here, because this harness exists to
+          // resolve the landing at once.
+          vars: {
+            port: def.name,
+            faction: def.factionId as string,
+            soldiers,
+            guns: Math.round(soldiers / 4),
+            days: 8,
+            ...(expeditionDeparture(base, portKey, def.factionId as unknown as string)?.origin
+              ? { origin: expeditionDeparture(base, portKey, def.factionId as unknown as string)!.origin }
+              : {}),
+          },
         },
       ],
     };

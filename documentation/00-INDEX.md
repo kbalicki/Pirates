@@ -59,3 +59,4 @@
 - [SESSION-2026-09-06C.md](SESSION-2026-09-06C.md) — v0.39.0.0 → v0.40.0.0: mgła — trzecia pogoda i pierwsza, która nie jest zagrożeniem: tnie oczy obu stronom
 - [SESSION-2026-09-06D.md](SESSION-2026-09-06D.md) — v0.40.0.0 → v0.41.0.0: prądy morskie — mapa dostaje kierunek; prąd znosi statek, nigdy nie rusza steru
 - [SESSION-2026-09-06E.md](SESSION-2026-09-06E.md) — v0.41.0.0 → v0.42.0.0: handel uczy się prądu — szlak liczony w dniach, nie w milach; 12 z 82 szlaków zmienia ręce
+- [SESSION-2026-09-06F.md](SESSION-2026-09-06F.md) — v0.42.0.0 → v0.43.0.0: korona przechodzi przez to samo morze — port wyjścia z nawietrznej, dni z mapy zamiast z kostki

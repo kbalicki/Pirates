@@ -284,6 +284,27 @@ describe("fitting out", () => {
     expect(event.endDay).toBe(world.time.day + days);
   });
 
+  it("records the harbour the armament sailed from", () => {
+    // v0.43.0: settled once, at the order, rather than re-derived every frame.
+    const world = makeWorld();
+    const { event } = launchCampaign(world, spainOnEngland, ENGLISH, world.rng);
+    expect(typeof event.vars.origin).toBe("string");
+    expect(event.vars.origin).not.toBe(ENGLISH);
+  });
+
+  it("keeps the days in band with the map inside them, whatever the dice say", () => {
+    // The roll decides the fitting out now; the passage decides the rest.
+    for (let seed = 1; seed <= 30; seed++) {
+      const world = makeWorld();
+      const w = { ...world, rng: { seed, state: seed } };
+      const { event } = launchCampaign(w, spainOnEngland, ENGLISH, w.rng);
+      const days = Number(event.vars.days);
+      expect(days, `seed ${seed}`).toBeGreaterThanOrEqual(CAMPAIGN_SAIL_DAYS[0]);
+      expect(days, `seed ${seed}`).toBeLessThanOrEqual(CAMPAIGN_SAIL_DAYS[1]);
+      expect(event.endDay - event.startDay).toBe(days);
+    }
+  });
+
   it("puts the news in both empires' harbours, so it can reach the player", () => {
     const world = makeWorld();
     const { event } = launchCampaign(world, spainOnEngland, ENGLISH, world.rng);
