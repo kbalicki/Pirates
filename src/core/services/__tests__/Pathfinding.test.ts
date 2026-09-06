@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import {
   findSeaPath,
+  findSeaPassage,
+  PASSAGE_SPEED,
   isSeaClear,
   isSeaCell,
   pathLength,
@@ -112,6 +114,101 @@ describe("with the fallback coastline", () => {
     // Without the rebuild this would still answer "land" from the cached grid.
     const cuba = getFallbackLandmasses().find(l => l.id === "cuba")!;
     expect(isSeaCell({ x: (cuba.bbox!.minX + cuba.bbox!.maxX) / 2, y: (cuba.bbox!.minY + cuba.bbox!.maxY) / 2 })).toBe(true);
+  });
+});
+
+// ===========================================================================
+// The shortest course is not the quickest one (v0.42.0)
+// ===========================================================================
+
+/**
+ * A made-up current running due east across the middle of the chart, strong
+ * enough to matter to a merchantman. The real table lives in `data/currents.ts`;
+ * what is asserted here is the arithmetic, not the geography.
+ */
+const EASTERLY_SET = 0.06;
+const eastward = () => ({ x: EASTERLY_SET, y: 0 });
+const noSet = () => ({ x: 0, y: 0 });
+
+describe("a passage costed in time", () => {
+  beforeEach(restoreEmpty);
+
+  it("is reckoned against a laden merchantman, not a frigate", () => {
+    // The whole difference between a current that matters and one that does
+    // not: four knots is two thirds of a fluyt and a third of a frigate.
+    expect(PASSAGE_SPEED).toBeCloseTo(0.125, 6);
+  });
+
+  it("costs a still sea exactly its length, so nothing changed without a current", () => {
+    const a = { x: 200, y: 200 };
+    const b = { x: 900, y: 200 };
+    const plain = findSeaPassage(a, b)!;
+    expect(plain.cost).toBeCloseTo(plain.length / SEA_CELL, 9);
+    expect(findSeaPassage(a, b, noSet)!.cost).toBeCloseTo(plain.cost, 9);
+  });
+
+  it("is cheaper with the set than against it, over the same water", () => {
+    const west = { x: 200, y: 200 };
+    const east = { x: 1400, y: 200 };
+    const withIt = findSeaPassage(west, east, eastward)!;
+    const againstIt = findSeaPassage(east, west, eastward)!;
+    expect(withIt.length).toBeCloseTo(againstIt.length, 6);   // the same water...
+    expect(withIt.cost).toBeLessThan(againstIt.cost);          // ...not the same passage
+  });
+
+  it("is asymmetric, which is the point", () => {
+    const a = { x: 300, y: 700 };
+    const b = { x: 1500, y: 700 };
+    expect(findSeaPassage(a, b, eastward)!.cost)
+      .not.toBeCloseTo(findSeaPassage(b, a, eastward)!.cost, 3);
+  });
+
+  it("prefers a further supplier who runs down to a nearer one who beats up", () => {
+    // What a lane is ranked on. Both ship *to* the port; the set runs east.
+    const port = { x: 800, y: 400 };
+    const nearButFoul = { x: 1100, y: 400 };  // 300 units, and dead against
+    const farButFair = { x: 300, y: 400 };    // 500 units, and dead with
+    const foul = findSeaPassage(nearButFoul, port, eastward)!;
+    const fair = findSeaPassage(farButFair, port, eastward)!;
+    expect(fair.length).toBeGreaterThan(foul.length);   // further in miles...
+    expect(fair.cost).toBeLessThan(foul.cost);          // ...nearer in days
+  });
+
+  it("leaves a course across the set alone", () => {
+    const north = findSeaPassage({ x: 700, y: 200 }, { x: 700, y: 1000 }, eastward)!;
+    expect(north.cost).toBeCloseTo(north.length / SEA_CELL, 6);
+  });
+
+  it("hands the same path back as findSeaPath, which is still the old signature", () => {
+    const a = { x: 100, y: 100 };
+    const b = { x: 800, y: 800 };
+    expect(findSeaPath(a, b)).toEqual(findSeaPassage(a, b)!.path);
+  });
+});
+
+describe("a passage costed in time, with a coastline in the way", () => {
+  beforeEach(() => {
+    setLandmasses(getFallbackLandmasses());
+    resetSeaGrid();
+  });
+  afterEach(restoreEmpty);
+
+  it("still goes round the island, and still says how long it took", () => {
+    const cuba = LANDMASSES.find(l => l.id === "cuba")!;
+    const north = { x: (cuba.bbox!.minX + cuba.bbox!.maxX) / 2, y: cuba.bbox!.minY - 120 };
+    const south = { x: (cuba.bbox!.minX + cuba.bbox!.maxX) / 2, y: cuba.bbox!.maxY + 120 };
+    const passage = findSeaPassage(north, south, eastward)!;
+    expect(passage.path.length).toBeGreaterThan(2);
+    for (const p of passage.path) expect(pointInLandmass(p, cuba)).toBe(false);
+    expect(passage.cost).toBeGreaterThan(0);
+  });
+
+  it("costs the beat round it more than the run", () => {
+    const cuba = LANDMASSES.find(l => l.id === "cuba")!;
+    const west = { x: cuba.bbox!.minX - 150, y: (cuba.bbox!.minY + cuba.bbox!.maxY) / 2 };
+    const east = { x: cuba.bbox!.maxX + 150, y: (cuba.bbox!.minY + cuba.bbox!.maxY) / 2 };
+    expect(findSeaPassage(west, east, eastward)!.cost)
+      .toBeLessThan(findSeaPassage(east, west, eastward)!.cost);
   });
 });
 

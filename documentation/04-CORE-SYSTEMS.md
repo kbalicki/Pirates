@@ -20,6 +20,7 @@
 | WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
+| Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -605,6 +606,68 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## Kurs liczony czasem, nie odległością (v0.42.0)
+
+Od v0.41.0 morze się porusza. Żegluga o tym nie wiedziała: każdy szlak na czarcie
+był dalej **najkrótszą** drogą między dwiema przystaniami — co dla statku
+żaglowego nigdy nie znaczyło „najszybszą".
+
+`findSeaPassage(from, to, setAt)` odpowiada na oba pytania naraz. Każdy krok A\*
+jest wyceniany jako **czas**: komórka, w którą wchodzi się z prądem, jest tańsza
+niż ta, w którą wchodzi się pod prąd; kurs wygina się, żeby jechać na wodzie; a
+zwracany `cost` to czas przejścia w szerokościach komórki po wodzie stojącej.
+
+```ts
+factor = clamp(1 + (set · kierunekKroku) / PASSAGE_SPEED, FOUL_LIMIT, FAIR_LIMIT)
+koszt  = krok * karaPrzybrzeżna / factor
+```
+
+### `PASSAGE_SPEED` to kupiec, nie fregata
+
+`PASSAGE_SPEED = 0.125` — sześć węzłów obładowanego kupca, nie dwanaście fregaty.
+To jest **cała różnica między prądem, który się liczy, a takim, który się nie
+liczy**: cztery węzły to dwie trzecie prędkości fluity i jedna trzecia fregaty.
+Zmierzone na prawdziwej linii brzegowej: przy prędkości fregaty zmienia właściciela
+dziesięć szlaków, przy prędkości kupca — dwanaście, i dopiero wtedy wśród nich są
+wszystkie te, które przestają zaopatrywać Małe Antyle z zawietrznej.
+
+### Heurystyka musi zejść razem z kosztem
+
+Ocenowa odległość oktylowa zakłada koszt kroku ≥ 1. Z prądem najtańszy krok
+kosztuje `1 / FAIR_LIMIT`, więc heurystyka jest przez to mnożona — A\* z
+heurystyką optymistyczną jest dalej poprawne, z zachłanną **nie jest**.
+
+### Bez `setAt` to co do bitu stara funkcja
+
+`findSeaPath(from, to)` bez prądu zwraca dokładnie to, co zwracała, i `cost`
+równy `length / SEA_CELL`. Dzięki temu wejście w tę zmianę było opt-in i dało się
+je zmierzyć przed włączeniem.
+
+### Co to zmieniło w świecie
+
+`TradeRouteSystem` rankuje dostawców po `cost`, nie po `pathLength` (limit
+`MAX_LANE_LENGTH` **dalej jest na odległości** — pomiar pokazał, że limit czasowy
+gryzie akurat te szlaki pod prąd, które mają być trudne, a nie niemożliwe).
+
+Zmierzone na prawdziwej linii brzegowej: **12 z 82 szlaków zmienia dostawcę**,
+2 stają się importem zamorskim, 68 zostaje bez zmian. Przykłady:
+
+```
+st_eustatius|food  port_royal → bermuda      (1018 → 1311)
+st_martin|food     port_royal → bermuda      (1037 → 1251)
+antigua|food       port_royal → bermuda      (1096 → 1350)
+san_juan|food      port_royal → st_augustine ( 807 → 1470)
+curacao|sugar_cane santo_domingo → trinidad  ( 433 →  568)
+barbados|tobacco   margarita → st_martin     ( 349 →  476)
+```
+
+Wszystkie w jedną stronę: **Małe Antyle przestają być zaopatrywane z zawietrznej.**
+Osadzone bogactwo po 400 dniach: Port Royale 646,1 → 649,1, Santiago 617,1 → 619,6,
+Hawana i Santo Domingo bez zmian. Dwa miasta bogatsze, żadne biedniejsze.
+
+**Szlak jest teraz jednokierunkowy**: kurs tam nie jest kursem z powrotem, bo morze
+nie jest. `T` + `C` naraz pokazują to na mapie.
 
 ## CurrentSystem (v0.41.0)
 

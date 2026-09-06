@@ -22,11 +22,71 @@
  *   test asserting "there is a path" is asserting nothing about geography — and
  *   the callers stay correct either way, because a straight line over open
  *   water is a legitimate answer.
+ *
+ * ## The shortest course is not the quickest one (v0.42.0)
+ *
+ * Since v0.41.0 the sea moves. A ship that sails west along the Spanish Main
+ * has four knots of Caribbean Current under her and one that beats east against
+ * the Straits of Florida is giving a third of her speed away, so "how far" and
+ * "how long" stopped being the same question — and this module only ever
+ * answered the first one.
+ *
+ * `findSeaPassage` answers both. Hand it a `setAt` and every step of the A* is
+ * costed as *time* rather than distance: a cell entered with the current is
+ * cheaper than one entered against it, the course bends to ride the water, and
+ * the `cost` that comes back is a passage time in still-water cell-widths.
+ *
+ * Two consequences worth knowing before using it:
+ *
+ *   - **it is asymmetric.** The quick way from Havana to Cartagena is not the
+ *     reverse of the quick way back, which is exactly the shape of these waters
+ *     and the reason the Spanish sailed a circuit rather than a line;
+ *   - **with no `setAt` it is bit-for-bit the old function.** Every existing
+ *     caller and every settled number in the economy is untouched until it opts
+ *     in.
  */
 
 import type { Vec2 } from "../model/WorldState.ts";
 import { LANDMASSES, landmassGeneration } from "../data/geography.ts";
-import { pointInLandmass, vec2Dist } from "./Geometry.ts";
+import { pointInLandmass, vec2Dist, clamp } from "./Geometry.ts";
+
+/**
+ * What the water does at a point, in world units per tick. Passed in rather
+ * than imported so that `services` keeps its back to `systems`, and so a test
+ * can hand this a current of its own.
+ */
+export type SetQuery = (p: Vec2) => Vec2;
+
+/**
+ * The speed a passage is reckoned against — **a laden merchantman's six knots,
+ * not a frigate's twelve.**
+ *
+ * This is the whole difference between a current that matters and one that does
+ * not. Cargo is carried by fluyts and merchantmen, and a four-knot current is
+ * two thirds of a fluyt's speed against a third of a frigate's. Reckoning a
+ * trade route at a warship's pace understates the sea by half, and measured on
+ * the real coastline it is the difference between ten lanes changing hands and
+ * twelve — including every one that stops supplying the Lesser Antilles from
+ * leeward, which is the historical shape of the thing.
+ */
+export const PASSAGE_SPEED = 0.125;
+
+/**
+ * The most a fair current may cut a step's cost, and the most a foul one may
+ * add. Wide enough that nothing in the present table touches them, narrow
+ * enough that a future current stronger than the ship can neither make a
+ * passage free nor infinite.
+ */
+const FAIR_LIMIT = 1.7;
+const FOUL_LIMIT = 0.35;
+
+export type SeaPassage = {
+  path: Vec2[];
+  /** Course over the ground, in world units. */
+  length: number;
+  /** Passage time, in still-water cell widths. Equal to `length / SEA_CELL` with no current. */
+  cost: number;
+};
 
 /** World size, matching the map bounds used everywhere else. */
 const MAP_W = 3200;
@@ -175,9 +235,39 @@ function cellCentre(cx: number, cy: number): Vec2 {
  * points are not connected by sea at grid resolution (a landlocked query, or a
  * strait narrower than a cell).
  */
-export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
+export function findSeaPath(from: Vec2, to: Vec2, setAt?: SetQuery): Vec2[] | null {
+  return findSeaPassage(from, to, setAt)?.path ?? null;
+}
+
+/**
+ * How much of a step's cost a current pays for, as a divisor.
+ *
+ * Above 1 the water is helping, below 1 it is not. Clamped at both ends so that
+ * a current stronger than the ship — which cannot happen with the present table
+ * but might with the next one — can neither make a step free nor infinite.
+ */
+function setFactor(set: Vec2, ux: number, uy: number, speed: number): number {
+  const along = (set.x * ux + set.y * uy) / speed;
+  return clamp(1 + along, FOUL_LIMIT, FAIR_LIMIT);
+}
+
+export function findSeaPassage(
+  from: Vec2,
+  to: Vec2,
+  setAt?: SetQuery,
+  speed = PASSAGE_SPEED,
+): SeaPassage | null {
   const g = grid();
-  if (g.empty || isSeaClear(from, to)) return [from, to];
+  if (g.empty || isSeaClear(from, to)) {
+    const straight = [from, to];
+    const len = vec2Dist(from, to);
+    if (!setAt || len <= 0) return { path: straight, length: len, cost: len / SEA_CELL };
+    // One sample at the midpoint. At this resolution a line short enough to be
+    // clear water is short enough that the set does not turn along it.
+    const mid = { x: (from.x + to.x) / 2, y: (from.y + to.y) / 2 };
+    const f = setFactor(setAt(mid), (to.x - from.x) / len, (to.y - from.y) / len, speed);
+    return { path: straight, length: len, cost: len / SEA_CELL / f };
+  }
 
   const start = snapToWater(from, g);
   const goal = snapToWater(to, g);
@@ -185,7 +275,10 @@ export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
 
   const startI = idx(start.cx, start.cy);
   const goalI = idx(goal.cx, goal.cy);
-  if (startI === goalI) return [from, to];
+  if (startI === goalI) {
+    const len = vec2Dist(from, to);
+    return { path: [from, to], length: len, cost: len / SEA_CELL };
+  }
 
   const n = COLS * ROWS;
   const gScore = new Float64Array(n).fill(Infinity);
@@ -193,11 +286,15 @@ export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
   const cameFrom = new Int32Array(n).fill(-1);
   const closed = new Uint8Array(n);
 
+  // With a current the cheapest a step can ever be is `1 / FAIR_LIMIT`, so the
+  // octile estimate has to be scaled by that to stay admissible — an A* with an
+  // optimistic heuristic is still correct, one with a greedy heuristic is not.
+  const hScale = setAt ? 1 / FAIR_LIMIT : 1;
   const h = (i: number): number => {
     const ax = i % COLS, ay = (i / COLS) | 0;
     const dx = Math.abs(ax - goal.cx), dy = Math.abs(ay - goal.cy);
     // Octile distance — admissible for 8-way movement.
-    return (dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy);
+    return ((dx + dy) + (Math.SQRT2 - 2) * Math.min(dx, dy)) * hScale;
   };
 
   gScore[startI] = 0;
@@ -255,7 +352,12 @@ export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
         }
         const step = dx !== 0 && dy !== 0 ? Math.SQRT2 : 1;
         const near = g.coast[ni] <= COAST_MARGIN ? COAST_PENALTY : 1;
-        const tentative = gScore[cur] + step * near;
+        let fair = 1;
+        if (setAt) {
+          const inv = 1 / step;
+          fair = setFactor(setAt(cellCentre(nx, ny)), dx * inv, dy * inv, speed);
+        }
+        const tentative = gScore[cur] + step * near / fair;
         if (tentative < gScore[ni]) {
           gScore[ni] = tentative;
           fScore[ni] = tentative + h(ni);
@@ -267,6 +369,7 @@ export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
   }
 
   if (cameFrom[goalI] === -1 && goalI !== startI) return null;
+  const passageCost = gScore[goalI];
 
   // Walk the chain back, then string-pull: keep only the points where the
   // straight line to the next-but-one would run aground.
@@ -287,7 +390,7 @@ export function findSeaPath(from: Vec2, to: Vec2): Vec2[] | null {
       anchor = i;
     }
   }
-  return pulled;
+  return { path: pulled, length: pathLength(pulled), cost: passageCost };
 }
 
 /** Length of a course in world units. */

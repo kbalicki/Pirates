@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.42.0.0",
+    date: "2026-09-06",
+    changes: [
+      "TRADE LEARNS THE CURRENT",
+      "  Since the last release the sea moves. The shipping did not know: every",
+      "  lane on the chart was still the SHORTEST way between two harbours,",
+      "  which for a sailing ship has never been the same as the quickest",
+      "  NOW A LANE IS RECKONED IN DAYS, NOT MILES. A supplier two hundred",
+      "  miles further off but downwind and down-current is nearer in the only",
+      "  sense a shipper cares about, and the courses bend to ride the water",
+      "  TWELVE OF EIGHTY-TWO LANES CHANGED HANDS. Every one of them stopped",
+      "  victualling the Lesser Antilles from leeward — St. Eustatius, St.",
+      "  Martin and Antigua now eat from Bermuda instead of beating up from",
+      "  Jamaica, and Curaçao takes its cane from Trinidad, downstream",
+      "  Which is how these islands were really fed",
+      "  A LANE IS A ONE-WAY THING NOW: the course out is not the course home,",
+      "  because the sea is not. Press T and C together to see it",
+      "  A passage is reckoned at a laden merchantman's six knots, not a",
+      "  frigate's twelve. Four knots of current is two thirds of one and a",
+      "  third of the other, and that is the whole difference",
+      "  Nothing new is stored. Your saves are unchanged",
+    ],
+  },
+  {
     version: "0.41.0.0",
     date: "2026-09-06",
     changes: [

@@ -696,14 +696,20 @@ describe("an exporter's warehouse — the settled world", () => {
     }
   });
 
-  it("leaves the towns exactly where v0.25.0 left them", () => {
-    // The regression guard for the whole rearrangement. These are the measured
-    // settled values of the release before it; a lane that draws goods out of a
-    // real warehouse must not, on its own, make the Caribbean poorer.
+  it("leaves the towns where the last rearrangement left them, or better", () => {
+    // The regression guard for the whole rearrangement. A lane that draws goods
+    // out of a real warehouse must not, on its own, make the Caribbean poorer.
+    //
+    // Moved once, deliberately, in v0.42.0: lanes are ranked on **passage time**
+    // rather than distance now, so a handful of towns buy from a different
+    // quay. Port Royal 646.1 -> 649.1 and Santiago 617.1 -> 619.6; Havana and
+    // Santo Domingo did not move at all. Two towns better off, none worse, and
+    // all of it under half a percent — which is the guard doing its job rather
+    // than failing it.
     const w = runDays(makeFullWorld(), 400);
-    expect(w.ports.port_royal.wealth).toBeCloseTo(646.1, 0);
+    expect(w.ports.port_royal.wealth).toBeCloseTo(649.1, 0);
     expect(w.ports.havana.wealth).toBeCloseTo(907.6, 0);
-    expect(w.ports.santiago.wealth).toBeCloseTo(617.1, 0);
+    expect(w.ports.santiago.wealth).toBeCloseTo(619.6, 0);
     expect(w.ports.santo_domingo.wealth).toBeCloseTo(920.6, 0);
   });
 });

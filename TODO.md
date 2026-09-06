@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-06 · **Wersja:** v0.41.0.0 · **Branch:** `main`
-**Kod:** 206 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1585 przechodzi, 0 failuje, 0 `todo`** w 46 plikach
+**Stan na:** 2026-09-06 · **Wersja:** v0.42.0.0 · **Branch:** `main`
+**Kod:** 206 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1594 przechodzi, 0 failuje, 0 `todo`** w 46 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.41.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1585/1585 zielone; **prądy morskie** — ostatni element pogody z modułu G i jedyny, który pogodą nie jest: woda wchodzi między Małe Antyle, biegnie na zachód wzdłuż Hiszpańskiego Lądu, skręca na północ Jukatanem i wylewa się między Florydą a Kubą z prędkością czterech węzłów. **Mapa dostaje kierunek**: rejs na zachód jest szybki, ten sam na wschód to mordęga. Prąd **znosi** statek, nigdy nie rusza steru; prędkość na HUD to teraz prędkość nad dnem, a `C` rysuje pasma na mapie. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.42.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.42.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1594/1594 zielone; **handel nauczył się prądu** — szlak jest teraz liczony w dniach, nie w milach, więc dostawca dwieście mil dalej, ale z prądem, jest bliżej w jedynym sensie, który obchodzi szypra. **12 z 82 szlaków zmieniło ręce** i wszystkie w jedną stronę: Małe Antyle przestają być zaopatrywane z zawietrznej. Szlak jest odtąd **jednokierunkowy** — kurs tam nie jest kursem z powrotem. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.43.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.41.0.0):** v0.41.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1585/1585 zielone; **prądy morskie** — ostatni element pogody z modułu G i jedyny, który pogodą nie jest: woda wchodzi między Małe Antyle, biegnie na zachód wzdłuż Hiszpańskiego Lądu, skręca na północ Jukatanem i wylewa się między Florydą a Kubą z prędkością czterech węzłów. **Mapa dostaje kierunek**: rejs na zachód jest szybki, ten sam na wschód to mordęga. Prąd **znosi** statek, nigdy nie rusza steru; prędkość na HUD to teraz prędkość nad dnem, a `C` rysuje pasma na mapie. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.42.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.40.0.0):** v0.40.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1569/1569 zielone; **mgła** — trzeci rodzaj pogody i pierwszy, który nie jest zagrożeniem: nie zabiera statkowi nic, zabiera **oczy obu stronom**, więc jest katastrofą, gdy polujesz, i darem, gdy ktoś poluje na ciebie. Wyprowadzona z ciszy, godziny i pola szumu — **zero nowych pól w save'ie**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.41.0 jest niżej.
 
@@ -22,7 +24,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) i [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) i [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -85,6 +87,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Szlak liczony czasem | ✅ | `findSeaPassage`: A* wycenia krok jako **czas**, `TradeRouteSystem` rankuje dostawców po czasie przejścia; 12 z 82 szlaków zmieniło ręce, Małe Antyle przestają jeść z zawietrznej |
 | Prądy morskie | ✅ | `CurrentSystem` + `CURRENTS`: sześć pasm z miękkim brzegiem, **znoszą** statek (nigdy nie ruszają steru), mapa dostaje kierunek; prędkość na HUD to prędkość nad dnem, `C` rysuje je na czarcie |
 | Mgła po obu stronach | ✅ | `FogSystem`: nie zabiera statkowi nic, tnie lunetę gracza **i** `awarenessRadius` NPC; wyprowadzona z ciszy + godziny + pola szumu, zero nowych pól |
 | Pogoda ma miejsce na mapie | ✅ | `WeatherFieldSystem`: `weatherAt(world, pos)` — strefy wiatru mapy wreszcie ciągną pasat, a huragan ze zdarzenia świata jest prawdziwym sztormem z krążącym wiatrem, kadłubem i podłogami na progach, które HUD już nazywa |
@@ -1666,7 +1669,40 @@ Zmierzone w grze: statek **pod gołymi masztami** w Cieśninie robi 0,119 j./tic
 
 ---
 
-### v0.42.0 — co dalej
+### ~~v0.42.0 — Handel uczy się prądu~~ ✅ (v0.42.0.0)
+
+Ogon dopisany do TODO przy v0.41.0: **`findSeaPath` nie wiedział o prądach**, więc
+82 szlaki na czarcie były dalej najkrótszą drogą — co dla statku żaglowego nigdy
+nie znaczyło najszybszej. Znów ten sam kształt co huragan i `WeatherState`: dwie
+warstwy opisujące tę samą wodę, obie kompletne z osobna.
+
+`findSeaPassage(from, to, setAt)` wycenia każdy krok A* jako **czas**. Kurs wygina
+się, żeby jechać na wodzie, a zwracany `cost` to czas przejścia. **Bez `setAt` to
+co do bitu stara funkcja** — dzięki temu zmianę dało się zmierzyć przed włączeniem.
+
+**Heurystyka musiała zejść razem z kosztem** (`× 1/FAIR_LIMIT`): A* z heurystyką
+optymistyczną jest dalej poprawne, z zachłanną nie jest — a błąd byłby niewidoczny,
+bo trasa i tak by się rysowała.
+
+**`PASSAGE_SPEED` to kupiec, nie fregata.** Cztery węzły prądu to jedna trzecia
+fregaty i **dwie trzecie fluity**. Przy prędkości fregaty zmieniało się 10 szlaków,
+przy prędkości kupca **12** — i dopiero wtedy wśród nich są wszystkie te, które
+przestają zaopatrywać Małe Antyle z zawietrznej.
+
+**Zmierzone przed napisaniem**, na prawdziwej linii brzegowej wczytanej z
+`public/data/caribbean_geo.json`: 68 szlaków bez zmian, 12 zmienia dostawcę, 2
+stają się importem zamorskim; asymetria po parach portów 1,141. St. Eustatius,
+St. Martin i Antigua jedzą odtąd z Bermudów zamiast halsować z Jamajki, Curaçao
+bierze trzcinę z Trynidadu (z prądem), Barbados tytoń ze św. Marcina.
+**Tak te wyspy naprawdę karmiono.**
+
+Strażnik osadzonego świata z v0.26.0 przesunięty **raz i świadomie**: Port Royale
+646,1 → 649,1, Santiago 617,1 → 619,6, Hawana i Santo Domingo bez zmian. Dwa
+miasta bogatsze, żadne biedniejsze, wszystko poniżej pół procenta.
+
+---
+
+### v0.43.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1697,10 +1733,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    nie pozycję; ruchome oko wymagałoby albo pola w zdarzeniu, albo wyprowadzenia
    toru z `startDay` (wzorzec „progress, nie pozycja" z v0.33.0). **Deszcz i
    pioruny** z roadmapy to czysta warstwa wizualna — nic nie zmieniają w decyzjach.
-   Ciekawsze niż jedno i drugie: **`Pathfinding.findSeaPath` nie wie o prądach**,
-   więc szlaki handlowe i kursy wypraw dalej liczą najkrótszą, a nie najszybszą
-   drogę. Dodanie kosztu pod prąd zmieniłoby geografię handlu i to byłoby wydanie
-   samo w sobie
+   Szlaki handlowe nauczyły się prądu w v0.42.0; **kursy wypraw jeszcze nie** —
+   `ExpeditionFleetSystem` woła `findSeaPath` bez `setAt`. Celowo: wyprawy chodzą
+   po torze przez `progress`, więc sam wygięty kurs bez zmiany czasu przejścia
+   byłby zmianą w połowie. Zrobienie tego jak trzeba znaczy policzyć czas desantu
+   z `cost`, a nie z długości — i to jest osobne zadanie
 6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
 7. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
@@ -1795,6 +1832,9 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Pełnoekranowy efekt pogodowy należy do `UIOverlayScene`, na jej najniższej głębi.** Kamera overlay nigdy nie zoomuje ani nie przewija, więc prostokąt zaciemniający zakrywa mapę przy każdym zoomie bez mierzenia czegokolwiek, a kompas i HUD idą nad nim. Alfę **wygładzaj**, nie przełączaj — pogoda pojawiająca się między dwiema klatkami czyta się jak błąd renderowania (v0.38.0).
 - **Próg mechaniki wybieraj z liczb, które UI już nazywa.** `STORM_SAFE_SAIL = 0.5` to „Reefed" z `SailSystem`, więc reguła „refuj albo płać" jest czytelna bez tłumaczenia. Próg 0,45 byłby tą samą mechaniką i niewidzialną regułą (v0.38.0).
 - **`MainMapScene.create()` zawsze buduje `new SailSystem(0)` i ignoruje `entity.sailLevel`.** Znalezione przy weryfikacji v0.39.0: żaden świat debugowy nie startuje „pod pełnymi żaglami", cokolwiek wpisze w encję, a wczytany zapis z pełnymi żaglami też startuje ze zwiniętymi. Wyjście z portu ustawia refy jawnie (linia 397), więc to nie jest tam potrzebne. Zaszycie poziomu z encji to jedna linijka, ale **zmienia odczucie po wczytaniu zapisu** — do przegrania przez użytkownika, nie do zrobienia mimochodem.
+- **Zmiana kosztu w A\* to zmiana heurystyki.** Gdy najtańszy krok może kosztować mniej niż 1, odległość oktylowa przestaje być dopuszczalna i A\* cichutko przestaje zwracać optimum — trasa dalej się rysuje, więc błędu nie widać. Skaluj heurystykę najtańszym możliwym krokiem (v0.42.0).
+- **Nową wielkość w starym algorytmie wprowadzaj jako parametr opcjonalny.** `findSeaPath` bez `setAt` jest co do bitu tym, czym była, więc dało się policzyć obie wersje obok siebie na prawdziwej linii brzegowej i zobaczyć dokładnie, co się zmieni, zanim cokolwiek się zmieniło (v0.42.0).
+- **Model dostaje właściwą wielkość do minimalizowania i sam trafia w historię.** Nikt nie wpisał „Antyle zaopatrywano z Bermudów" — wystarczyło liczyć dni zamiast mil (v0.42.0).
 - **Konwencja kierunku jest błędem, który wygląda poprawnie.** Wiatr nazywa się od strony, **z której** wieje, prąd od strony, **do której** niesie. Mapa pomylona o 180° wszędzie wygląda dokładnie jak mapa. Nazywaj pole czasownikiem (`flowsToward`), nigdy „kierunkiem", i napisz test na sam znak (v0.41.0).
 - **Mechanika, której jedynym dowodem jest rozjechane zliczenie, jest z punktu widzenia gracza błędem.** Prądy dostały dwie drogi na ekran, zanim w ogóle zaczęły działać: prędkość nad dnem na HUD i pasma na czarcie pod `C`. Zanim zaczniesz pisać system, wskaż palcem miejsce, w którym gracz go zobaczy (v0.41.0).
 - **Nie każde pole bez odbiorcy jest błędem — czasem cisza jest decyzją.** `isDaytime` leży w `TimeSystem` nieczytane od pierwszego commita i wygląda dokładnie jak `stormActive` sprzed v0.38.0. Ale doba w tej grze trwa **60 sekund realnego czasu**, więc mechanika nocy zabierałaby graczowi lunetę na 20 s z każdej minuty, bez decyzji — metronom. Zanim „naprawisz" martwe pole, policz, **jak często gracz by to spotykał** (v0.40.0).

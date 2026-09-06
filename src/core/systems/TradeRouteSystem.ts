@@ -31,7 +31,8 @@
 import type { Vec2, WorldState } from "../model/WorldState.ts";
 import { CITIES } from "../data/cities.ts";
 import { landmassGeneration } from "../data/geography.ts";
-import { findSeaPath, pathLength, distanceToPath } from "../services/Pathfinding.ts";
+import { findSeaPassage, distanceToPath } from "../services/Pathfinding.ts";
+import { currentAt } from "./CurrentSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 
 /** A regular run between two ports, carrying what the second cannot grow. */
@@ -145,12 +146,19 @@ function network(): Network {
       const ranked: { from: string; path: Vec2[]; length: number; score: number }[] = [];
       for (const fromKey of candidates) {
         if (fromKey === toKey) continue;
-        const path = laneCourse(fromKey, toKey);
-        if (!path) continue;
-        const length = pathLength(path);
+        const passage = laneCourse(fromKey, toKey);
+        if (!passage) continue;
         const sameCrown =
           (CITIES[fromKey].factionId as string) === (toDef.factionId as string);
-        ranked.push({ from: fromKey, path, length, score: length * (sameCrown ? SAME_CROWN_DISCOUNT : 1) });
+        // Ranked on **passage time**, not distance (v0.42.0). A source two
+        // hundred units further off but downwind and down-current is nearer in
+        // the only sense a shipper cares about.
+        ranked.push({
+          from: fromKey,
+          path: passage.path,
+          length: passage.length,
+          score: passage.cost * (sameCrown ? SAME_CROWN_DISCOUNT : 1),
+        });
       }
       ranked.sort((a, b) => a.score - b.score);
       const best = ranked[0];
@@ -198,12 +206,21 @@ function network(): Network {
 /** How much further than a normal lane the trade will reach for a second source. */
 const REROUTE_REACH = 1.5;
 
-/** The water between two ports, or null if a ship cannot get from one to the other. */
-function laneCourse(fromKey: string, toKey: string): Vec2[] | null {
+/**
+ * The water between two ports — the course a laden merchantman would actually
+ * take, and how long it takes her (v0.42.0).
+ *
+ * `currentAt` is what turns "shortest" into "quickest", and it is why this is
+ * **directional**: the course out is not the course home, because the sea is
+ * not. Measured on the real coastline, twelve of eighty-two lanes change hands
+ * once the water is counted, and every one of them stops supplying the Lesser
+ * Antilles from leeward — which is how these islands were really victualled.
+ */
+function laneCourse(fromKey: string, toKey: string) {
   const a = getPortWaterPos(fromKey);
   const b = getPortWaterPos(toKey);
   if (!a || !b) return null;
-  return findSeaPath(a, b);
+  return findSeaPassage(a, b, currentAt);
 }
 
 /** Drop the memoized network. For tests that swap the coastline underneath it. */
