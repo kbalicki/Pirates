@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-06 · **Wersja:** v0.43.0.0 · **Branch:** `main`
-**Kod:** 206 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1607 przechodzi, 0 failuje, 0 `todo`** w 46 plikach
+**Stan na:** 2026-09-06 · **Wersja:** v0.44.0.0 · **Branch:** `main`
+**Kod:** 206 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1624 przechodzi, 0 failuje, 0 `todo`** w 46 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.43.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1607/1607 zielone; **odpowiedź korony przechodzi przez to samo morze** — `sailDays` był rzutem kostką bez odniesienia do mapy (eskadra dla Vera Cruz płynęła tyle samo co dla sąsiedniej wyspy), a port wyjścia był wyprowadzany od nowa przy każdym rysowaniu. Teraz kostka decyduje o **uzbrajaniu**, mapa o **rejsie**, a eskadra wychodzi z portu **na nawietrznej**, nie z najbliższego. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.44.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.44.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1624/1624 zielone; **jej rejs ma długą i krótką połowę** — nazwany kupiec wracał dotąd dokładnie tak długo, jak płynął tam, na morzu, które od v0.41.0 biegnie w jedną stronę. Teraz trzyma **dwa** czasy przejścia: rejs z Gran Granady do Hawany to sześć dni w górę i **szesnaście** z powrotem, a z Florida Keys do Eleuthery dwa i dziesięć. **30 z 78 szlaków** jest nierównych, a informator mówi obie liczby, bo z narysowanego szlaku nie da się ich odczytać. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.45.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.43.0.0):** v0.43.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1607/1607 zielone; **odpowiedź korony przechodzi przez to samo morze** — `sailDays` był rzutem kostką bez odniesienia do mapy (eskadra dla Vera Cruz płynęła tyle samo co dla sąsiedniej wyspy), a port wyjścia był wyprowadzany od nowa przy każdym rysowaniu. Teraz kostka decyduje o **uzbrajaniu**, mapa o **rejsie**, a eskadra wychodzi z portu **na nawietrznej**, nie z najbliższego. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.44.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.42.0.0):** v0.42.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1594/1594 zielone; **handel nauczył się prądu** — szlak jest teraz liczony w dniach, nie w milach, więc dostawca dwieście mil dalej, ale z prądem, jest bliżej w jedynym sensie, który obchodzi szypra. **12 z 82 szlaków zmieniło ręce** i wszystkie w jedną stronę: Małe Antyle przestają być zaopatrywane z zawietrznej. Szlak jest odtąd **jednokierunkowy** — kurs tam nie jest kursem z powrotem. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.43.0 jest niżej.
 
@@ -22,11 +24,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Poprzednie zdanie startowe (v0.40.0.0):** v0.40.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1569/1569 zielone; **mgła** — trzeci rodzaj pogody i pierwszy, który nie jest zagrożeniem: nie zabiera statkowi nic, zabiera **oczy obu stronom**, więc jest katastrofą, gdy polujesz, i darem, gdy ktoś poluje na ciebie. Wyprowadzona z ciszy, godziny i pola szumu — **zero nowych pól w save'ie**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.41.0 jest niżej.
 
-> **Poprzednie zdanie startowe (v0.39.0.0):** v0.39.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1550/1550 zielone; **pogoda dostała miejsce na mapie** — gra miała dotąd dwie pogody, które nigdy sobie nie zostały przedstawione (jeden wiatr na całe Karaiby i huragan, który był nagłówkiem i szpilką na mapie, a nigdy nie dotknął wody). Teraz `weatherAt(world, pos)` łączy je: huragan bierze płótno przy każdym żaglu **i kadłub**, wiatr krąży wokół jego oka, więc kompas jest namiarem na środek sztormu, a pas pasatów wreszcie ciągnie wiatr, bo `windDirBias` z `MAP_ZONES` doczekał się pierwszego odbiorcy. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0 (pokrętła `FLEE_NOTORIETY` i `awarenessRadius`), decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.40.0 jest niżej.
-
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) i [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) i [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -63,7 +63,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Wojna na nabrzeżu | ✅ | `EventDailyEffects.importMul`: wojna zabiera 30% dostaw, pokój oddaje |
 | Wyszkolenie konsorty | ✅ | `FleetShip.training?` + `fleetTraining()`: zielona załoga pryzowa, ważona ludźmi |
 | Szlaki handlowe | ✅ | `TradeRouteSystem` (81 szlaków): nazwany dostawca per towar, kurs liczony morzem |
-| Pathfinding morski | ✅ | `Pathfinding.ts`: A\* po siatce 40 px, kara przybrzeżna, sznurkowanie kursu |
+| Pathfinding morski | ✅ | `Pathfinding.ts`: A\* po siatce 40 px, kara przybrzeżna, sznurkowanie kursu; `passageCost` wycenia gotowy kurs w obie strony |
 | Blokada portu | ✅ | `BlockadeSystem`: kordon przez *bycie tam*, głód, topniejący garnizon, wściekła korona |
 | Ładownia pryzu | ✅ | `PrizeSystem`: kupiec wiezie towar swojego szlaku; kiesa z tonażu, nie z kostki |
 | Fracht dla gracza | ✅ | `CargoContractSystem` + kantor w porcie: przewóz na zlecenie, dodatek za ryzyko, pokusa kradzieży |
@@ -89,6 +89,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Rejs nazwanego statku ma dwie połowy | ✅ | `NamedShip.homeDays?` + `walkPhase`: obieg ma długą i krótką nogę (Gran Granada→Hawana 6 d, z powrotem 16), 30 z 78 szlaków nierównych, informator mówi obie liczby |
 | Odpowiedź korony liczona mapą | ✅ | `expeditionDeparture`: port wyjścia wybierany **czasem przejścia** i **stemplowany** w zdarzeniu, dni to uzbrajanie (kostka) + rejs (mapa), pasma bez zmian |
 | Szlak liczony czasem | ✅ | `findSeaPassage`: A* wycenia krok jako **czas**, `TradeRouteSystem` rankuje dostawców po czasie przejścia; 12 z 82 szlaków zmieniło ręce, Małe Antyle przestają jeść z zawietrznej |
 | Prądy morskie | ✅ | `CurrentSystem` + `CURRENTS`: sześć pasm z miękkim brzegiem, **znoszą** statek (nigdy nie ruszają steru), mapa dostaje kierunek; prędkość na HUD to prędkość nad dnem, `C` rysuje je na czarcie |
@@ -1739,7 +1740,7 @@ miasto. Rzut RNG jest dalej dokładnie jeden.
 
 ---
 
-### v0.44.0 — co dalej
+### v0.45.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1764,18 +1765,14 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
    pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
    wystawia korsarzy
-5. **Moduł G — pogoda skończona.** Szkwał (v0.38.0), huragan (v0.39.0), mgła
-   (v0.40.0) i prądy (v0.41.0) zrobione. Został jeden ogon: **wędrujące oko**
-   huraganu — dziś stoi nad miastem 3-7 dni, bo `WorldEventState` trzyma porty,
-   nie pozycję; ruchome oko wymagałoby albo pola w zdarzeniu, albo wyprowadzenia
-   toru z `startDay` (wzorzec „progress, nie pozycja" z v0.33.0). **Deszcz i
-   pioruny** z roadmapy to czysta warstwa wizualna — nic nie zmieniają w decyzjach.
-   Szlaki nauczyły się prądu w v0.42.0, wyprawy koronne w v0.43.0. Został
-   **`NamedShipSystem.passageDays`**, który dalej liczy `lane.length / 120` — mile,
-   nie dni. Zrobienie tego jak trzeba znaczy dać nazwanemu statkowi **dwa** czasy
-   przejścia (tam i z powrotem, bo morze jest asymetryczne), a `phaseAt` zakłada
-   dziś jeden — to zmiana w arytmetyce fazy, nie w stałej, i dotyka rozkładu, z
-   którego gracz wylicza, gdzie ona jest
+5. **Moduł G — pogoda skończona, żegluga też.** Szkwał (v0.38.0), huragan
+   (v0.39.0), mgła (v0.40.0) i prądy (v0.41.0) zrobione; prądu nauczyły się
+   szlaki (v0.42.0), wyprawy koronne (v0.43.0) i nazwane statki (v0.44.0).
+   Został jeden ogon: **wędrujące oko** huraganu — dziś stoi nad miastem 3-7 dni,
+   bo `WorldEventState` trzyma porty, nie pozycję; ruchome oko wymagałoby albo
+   pola w zdarzeniu, albo wyprowadzenia toru z `startDay` (wzorzec „progress, nie
+   pozycja" z v0.33.0). **Deszcz i pioruny** z roadmapy to czysta warstwa
+   wizualna — nic nie zmieniają w decyzjach
 6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
 7. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
    — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
@@ -1878,6 +1875,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Konwencja kierunku jest błędem, który wygląda poprawnie.** Wiatr nazywa się od strony, **z której** wieje, prąd od strony, **do której** niesie. Mapa pomylona o 180° wszędzie wygląda dokładnie jak mapa. Nazywaj pole czasownikiem (`flowsToward`), nigdy „kierunkiem", i napisz test na sam znak (v0.41.0).
 - **Mechanika, której jedynym dowodem jest rozjechane zliczenie, jest z punktu widzenia gracza błędem.** Prądy dostały dwie drogi na ekran, zanim w ogóle zaczęły działać: prędkość nad dnem na HUD i pasma na czarcie pod `C`. Zanim zaczniesz pisać system, wskaż palcem miejsce, w którym gracz go zobaczy (v0.41.0).
 - **Nie każde pole bez odbiorcy jest błędem — czasem cisza jest decyzją.** `isDaytime` leży w `TimeSystem` nieczytane od pierwszego commita i wygląda dokładnie jak `stormActive` sprzed v0.38.0. Ale doba w tej grze trwa **60 sekund realnego czasu**, więc mechanika nocy zabierałaby graczowi lunetę na 20 s z każdej minuty, bez decyzji — metronom. Zanim „naprawisz" martwe pole, policz, **jak często gracz by to spotykał** (v0.40.0).
+- **Dwie liczby, które mają być porównywane, muszą powstać tą samą metodą.** Koszt „tam" dawał A\*, a koszt „z powrotem" miał dać drugi A\* — wtedy ich iloraz mieszałby asymetrię morza z różnicą dwóch przebiegów (A\* liczy po środkach komórek, a rysowana jest linia po sznurkowaniu). `passageCost` chodzi po **narysowanym** kursie w obie strony, więc różnica jest wyłącznie asymetrią szlaku — i przy okazji drugiego A\* nie ma (v0.44.0).
+- **Zamiana jednej wielkości na dwie zmienia arytmetykę, nie stałą.** „Faza plus dni" było dzieleniem, dopóki obieg miał jeden czas przejścia; przy dwóch dzień jest wart innej ilości fazy na każdej połowie. Taka pomyłka nie wysypuje się głośno — na zawsze stawia obiekt odrobinę nie tam. Spacer pisz w trzech krokach (dokończ nogę → wytnij całe obiegi jednym modulo → wydaj resztę), nigdy jako pętlę po dniach: save otwarty po dziesięciu latach gry ma kosztować tyle, co otwarty jutro (v0.44.0).
+- **Pole opcjonalne ma DWA różne powody, i drugi łatwo przeoczyć.** Zwykle chodzi o rekord w zapisie świata. Ale `HuntCommission` jest **zapisana w dzienniku questów**, więc zlecenie podpisane pod poprzednią wersją dalej jest w ręku i nie ma nowych pól. Podstawienie tam czegokolwiek „sensownego" (`days`, czyli termin) byłoby **kłamstwem, nie luką** — pytajnik jest uczciwszy. Zanim dołożysz wymagane pole do typu, sprawdź `grep`-em, czy ten typ gdzieś nie ląduje w `questLog.data` (v0.44.0).
+- **Asymetria, o której gracz się nie dowie, nie istnieje.** Czart rysuje jeden szlak i nie da się z niego odczytać, że powrót trwa dwa razy dłużej. Cała mechanika „na którym końcu jej rejsu usiąść" trzyma się na tym, że informator mówi **obie** liczby — przy podpisaniu i przy każdym pytaniu o zlecenie. Ta sama reguła co „wskaż palcem miejsce, w którym gracz to zobaczy" z v0.41.0, tylko że tu miejscem jest zdanie, nie piksel (v0.44.0).
+- **Raport sprzed zmiany ma liczyć się po staremu.** `NamedShipReport` bez `homeDays` **nie** dostaje dzisiejszej nogi powrotnej: podłożenie jej przesunęłoby znak, który gracz postawił na wiadomości nigdy o niej niemówiącej. Warstwa „czart jest tak dobry, jak ostatnia rzecz, którą mu powiedziano" (v0.33.0) obowiązuje też **przy zmianie wersji** (v0.44.0).
 - **Zdarzenie na progu potrzebuje dwóch progów.** Mgła z jednym progiem wpisała do dziennika trzy zdarzenia w dwie godziny gry, bo gęstość wędruje wokół niego razem z wiatrem. Histereza wejście/wyjście, flaga w `worldFlags` (worek już istnieje → dalej bez migracji). Trzeci raz ta sama rodzina co toasty blokady i licznik szkwału (v0.40.0).
 - **Efekt pełnoekranowy skaluj surową wielkością, a linię HUD progiem.** Zasłona mgły idzie z `local.fog` wprost, więc gaśnie razem z ławicą; napis znika na progu. Odwrotnie — zasłona sterowana progiem — mrugałaby na krawędzi ławicy (v0.40.0).
 - **Dwa systemy, które opisują tę samą rzecz, to jeden system, którego brakuje.** `hurricane` (zdarzenie świata) i `WeatherState` (pogoda) współistniały przez cały projekt, nie wiedząc o sobie; z każdej strony osobno kod wyglądał na kompletny. Szukaj **rzeczownika, który występuje w dwóch warstwach** — to inny wariant tego samego zapachu co producent bez odbiorcy (v0.39.0).

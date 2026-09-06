@@ -31,7 +31,7 @@
 import type { Vec2, WorldState } from "../model/WorldState.ts";
 import { CITIES } from "../data/cities.ts";
 import { landmassGeneration } from "../data/geography.ts";
-import { findSeaPassage, distanceToPath } from "../services/Pathfinding.ts";
+import { findSeaPassage, distanceToPath, passageCost } from "../services/Pathfinding.ts";
 import { currentAt } from "./CurrentSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 
@@ -47,6 +47,20 @@ export type TradeRoute = {
   path: Vec2[];
   /** Length of that course in world units. */
   length: number;
+  /**
+   * Passage time out and passage time home, in still-water cell widths (v0.44.0).
+   *
+   * Two numbers, because the sea is asymmetric: the same course sailed the
+   * other way is a different voyage, and on the westward Caribbean Current the
+   * difference runs to half as long again. Divide either by a ship's daily run
+   * to get days — see `NamedShipSystem.PASSAGE_SPEED`.
+   *
+   * Both are measured by `passageCost` along the **drawn** course rather than
+   * taken from the A\* score, so their ratio is the lane's own asymmetry and
+   * not an artefact of two different measurements.
+   */
+  outCost: number;
+  homeCost: number;
 };
 
 /** Beyond this, the nearest producer is not a coasting trade but an ocean one. */
@@ -186,6 +200,8 @@ function network(): Network {
           items: [item],
           path: best.path,
           length: best.length,
+          outCost: passageCost(best.path, currentAt),
+          homeCost: passageCost([...best.path].reverse(), currentAt),
         });
       }
     }

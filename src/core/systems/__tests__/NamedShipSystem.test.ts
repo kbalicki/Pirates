@@ -43,6 +43,8 @@ import {
   PASSAGE_SPEED,
   type NamedShip,
 } from "../NamedShipSystem.ts";
+import { laneDays, walkPhase, homewardDays, outboundDays } from "../NamedShipSystem.ts";
+import { SEA_CELL } from "../../services/Pathfinding.ts";
 import {
   huntOffer,
   huntQuest,
@@ -223,6 +225,61 @@ describe("the schedule", () => {
     expect(phaseAt(ship(), 1000)).toBeLessThan(2);
   });
 
+  it("counts a day of the long half differently from a day of the short one", () => {
+    // Nine days down, six back up — the Yucatan Current in miniature. Half her
+    // circuit in days is nowhere near half her circuit in phase, and that is
+    // the whole of the change: on the old arithmetic phase 1.5 came at day 112
+    // whichever way the water ran.
+    const s = ship({ passageDays: 9, homeDays: 6 });
+    expect(phaseAt(s, 100)).toBeCloseTo(0, 5);
+    expect(phaseAt(s, 104.5)).toBeCloseTo(0.5, 5);
+    expect(phaseAt(s, 109)).toBeCloseTo(1, 5);
+    expect(phaseAt(s, 112)).toBeCloseTo(1.5, 5);
+    // A full circuit is fifteen days, not eighteen and not twelve.
+    expect(phaseAt(s, 115)).toBeCloseTo(0, 5);
+    expect(phaseAt(s, 115 + 9)).toBeCloseTo(1, 5);
+  });
+
+  it("takes whole circuits out in one step, not one day at a time", () => {
+    const s = ship({ passageDays: 9, homeDays: 6 });
+    // Ten game years on, and the answer is still exact rather than drifted.
+    expect(phaseAt(s, 100 + 15 * 240)).toBeCloseTo(0, 5);
+    expect(phaseAt(s, 100 + 15 * 240 + 4.5)).toBeCloseTo(0.5, 5);
+  });
+
+  it("starts the walk from wherever on the leg she already was", () => {
+    const s = ship({ passageDays: 9, homeDays: 6, progress: 1.5 });
+    // Half the homeward leg left: three days to the harbour, then out again.
+    expect(phaseAt(s, 103)).toBeCloseTo(0, 5);
+    expect(phaseAt(s, 103 + 9)).toBeCloseTo(1, 5);
+  });
+
+  it("reads a save written before the sea was asymmetric as the even circuit it was", () => {
+    const before = ship();                       // no homeDays
+    const even = ship({ homeDays: 10 });
+    for (const day of [100, 103, 110, 117, 140, 1000]) {
+      expect(phaseAt(before, day)).toBeCloseTo(phaseAt(even, day), 5);
+    }
+    expect(homewardDays(before)).toBe(outboundDays(before));
+  });
+
+  it("times her arrival by the leg she is on, not by an average", () => {
+    const out = ship({ passageDays: 9, homeDays: 6, progress: 0.5 });
+    expect(arrivalDay(out)).toBeCloseTo(104.5, 5);
+    const home = ship({ passageDays: 9, homeDays: 6, progress: 1.5 });
+    expect(arrivalDay(home)).toBeCloseTo(103, 5);
+  });
+
+  it("walkPhase never leaves the circuit, whatever it is handed", () => {
+    for (const progress of [0, 0.4, 1, 1.9, -0.3, 2.7]) {
+      for (const days of [0, 0.1, 7, 13.7, 999]) {
+        const phase = walkPhase(progress, days, 9, 6);
+        expect(phase).toBeGreaterThanOrEqual(0);
+        expect(phase).toBeLessThan(2);
+      }
+    }
+  });
+
   it("knows which harbour she is standing towards", () => {
     const s = ship();
     expect(outbound(s, 103)).toBe(true);
@@ -241,12 +298,28 @@ describe("the schedule", () => {
     expect(back!.y).toBeCloseTo(out!.y, 5);
   });
 
-  it("gives a longer lane a longer passage", () => {
+  it("gives a longer lane a longer passage, both ways", () => {
     const ships = namedShips(seeded());
     for (const s of ships) {
       const lane = laneOf(s)!;
-      expect(s.passageDays).toBeCloseTo(Math.max(2, Math.round(lane.length / PASSAGE_SPEED)), 5);
+      expect(s.passageDays).toBeCloseTo(laneDays(lane.outCost), 5);
+      expect(s.homeDays).toBeCloseTo(laneDays(lane.homeCost), 5);
+      // Still the old arithmetic underneath: a cost of one cell width is
+      // SEA_CELL units of still water, so with no current at all this is
+      // exactly `lane.length / PASSAGE_SPEED` and always was.
+      expect(laneDays(lane.length / SEA_CELL))
+        .toBeCloseTo(Math.max(2, Math.round(lane.length / PASSAGE_SPEED)), 5);
     }
+  });
+
+  it("gives her a long half and a short half, because the sea has one", () => {
+    // Every seeded lane runs east-west across the Caribbean Current, so one
+    // leg of every circuit is down it and the other is up. If these ever came
+    // out equal the passage would have stopped reading the water.
+    const ships = namedShips(seeded());
+    expect(ships.length).toBeGreaterThan(0);
+    const uneven = ships.filter(s => s.homeDays !== s.passageDays);
+    expect(uneven.length).toBeGreaterThan(0);
   });
 });
 
@@ -390,6 +463,17 @@ describe("the hunt commission", () => {
     return undefined;
   }
 
+  it("puts her book on the table, both halves of it", () => {
+    const w = seeded();
+    for (const key of Object.keys(CITIES)) {
+      const offer = huntOffer(w, key);
+      if (!offer) continue;
+      const ship = namedShipById(w, offer.shipId)!;
+      expect(offer.outDays).toBe(ship.passageDays);
+      expect(offer.homeDays).toBe(homewardDays(ship));
+    }
+  });
+
   it("offers somebody else's ship, never the local crown's", () => {
     const w = seeded();
     for (const key of Object.keys(CITIES)) {
@@ -494,6 +578,18 @@ describe("the words for it exist in both languages", () => {
     ]) {
       expect(EN[key], key).toBeTruthy();
       expect(PL[key], key).toBeTruthy();
+    }
+  });
+
+  it("says her two passage times in both, or the change is invisible", () => {
+    // The asymmetry is only worth anything if somebody tells him about it:
+    // which end of her run to sit on is the decision, and he cannot make it
+    // from a lane drawn on a chart.
+    for (const key of ["informer.hunt_taken", "informer.hunt_hint"]) {
+      for (const locale of [EN, PL]) {
+        expect(locale[key], key).toContain("{{out}}");
+        expect(locale[key], key).toContain("{{home}}");
+      }
     }
   });
 });
@@ -606,6 +702,35 @@ describe("sightings", () => {
       expect(reckoned.x, `day +${later}`).toBeCloseTo(truth.x, 3);
       expect(reckoned.y, `day +${later}`).toBeCloseTo(truth.y, 3);
     }
+  });
+
+  it("sells him her whole book, both halves of it", () => {
+    const w = seeded();
+    const ship = { ...namedShips(w)[0], passageDays: 9, homeDays: 6 };
+    const told = reportNamedShip({ ...w, namedShips: [ship] }, ship.id);
+    const report = namedReports(told)[ship.id];
+    expect(report.passageDays).toBe(9);
+    expect(report.homeDays).toBe(6);
+  });
+
+  it("keeps reckoning an old report on the even circuit it described", () => {
+    // A report written by v0.43.0 has one passage time in it because that is
+    // what the sea had. Quietly lending it today's homeward leg would move a
+    // mark the player made on information that never mentioned it.
+    const w = seeded();
+    const ship = { ...namedShips(w)[0], passageDays: 9, homeDays: 6, progress: 0, progressDay: w.time.day };
+    const world = { ...w, namedShips: [ship] };
+    const old = { day: w.time.day, progress: 0, routeId: ship.routeId, passageDays: 9 };
+    const later = { ...world, time: { ...world.time, day: world.time.day + 13.5 } };
+    // On her real book 13.5 days is one leg out (9) and three quarters home.
+    expect(phaseAt(ship, later.time.day)).toBeCloseTo(1.75, 5);
+    // On his, it is one leg out and half of an even way back.
+    const his = reckonedPos(later, ship, old)!;
+    const evenly = reckonedPos(later, ship, { ...old, homeDays: 9 })!;
+    expect(his.x).toBeCloseTo(evenly.x, 6);
+    expect(his.y).toBeCloseTo(evenly.y, 6);
+    const truth = namedShipPos(later, ship)!;
+    expect(Math.hypot(his.x - truth.x, his.y - truth.y)).toBeGreaterThan(1);
   });
 
   it("goes stale, because at three weeks she could be anywhere on the circuit", () => {

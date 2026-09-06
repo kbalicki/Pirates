@@ -20,7 +20,7 @@
 | WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
-| Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość |
+| Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
@@ -48,7 +48,7 @@
 | ExpeditionFleet | `ExpeditionFleetSystem.ts` | Wyprawa jako eskadra na mapie, do przechwycenia |
 | DefenseContract | `DefenseContractSystem.ts` | Zlecenie obrony u gubernatora |
 | HomePort | `HomePortSystem.ts` | Port macierzysty po ślubie: klarowanie i magazyn |
-| TradeRoute | `TradeRouteSystem.ts` | Szlaki handlowe: kto kogo zaopatruje i jaką wodą |
+| TradeRoute | `TradeRouteSystem.ts` | Szlaki handlowe: kto kogo zaopatruje, jaką wodą i jak długo w każdą stronę |
 | Blockade | `BlockadeSystem.ts` | Blokada portu przez gracza |
 | Prize | `PrizeSystem.ts` | Ładownia i kiesa zdobytego statku |
 | CargoContract | `CargoContractSystem.ts` | Fracht: gracz jako przewoźnik na szlakach |
@@ -607,6 +607,71 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## Jej rejs ma długą i krótką połowę (v0.44.0)
+
+Ostatnie miejsce w grze, które liczyło przeprawę w **milach**, a nie w dniach.
+Nazwany kupiec wracał dokładnie tak długo, jak płynął tam — na morzu, które
+biegnie w jedną stronę.
+
+### Dwa czasy przejścia zamiast jednego
+
+`TradeRoute` niesie teraz `outCost` i `homeCost` (szerokości komórki wody
+stojącej, wyprowadzane, nigdy w save'ie), a `NamedShip` — `passageDays`
+(w jedną stronę) i **opcjonalne** `homeDays`. Save z v0.43.0 czyta się jako
+równy rejs, którym wtedy był: żadnej migracji, i żaden rachunek zrobiony na
+starej informacji się nie zmienia.
+
+Obie liczby mierzy `Pathfinding.passageCost(path, setAt)` **po narysowanym
+kursie**, a nie po wyniku A\*. To jest cała subtelność: uruchomiona na odwróconej
+ścieżce odwraca kierunek każdego kroku, więc różnica między dwiema liczbami jest
+**asymetrią samego szlaku**, a nie różnicą w sposobie liczenia. Drugiego A\* nie
+ma — droga powrotna to spacer po linii, którą już mamy.
+
+Liczenie powrotu po kursie „tam" trochę **zaniża** asymetrię (statek halsujący do
+domu wybrałby inną linię) i to jest bezpieczna strona pomyłki: czart pokazuje
+jeden szlak, a oba czasy należą do szlaku, który gracz zobaczył.
+
+### `walkPhase` — arytmetyka fazy, nie stała
+
+Dopóki obieg miał jeden czas przejścia, „faza plus dni" było dzieleniem. Przy
+dwóch to **spacer**, bo dzień jest wart innej ilości fazy na każdej połowie
+rejsu — a pomyłka tutaj nie wysypuje się głośno, tylko na zawsze stawia ją
+odrobinę nie tam.
+
+Spacer ma trzy kroki i **nie jest pętlą po dniach**: dokończ nogę, na której
+stoi; wytnij całe obiegi jednym modulo; wydaj resztę. Save otwarty po dziesięciu
+latach gry kosztuje tyle samo, co otwarty jutro.
+
+`arrivalDay` bierze czas tej nogi, na której ona jest, a nie średnią.
+
+### Zmierzone na prawdziwej linii brzegowej
+
+```
+78 szlaków, 30 nierównych
+gran_granada__havana    out  6 d  home 16 d   x2,67
+florida_keys__vera_cruz out 14 d  home  7 d   x2,00
+havana__vera_cruz       out 13 d  home  7 d   x1,86
+florida_keys__eleuthera out  2 d  home 10 d   x5,00  (najgorszy)
+suma obiegów: 820 d → 869 d   (+6%, bo prąd przeciwny karze mocniej, niż sprzyjający pomaga)
+```
+
+Z sześciu zasianych nazwanych statków **cztery** mają nierówny obieg, dwa
+drastycznie. To nie jest liczba w pliku: siedzenie w Hawanie na *Nuestra Señora
+del Rosario* a siedzenie w Gran Granadzie to dwie zupełnie różne propozycje.
+
+### Musi to być powiedziane, inaczej nie istnieje
+
+Asymetria jest warta tyle, ile wie o niej gracz — a z narysowanego na czarcie
+szlaku nie da się jej odczytać. `HuntCommission` niesie więc `outDays`/`homeDays`
+(**opcjonalne**, bo zlecenie jest *zapisane* w dzienniku questów — komisja
+podpisana pod v0.43.0 nie ma żadnej z tych liczb i ekran stawia tam pytajnik,
+zamiast podstawiać `days`, czyli termin, co byłoby kłamstwem, nie luką), a
+informator mówi obie:
+
+> „Chodzi z Gran Granada do Hawany w 6 dni, a wraca w 16."
+> „Pracuje na trasie Gran Granada – Hawana: 6 dni tam, 16 z powrotem. Usiądź na
+> jednym końcu i bądź cierpliwy."
 
 ## Odpowiedź korony przechodzi przez to samo morze (v0.43.0)
 
@@ -3354,10 +3419,26 @@ ułamek. Dzięki temu statek ścigany dwieście jednostek w bok od swojej trasy
 wznawia z tego miejsca przeprawy, do którego naprawdę dopłynął, zamiast skakać na
 pozycję z rozkładu.
 
+### Dwa czasy przejścia (v0.44.0)
+
+`passageDays` to noga **tam** (`from`→`to`), `homeDays?` — noga **z powrotem**.
+Czyta się je przez `outboundDays()` / `homewardDays()`, więc rekord z v0.43.0
+jest równym obiegiem, którym wtedy był.
+
+Obie wychodzą z `laneDays(cost)` = `max(2, round(cost × SEA_CELL / PASSAGE_SPEED))`.
+Bez prądu jest to **co do bitu** dawne `lane.length / PASSAGE_SPEED`: koszt jednej
+szerokości komórki *to jest* `SEA_CELL` jednostek wody stojącej. Arytmetyka się
+nie zmieniła — zmieniło się morze.
+
+`phaseAt` i `reckonedPos` liczą przez wspólne `walkPhase(progress, days, out, home)`
+— ten drugi rachunkiem kapitana na jego informacji, i **raport sprzed v0.44.0
+dalej liczy się po równym obiegu, jaki opisywał**. Podłożenie mu dzisiejszej nogi
+powrotnej przesunęłoby znak, który postawił na wiadomości nigdy o niej niemówiącej.
+
 | Stała | Wartość | Znaczenie |
 |---|---|---|
 | `NAMED_SHIP_COUNT` | 6 | ile nazwanych kadłubów niesie mapa |
-| `PASSAGE_SPEED` | 120 | jednostek świata dziennie — nie prędkość klasy, tylko robocze tempo z postojami; szlak 900 jednostek to 7-8 dni w jedną stronę |
+| `PASSAGE_SPEED` | 120 | jednostek świata dziennie — nie prędkość klasy, tylko robocze tempo z postojami; szlak 900 jednostek to 7-8 dni wody stojącej |
 | `NAMED_INTERVAL_TICKS` | 40 | ta sama kadencja co kadłuby desantu |
 
 Zasiew idzie z **dziennego ticku**, nie z tworzenia świata: `namedShips` jest polem

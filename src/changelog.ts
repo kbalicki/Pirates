@@ -6,6 +6,29 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.44.0.0",
+    date: "2026-09-06",
+    changes: [
+      "HER RUN HAS A LONG HALF AND A SHORT HALF",
+      "  A named merchantman used to take exactly as long coming home as she",
+      "  took going out. On a sea that runs one way this was the last place",
+      "  still reckoning a passage in miles rather than in days",
+      "  NOW SHE KEEPS TWO PASSAGE TIMES, and on the real chart they are not",
+      "  close. The Gran Granada run goes up to Havana in six days and comes back",
+      "  down against the Yucatan Current in sixteen; a ship out of the Florida",
+      "  Keys reaches Eleuthera in two and beats home in ten",
+      "  WHICH END OF HER RUN YOU WAIT AT IS NOW A REAL DECISION. Sit on the",
+      "  wrong one and she is three weeks coming; the informer will tell you",
+      "  both numbers when you take the commission, and again when you ask",
+      "  Thirty of the seventy-eight lanes on the chart are uneven this way",
+      "  Her reckoning on the chart walks the two halves at their own speeds, so",
+      "  a mark half a circuit old is no longer half the water along",
+      "  A sighting sold to you before this release still reckons the way it was",
+      "  sold, because a chart is only ever as good as what you were told",
+      "  Nothing new is stored. Your saves are unchanged",
+    ],
+  },
+  {
     version: "0.43.0.0",
     date: "2026-09-06",
     changes: [

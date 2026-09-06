@@ -179,6 +179,19 @@ describe("the network against a real coastline", () => {
     const bent = tradeRoutes().filter(r => r.path.length > 2);
     expect(bent.length).toBeGreaterThan(0);
   });
+
+  it("carries a passage time each way, and they are not the same number", () => {
+    const lanes = tradeRoutes();
+    expect(lanes.length).toBeGreaterThan(0);
+    for (const l of lanes) {
+      expect(l.outCost).toBeGreaterThan(0);
+      expect(l.homeCost).toBeGreaterThan(0);
+    }
+    // Every lane crossing a current band is a different voyage each way; if
+    // this ever came out empty the lane had stopped reading the water.
+    const uneven = lanes.filter(l => Math.abs(l.outCost - l.homeCost) > 0.01);
+    expect(uneven.length).toBeGreaterThan(0);
+  });
 });
 
 describe("routesNear", () => {

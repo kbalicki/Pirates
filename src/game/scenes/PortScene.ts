@@ -931,7 +931,13 @@ export class PortScene extends Phaser.Scene {
         case "hunt_status": {
           const h = activeHunts(this.worldState)[0];
           this.tavernMessage = h
-            ? t("informer.hunt_hint", { from: h.fromName, port: h.toName })
+            ? t("informer.hunt_hint", {
+                from: h.fromName, port: h.toName,
+                // A commission signed before v0.44.0 knew one passage time and
+                // said so; falling back on `days` here would print the deadline
+                // as a leg, which is a lie rather than an omission.
+                out: h.outDays ?? "?", home: h.homeDays ?? "?",
+              })
             : "";
           this.switchView("tavern");
           break;
@@ -1033,6 +1039,7 @@ export class PortScene extends Phaser.Scene {
     this.registry.set("worldState", this.worldState);
     this.tavernMessage = t("informer.hunt_taken", {
       from: chase.fromName, port: chase.toName, gold: chase.reward,
+      out: chase.outDays ?? "?", home: chase.homeDays ?? "?",
     });
     this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
   }

@@ -847,8 +847,8 @@ export const EN: LocaleData = {
   // -- The informer's third commission: a ship with a name (v0.32.0) --
   "informer.hunt_offer": "The informer: sink the {{ship}} \u2014 {{gold}} Gold",
   "informer.hunt_in_hand": "The {{ship}}: {{from}}\u2013{{port}}, {{days}} d left",
-  "informer.hunt_taken": "\"She clears {{from}} for {{port}} and back. Find her, and the {{gold}} Gold is yours \u2014 sunk or struck, I am not particular.\"",
-  "informer.hunt_hint": "\"She works {{from}} to {{port}}. Sit on one end of that and be patient.\"",
+  "informer.hunt_taken": "\"She clears {{from}} for {{port}} in {{out}} days and is home again in {{home}}. Find her, and the {{gold}} Gold is yours \u2014 sunk or struck, I am not particular.\"",
+  "informer.hunt_hint": "\"She works {{from}} to {{port}}: {{out}} days out, {{home}} back. Sit on one end of that and be patient.\"",
   "informer.already_gone": "\"Somebody got to her first.\"",
   "quest.hunt_title": "The {{ship}}",
   "quest.hunt_find": "Sink or take the {{ship}} on the {{from}}\u2013{{port}} run \u2014 {{days}} days, {{gold}} Gold",

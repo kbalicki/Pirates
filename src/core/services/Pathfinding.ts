@@ -393,6 +393,49 @@ export function findSeaPassage(
   return { path: pulled, length: pathLength(pulled), cost: passageCost };
 }
 
+/**
+ * How long a **given** course takes, in still-water cell widths (v0.44.0).
+ *
+ * `findSeaPassage` already answers this for the course it finds, but only for
+ * the direction it was asked about, and its `cost` is the A\* score over cell
+ * centres rather than over the string-pulled line that is actually drawn. This
+ * walks the drawn course instead, which buys two things:
+ *
+ * - **the way home costs what the way out cost, measured the same way.** Run it
+ *   on a reversed path and every step's direction flips, so the difference
+ *   between the two numbers is the lane's own asymmetry and nothing else — not
+ *   a difference in how the two were computed;
+ * - no second A\*. A lane's return passage is a walk down a line we have.
+ *
+ * The set is sampled at most a cell apart, because string-pulling leaves legs
+ * hundreds of units long that can cross out of a current band halfway.
+ *
+ * Reckoning the return leg on the outbound track understates the asymmetry a
+ * little — a ship beating home would pick a different line — and that is the
+ * safe direction to be wrong in: the chart shows one lane, and the two times
+ * belong to the lane the player was shown.
+ */
+export function passageCost(path: Vec2[], setAt?: SetQuery, speed = PASSAGE_SPEED): number {
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1];
+    const b = path[i];
+    const len = vec2Dist(a, b);
+    if (len <= 0) continue;
+    if (!setAt) { total += len / SEA_CELL; continue; }
+    const ux = (b.x - a.x) / len;
+    const uy = (b.y - a.y) / len;
+    const steps = Math.max(1, Math.ceil(len / SEA_CELL));
+    const seg = len / steps;
+    for (let s = 0; s < steps; s++) {
+      const t = (s + 0.5) * seg;
+      const f = setFactor(setAt({ x: a.x + ux * t, y: a.y + uy * t }), ux, uy, speed);
+      total += seg / SEA_CELL / f;
+    }
+  }
+  return total;
+}
+
 /** Length of a course in world units. */
 export function pathLength(path: Vec2[]): number {
   let total = 0;

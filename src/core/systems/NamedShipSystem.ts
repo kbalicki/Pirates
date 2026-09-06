@@ -96,6 +96,7 @@ import { CITIES } from "../data/cities.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { shipName } from "../data/shipNames.ts";
 import { tradeRoutes, type TradeRoute } from "./TradeRouteSystem.ts";
+import { SEA_CELL } from "../services/Pathfinding.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { pointAlong, nearestWater, MATERIALIZE_RANGE } from "./ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
@@ -190,12 +191,31 @@ export const SHELTER_LAYOVER = 2;
  * World units a named merchantman makes in a day.
  *
  * Not her class's top speed: a working trader loses days to harbours, weather
- * and convoy. 120 puts a 900-unit lane at seven or eight days each way, which
- * is long enough that a captain who is told where she sailed from has to make a
- * decision about where to wait, and short enough that the decision pays off
- * inside one commission's deadline.
+ * and convoy. 120 puts a 900-unit lane at seven or eight days of still water,
+ * which is long enough that a captain who is told where she sailed from has to
+ * make a decision about where to wait, and short enough that the decision pays
+ * off inside one commission's deadline.
+ *
+ * "Each way" stopped being one number in v0.44.0: measured on the real
+ * coastline, the Gran Granada run goes up to Havana in six days and comes back
+ * down against the Yucatan Current in sixteen, and the Florida Keys reach
+ * Eleuthera in two and beat home in ten.
  */
 export const PASSAGE_SPEED = 120;
+
+/**
+ * Days a lane's passage takes her, from its cost in still-water cell widths.
+ *
+ * Floored at two so no ship can be at both ends of her run in the same week,
+ * and rounded because her schedule is something a man in a tavern recites.
+ *
+ * With no current this is exactly the old `lane.length / PASSAGE_SPEED`: a cost
+ * of one cell width *is* `SEA_CELL` units of still water. Which is the point —
+ * the arithmetic did not change, the sea did.
+ */
+export function laneDays(cost: number): number {
+  return Math.max(2, Math.round((cost * SEA_CELL) / PASSAGE_SPEED));
+}
 
 /** Same cadence as the expedition hulls — twice a second at 20 ticks. */
 const NAMED_INTERVAL_TICKS = 40;
@@ -220,8 +240,29 @@ export type NamedShip = {
   progress: number;
   /** The day `progress` was last true. */
   progressDay: number;
-  /** Days one passage takes her, derived from the lane and `PASSAGE_SPEED`. */
+  /**
+   * Days the passage **out** takes her — `from` to `to`.
+   *
+   * Named without a direction because until v0.44.0 there was only one, and
+   * renaming it would have cost a migration to say something a save already
+   * says correctly: a record written before the sea was asymmetric describes a
+   * circuit that was symmetric when it was written.
+   */
   passageDays: number;
+  /**
+   * And the passage **home** — `to` back to `from` (v0.44.0).
+   *
+   * Two numbers because the sea is asymmetric. On the westward Caribbean
+   * Current a lane that runs down in six days beats back up in nine, and that
+   * is the whole content of the change: her circuit has a long half and a short
+   * half, so "where is she today" is no longer answerable by halving anything,
+   * and the end of her run a captain chooses to wait at is a real decision.
+   *
+   * Optional and read through `homewardDays()`, so a v0.43.0 save reads as the
+   * even circuit it was — no migration, and every reckoning made from it stays
+   * the reckoning that was sold.
+   */
+  homeDays?: number;
   /** Damage she carries between meetings, so a mauled ship stays mauled. */
   hullHp: number;
   sailsHp: number;
@@ -265,6 +306,16 @@ export function harryCount(ship: NamedShip): number {
   return Math.max(0, ship.harried ?? 0);
 }
 
+/** Days her passage out takes, floored so no leg is instantaneous. */
+export function outboundDays(ship: NamedShip): number {
+  return Math.max(0.5, ship.passageDays);
+}
+
+/** Days her passage home takes, which is a v0.43.0 save's outbound leg again. */
+export function homewardDays(ship: NamedShip): number {
+  return Math.max(0.5, ship.homeDays ?? ship.passageDays);
+}
+
 /** Every named hull the world knows about, afloat or not. */
 export function namedShips(world: WorldState): NamedShip[] {
   return world.namedShips ?? [];
@@ -296,9 +347,46 @@ export function phaseAt(ship: NamedShip, day: number): number {
   // a record whose `progressDay` is in the future is a ship still alongside, and
   // her phase stays exactly where the harbour left it until the day comes round.
   // No second field, no migration, and every read of her position gets it free.
-  const elapsed = Math.max(0, day - ship.progressDay) / Math.max(0.5, ship.passageDays);
-  const raw = (ship.progress + elapsed) % 2;
-  return raw < 0 ? raw + 2 : raw;
+  const elapsed = Math.max(0, day - ship.progressDay);
+  return walkPhase(ship.progress, elapsed, outboundDays(ship), homewardDays(ship));
+}
+
+/**
+ * Phase, plus days, equals phase — the one piece of arithmetic v0.44.0 changed.
+ *
+ * While a circuit had one passage time this was a division: days over days,
+ * added to the phase, modulo two. With two it is a walk, because a day is worth
+ * a different amount of phase on each half of the run — and getting that wrong
+ * does not fail loudly, it puts her a little bit in the wrong place for ever.
+ *
+ * The walk is three steps and not a loop over days: finish the leg she is on,
+ * take the whole circuits out with one modulo, then spend what is left. A save
+ * opened after ten game years costs the same as one opened tomorrow.
+ *
+ * Shared with `reckonedPos`, which does the captain's version of the same sum
+ * on the captain's information.
+ */
+export function walkPhase(progress: number, days: number, out: number, home: number): number {
+  const raw = progress % 2;
+  let phase = raw < 0 ? raw + 2 : raw;
+  let left = Math.max(0, days);
+
+  // 1. The leg she is standing on, which she may be anywhere along.
+  const legDays = phase < 1 ? out : home;
+  const legLeft = (phase < 1 ? 1 - phase : 2 - phase) * legDays;
+  if (left < legLeft) return phase + left / legDays;
+  left -= legLeft;
+  phase = phase < 1 ? 1 : 0;
+
+  // 2. Whole circuits, in one go.
+  left %= out + home;
+
+  // 3. What is left of it, from a harbour.
+  if (phase === 1) {
+    if (left < home) return 1 + left / home;
+    left -= home;
+  }
+  return left < out ? left / out : 1 + (left - out) / home;
 }
 
 /** True while she is still alongside and her schedule has not started again. */
@@ -321,8 +409,13 @@ export function lyingAt(ship: NamedShip, day: number): string | undefined {
  * off every circuit and walk her schedule away from the one the informer sold.
  */
 export function arrivalDay(ship: NamedShip): number {
-  const legLeft = 1 - (ship.progress % 1);
-  return ship.progressDay + legLeft * Math.max(0.5, ship.passageDays);
+  const raw = ship.progress % 2;
+  const phase = raw < 0 ? raw + 2 : raw;
+  // Which leg she is on decides which of her two passage times pays for the
+  // rest of it (v0.44.0) — coming home up the Caribbean Current, the same
+  // fraction of the run left is half as long again in days.
+  const legDays = phase < 1 ? outboundDays(ship) : homewardDays(ship);
+  return ship.progressDay + (1 - (phase % 1)) * legDays;
 }
 
 /** True when she is on the leg from `from` to `to` today. */
@@ -398,7 +491,8 @@ export function seedNamedShips(world: WorldState, rng: RngState): { world: World
       // Scattered round their circuits, or all six would sail on the same tide.
       progress: start.value,
       progressDay: world.time.day,
-      passageDays: Math.max(2, Math.round(lane.length / PASSAGE_SPEED)),
+      passageDays: laneDays(lane.outCost),
+      homeDays: laneDays(lane.homeCost),
       hullHp: cls.hullMax,
       sailsHp: cls.sailsMax,
       escorts: ESCORTS_BY_CLASS[classId] ?? 0,
@@ -655,6 +749,15 @@ export type NamedShipReport = {
   routeId?: string;
   passageDays?: number;
   /**
+   * And the way home, since the two are no longer the same number (v0.44.0).
+   *
+   * What the informer sells is her *book*, and a book with one passage time in
+   * it would be a book about a sea that does not exist. Optional, so a report
+   * written by v0.43.0 keeps reckoning her on the even circuit it described —
+   * the mark stays where the man who sold it would have put it.
+   */
+  homeDays?: number;
+  /**
    * When she was said to be sailing again, if the report caught her alongside.
    *
    * Without it the reckoning would walk her out of a harbour she is still tied
@@ -696,6 +799,7 @@ export function reportNamedShip(world: WorldState, shipId: string): WorldState {
         // lets the mark keep walking a lane she has since abandoned (v0.34.0).
         routeId: ship.routeId,
         passageDays: ship.passageDays,
+        homeDays: homewardDays(ship),
         ...(layingOver(ship, world.time.day) ? { holdUntil: ship.progressDay } : {}),
       },
     },
@@ -727,11 +831,12 @@ export function reckonedPos(world: WorldState, ship: NamedShip, report: NamedShi
   if (!lane || lane.path.length === 0) return undefined;
   // His arithmetic, on his information: her schedule as he was given it, from
   // the day she was said to be sailing again rather than from the day he heard.
-  const days = Math.max(0.5, report.passageDays ?? ship.passageDays);
+  const out = Math.max(0.5, report.passageDays ?? ship.passageDays);
+  // A v0.43.0 report falls back on its one number for both legs, because that
+  // is what it claimed; a v0.44.0 one carries her long half and her short half.
+  const home = Math.max(0.5, report.homeDays ?? report.passageDays ?? homewardDays(ship));
   const from = Math.max(report.day, report.holdUntil ?? report.day);
-  const elapsed = Math.max(0, world.time.day - from) / days;
-  const raw = (report.progress + elapsed) % 2;
-  const phase = raw < 0 ? raw + 2 : raw;
+  const phase = walkPhase(report.progress, world.time.day - from, out, home);
   return pointAlong(lane.path, phase < 1 ? phase : 2 - phase);
 }
 
@@ -808,7 +913,8 @@ function rerouteFrom(ship: NamedShip, port: string, rng: RngState): { ship: Name
       routeId: lane.id,
       from: lane.from,
       to: lane.to,
-      passageDays: Math.max(2, Math.round(lane.length / PASSAGE_SPEED)),
+      passageDays: laneDays(lane.outCost),
+      homeDays: laneDays(lane.homeCost),
     },
     rng: roll.state,
   };

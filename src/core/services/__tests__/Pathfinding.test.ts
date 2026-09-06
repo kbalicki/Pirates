@@ -6,6 +6,7 @@ import {
   isSeaClear,
   isSeaCell,
   pathLength,
+  passageCost,
   distanceToPath,
   resetSeaGrid,
   SEA_CELL,
@@ -238,6 +239,49 @@ describe("pathLength", () => {
     expect(pathLength([{ x: 0, y: 0 }])).toBe(0);
     expect(pathLength([{ x: 0, y: 0 }, { x: 3, y: 4 }])).toBeCloseTo(5);
     expect(pathLength([{ x: 0, y: 0 }, { x: 3, y: 4 }, { x: 3, y: 8 }])).toBeCloseTo(9);
+  });
+});
+
+describe("passageCost", () => {
+  it("costs a still sea exactly its length, like everything else here", () => {
+    const line = [{ x: 0, y: 0 }, { x: 400, y: 0 }, { x: 400, y: 300 }];
+    expect(passageCost(line)).toBeCloseTo(pathLength(line) / SEA_CELL, 9);
+    expect(passageCost(line, noSet)).toBeCloseTo(pathLength(line) / SEA_CELL, 9);
+  });
+
+  it("charges the way home more than the way out, over the very same line", () => {
+    const line = [{ x: 200, y: 400 }, { x: 1600, y: 400 }];
+    const withIt = passageCost(line, eastward);
+    const againstIt = passageCost([...line].reverse(), eastward);
+    expect(withIt).toBeLessThan(againstIt);
+    // Same water, same length: the difference is the sea and nothing else.
+    expect(pathLength(line)).toBeCloseTo(pathLength([...line].reverse()), 9);
+  });
+
+  it("costs a set athwart the course as if there were none", () => {
+    // A current across the bow neither helps nor hinders in this model, which
+    // is why the two directions of a north-south lane come out equal.
+    const line = [{ x: 500, y: 200 }, { x: 500, y: 1200 }];
+    expect(passageCost(line, eastward)).toBeCloseTo(pathLength(line) / SEA_CELL, 6);
+  });
+
+  it("samples a long leg more than once, so a band it only clips is only clipped", () => {
+    // A leg 800 units long crossing a set that stops halfway: one sample at the
+    // midpoint would price the whole leg off the wrong water.
+    const halfway = (p: { x: number; y: number }) =>
+      p.x < 600 ? { x: 0.08, y: 0 } : { x: 0, y: 0 };
+    const line = [{ x: 200, y: 300 }, { x: 1000, y: 300 }];
+    const cost = passageCost(line, halfway);
+    const still = pathLength(line) / SEA_CELL;
+    const allOfIt = passageCost([{ x: 200, y: 300 }, { x: 599, y: 300 }], halfway)
+      * (pathLength(line) / pathLength([{ x: 200, y: 300 }, { x: 599, y: 300 }]));
+    expect(cost).toBeLessThan(still);       // half of it was helped...
+    expect(cost).toBeGreaterThan(allOfIt);  // ...and only half
+  });
+
+  it("answers nought for a course that goes nowhere", () => {
+    expect(passageCost([{ x: 5, y: 5 }], eastward)).toBe(0);
+    expect(passageCost([{ x: 5, y: 5 }, { x: 5, y: 5 }], eastward)).toBe(0);
   });
 });
 

@@ -54,6 +54,7 @@ import {
   namedShipPos,
   namedShipFateFlag,
   reportNamedShip,
+  homewardDays,
   escortCount,
 } from "./NamedShipSystem.ts";
 
@@ -657,6 +658,22 @@ export type HuntCommission = {
   acceptedDay: number;
   /** Baked at signing, for the reason every other contract here bakes it. */
   days: number;
+  /**
+   * Her book: days out, days home (v0.44.0).
+   *
+   * Baked with the rest, and the two numbers are what the captain is really
+   * buying. While a circuit was even, "sit on one end and be patient" was the
+   * same advice at either end; on the westward current one half of her run is
+   * half as long again as the other, and the end he chooses to wait at is a
+   * decision he can now be told enough to make.
+   *
+   * Optional because a commission is **stored** — it lives in the quest log, so
+   * a hunt signed under v0.43.0 is still in hand under v0.44.0 and has neither
+   * number. The screen prints a dash for it rather than falling back on `days`,
+   * which is the deadline and would be a lie rather than a gap.
+   */
+  outDays?: number;
+  homeDays?: number;
 };
 
 export function huntQuestId(shipId: string): string {
@@ -714,6 +731,8 @@ export function huntOffer(world: WorldState, portKey: string): HuntCommission | 
       escorts: escortCount(ship),
       acceptedDay: world.time.day,
       days: HUNT_DAYS,
+      outDays: ship.passageDays,
+      homeDays: homewardDays(ship),
     };
     if (!best || commission.reward > best.reward) best = commission;
   }

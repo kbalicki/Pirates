@@ -386,7 +386,7 @@ type NamedShip = {
   routeId: string; from: string; to: string;
   progress: number;      // 0..2, gdzie 0..1 to from→to; zawija
   progressDay: number;   // dzień, w którym progress był prawdą
-  passageDays: number;   // wyprowadzone z długości szlaku / PASSAGE_SPEED
+  passageDays: number;   // noga TAM; wyprowadzone z kosztu szlaku (v0.44.0)
   hullHp: number; sailsHp: number;   // niesione między spotkaniami
   fate?: "sunk" | "taken";           // ustawiane raz, nigdy nie kasowane
 };
@@ -445,3 +445,33 @@ Nic z tego nie idzie do zapisu, bo kadłub nie idzie do zapisu: gdy gracz odpadn
 `writeBackNamed` rzutuje ją na szlak i po pościgu zostaje sam `progress`. Wynik
 ucieczki — że dobiła do portu — jest zapisany tam, gdzie zapisuje się każde inne
 przybycie: `progress` na granicy i `progressDay` w przyszłości.
+
+## `NamedShip.homeDays?` — morze jest asymetryczne (v0.44.0)
+
+Dalej bez migracji, dalej przez `?? domyślna`.
+
+```ts
+// noga Z POWROTEM. Brak = rekord sprzed v0.44.0, czyli równy obieg, którym wtedy był
+homeDays?: number;
+
+type NamedShipReport = {
+  // ...
+  homeDays?: number;    // druga połowa jej rozkładu, jak mu ją podano
+};
+
+type HuntCommission = {
+  // ...
+  outDays?: number;     // opcjonalne, bo KOMISJA JEST ZAPISANA w dzienniku questów:
+  homeDays?: number;    // zlecenie podpisane pod v0.43.0 nie ma żadnej z tych liczb
+};
+```
+
+`passageDays` **nie** zostało przemianowane na `outDays`, choć teraz to znaczy.
+Zmiana nazwy kosztowałaby migrację, żeby powiedzieć coś, co save mówi poprawnie:
+rekord zapisany, zanim morze stało się asymetryczne, opisuje obieg, który wtedy
+był równy.
+
+`TradeRoute` (pochodna mapy, nigdy w zapisie) dostał przy tym `outCost` i
+`homeCost` — czas przejścia w szerokościach komórki wody stojącej, mierzony
+`passageCost` po **narysowanym** kursie w obie strony, więc ich iloraz jest
+asymetrią samego szlaku, a nie różnicą metody pomiaru.

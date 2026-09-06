@@ -847,8 +847,8 @@ export const PL: LocaleData = {
   // -- Trzecie zlecenie informatora: statek z nazwiskiem (v0.32.0) --
   "informer.hunt_offer": "Informator: zatop {{ship}} \u2014 {{gold}} złota",
   "informer.hunt_in_hand": "{{ship}}: {{from}}\u2013{{port}}, zostało {{days}} dni",
-  "informer.hunt_taken": "\"Chodzi z {{from}} do {{port}} i z powrotem. Znajdź ją, a {{gold}} jest twoje \u2014 na dnie czy ze spuszczoną banderą, wszystko jedno.\"",
-  "informer.hunt_hint": "\"Pracuje na trasie {{from}} \u2013 {{port}}. Usiądź na jednym końcu i bądź cierpliwy.\"",
+  "informer.hunt_taken": "\"Chodzi z {{from}} do {{port}} w {{out}} dni, a wraca w {{home}}. Znajdź ją, a {{gold}} jest twoje \u2014 na dnie czy ze spuszczoną banderą, wszystko jedno.\"",
+  "informer.hunt_hint": "\"Pracuje na trasie {{from}} \u2013 {{port}}: {{out}} dni tam, {{home}} z powrotem. Usiądź na jednym końcu i bądź cierpliwy.\"",
   "informer.already_gone": "\"Ktoś ją dopadł przed tobą.\"",
   "quest.hunt_title": "{{ship}}",
   "quest.hunt_find": "Zatop albo zdobądź {{ship}} na trasie {{from}}\u2013{{port}} \u2014 {{days}} dni, {{gold}} złota",
