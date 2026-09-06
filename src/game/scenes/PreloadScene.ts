@@ -21,6 +21,7 @@ function capitalise(word: string): string {
 }
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { fogPatch, fogNight } from "../../core/systems/FogSystem.ts";
+import { CURRENTS } from "../../core/data/currents.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -340,6 +341,17 @@ export class PreloadScene extends Phaser.Scene {
       // toast that says so — is reachable too. `?storm=1` reads as "a long one".
       const ticks = Number(params.get("storm") ?? "");
       const world = this.createStormWorld(Number.isFinite(ticks) && ticks > 1 ? ticks : 20000);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("current")) {
+      // Lying in the Straits of Florida under bare poles (v0.41.0). The set is
+      // four knots against a frigate's twelve, so a ship with no canvas set
+      // still makes ground north-east — which is the whole difference between
+      // a current and a wind, and impossible to see in the ordinary way of
+      // playing without knowing where to look.
+      const world = this.createCurrentWorld();
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -981,6 +993,28 @@ export class PreloadScene extends Phaser.Scene {
   }
 
   /** A world already inside a squall, for `?storm=1` (v0.38.0). */
+  private createCurrentWorld(): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity) return base;
+    loadLandmassesFromCache(this);
+    const band = CURRENTS.find(c => c.id === "florida")!;
+    const centre = {
+      x: band.rect.x + band.rect.w / 2,
+      y: band.rect.y + band.rect.h / 2,
+    };
+    const station = nearestWater(centre) ?? centre;
+    return {
+      ...base,
+      player: { ...base.player, location: { type: "sea", pos: { ...station } } },
+      entities: {
+        ...base.entities,
+        [shipId]: { ...entity, mode: "sailing" as const, sailLevel: 0, pos: { ...station }, vel: { x: 0, y: 0 } },
+      },
+    };
+  }
+
   private createFogWorld(): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const shipId = base.player.shipId as string;

@@ -6,6 +6,31 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.41.0.0",
+    date: "2026-09-06",
+    changes: [
+      "THE SEA MOVES, AND THE SAME WAY EVERY DAY",
+      "  Currents. Not weather — a current does not come and go, it is a fact",
+      "  about the map, and it is the fact that gave these waters their shape",
+      "  IN PAST THE LESSER ANTILLES, west along the Spanish Main, north through",
+      "  the Yucatán Channel, round the Gulf, and out between Florida and Cuba at",
+      "  four knots. Every treasure fleet that sailed home rode that last stretch",
+      "  SO THE MAP HAS A DIRECTION NOW. A passage west along the Main is fast",
+      "  and the same passage east is a grind. The Straits are a moving road",
+      "  north and a wall to the south",
+      "  IT CARRIES YOU, IT DOES NOT STEER YOU. Nothing fights your helm; your",
+      "  ship answers exactly as before. What changes is where she ends up —",
+      "  and allowing for that is what navigating is",
+      "  Lie under bare poles and you still drift. That is the whole difference",
+      "  between a current and a wind",
+      "  The speed on your HUD is now speed over the GROUND, so riding the",
+      "  Straits shows on the dial without touching a sail",
+      "  AND YOU CAN SEE THEM: press C for the set on the chart. Every hull on",
+      "  the map is in the same water you are",
+      "  `?current=1` sets you adrift in the Straits with your sails furled",
+    ],
+  },
+  {
     version: "0.40.0.0",
     date: "2026-09-06",
     changes: [

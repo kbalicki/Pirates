@@ -7,6 +7,7 @@ import { updateWeather } from "../systems/WeatherSystem.ts";
 import { tickStormDamage } from "../systems/StormSystem.ts";
 import { weatherAt, hurricaneAt } from "../systems/WeatherFieldSystem.ts";
 import { fogDensity, inFogNow, FOG_FLAG } from "../systems/FogSystem.ts";
+import { currentAt } from "../systems/CurrentSystem.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
@@ -295,6 +296,10 @@ export class WorldEngine {
           this.terrainQuery,
           dtTicks,
           fleetMul,
+          // The set where she is (v0.41.0). Not weather: the sea runs the same
+          // way every day, which is what makes it something to plan a passage
+          // around rather than something to sit out.
+          currentAt(playerEntity.pos),
         );
         updatedEntities[playerShipId] = updatedPlayer;
 
@@ -431,6 +436,11 @@ export class WorldEngine {
         weatherResult.weather,
         this.terrainQuery,
         dtTicks,
+        // Same water for everyone. A merchantman riding the Straits while the
+        // player crawls against them is the whole point; one that ignored them
+        // would be sailing a different sea from his.
+        1,
+        currentAt(entity.pos),
       );
       // If NPC hits land: find open sea direction and set coast avoidance cooldown
       if (updatedNpc.mode === "landed" && entity.mode === "sailing") {

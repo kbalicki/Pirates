@@ -19,6 +19,7 @@
 | Storm | `StormSystem.ts` | Szkwał: co drze płótno, co zabiera z lunety, co mówi HUD |
 | WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm |
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
+| Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
@@ -604,6 +605,74 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## CurrentSystem (v0.41.0)
+
+Ostatni element pogody z modułu G — i jedyny, który **pogodą nie jest**. Prąd nie
+przychodzi i nie odchodzi. Jest faktem o mapie, jak rafa albo przylądek, i to
+właśnie ten fakt nadał tym wodom kształt.
+
+Woda wchodzi między Małe Antyle, biegnie na zachód wzdłuż Hiszpańskiego Lądu,
+skręca na północ Cieśniną Jukatańską, robi pętlę przez Zatokę i wylewa się między
+Florydą a Kubą z prędkością czterech węzłów. Każda flota srebrna, jaka wracała do
+Hiszpanii, jechała na tym ostatnim odcinku; każdy, kto chciał płynąć w drugą
+stronę, szedł zewnętrzną stroną wysp.
+
+**Mapa dostaje więc kierunek.** Rejs na zachód wzdłuż Lądu jest szybki, ten sam
+rejs na wschód to mordęga; Cieśnina to ruchoma droga na północ i ściana na
+południe. Ta asymetria jest funkcją i jest historycznym kształtem całej mapy.
+
+### Pytanie, które TODO zostawiło otwarte
+
+> *„czy prąd ma znosić statek, czy tylko zmieniać prędkość nad dnem?"*
+
+**Znosi.** Prąd to prędkość dodana do własnej prędkości statku, niezależna od
+tego, gdzie ma dziób; alternatywa — rzutowanie na kurs — to ta sama liczba z
+wyrzuconą ciekawą połową, bo ciekawą połową jest **znoszenie w bok**.
+
+Obawa dopisana do tego pytania brzmiała: znoszenie będzie irytujące. Nie jest, i
+to z powodu tego, czego moduł celowo **nie** dotyka: **steru**. Kurs nie jest
+nigdy zmieniany, nic nie walczy z klawiszami gracza, statek słucha dokładnie tak
+jak przedtem. Zmienia się to, gdzie kończy — a odpowiedzią na to jest branie
+poprawki, czyli dokładnie to, czym jest nawigacja.
+
+### `flowsToward`, nie „skąd wieje"
+
+Wiatr nazywa się od strony, **z której** wieje (`windDirRad` to kurs, na którym
+statek staje w martwym kącie). Prąd nazywa się od strony, **do której** niesie.
+To odwrotne konwencje, a pomylenie ich dałoby mapę złą o 180° wszędzie i
+wyglądającą całkowicie wiarygodnie — więc pole nazywa się `flowsToward` i nic w
+tym module nie nazywa się „kierunkiem". Jest na to test.
+
+### Pasma z miękkim brzegiem
+
+`CURRENTS` to garść prostokątów. Każdy ma miękką krawędź (`CURRENT_FEATHER` 120),
+więc nic nie szarpie statku w bok w chwili przekroczenia linii, a tam, gdzie dwa
+pasma zachodzą na siebie, ich **wektory się dodają** — i to właśnie czyni z rogu
+Cieśniny Jukatańskiej zakręt, a nie przełącznik.
+
+```
+caribbean   0.042  W     (Hiszpański Ląd)
+cayman      0.040  WNW
+yucatan     0.062  N
+gulf_loop   0.042  E
+florida     0.083  ENE   (najsilniejsza woda na mapie — 4 węzły)
+gulf_stream 0.075  NNE
+```
+
+Jeden węzeł to tu około 0,021 jednostki na tick (fregata-wzorzec robi 0,25 przy
+dwunastu węzłach).
+
+### Widać to dwa razy
+
+Odczyt prędkości na HUD czyta `vel`, a `vel` jest teraz prędkością **nad dnem**:
+wejście w Cieśninę podnosi liczbę bez dotykania żagla. A pasma są rysowane na
+mapie pod klawiszem **`C`** (`pc_currents`, domyślnie włączone) — bo mechanika,
+której jedynym dowodem jest to, że zliczenie się nie zgadza, jest z punktu
+widzenia gracza błędem.
+
+Nic nie jest zapisywane, trzecie wydanie z rzędu: znoszenie w punkcie jest
+funkcją punktu.
 
 ## FogSystem (v0.40.0)
 

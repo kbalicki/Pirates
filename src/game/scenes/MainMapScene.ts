@@ -7,6 +7,7 @@ import { type TerrainType, findOpenSeaHeading } from "../../core/systems/Navigat
 import { WorldRenderer, visionRangeForMast } from "../render/WorldRenderer.ts";
 import { stormVisionMultiplier, stormWarning } from "../../core/systems/StormSystem.ts";
 import { weatherAt, type LocalWeather } from "../../core/systems/WeatherFieldSystem.ts";
+import { drawCurrents, clearCurrents, currentsStale, type CurrentResult } from "../render/CurrentRenderer.ts";
 import { fleetMaxMastHeight } from "../../core/systems/FleetSystem.ts";
 import { CameraController } from "../render/CameraController.ts";
 // MinimapRenderer removed — map available in SPACE menu
@@ -162,6 +163,8 @@ export class MainMapScene extends Phaser.Scene {
   private marksVisible = localStorage.getItem("pc_marks") !== "0";
   /** Chart the shipping lanes? Toggled with T, remembered across sessions. */
   private lanesVisible = localStorage.getItem("pc_lanes") !== "0";
+  private currentsVisible = localStorage.getItem("pc_currents") !== "0";
+  private currents: CurrentResult | null = null;
   private coordLabels: Array<{ text: Phaser.GameObjects.Text; anchorX: number; anchorY: number }> = [];
 
   constructor() {
@@ -300,6 +303,17 @@ export class MainMapScene extends Phaser.Scene {
         }]);
       });
 
+      this.input.keyboard.on("keydown-C", () => {
+        this.currentsVisible = !this.currentsVisible;
+        localStorage.setItem("pc_currents", this.currentsVisible ? "1" : "0");
+        clearCurrents(this.currents);
+        this.currents = this.currentsVisible ? drawCurrents(this, this.cameras.main.zoom) : null;
+        this.worldRenderer.applyEvents(this, [{
+          type: "Toast",
+          message: t(this.currentsVisible ? "currents.shown" : "currents.hidden"),
+        }]);
+      });
+
       this.input.keyboard.on("keydown-N", () => {
         this.marksVisible = !this.marksVisible;
         localStorage.setItem("pc_marks", this.marksVisible ? "1" : "0");
@@ -424,6 +438,9 @@ export class MainMapScene extends Phaser.Scene {
     this.expeditionCourses = drawExpeditionCourses(this, this.worldState, this.cameras.main.zoom);
     if (this.lanesVisible) {
       this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
+    if (this.currentsVisible) {
+      this.currents = drawCurrents(this, this.cameras.main.zoom);
     }
     if (this.marksVisible) {
       this.eventMarkers = drawEventMarkers(this, this.worldState, this.cameras.main.zoom, this.portSafePositions);
@@ -917,6 +934,12 @@ export class MainMapScene extends Phaser.Scene {
     if (this.lanesVisible && lanesStale(this.tradeLanes, this.worldState, this.cameras.main.zoom)) {
       clearTradeLanes(this.tradeLanes);
       this.tradeLanes = drawTradeLanes(this, this.worldState, this.cameras.main.zoom);
+    }
+
+    // The sea runs the same way every day, so only a zoom ever redraws these.
+    if (this.currentsVisible && currentsStale(this.currents, this.cameras.main.zoom)) {
+      clearCurrents(this.currents);
+      this.currents = drawCurrents(this, this.cameras.main.zoom);
     }
 
     // A mark appears the moment a tavern or a passing captain tells him about

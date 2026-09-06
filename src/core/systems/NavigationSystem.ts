@@ -24,6 +24,16 @@ export function updateNavigation(
   dtTicks: number,
   /** Fleet speed multiplier (1.0 = solo, <1 = slowest escort limits speed). */
   fleetSpeedMul = 1,
+  /**
+   * The set of the sea here, in world units per tick (v0.41.0).
+   *
+   * Added to the ship's own velocity, never to her heading: a current carries a
+   * ship, it does not steer her. Everything downstream — the anti-tunnelling
+   * walk, the reef branch, the speed readout on the HUD — then works on speed
+   * over the ground, which is the number that actually matters and the one that
+   * makes the Straits of Florida visible without a word of UI.
+   */
+  current: Vec2 = { x: 0, y: 0 },
 ): EntityState {
   if (entity.kind !== "ship" || !entity.ship) return entity;
 
@@ -48,8 +58,8 @@ export function updateNavigation(
   // Direction vector from heading
   const dir = headingToVec(entity.heading);
 
-  // New velocity
-  const vel: Vec2 = vec2Scale(dir, baseSpeed);
+  // New velocity: what she makes through the water, plus what the water makes.
+  const vel: Vec2 = vec2Add(vec2Scale(dir, baseSpeed), current);
 
   // Proposed new position
   const newPos = vec2Add(entity.pos, vec2Scale(vel, dtTicks));
