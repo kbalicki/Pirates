@@ -28,6 +28,8 @@ import { tickRaidCommissions } from "../systems/InformantSystem.ts";
 import { tickStorehouses } from "../systems/StorehouseSystem.ts";
 import { checkNpcNewsExchange } from "../systems/NpcNewsSystem.ts";
 import { repairAtSea } from "../systems/ShipRepairSystem.ts";
+import { tendWounded } from "../systems/SurgeonSystem.ts";
+import { effectiveSkill } from "../systems/AgingSystem.ts";
 import { applyOverdueMorale } from "../systems/PlunderSystem.ts";
 import { advanceQuests } from "../systems/QuestSystem.ts";
 import { t } from "../i18n/index.ts";
@@ -164,6 +166,10 @@ export class WorldEngine {
       // Jury repairs: the carpenter's crew patches what it can while under way,
       // up to a hard cap well short of seaworthy. Proper work needs a shipyard.
       world = repairAtSea(world).world;
+      // And the carpenter's opposite number: the surgeon works through the sick
+      // bay on the same daily clock, and `medicine` decides who walks out of it
+      // (v0.47.0). A no-op on every day nobody is below, which is most of them.
+      world = tendWounded(world).world;
       // A day going by is a quest event like any other (v0.17.0). `days_passed`
       // has been in `QuestSystem` and covered by tests since v0.12.0 with
       // nothing emitting it; the governor's defence commission is the first
@@ -301,6 +307,11 @@ export class WorldEngine {
           // way every day, which is what makes it something to plan a passage
           // around rather than something to sit out.
           currentAt(playerEntity.pos),
+          // The man at the chart table (v0.47.0). Worth a fifth of her speed
+          // hard on the wind and nothing at all on a broad reach — and read
+          // through `effectiveSkill`, so the navigator a captain becomes after
+          // thirty-five is the one who sails her.
+          effectiveSkill(world, "navigation"),
         );
         updatedEntities[playerShipId] = updatedPlayer;
 

@@ -209,6 +209,11 @@ export class PreloadScene extends Phaser.Scene {
     //   ?home=port_royal — married into that town, with a battered fleet and a full hold
     //   ?blockade=havana — lying off that harbour with guns enough to shut it
     //   ?event=hurricane&port=havana — that event running on that town, ship lying off it
+    //   ?skills=navigation:10,medicine:0 — a captain who spent his points somewhere
+    //                    (works with ?skip and ?battle; three of the five did
+    //                     nothing at all before v0.47.0 and are hard to feel
+    //                     without being able to set them)
+    //   ?wounded=40  — that many men already below with the surgeon
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -225,7 +230,9 @@ export class PreloadScene extends Phaser.Scene {
       localStorage.setItem("pc_debug", params.get("debug")!);
     }
     if (params.has("battle")) {
-      const world = this.createBattleWorld(params.get("battle") ?? "1");
+      const world = this.applyDebugCrewState(
+        this.createBattleWorld(params.get("battle") ?? "1"), params,
+      );
       this.registry.set("worldState", world);
       // jump straight to combat — testMode triggers random corner spawn
       this.scene.start("SeaBattleScene", { worldState: world, enemyId: "test_enemy", testMode: true });
@@ -439,14 +446,61 @@ export class PreloadScene extends Phaser.Scene {
       // an hour of plundering away, and the TODO has been telling people to
       // edit `player.notoriety` in the console for four releases.
       const fame = Number(params.get("notoriety") ?? NaN);
-      const world = Number.isFinite(fame)
+      const withFame = Number.isFinite(fame)
         ? { ...fresh, player: { ...fresh.player, notoriety: Math.max(0, Math.min(100, fame)) } }
         : fresh;
+      const world = this.applyDebugCrewState(withFame, params);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
     } else {
       this.scene.start("CharacterCreationScene");
     }
+  }
+
+  /**
+   * `?skills=` and `?wounded=` (v0.47.0).
+   *
+   * Three of the five numbers on the character sheet did nothing until this
+   * release, and the only way to reach a captain who is a great navigator and
+   * no surgeon at all is to walk through character creation by hand. Both are
+   * hard to *feel* otherwise: the navigator shows up over a passage and the
+   * surgeon over the fortnight after a fight.
+   */
+  private applyDebugCrewState(
+    world: import("../../core/model/WorldState.ts").WorldState,
+    params: URLSearchParams,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    let w = world;
+
+    const spec = params.get("skills");
+    if (spec && w.captain) {
+      const skills = { ...w.captain.skills };
+      for (const pair of spec.split(",")) {
+        const [id, raw] = pair.split(":");
+        const v = Number(raw);
+        if (id && id in skills && Number.isFinite(v)) {
+          (skills as Record<string, number>)[id] = Math.max(0, Math.min(10, v));
+        }
+      }
+      w = { ...w, captain: { ...w.captain, skills } };
+    }
+
+    const below = Number(params.get("wounded") ?? NaN);
+    if (Number.isFinite(below) && below > 0) {
+      const shipId = w.player.shipId as unknown as string;
+      const entity = w.entities[shipId];
+      if (entity?.ship) {
+        w = {
+          ...w,
+          entities: {
+            ...w.entities,
+            [shipId]: { ...entity, ship: { ...entity.ship, wounded: Math.round(below) } },
+          },
+        };
+      }
+    }
+
+    return w;
   }
 
   /**

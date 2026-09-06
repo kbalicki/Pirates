@@ -46,6 +46,7 @@ import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
+import { woundedFrom } from "./SurgeonSystem.ts";
 import { consortCrew, consortCrewMax, fleetMorale, fleetTraining, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
 // ── Who owns a port right now ─────────────────────────────
@@ -494,6 +495,9 @@ export function writeBackForce(
 
   const hullHp = Math.max(0, Math.round((entity.ship.hullHp - hullLost * flagHullShare) * 10) / 10);
   const crew = Math.max(0, Math.round(entity.ship.crew.current - crewLost * flagCrewShare));
+  // Men carried back to the boats rather than left on the sand (v0.47.0). The
+  // roll below is already right without them; the surgeon decides the rest.
+  const flagWounded = (entity.ship.wounded ?? 0) + woundedFrom(entity.ship.crew.current - crew);
 
   const fleet = (world.player.fleet ?? []).map(consort => {
     const hullShare = initial.hullMax > 0 ? consort.hullMax / initial.hullMax : 0;
@@ -501,10 +505,12 @@ export function writeBackForce(
     // siege was fought with, not the men still standing. Dividing by the
     // survivors would hand the whole butcher's bill to whoever bled least.
     const crewShare = initial.crew > 0 ? consortCrew(consort) / initial.crew : 0;
+    const left = Math.max(0, Math.round(consortCrew(consort) - crewLost * crewShare));
     return {
       ...consort,
       hullHp: Math.max(0, Math.round((consort.hullHp - hullLost * hullShare) * 10) / 10),
-      crew: Math.max(0, Math.round(consortCrew(consort) - crewLost * crewShare)),
+      crew: left,
+      wounded: (consort.wounded ?? 0) + woundedFrom(consortCrew(consort) - left),
     };
   });
 
@@ -515,7 +521,7 @@ export function writeBackForce(
       ...world.entities,
       [shipId]: {
         ...entity,
-        ship: { ...entity.ship, hullHp, crew: { ...entity.ship.crew, current: crew } },
+        ship: { ...entity.ship, hullHp, wounded: flagWounded, crew: { ...entity.ship.crew, current: crew } },
       },
     },
   };

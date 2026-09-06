@@ -344,9 +344,19 @@ export class CharacterCreationScene extends Phaser.Scene {
       y += 30;
     }
 
-    // Hint
-    this.add.text(cx, y, t("creation.skill_hint"), {
-      fontSize: "12px", fontFamily: UI_FONT, color: "#aaaaaa", resolution: TEXT_RES,
+    // Hint. The line describes whichever skill is under the cursor (v0.47.0):
+    // the sheet used to ask a captain to spend five points on five words with
+    // no explanation anywhere in the game of what any of them bought — and for
+    // three of the five the honest answer was "nothing".
+    const hintKey = this.focusArea === "skills"
+      ? "skill." + SKILL_IDS[Math.max(0, Math.min(SKILL_IDS.length - 1, this.focusIndex))] + ".hint"
+      : "creation.skill_hint";
+    this.add.text(cx, y, t(hintKey), {
+      // Darker than the old generic hint: this line is now something to read,
+      // not a control legend, and #aaaaaa on parchment is barely there.
+      fontSize: "12px", fontFamily: UI_FONT,
+      color: this.focusArea === "skills" ? "#7a6248" : "#aaaaaa",
+      resolution: TEXT_RES,
     }).setOrigin(0.5, 0).setDepth(10);
     y += 26;
 

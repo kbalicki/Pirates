@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { updateNavigation, type TerrainQuery } from "../NavigationSystem.ts";
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
 import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
-import { windSpeedModifier } from "../WeatherSystem.ts";
+import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../WeatherSystem.ts";
 import type { EntityState } from "../../model/EntityState.ts";
 import type { WeatherState, Vec2 } from "../../model/WorldState.ts";
 import type { EntityId, ShipClassId, FactionId } from "../../model/ids.ts";
@@ -535,4 +535,59 @@ describe("heading sweep — 64 headings at open sea", () => {
       }
     });
   }
+});
+
+// ===========================================================================
+// The navigator (v0.47.0)
+// ===========================================================================
+
+/**
+ * `navigation` was one of five numbers on the character sheet and the only code
+ * in the project that read it made it *rise* after thirty-five. These tests are
+ * about where the man at the chart table is worth something and — just as
+ * importantly — where he is worth nothing.
+ */
+describe("navigatedWindModifier", () => {
+  const STRENGTH = 0.52; // an average trade wind on this map
+
+  it("changes nothing at all for the captain every game starts with", () => {
+    for (let deg = 0; deg <= 180; deg += 5) {
+      const base = windSpeedModifier((deg * Math.PI) / 180, 0, STRENGTH, 50);
+      expect(navigatedWindModifier(base, NEUTRAL_NAVIGATION)).toBeCloseTo(base, 10);
+    }
+  });
+
+  it("is worth nothing on a point of sail anybody can steer", () => {
+    // On a beam or broad reach the ship is already making more than her base
+    // speed, so there is no shortfall for a navigator to recover.
+    for (const deg of [95, 110, 140]) {
+      const base = windSpeedModifier((deg * Math.PI) / 180, 0, STRENGTH, 50);
+      expect(base).toBeGreaterThan(1);
+      expect(navigatedWindModifier(base, 0)).toBeCloseTo(base, 10);
+      expect(navigatedWindModifier(base, 10)).toBeCloseTo(base, 10);
+    }
+  });
+
+  it("is worth a fifth of her speed hard on the wind", () => {
+    const base = windSpeedModifier(0, 0, STRENGTH, 50); // dead into it
+    const poor = navigatedWindModifier(base, 0);
+    const good = navigatedWindModifier(base, 10);
+    expect(poor).toBeLessThan(base);
+    expect(good).toBeGreaterThan(base);
+    expect(good / poor).toBeGreaterThan(1.4);
+  });
+
+  it("rises with the skill and never goes negative", () => {
+    const base = windSpeedModifier(0, 0, 1.0, 60);
+    for (let n = 0; n < 10; n++) {
+      expect(navigatedWindModifier(base, n + 1)).toBeGreaterThanOrEqual(navigatedWindModifier(base, n));
+    }
+    expect(navigatedWindModifier(0, 0)).toBeGreaterThanOrEqual(0);
+  });
+
+  it("clamps a skill outside the sheet rather than extrapolating off it", () => {
+    const base = windSpeedModifier(0, 0, STRENGTH, 50);
+    expect(navigatedWindModifier(base, 99)).toBeCloseTo(navigatedWindModifier(base, 10), 10);
+    expect(navigatedWindModifier(base, -99)).toBeCloseTo(navigatedWindModifier(base, 0), 10);
+  });
 });

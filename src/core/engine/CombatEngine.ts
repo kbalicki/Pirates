@@ -3,8 +3,8 @@ import type { CombatCommand } from "../model/Commands.ts";
 import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
-import { windSpeedModifier } from "../systems/WeatherSystem.ts";
-import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks } from "../systems/CombatSystem.ts";
+import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
+import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
 import { damageSpeedMultiplier, damageTurnMultiplier, applyFlooding } from "../systems/DamageSystem.ts";
@@ -25,6 +25,18 @@ export class CombatEngine {
   private archetype: AiArchetype = "aggressive";
   /** Captain swordsmanship 0..10 — affects boarding outcome. */
   private swordsmanship = 5;
+  /**
+   * Captain gunnery 0..10 — how much of his broadside finds the target
+   * (v0.47.0). His own ship and his consorts fire at this; the enemy fires at
+   * `NEUTRAL_GUNNERY`, which is the accuracy every ship in the game used before
+   * the skill had a reader, so nothing about an NPC's shooting has changed.
+   */
+  private gunnery = NEUTRAL_GUNNERY;
+  /**
+   * Captain navigation 0..10 — how much he gets out of a wind that is not
+   * serving (v0.47.0). Same split as gunnery: his squadron, not the enemy.
+   */
+  private navigation = NEUTRAL_NAVIGATION;
   /** Player crew training 0..1 — affects reload speed for the player ship only. */
   private playerTraining = 0.5;
   /** Enemy crew training 0..1 — kept separate so AI ships reload at their own pace. */
@@ -47,6 +59,16 @@ export class CombatEngine {
 
   setSwordsmanship(v: number): void {
     this.swordsmanship = v;
+  }
+
+  /** Hand the engine the captain's gunnery; his squadron lays its guns with it. */
+  setGunnery(v: number): void {
+    this.gunnery = Math.max(0, Math.min(10, v));
+  }
+
+  /** Hand the engine the captain's navigation; his squadron sails with it. */
+  setNavigation(v: number): void {
+    this.navigation = Math.max(0, Math.min(10, v));
   }
 
   setPlayerTraining(v: number): void {
@@ -124,7 +146,13 @@ export class CombatEngine {
       if (entity.kind === "ship" && entity.ship) {
         const shipClass = SHIP_CLASSES[entity.ship.classId as string];
         if (shipClass) {
-          const windMod = windSpeedModifier(entity.heading, state.wind.dirRad, state.wind.strength);
+          // The captain sails his own hull and his consorts; the enemy has a
+          // navigator of his own and gets the neutral value (v0.47.0).
+          const ownHull = id === (state.playerShipId as string) || id.startsWith("ally_");
+          const windMod = navigatedWindModifier(
+            windSpeedModifier(entity.heading, state.wind.dirRad, state.wind.strength),
+            ownHull ? this.navigation : NEUTRAL_NAVIGATION,
+          );
           // Damage tiers (v0.9.9): hull and rigging each cost speed in stages.
           // A dismasted ship returns 0 and drifts, whatever the helm orders.
           const damageMod = damageSpeedMultiplier(
@@ -221,7 +249,8 @@ export class CombatEngine {
         const dRatio = dist / effRange;
         let distFactor = Math.pow(1 - dRatio, 1.5);
         if (dRatio < 0.15) distFactor *= 1.6;
-        const accuracy = Math.max(0.15, 1 - 0.7 * dRatio);
+        // A consort's gun crews were drilled by the same captain (v0.47.0).
+        const accuracy = gunneryAccuracy(dRatio, this.gunnery);
         const hit = Math.random() < accuracy;
 
         events.push({ type: "CannonFired", side: "left", shipId: ally.id, ammo: ally.ship.ammoType ?? "round", hit, fromPos: ally.pos, targetPos: enemy.pos });
@@ -527,8 +556,13 @@ export class CombatEngine {
     let distFactor = Math.pow(1 - dRatio, 1.5);
     if (dRatio < 0.15) distFactor *= 1.6; // point-blank bonus (Sid Meier style)
 
-    // Accuracy: very high close, drops off with range
-    const accuracy = Math.max(0.15, 1 - 0.7 * dRatio);
+    // Accuracy: very high close, drops off with range — and, since v0.47.0,
+    // with who is laying the guns. `applyFire` serves whichever hull was
+    // ordered to fire, so the captain's own gunnery only follows his own.
+    const accuracy = gunneryAccuracy(
+      dRatio,
+      shipId === (state.playerShipId as string) ? this.gunnery : NEUTRAL_GUNNERY,
+    );
     const hit = Math.random() < accuracy;
 
     events.push({ type: "CannonFired", side, shipId: entity.id, ammo, hit, fromPos: entity.pos, targetPos: target.pos });
@@ -690,7 +724,8 @@ export class CombatEngine {
       const dRatio = dist / effectiveRange;
       let distFactor = Math.pow(1 - dRatio, 1.5);
       if (dRatio < 0.15) distFactor *= 1.6;
-      const accuracy = Math.max(0.15, 1 - 0.7 * dRatio);
+      // The enemy's own gun captain: unchanged from every release before this.
+      const accuracy = gunneryAccuracy(dRatio, NEUTRAL_GUNNERY);
       const hit = Math.random() < accuracy;
 
       events.push({ type: "CannonFired", side: "left", shipId: enemy.id, ammo: preferredAmmo, hit, fromPos: enemy.pos, targetPos: player.pos });

@@ -297,6 +297,8 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?blockade=havana` | Fregata na stanowisku pod tym portem, kordon dzień przed zaciśnięciem |
 | `?famine=tortuga` | Kapitan stoi w mieście, którego dostawca jest pod czarną banderą; miasto od dwóch tygodni głoduje |
 | `&stand=cover` | Stoi zamiast tego w porcie, który przejął cudze kursy — razem z `?famine=` |
+| `?skills=navigation:10,medicine:0` | Kapitan, który wydał punkty gdzie indziej (v0.47.0). Działa z `?skip` i `?battle=`. Trzy z pięciu umiejętności nic nie robiły do tego wydania, a jedyną drogą do konkretnego zestawu było przejście tworzenia postaci ręcznie |
+| `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |
 | `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie |
 
 ## Deploy produkcyjny

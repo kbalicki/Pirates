@@ -26,6 +26,7 @@
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
 | Damage | `DamageSystem.ts` | Stopnie uszkodzeń kadłuba i takielunku, tonięcie |
 | Repair | `ShipRepairSystem.ts` | Naprawa prowizoryczna na morzu, ratowanie rozbitków |
+| Surgeon | `SurgeonSystem.ts` | Lazaret: czterech na dziesięciu poległych trafia pod pokład, `medicine` decyduje, ilu wraca |
 | Duel | `DuelSystem.ts` | Pojedynki szermiercze kapitanów |
 | Dialogue | `DialogueSystem.ts` + `data/dialogues.ts` | Rozmowy jako dane: węzły, warunki, efekty |
 | Plunder | `PlunderSystem.ts` | Zegar podziału łupów, morale niezapłaconej załogi |
@@ -167,6 +168,37 @@ Dwie reguły warte pilnowania (obie w testach):
 Co `PLUNDER_INTERVAL_DAYS` = 60 dni załoga oczekuje podziału. Po tym terminie morale spada o 0.4% dziennie do podłogi 15%. Morale steruje już przeładowaniem dział, siłą abordażu i tempem napraw, więc zaniedbana załoga jest **mierzalnie gorsza** we wszystkim, zanim dojdzie do buntu.
 
 Podział odbywa się w tawernie: kapitan zatrzymuje 35-60% (zależnie od rang i sławy), reszta idzie do załogi, 65% ludzi schodzi na ląd wydać swoje, a ci co zostają mają morale 1.0. Zegar rusza od nowa.
+
+
+### Trzy z pięciu umiejętności nic nie robiły (v0.47.0)
+
+Tworzenie postaci od zawsze każe rozdać punkty na `fencing`, `gunnery`,
+`navigation`, `medicine` i `charm`. Szermierka rozstrzygała pojedynek, urok —
+zaloty. Reszta:
+
+| Umiejętność | Kto ją czytał przed v0.47.0 | Kto czyta teraz |
+|---|---|---|
+| `gunnery` | wyłącznie `bombardAccuracy` w `SiegeSystem` — czyli **tylko mury fortu** | `gunneryAccuracy` w `CombatSystem`, wołane przez trzy miejsca `CombatEngine` |
+| `navigation` | nikt (poza `AgingSystem`, który kazał jej rosnąć) | `navigatedWindModifier` w `WeatherSystem` |
+| `medicine` | nikt (jw.) | `SurgeonSystem` |
+
+**Nawigator** (`navigatedWindModifier`) dostaje premię skalowaną tym, jak źle
+służy wiatr: `shortfall = max(0, 1 − windMod)`. Ostro na wiatr jest wart piątą
+część prędkości, na baksztagu — **zero**, bo statek już leci i każdy go
+utrzyma. Zmierzone na 600 jednostkach prosto pod wiatr: 4,43 dnia przy
+`navigation` 0, 3,47 przy 5, 2,85 przy 10 — i 1,53 dnia dla każdego z nich w
+poprzek wiatru.
+
+**Kanonier** (`gunneryAccuracy`) mnoży dotychczasowy człon odległości przez
+`0.85 + 0.03 × gunnery`. Kula okrągła na połowie zasięgu: 0,552 trafienia przy
+0, 0,650 przy 5, 0,747 przy 10 — około jednej trzeciej żelaza więcej w celu.
+
+**Wszystkie trzy zaczepy są wyśrodkowane na 5**, czyli na wartości startowej
+każdej umiejętności. Kapitan, który rozłożył punkty równo, pływa i strzela
+dokładnie tak, jak w v0.46.0 — a NPC, których nikt nie prowadzi, dostają
+`NEUTRAL_GUNNERY` / `NEUTRAL_NAVIGATION` i nie zmienili się wcale. Zaczep, który
+ruszyłby przypadek średni, po cichu przewersjonowałby piętnaście wydań
+zmierzonych liczb.
 
 ### Wiek kapitana (`AgingSystem.ts`, v0.11.0)
 
@@ -371,6 +403,36 @@ Raz na dobę gry, tylko na morzu, `repairAtSea()` łata to, co da się załatać
 Tempo = `ręce × morale` — połowa załogi przy połowie morale robi ćwiartkę dniówki, nie trzy czwarte. Sufit jest po to, żeby stocznia dalej miała sens: naprawa na morzu pozwala zejść ze stanu „tonie" i dopłynąć do portu, nigdy odbudować się do walki. W porcie funkcja nic nie robi — tam jest `repairShip()` za złoto.
 
 `rescueSurvivors()` wyławia 40% żywej załogi zatopionego przeciwnika, ale tylko tylu, ile jest wolnych koi. Wcieleni rozbitkowie rozcieńczają wyszkolenie tak samo jak rekruci z tawerny.
+
+### Lazaret (`SurgeonSystem.ts`, v0.47.0)
+
+Odpowiednik cieśli po stronie ludzi — ten sam dzienny zegar, ta sama zasada, że
+praca na morzu nigdy nie wystarcza. Do v0.47.0 `medicine` czytał w całym projekcie
+**wyłącznie** `AgingSystem`, który po trzydziestce piątce kazał tej liczbie *rosnąć*:
+starannie zamodelowana nagroda za nic.
+
+| Stała | Wartość | Po co |
+|---|---|---|
+| `WOUNDED_SHARE` | 0.40 | ilu z poległych trafia pod pokład żywych — stała, bo o tym decyduje kula, nie medyk |
+| `TEND_SHARE` | 0.30 | ile lazaretu medyk obchodzi w ciągu dnia |
+| `SURVIVAL_BASE` | 0.45 | ilu przeżywa przy `medicine` 0 |
+| `SURVIVAL_PER_SKILL` | 0.046 | przyrost na punkt — 0.68 przy 5, 0.91 przy 10 |
+
+Ranny **nie jest na liście załogi**: `crew.current` stracił go w chwili, w której
+padł, więc nic, co liczy ręce — kadencja przeładowania, siła abordażu, naprawa
+prowizoryczna — nie widzi go jako pracującego. Wraca na listę albo nie wraca,
+po jednym dniu naraz.
+
+Zmierzone, na stu poległych: **17 wraca** do kapitana bez medycyny, **37** do
+takiego, który ją studiował. Lazaret pustoszeje w 11-13 dni, czyli mniej więcej
+przez rejs do portu.
+
+Dwa miejsca stemplują rannych, bo są dwa miejsca, w których giną ludzie gracza:
+zapis wyniku bitwy w `SeaBattleScene` i `SiegeSystem.writeBackForce` (desant,
+obrona miasta). Konsorty mają własny `wounded?` i chodzą na te same obchody.
+
+`wounded?` jest **opcjonalne** i czytane przez `?? 0` — stary zapis po prostu
+nie ma nikogo pod pokładem i zaczyna liczyć po pierwszej walce. Bez migracji.
 
 ### Pojedynki (`DuelSystem.ts`, v0.10.0)
 

@@ -156,3 +156,46 @@ export function isInIrons(shipHeading: HeadingRad, windDirRad: HeadingRad, minWi
   const windAngle = angleDiff > Math.PI ? TWO_PI - angleDiff : angleDiff;
   return windAngle * (180 / Math.PI) < minWindAngle;
 }
+
+// ── The navigator ─────────────────────────────────────────
+
+/**
+ * The skill value at which a captain sails exactly as every captain sailed
+ * before v0.47.0.
+ *
+ * Character creation starts each of the five skills here, so centring the
+ * bonus on it means the arithmetic of every existing battle, passage and NPC
+ * is untouched: only a captain who spent points, or refused to, sails
+ * differently. A hook that changed the average case would have quietly
+ * rebalanced fifteen releases of measured numbers.
+ */
+export const NEUTRAL_NAVIGATION = 5;
+
+/** How much of the wind's shortfall a single point of navigation recovers. */
+export const NAVIGATOR_GAIN = 0.04;
+
+/**
+ * The navigator's share of the day's work (v0.47.0).
+ *
+ * `navigation` was one of five numbers on the character sheet and, until this
+ * function existed, the only code in the game that read it was `AgingSystem`,
+ * which made it *rise* after thirty-five — a reward for nothing.
+ *
+ * The bonus is scaled by how badly the wind is serving: `shortfall` is what
+ * the ship is losing against her own base speed, so
+ *
+ *   • hard on the wind (modifier 0.48) a good navigator is worth a fifth more;
+ *   • on a beam reach (modifier 1.26) he is worth **nothing at all**.
+ *
+ * That is the whole design. Anybody can steer a ship that is already flying;
+ * the man who knows his trade is the one who gets her to windward. Measured on
+ * a 600-unit passage dead to windward in an average trade wind: 4.43 days for
+ * navigation 0, 3.47 for 5, 2.85 for 10 — and 1.53 days for every one of them
+ * on a broad reach.
+ */
+export function navigatedWindModifier(windMod: number, navigation: number): number {
+  const shortfall = Math.max(0, 1 - windMod);
+  if (shortfall <= 0) return windMod;
+  const skill = Math.max(0, Math.min(10, navigation)) - NEUTRAL_NAVIGATION;
+  return Math.max(0, windMod + skill * NAVIGATOR_GAIN * shortfall);
+}

@@ -64,3 +64,36 @@ export const CANNON_RANGE = 480;
 export const CANNON_DAMAGE_HULL = 3.5;
 export const CANNON_DAMAGE_SAILS = 3.0;
 export const CANNON_DAMAGE_CREW = 4.5;
+
+// ── The gun captain ───────────────────────────────────────
+
+/**
+ * The gunnery a ship fights at when nobody has said otherwise.
+ *
+ * Every NPC hull, and every save made before v0.47.0, fires at exactly the
+ * accuracy the game has always used — the multiplier below is 1.0 here. Only a
+ * captain who put points into his guns, or spent them elsewhere, shoots
+ * differently.
+ */
+export const NEUTRAL_GUNNERY = 5;
+
+/**
+ * Chance a broadside finds its mark, given range and the captain's gunnery.
+ *
+ * The distance term is the one the engine has used since v0.9.0 and is
+ * unchanged: dead certain alongside, falling away to a fifth at extreme range.
+ * What is new is who is laying the guns. `gunnery` was read by exactly one
+ * thing in the whole game — `bombardAccuracy` in `SiegeSystem`, which is to
+ * say a captain's gunnery decided how he shelled a fort and had **nothing** to
+ * do with how he fought a ship.
+ *
+ * The multiplier runs 0.85 at gunnery 0 to 1.15 at gunnery 10, so a gunner
+ * lands about 35 % more of his broadsides than a duffer and a battle between
+ * them is roughly a quarter shorter. Round shot at half range: 0.552 hit
+ * chance for gunnery 0, 0.650 for 5, 0.747 for 10.
+ */
+export function gunneryAccuracy(dRatio: number, gunnery: number = NEUTRAL_GUNNERY): number {
+  const base = Math.max(0.15, 1 - 0.7 * dRatio);
+  const g = Math.max(0, Math.min(10, gunnery));
+  return Math.max(0, Math.min(1, base * (0.85 + 0.03 * g)));
+}

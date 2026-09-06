@@ -16,6 +16,19 @@ export type ShipData = {
     max: number;
     morale: number; // 0..1
   };
+  /**
+   * Men below in the surgeon's care (v0.47.0).
+   *
+   * They are not on the muster roll: `crew.current` has already lost them, so
+   * nothing that counts hands — reload cadence, boarding strength, jury
+   * repairs — sees a wounded man as a working one. They come back onto it, or
+   * they do not, one day at a time in `SurgeonSystem`.
+   *
+   * Optional and read through `?? 0`, so a save made before this field existed
+   * simply has nobody below and starts keeping the tally after its owner's
+   * next fight. No migration step: see the rule in TODO section 5.
+   */
+  wounded?: number;
 };
 
 export type NewsItem = {

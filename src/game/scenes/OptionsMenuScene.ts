@@ -284,11 +284,20 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(crewTitle);
     y += 20;
 
+    // The sick bay is drawn only on the days there is one (v0.47.0). It is
+    // the only place the men off the roll but still aboard can be seen, and
+    // without it a crew climbing back on its own over the fortnight after a
+    // fight would read as a bug rather than as the surgeon.
+    const below = Math.round(ship.wounded ?? 0);
     const crewText = this.add.text(x + 10, y,
-      `${t("hud.crew", { current: ship.crew.current, max: ship.crew.max })}\n${t("hud.morale", { pct: Math.round(ship.crew.morale * 100) })}`,
+      `${t("hud.crew", { current: ship.crew.current, max: ship.crew.max })}\n${t("hud.morale", { pct: Math.round(ship.crew.morale * 100) })}`
+      + (below > 0 ? `\n${t("cabin.wounded", { count: below })}` : ""),
       txt(12));
     this.contentContainer.add(crewText);
-    y += 36;
+    // Measured, not counted. The block was two lines and the next element sat
+    // at a hardcoded +36 — which already grazed the second line and buried the
+    // third the day there was one. Caught on a screenshot, as these always are.
+    y += crewText.height + 10;
 
     // Morale bar
     const barBg = this.add.rectangle(x + 10, y, 200, 10, 0xdddddd);
@@ -311,7 +320,9 @@ export class OptionsMenuScene extends Phaser.Scene {
       t("cabin.training", { pct: Math.round(training * 100) }),
       txt(12));
     this.contentContainer.add(trainingLabel);
-    y += 16;
+    // Same measured gap as above. 16 px was less than a line of this font, so
+    // the bar has been drawn across the label it belongs to since v0.21.0.
+    y += trainingLabel.height + 6;
     const tBg = this.add.rectangle(x + 10, y, 200, 10, 0xdddddd);
     tBg.setOrigin(0, 0.5);
     this.contentContainer.add(tBg);
@@ -377,6 +388,7 @@ export class OptionsMenuScene extends Phaser.Scene {
           `  |  ${t("hud.sails", { current: Math.round(fs.sailsHp), max: fs.sailsMax })}` +
           `  |  ${t("cabin.cannons", { count: fs.cannons })}` +
           `  |  ${t("hud.crew", { current: consortCrew(fs), max: consortCrewMax(fs) })}` +
+          ((fs.wounded ?? 0) > 0 ? `  |  ${t("cabin.wounded", { count: Math.round(fs.wounded ?? 0) })}` : "") +
           `  |  ${t("hud.morale", { pct: Math.round(consortMorale(fs) * 100) })}` +
           `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}`,
           { ...txt(11), lineSpacing: 4 });

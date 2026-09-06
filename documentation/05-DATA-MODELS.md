@@ -75,8 +75,16 @@ type ShipData = {
   cannons: number;
   crew: number;                 // aktualna liczba załogi
   cargo: Record<ItemId, number>;// ładunek
+  wounded?: number;             // v0.47.0 — ranni pod pokładem, POZA listą załogi
 };
 ```
+
+`wounded` jest opcjonalne i czytane przez `?? 0`, więc nie wymagało kroku
+migracji (ta sama zasada, co `crew?` / `morale?` / `training?` na `FleetShip`).
+Ranny **nie liczy się jako ręka**: `crew` stracił go w chwili, w której padł, i
+nic, co liczy ludzi, nie widzi go jako pracującego. `SurgeonSystem` decyduje raz
+na dobę, kto wraca na listę, a kto nie — i to jedyne miejsce, które tę liczbę
+zmniejsza.
 
 ### AiData
 

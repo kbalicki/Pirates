@@ -68,6 +68,14 @@ export type FleetShip = {
    * yard's delivery crew is not the crew he has spent years drilling.
    */
   training?: number;
+  /**
+   * Men below in the surgeon's care aboard this consort (v0.47.0).
+   *
+   * Same contract as `crew`: optional, read through `?? 0`, and the surgeon
+   * makes his rounds of the whole squadron — a consort's wounded are tended on
+   * the same day and by the same skill as the flagship's.
+   */
+  wounded?: number;
 };
 
 export type PlayerState = {

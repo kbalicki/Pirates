@@ -203,6 +203,7 @@ export const EN: LocaleData = {
   // -- Captain's Cabin --
   "cabin.crew_title": "Crew",
   "cabin.training": "Crew training: {{pct}}%",
+  "cabin.wounded": "Below with the surgeon: {{count}}",
   "cabin.cargo_title": "Cargo Manifest",
   "cabin.ships_title": "Your Fleet",
   "cabin.no_cargo": "Cargo hold is empty.",
@@ -403,6 +404,8 @@ export const EN: LocaleData = {
   "event.repaired": "Ship repaired for {{gold}} Gold",
   "event.repaired_at_sea": "The carpenter's crew patched the ship at sea (+{{hull}} hull, +{{sails}} rigging)",
   "event.survivors_rescued": "{{count}} survivors pulled from the water and pressed into the crew",
+  "event.wounded_recovered": "{{count}} of the wounded are back on the muster roll",
+  "event.wounded_died": "{{count}} of the wounded died in the surgeon's care",
   "event.food_low": "Food supplies running low!",
   "event.water_low": "Water supplies running low!",
   "event.food_out": "Food has run out! Crew is starving!",
@@ -751,6 +754,11 @@ export const EN: LocaleData = {
   "skill.navigation": "Navigation",
   "skill.medicine": "Medicine",
   "skill.charm": "Charm",
+  "skill.fencing.hint": "Fencing wins duels and cheapens a boarding.",
+  "skill.gunnery.hint": "Gunnery lands broadsides \u2014 at sea and at walls.",
+  "skill.navigation.hint": "Navigation gets her to windward. Nothing downwind.",
+  "skill.medicine.hint": "Medicine brings the wounded back to the roll.",
+  "skill.charm.hint": "Charm opens a governor's door, and his daughter's.",
 
   // -- Captain Tab --
   "menu.tab_captain": "Captain",

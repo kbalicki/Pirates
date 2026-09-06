@@ -2,7 +2,7 @@ import type { EntityState } from "../model/EntityState.ts";
 import type { WeatherState, Vec2 } from "../model/WorldState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../services/Geometry.ts";
-import { windSpeedModifier } from "./WeatherSystem.ts";
+import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
 import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
 
 export type TerrainQuery = (worldX: number, worldY: number) => TerrainType;
@@ -34,6 +34,15 @@ export function updateNavigation(
    * makes the Straits of Florida visible without a word of UI.
    */
   current: Vec2 = { x: 0, y: 0 },
+  /**
+   * The man at the chart table, 0..10 (v0.47.0).
+   *
+   * Defaults to `NEUTRAL_NAVIGATION`, which is exactly how every hull in the
+   * game sailed before the skill had a reader — so NPCs, which are steered by
+   * nobody in particular, keep sailing that way and only the player's own
+   * flagship is affected by what is on his sheet.
+   */
+  navigation: number = NEUTRAL_NAVIGATION,
 ): EntityState {
   if (entity.kind !== "ship" || !entity.ship) return entity;
 
@@ -46,7 +55,12 @@ export function updateNavigation(
   if (!shipClass) return entity;
 
   // Calculate effective speed (fleet multiplier slows to slowest ship)
-  const windMod = windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30);
+  // A good navigator is worth most where the wind serves worst, and nothing at
+  // all on a broad reach — see `navigatedWindModifier`.
+  const windMod = navigatedWindModifier(
+    windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30),
+    navigation,
+  );
   // Damage tiers (v0.9.9). Unlike in battle, a dismasted ship still crawls —
   // repairs only exist in port, so a true zero here would strand the player.
   const damageMod = mapDamageSpeedMultiplier(

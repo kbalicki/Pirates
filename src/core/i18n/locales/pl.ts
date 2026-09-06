@@ -203,6 +203,7 @@ export const PL: LocaleData = {
   // -- Captain's Cabin --
   "cabin.crew_title": "Załoga",
   "cabin.training": "Wyszkolenie załogi: {{pct}}%",
+  "cabin.wounded": "Rannych pod pokładem: {{count}}",
   "cabin.cargo_title": "Manifest ładunku",
   "cabin.ships_title": "Twoja flota",
   "cabin.no_cargo": "Ładownia jest pusta.",
@@ -403,6 +404,8 @@ export const PL: LocaleData = {
   "event.repaired": "Naprawiono statek za {{gold}} Złoto",
   "event.repaired_at_sea": "Cieśla z załogą załatali statek na morzu (+{{hull}} kadłuba, +{{sails}} takielunku)",
   "event.survivors_rescued": "Wyłowiono {{count}} rozbitków i wcielono do załogi",
+  "event.wounded_recovered": "{{count}} rannych wróciło na list załogi",
+  "event.wounded_died": "{{count}} rannych zmarło pod opieką medyka",
   "event.food_low": "Zapasy jedzenia się kończą!",
   "event.water_low": "Zapasy wody się kończą!",
   "event.food_out": "Jedzenie się skończyło! Załoga głoduje!",
@@ -751,6 +754,11 @@ export const PL: LocaleData = {
   "skill.navigation": "Nawigacja",
   "skill.medicine": "Medycyna",
   "skill.charm": "Urok",
+  "skill.fencing.hint": "Szermierka: pojedynki i tańszy abordaż.",
+  "skill.gunnery.hint": "Artyleria: ile salw trafia, na morzu i w mury.",
+  "skill.navigation.hint": "Nawigacja wyciąga statek na wiatr. Z wiatrem \u2014 nic.",
+  "skill.medicine.hint": "Medycyna wraca rannych na listę załogi.",
+  "skill.charm.hint": "Urok otwiera drzwi gubernatora i jego córki.",
 
   // -- Captain Tab --
   "menu.tab_captain": "Kapitan",

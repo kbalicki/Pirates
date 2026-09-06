@@ -24,7 +24,8 @@ import {
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
-import { windSpeedModifier } from "../../core/systems/WeatherSystem.ts";
+import { windSpeedModifier, navigatedWindModifier } from "../../core/systems/WeatherSystem.ts";
+import { woundedFrom } from "../../core/systems/SurgeonSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
@@ -298,6 +299,11 @@ export class SeaBattleScene extends Phaser.Scene {
     // set this before v0.11.0, so the engine's default of 5 was used for every
     // captain regardless of skill or age.
     this.combatEngine.setSwordsmanship(effectiveSkill(this.worldState, "fencing"));
+    // And the other two numbers on his sheet that a sea fight ought to care
+    // about, neither of which it did until v0.47.0: who lays the guns, and who
+    // is at the chart table when the wind is foul.
+    this.combatEngine.setGunnery(effectiveSkill(this.worldState, "gunnery"));
+    this.combatEngine.setNavigation(effectiveSkill(this.worldState, "navigation"));
 
     const cam = this.cameras.main;
     // Arena coordinates ARE world coordinates; camera will follow the player.
@@ -731,10 +737,16 @@ export class SeaBattleScene extends Phaser.Scene {
    * fixed, so the HUD and the ship disagreed.
    */
   private estimateWindMod(heading: number): number {
-    const minWindAngle = SHIP_CLASSES[
-      this.combatState.entities[this.worldState.player.shipId as string]?.ship?.classId as string
-    ]?.minWindAngle ?? 30;
-    return windSpeedModifier(heading, this.combatState.wind.dirRad, this.combatState.wind.strength, minWindAngle);
+    // Two things the engine does that this must do as well, or the readout is
+    // back to describing a different ship. It steers every hull in the arena on
+    // the **default** dead zone rather than the class's own — this used to pass
+    // `SHIP_CLASSES[...].minWindAngle` and so read a galleon 30 degrees kinder
+    // than the arena sailed her — and since v0.47.0 it gives the player's own
+    // squadron the captain's navigator.
+    return navigatedWindModifier(
+      windSpeedModifier(heading, this.combatState.wind.dirRad, this.combatState.wind.strength),
+      effectiveSkill(this.worldState, "navigation"),
+    );
   }
 
   /** Faint dashed arcs showing port + starboard firing zones (no fore/aft dead-zone). */
@@ -1290,6 +1302,11 @@ export class SeaBattleScene extends Phaser.Scene {
               ...playerEntity.ship,
               hullHp: Math.max(0, cs.hullHp),
               sailsHp: Math.max(0, cs.sailsHp),
+              // Not every man off the roll went over the side (v0.47.0). Four
+              // in ten are below with the surgeon, and `medicine` decides how
+              // many of them are back on it a fortnight from now.
+              wounded: (playerEntity.ship.wounded ?? 0)
+                + woundedFrom(playerEntity.ship.crew.current - cs.crew.current),
               crew: { ...playerEntity.ship.crew, current: cs.crew.current, morale: cs.crew.morale },
             },
           },
@@ -1304,11 +1321,15 @@ export class SeaBattleScene extends Phaser.Scene {
         .map((fs, i) => {
           const ally = this.combatState.entities["ally_" + i];
           if (!ally?.ship) return fs;
+          const left = Math.max(0, Math.round(ally.ship.crew.current));
           return {
             ...fs,
             hullHp: Math.max(0, ally.ship.hullHp),
             sailsHp: Math.max(0, ally.ship.sailsHp),
-            crew: Math.max(0, Math.round(ally.ship.crew.current)),
+            crew: left,
+            // A consort's sick bay is tended on the same rounds as the
+            // flagship's — one surgeon, one squadron.
+            wounded: (fs.wounded ?? 0) + woundedFrom(consortCrew(fs) - left),
             morale: Math.max(0, Math.min(1, ally.ship.crew.morale)),
           };
         })

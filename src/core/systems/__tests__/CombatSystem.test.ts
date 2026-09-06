@@ -4,8 +4,7 @@ import {
   CANNON_COOLDOWN_TICKS,
   CANNON_DAMAGE_HULL,
   CANNON_DAMAGE_SAILS,
-  CANNON_DAMAGE_CREW,
-} from "../CombatSystem.ts";
+  CANNON_DAMAGE_CREW, gunneryAccuracy, NEUTRAL_GUNNERY } from "../CombatSystem.ts";
 
 // ===========================================================================
 // effectiveReloadTicks — broadside cadence (v0.9.8.0)
@@ -103,5 +102,51 @@ describe("damage constants", () => {
     expect(CANNON_DAMAGE_CREW).toBeGreaterThan(0);
     // Grape shot aside, a broadside kills more men than it opens planks.
     expect(CANNON_DAMAGE_CREW).toBeGreaterThan(CANNON_DAMAGE_HULL);
+  });
+});
+
+// ===========================================================================
+// The gun captain (v0.47.0)
+// ===========================================================================
+
+/**
+ * Until this function existed a captain's `gunnery` decided how he shelled a
+ * fort (`bombardAccuracy`) and had nothing whatever to do with how he fought a
+ * ship. The distance term below is the one the engine has used since v0.9.0 and
+ * is deliberately untouched.
+ */
+describe("gunneryAccuracy", () => {
+  it("leaves the accuracy every ship in the game had, at the neutral value", () => {
+    for (const dRatio of [0, 0.15, 0.3, 0.5, 0.7, 0.9, 1]) {
+      const before = Math.max(0.15, 1 - 0.7 * dRatio);
+      expect(gunneryAccuracy(dRatio, NEUTRAL_GUNNERY)).toBeCloseTo(before, 10);
+    }
+  });
+
+  it("defaults to that same neutral value when nobody says who is firing", () => {
+    expect(gunneryAccuracy(0.5)).toBeCloseTo(gunneryAccuracy(0.5, NEUTRAL_GUNNERY), 10);
+  });
+
+  it("lands about a third more of a gunner's broadsides than a duffer's", () => {
+    const poor = gunneryAccuracy(0.5, 0);
+    const good = gunneryAccuracy(0.5, 10);
+    expect(good / poor).toBeGreaterThan(1.3);
+    expect(good / poor).toBeLessThan(1.4);
+  });
+
+  it("still falls away with range for everybody", () => {
+    for (const g of [0, 5, 10]) {
+      expect(gunneryAccuracy(0.1, g)).toBeGreaterThan(gunneryAccuracy(0.9, g));
+    }
+  });
+
+  it("never promises a certainty or an impossibility", () => {
+    for (const g of [-5, 0, 5, 10, 50]) {
+      for (const d of [0, 0.5, 1, 2]) {
+        const a = gunneryAccuracy(d, g);
+        expect(a).toBeGreaterThanOrEqual(0);
+        expect(a).toBeLessThanOrEqual(1);
+      }
+    }
   });
 });
