@@ -289,6 +289,33 @@ przyciśnięty dwa razy zmienia szlak w najbliższym porcie, a mapa ma dalej rys
 już nie ma. Narysowanie `laneOf` po cichu poprawiałoby mu mapę, a to jest jedyna
 rzecz, której ten renderer istnieje żeby **nie** robić.
 
+## Kursy skwadronów — dwa źródła, jedna pętla (v0.46.0)
+
+`ExpeditionCourseRenderer` rysował kurs desantu koronnego: kreskowana linia z
+portu wyjścia, pierścień na mieście-celu, grot w miejscu zliczenia, etykieta z
+siłą i dniami.
+
+Flota skarbowa okazała się **tym samym rysunkiem z innymi słowami**: skwadron,
+który wyszedł z nazwanej przystani, na kursie po prawdziwej wodzie, z jednym
+miastem po drodze, przy którym wszyscy wiedzą, że musi się zameldować, i liczbą
+dni do końca. Zamiast trzeciego renderera tego kształtu (`StormCourseRenderer`
+był drugim) doszło `chartedSquadrons(world)`, które zbiera oba źródła do jednej
+struktury, i jedna pętla rysująca.
+
+| | desant koronny | flota skarbowa |
+|---|---|---|
+| kurs | `expeditionCourse` | `plateCourse` (muster → Hawana → Atlantyk) |
+| pierścień | miasto-cel | **Hawana** — punkt spotkania |
+| kolor | korona wysyłająca | korona hiszpańska |
+| etykieta | `{{soldiers}} ludzi, {{days}} dni` | `flota skarbów, na {{port}} — {{days}} dni` |
+
+Pierścień na Hawanie jest tu znakiem wartym postawienia: na dwutygodniowej
+przeprawie to **jedyny punkt, o którym kapitan wie, że ona tam być musi**.
+
+`knownPlateFleets` filtruje po `knownEventIds` **i** po tym, czy `platePos` w
+ogóle coś zwraca — dopóki się ładuje, nie ma jej na wodzie i czart tego nie
+udaje.
+
 ## StormCourseRenderer — droga sztormu (v0.45.0)
 
 Od v0.45.0 huragan ma **jedno wędrujące oko** zamiast trzech nieruchomych

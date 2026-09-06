@@ -11,6 +11,7 @@ import type { NewsItem } from "../model/EntityState.ts";
 import { dayToCalendar, calendarToDay } from "./TimeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
+import { MUSTER_PORTS } from "./TreasureFleetSystem.ts";
 import { PORTS } from "../data/ports.ts";
 
 // ── Historical Wars ──────────────────────────────────────
@@ -183,6 +184,11 @@ const RANDOM_EVENTS: RandomEventTemplate[] = [
     durationDays: [14, 21],
     severity: 2,
     affectsPorts: 0, // Spanish ports only
+    // She musters where the silver actually is (v0.46.0). Until the fleet
+    // sailed it did not matter which Spanish town the headline named; now the
+    // muster port is the first leg of a real passage, and "preparing to sail
+    // from Gibraltar" would put the plate fleet in a lagoon.
+    portWhitelist: MUSTER_PORTS,
   },
   {
     type: "new_governor",
@@ -279,12 +285,22 @@ export function seedInitialEvents(world: WorldState): WorldState {
 
     const portR = rngNext(rng);
     rng = portR.state;
+    // The template's own rules about where it can land, which this ignored
+    // entirely until v0.46.0 — the same bug as `pickNeighbours` in v0.45.0, one
+    // layer up. A seeded harvest could bless a town that grew nothing, and a
+    // seeded plate fleet could muster in **Bermuda**: English, and eighteen
+    // hundred units from any silver.
+    let pool = allPorts;
+    if (tmpl.portWhitelist) pool = pool.filter(k => tmpl.portWhitelist!.includes(k));
+    if (tmpl.factionWhitelist) pool = pool.filter(k => tmpl.factionWhitelist!.includes(PORTS[k].factionId as string));
+    if (tmpl.filter) pool = pool.filter(tmpl.filter);
+    if (pool.length === 0) continue;
     // `rngNext` returns a float in [0,1). Taking it modulo the array length —
     // which this did until v0.28.0 — returns the float back, so every seeded
     // event indexed `allPorts[0.37]` and got `undefined`: no port name in the
     // headline, no port in `ports`, and therefore no effect on anything and no
     // news anywhere. Five events at the start of every game, all of them dead.
-    const port = allPorts[Math.floor(portR.value * allPorts.length)];
+    const port = pool[Math.floor(portR.value * pool.length)];
     const portDef = PORTS[port];
     const portName = portDef?.name ?? port;
     const factionId = portDef?.factionId as string ?? "pirates";
@@ -307,7 +323,15 @@ export function seedInitialEvents(world: WorldState): WorldState {
       factions: [factionId],
       severity: tmpl.severity,
       headline: tmpl.headline,
-      vars: { port: portName, faction: factionName(factionId), duration },
+      vars: {
+        port: portName,
+        mainPort: port,
+        faction: factionName(factionId),
+        duration,
+        // A plate fleet seeded on day one has to know where she is loading, or
+        // the first one a captain ever hears of is the one that never sails.
+        ...(tmpl.type === "treasure_fleet" ? { muster: port } : {}),
+      },
     };
     w = { ...w, worldEvents: [...w.worldEvents, newEvent] };
   }
@@ -680,6 +704,14 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
   const eventId = `${chosen.type}_${w.time.day}_${mainPort}`;
   const factionId = portDef?.factionId as string ?? "pirates";
   const vars: Record<string, string | number> = {
+    // The town's **key**, not its name. `port` below is a display string and
+    // has been read as one since the first headline; anything that needs to
+    // look the town up needs this instead (the same lesson as the raw faction
+    // key reaching the journal in v0.37.0).
+    mainPort: mainPort,
+    // The plate fleet's first leg starts here, and a fact about an event is
+    // stamped at the event (v0.43.0), never derived from today's world.
+    ...(chosen.type === "treasure_fleet" ? { muster: mainPort } : {}),
     port: portName,
     faction: factionName(factionId),
     duration,

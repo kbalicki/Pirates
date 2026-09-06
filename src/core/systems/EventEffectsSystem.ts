@@ -12,6 +12,7 @@
  */
 
 import type { WorldState, WorldEventState, WorldEventType } from "../model/WorldState.ts";
+import { plateShareHome } from "./TreasureFleetSystem.ts";
 
 /** Continuous per-day effects on a port while an event is active. */
 export type EventDailyEffects = {
@@ -270,6 +271,13 @@ export function getAggregatedEffects(world: WorldState, portKey: string): EventD
         importMul: fade(e.importMul, bite),
         priceMul: fade(e.priceMul, bite),
       };
+    }
+    // The plate fleet's half-point a day is what Spain gains by the silver
+    // getting home (v0.46.0). A treasure hull on the bottom or under somebody
+    // else's flag is silver that did not, and the table has to say so — the
+    // same shape as `warBite`: the row describes the event going as intended.
+    if (ev.type === "treasure_fleet") {
+      e = { ...e, wealthDelta: e.wealthDelta * plateShareHome(ev) };
     }
     agg = {
       productionMul: agg.productionMul * e.productionMul,

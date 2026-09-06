@@ -5,6 +5,14 @@ import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { pickNeighbours } from "../../core/systems/WorldEventSystem.ts";
+import {
+  platePos,
+  PLATE_MUSTER_SHARE,
+  PLATE_RENDEZVOUS,
+} from "../../core/systems/TreasureFleetSystem.ts";
+
+/** Days a staged plate fleet takes over her passage — the middle of 14-21. */
+const PLATE_DEBUG_DAYS = 17;
 import { ERAS } from "../../core/data/eras.ts";
 import { factionId, portId as makePortId } from "../../core/model/ids.ts";
 import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
@@ -383,6 +391,19 @@ export class PreloadScene extends Phaser.Scene {
       // canvas and hull all the same. `W` sets sail to see it cost more.
       const portKey = params.get("hurricane") || "havana";
       const world = this.createHurricaneWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    if (params.has("plate")) {
+      // The plate fleet, already at sea and already under the captain's bow
+      // (v0.46.0). `?plate=<muster port>` picks which of the four silver
+      // harbours she sailed from; `&wait=1` stands him at the rendezvous
+      // instead, which is the other half of the decision the release is about.
+      const world = this.createPlateWorld(
+        params.get("plate") || "porto_bello",
+        params.get("wait") === "1",
+      );
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -811,6 +832,61 @@ export class PreloadScene extends Phaser.Scene {
         startDay: day,
         endDay: day + PreloadScene.STORM_DEBUG_DAYS,
       }),
+    };
+  }
+
+  /**
+   * A plate fleet already at sea, with the captain across her course.
+   *
+   * `createEventWorld` would stamp her for sixty days and leave her in harbour
+   * for eighteen of them, which is the fortnight of *waiting* the release is
+   * about and exactly the wrong thing to look at. This stamps a real duration,
+   * winds the clock past the muster so she is on the water, and stands the
+   * captain where she is — or, with `&wait=1`, off Havana with the news on his
+   * chart and her still hull-down, which is the other half of the mechanic.
+   */
+  private createPlateWorld(
+    musterKey: string,
+    wait: boolean,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    const staged = this.createEventWorld("treasure_fleet", musterKey);
+    loadLandmassesFromCache(this);
+    const id = `debug_treasure_fleet_${musterKey}`;
+    const day = staged.time.day;
+
+    // A real sailing: seventeen days, the middle of the table's 14-21.
+    let world: import("../../core/model/WorldState.ts").WorldState = {
+      ...staged,
+      worldEvents: staged.worldEvents.map(ev => ev.id !== id ? ev : {
+        ...ev,
+        startDay: day,
+        endDay: day + PLATE_DEBUG_DAYS,
+        vars: { ...ev.vars, muster: musterKey },
+      }),
+    };
+
+    // Past the muster and a third of the way down her passage, so the convoy is
+    // between the isthmus and Cuba rather than tied up alongside.
+    const event = world.worldEvents.find(ev => ev.id === id);
+    if (event) {
+      const sailed = PLATE_DEBUG_DAYS * (PLATE_MUSTER_SHARE + (1 - PLATE_MUSTER_SHARE) * 0.35);
+      world = { ...world, time: { ...world.time, day: day + Math.floor(sailed), hour: 12 } };
+    }
+
+    const fleetEvent = world.worldEvents.find(ev => ev.id === id);
+    const at = fleetEvent ? platePos(world, fleetEvent) : undefined;
+    const stand = wait ? getPortWaterPos(PLATE_RENDEZVOUS) : at;
+    const water = stand ? nearestWater(stand) ?? stand : undefined;
+    if (!water) return world;
+
+    const shipId = world.player.shipId as string;
+    const entity = world.entities[shipId];
+    return {
+      ...world,
+      player: { ...world.player, location: { type: "sea", pos: { ...water } } },
+      entities: entity
+        ? { ...world.entities, [shipId]: { ...entity, mode: "sailing", pos: { ...water }, vel: { x: 0, y: 0 } } }
+        : world.entities,
     };
   }
 

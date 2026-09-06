@@ -29,6 +29,7 @@ import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
 import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
+import { settlePlatePrize } from "../../core/systems/TreasureFleetSystem.ts";
 import { settleHostileAct } from "../../core/systems/PrivateerSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
@@ -1347,6 +1348,11 @@ export class SeaBattleScene extends Phaser.Scene {
       // If she had a name, the world has to lose it (v0.32.0). Same rule as the
       // prize above: it reads her off the world, so it runs before she leaves it.
       w = this.settleNamed(w, enemyWorldEntity, outcome === "win" ? "sunk" : "taken");
+      // A treasure galleon on the bottom is silver that did not reach Seville,
+      // and every Spanish colony on the map is poorer for the rest of the
+      // sailing (v0.46.0). Reads the enemy off the world, so it runs before she
+      // leaves it — the same rule as the prize and the named ship above.
+      w = settlePlatePrize(w, enemyWorldEntity);
       const { [enemyId]: _, ...remaining } = w.entities;
       w = { ...w, entities: remaining };
       w = addLogEntry(w, "battle.log_won", { gold: prize.prize.gold });
@@ -1361,6 +1367,7 @@ export class SeaBattleScene extends Phaser.Scene {
       const prize = applyPrize(w, enemyWorldEntity, outcome);
       w = prize.world;
       w = this.settleNamed(w, enemyWorldEntity, "taken");
+      w = settlePlatePrize(w, enemyWorldEntity);
       const { [enemyId]: _captured, ...remaining } = w.entities;
       let player = w.player;
       if (enemyWorldEntity?.ship && canAddToFleet(player)) {

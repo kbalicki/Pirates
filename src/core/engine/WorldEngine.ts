@@ -19,6 +19,7 @@ import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { tickReconquest, DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../systems/ReconquestSystem.ts";
 import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
 import { tickExpeditionFleets } from "../systems/ExpeditionFleetSystem.ts";
+import { tickTreasureFleets } from "../systems/TreasureFleetSystem.ts";
 import { tickNamedShips } from "../systems/NamedShipSystem.ts";
 import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
 import { tickBlockades } from "../systems/BlockadeSystem.ts";
@@ -388,6 +389,16 @@ export class WorldEngine {
     world = named.world;
     updatedEntities = { ...world.entities };
     allEvents.push(...named.events);
+
+    // 6.3 The plate fleet (v0.46.0). Same shelf as the other two owned
+    // squadrons and for the same reason: the generic spawner is told to leave
+    // her hulls alone, so somebody has to put them on the chart and take them
+    // off again. She carries no events of her own — what she does to the world
+    // is done at the counter, by the silver, and by the hull that never got home.
+    const plate = tickTreasureFleets(world, dtTicks);
+    world = plate.world;
+    updatedEntities = { ...world.entities };
+    allEvents.push(...plate.events);
 
     // 6.5 NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);

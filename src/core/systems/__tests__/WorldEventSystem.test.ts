@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { seedInitialEvents, seedHistoricalWars, updateWorldEvents, getPortNews } from "../WorldEventSystem.ts";
 import { PORTS } from "../../data/ports.ts";
+import { MUSTER_PORTS, musterPortFor } from "../TreasureFleetSystem.ts";
 import {
   getAggregatedEffects,
   areFactionsAtWar,
@@ -177,6 +178,35 @@ describe("seedInitialEvents — the world starts with five things happening", ()
     const a = seedInitialEvents(makeWorld(7)).worldEvents.map(e => e.id);
     const b = seedInitialEvents(makeWorld(7)).worldEvents.map(e => e.id);
     expect(b).toEqual(a);
+  });
+});
+
+describe("a seeded event obeys its own template", () => {
+  // Ignored entirely until v0.46.0 — the same bug as `pickNeighbours` in
+  // v0.45.0, one layer up: the seeder picked from every port on the map.
+  it("puts a harvest only where something grows", () => {
+    for (const seed of [1, 2, 3, 5, 8, 13, 21]) {
+      for (const ev of seedInitialEvents(makeWorld(seed)).worldEvents) {
+        if (ev.type !== "harvest") continue;
+        for (const key of ev.ports) {
+          const grows = PORTS[key]?.produces ?? [];
+          expect(grows.includes("sugar_cane") || grows.includes("food"), `${ev.id}: ${key}`).toBe(true);
+        }
+      }
+    }
+  });
+
+  it("musters a plate fleet in a silver port, and tells her which one", () => {
+    for (const seed of [1, 2, 3, 5, 8, 13, 21, 34]) {
+      for (const ev of seedInitialEvents(makeWorld(seed)).worldEvents) {
+        if (ev.type !== "treasure_fleet") continue;
+        const muster = ev.vars.muster as string;
+        expect(MUSTER_PORTS, ev.id).toContain(muster);
+        // Without the stamp the first plate fleet of every game is a headline
+        // that never sails.
+        expect(musterPortFor(ev), ev.id).toBe(muster);
+      }
+    }
   });
 });
 

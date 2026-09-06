@@ -75,6 +75,23 @@ export type AiData = {
    */
   namedEscortOf?: string;
   /**
+   * `WorldEventState.id` of the plate fleet this hull sails in (v0.46.0).
+   *
+   * Optional, like every marker added to `ai` after it shipped, so a save from
+   * before this release has none and reads as a sea with no treasure fleet on
+   * it — which is the sea it was saved in.
+   */
+  plateFleetId?: string;
+  /**
+   * True on the two galleons with the silver in them, false on their escorts.
+   *
+   * What it gates is the only thing that has to tell them apart in code — the
+   * count of what never got home. The *player* is told them apart by the gold
+   * burgee `syncCargoBurgee` has flown over a laden hull since v0.25.0, which
+   * needed no help from this.
+   */
+  plateTreasure?: boolean;
+  /**
    * The shipping lane this trader is sailing, and how far along it she is
    * (v0.22.0).
    *

@@ -260,6 +260,10 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     // and writes her damage and her place on the passage back into her record
     // before she leaves the chart. Deleted here she would heal and teleport.
     if (e.ai.namedShipId || e.ai.namedEscortOf) continue;
+    // And the plate fleet (v0.46.0), for the first of those reasons: her losses
+    // are written into the world event, and a treasure galleon deleted here
+    // would be one Spain still thinks got home.
+    if (e.ai.plateFleetId) continue;
     const dx = e.pos.x - playerPos.x;
     const dy = e.pos.y - playerPos.y;
     if (Math.sqrt(dx * dx + dy * dy) > DESPAWN_DISTANCE) {
@@ -283,6 +287,9 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
     // already says so. Docking her would delete the ship the captain is hunting
     // the moment she reached the end of a leg.
     if (e.ai.namedShipId || e.ai.namedEscortOf) continue;
+    // The plate fleet passes Havana; she does not tie up there. Docking her
+    // would delete the convoy at the one waypoint the player was waiting on.
+    if (e.ai.plateFleetId) continue;
     const targetPortKey = e.ai.targetPortId as string;
     if (!targetPortKey) continue;
     const targetPort = PORTS[targetPortKey];

@@ -12,6 +12,7 @@
 | EconomyTick | `EconomyTickSystem.ts` | Dzienny tick żywej ekonomii miast |
 | EventEffects | `EventEffectsSystem.ts` | Przełożenie wydarzeń świata na dzienne delty |
 | WorldEvent | `WorldEventSystem.ts` | Wojny historyczne + losowe wydarzenia + traktaty pokojowe |
+| TreasureFleet | `TreasureFleetSystem.ts` | Flota skarbowa: cztery kadłuby na prawdziwym kursie, srebro w ładowniach, Hiszpania to czuje |
 | MapEvent | `MapEventSystem.ts` | Wyprowadza znaki na mapie ze zdarzeń, o których gracz słyszał |
 | NamedShip | `NamedShipSystem.ts` | Nazwane kupce z rozkładem: rekord, pozycja wyprowadzana, materializacja przy graczu |
 | Reputation | `ReputationSystem.ts` | Relacje frakcji |
@@ -607,6 +608,99 @@ Tabela przekładająca `WorldEventType` na konkretne dzienne delty i mnożniki.
 | Wojna | produkcja −15%, ceny +10% w walczących nacjach |
 
 ---
+
+## Flota skarbowa wypływa (v0.46.0)
+
+`treasure_fleet` był typem `WorldEventType` od v0.9.7. Miał szablon, wagę,
+czternaście do dwudziestu jeden dni życia, nagłówek w dwóch językach mówiący
+**„Hiszpańska flota skarbowa szykuje się w {{port}}"**, nazwę na szpilce czartu
+i pół punktu bogactwa dziennie dla każdej hiszpańskiej kolonii naraz.
+
+**Nigdy nie wypłynął.** Przez dziewiętnaście wydań najsłynniejsza rzecz na
+Karaibach była linijką na tablicy ogłoszeń. To piąty przypadek tej samej choroby
+— rzeczownik żyjący w dwóch warstwach, które nigdy sobie nie zostały
+przedstawione — i piąty raz, gdy lekarstwem było to samo: zdarzenie niesie już
+wszystko, czego morze potrzebuje, więc **nic nie dochodzi do zapisu**.
+
+### Trasy nikt nie wymyślił — jest odczytana z mapy
+
+Srebro z Peru szło przez przesmyk do **Puerto Bello** i **Nombre de Dios**,
+srebro z Meksyku wychodziło z **Vera Cruz**, oba konwoje spotykały się w
+**Hawanie** i wracały razem Cieśniną Florydzką. To jest historia — i dokładnie
+to samo mówi tabela prądów tej mapy: `florida` (0,083 ENE) to najsilniejszy set
+w grze, a `gulf_stream` (0,075 NNE) wychodzi poza górną krawędź czartu prosto z
+wylotu Cieśniny.
+
+Kurs to `findSeaPath(muster → Hawana → Atlantyk, currentAt)` — to samo przejście
+z prądem, którego handel używa od v0.42.0, a korona od v0.43.0. Nikt nie musiał
+zapisywać, **dlaczego** Hiszpania płynęła tędy; woda już tam była.
+
+**Zmierzone na prawdziwej linii brzegowej:** każda z czterech tras mija Hawanę
+w promieniu **40 jednostek**, długości 2067-2388 jednostek, a punkt wyjścia
+(1660, 120) leży na wodzie. Ślad dzień po dniu dla Puerto Bello: d106 (1360,1894)
+u przesmyku → d109 (1179,1341) na zachód od Kuby → d112 (1366,920) **w paśmie
+`florida`** → d115 (1591,403) **w `gulf_stream`**.
+
+### Najpierw stoi w porcie, bo tak mówi nagłówek
+
+`PLATE_MUSTER_SHARE = 0.3` zdarzenia idzie na ładowanie. Newsy docierają do
+gracza jako „szykuje się w Puerto Bello" i przez te cztery-sześć dni jest to
+dosłownie prawda: nie ma jej na wodzie i nie da się jej spotkać. To jest owo
+dwutygodniowe ostrzeżenie, które zamienia przechwycenie w **plan**.
+
+### Które dwa kadłuby warto brać — odpowiedź już istniała
+
+Płyną cztery: dwa galeony po burty w srebrze i dwa szybkie galeony wiozące same
+działa. Gracz nie dostaje nowego przyrządu, bo `WorldRenderer.syncCargoBurgee`
+wywiesza złoty proporczyk nad kadłubem załadowanym powyżej połowy **od v0.25.0**,
+a widać go dopiero z `CARGO_READ_SHARE` zasięgu lunety.
+
+Zweryfikowane w grze: z dwóch identycznych galeonów proporczyk wywiesił **ten,
+z którym gracz się zbliżył** (33 jednostki), a drugi (100 jednostek) nie.
+
+Nagroda też nie jest przypadkiem szczególnym: `gold` jest zwykłym towarem
+`rare` od v0.29.0, `computePrize` bierze ładunek **od najdroższego** do
+wyczerpania miejsca w ładowni, a `PricingSystem` wycenia każdą tonę względem
+szopy, w której ląduje, od v0.24.0.
+
+**Zmierzone przed napisaniem changeloga:** kadłub to 150 ton (90 gold + 40 cocoa
++ 20 tobacco), wartość bazowa 8300. Pusta fregata (ładownia 80) wywiezie z tego
+6400. Sprzedaż 90 ton srebra w jednym mieście:
+
+```
+Port Royale   pierwsza tona 77, ostatnia 31, uzysk 7212
+Hawana        pierwsza tona 81, ostatnia 33, uzysk 7552
+Tortuga       pierwsza tona 70, ostatnia 28, uzysk 6553
+```
+
+Cena spada do **40%** wyjściowej — presja „rozłóż sprzedaż" wychodzi z maszynerii,
+która już działała, bez jednej linijki kodu o skarbie. Hawana płaci najlepiej,
+co jest żartem wartym zachowania.
+
+### Zapisz, zanim usuniesz
+
+Reguła, na której stoją dwa pozostałe posiadane skwadrony, i tutaj nie jest
+opcjonalna. Konwój jest budowany z **planu**, a nie z rekordu, więc bez tego
+kapitan, który poharatał galeon i odpadł, zastałby go całego — a ten, który go
+**zatopił**, zastałby go na wodzie. `HULLS_VAR` (`"<idx>:<hull>:<rig>"` po
+przecinku) trzyma to, co zostało, jest stemplowany przy **każdym** despawnie i
+raz zapisany jest rozstrzygający: indeks, którego w nim nie ma, nie wraca.
+
+### I Hiszpania to czuje
+
+`vars.plundered` liczy kadłuby skarbowe, które nie dotarły, a
+`getAggregatedEffects` skaluje przez to `wealthDelta` — ten sam kształt co
+`warBite`: wiersz tabeli opisuje zdarzenie idące zgodnie z planem. Wzięcie obu
+galeonów zeruje najbogatszy tydzień hiszpańskiego roku dla **każdej** kolonii na
+mapie.
+
+### Naprawione przy okazji: zasiew ignorował własny szablon
+
+`seedInitialEvents` losował port z **wszystkich** portów, pomijając
+`portWhitelist`, `factionWhitelist` i `filter`. Zasiane żniwa mogły pobłogosławić
+miasto, które nic nie uprawia, a zasiana flota skarbowa mogła szykować się na
+**Bermudach** — angielskich i osiemnaście setek jednostek od jakiegokolwiek
+srebra. To ta sama rodzina błędów co `pickNeighbours` w v0.45.0, piętro wyżej.
 
 ## Sztorm wędruje (v0.45.0)
 

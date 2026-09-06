@@ -475,3 +475,32 @@ był równy.
 `homeCost` — czas przejścia w szerokościach komórki wody stojącej, mierzony
 `passageCost` po **narysowanym** kursie w obie strony, więc ich iloraz jest
 asymetrią samego szlaku, a nie różnicą metody pomiaru.
+
+## `ai.plateFleetId?` / `ai.plateTreasure?` i `vars.hulls` (v0.46.0)
+
+Flota skarbowa nie dokłada **ani jednego** pola do `WorldState`. Wszystko, czego
+potrzebuje, mieści się w zdarzeniu, które miało od v0.9.7, i w dwóch
+opcjonalnych znacznikach na encji:
+
+```ts
+// EntityState.ai — opcjonalne, jak każdy znacznik dołożony po wydaniu
+plateFleetId?: string;    // WorldEventState.id konwoju
+plateTreasure?: boolean;  // true na dwóch galeonach ze srebrem
+
+// WorldEventState.vars — worek, który zdarzenie i tak miało
+muster: string;     // klucz portu, w którym się ładuje (stemplowany przy zdarzeniu)
+plundered: number;  // kadłuby skarbowe, które nie dotarły do Sewilli
+hulls: string;      // "<idx>:<hull>:<rig>" po przecinku — co z niej zostało
+mainPort: string;   // klucz miasta, dla KAŻDEGO zdarzenia (v0.46.0)
+```
+
+**`vars.hulls` jest rozstrzygający, gdy istnieje.** Konwój buduje się z planu,
+nie z rekordu, więc bez tego kadłub zatopiony wróciłby na wodę przy następnym
+zbliżeniu. Zapis następuje przy **każdym** despawnie, przed usunięciem — reguła
+`ExpeditionFleetSystem` i `NamedShipSystem`. Brak pola = konwoju nikt jeszcze nie
+spotkał i płyną wszystkie cztery.
+
+**`vars.mainPort` to klucz, nie nazwa.** `vars.port` jest napisem do wyświetlenia
+i był tak czytany od pierwszego nagłówka; cokolwiek musi **odszukać** miasto,
+potrzebuje klucza (ta sama lekcja co surowy klucz frakcji docierający do
+Dziennika w v0.37.0).
