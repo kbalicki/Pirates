@@ -27,6 +27,7 @@ import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
 import { windSpeedModifier, navigatedWindModifier } from "../../core/systems/WeatherSystem.ts";
 import { woundedFrom } from "../../core/systems/SurgeonSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
+import { manPrize, workingMinimum } from "../../core/systems/CrewSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
 import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
 import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
@@ -1391,18 +1392,58 @@ export class SeaBattleScene extends Phaser.Scene {
       w = settlePlatePrize(w, enemyWorldEntity);
       const { [enemyId]: _captured, ...remaining } = w.entities;
       let player = w.player;
-      if (enemyWorldEntity?.ship && canAddToFleet(player)) {
-        const newFleet = addToFleet(
-          player.fleet ?? [],
-          enemyWorldEntity.ship.classId as string,
-          w.captain?.training ?? 0.3,
-        );
-        if (newFleet) {
-          player = { ...player, fleet: newFleet };
-          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_captured", { gold: prize.prize.gold });
-        } else {
-          w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: prize.prize.gold });
+      // Somebody has to sail her (v0.49.0). Until this release a taken hull
+      // joined manned by `crewMax x 0.8` men out of thin air — a sloop's
+      // boarding party of two dozen became a hundred and twenty men across two
+      // ships, and `crewMin` was consulted nowhere but the shipyard counter.
+      // The prize crew comes off the flagship, made up with as many of her own
+      // beaten crew as will take the articles; a prize nobody can be spared for
+      // is not taken at all.
+      const flagAfterBattle = w.entities[playerId]?.ship;
+      const prisoners = this.combatState.entities[enemyId]?.ship?.crew.current ?? 0;
+      const manning = enemyWorldEntity?.ship && flagAfterBattle
+        ? manPrize(
+            flagAfterBattle.crew.current,
+            flagAfterBattle.classId as string,
+            enemyWorldEntity.ship.classId as string,
+            prisoners,
+            flagAfterBattle.crew.morale,
+          )
+        : null;
+      const newFleet = enemyWorldEntity?.ship && canAddToFleet(player) && manning?.manned
+        ? addToFleet(
+            player.fleet ?? [],
+            enemyWorldEntity.ship.classId as string,
+            w.captain?.training ?? 0.3,
+            { crew: manning.prizeCrew, morale: manning.prizeMorale },
+          )
+        : null;
+      if (newFleet && manning) {
+        player = { ...player, fleet: newFleet };
+        w = { ...w, entities: remaining, player };
+        // The boat's crew leaves the flagship's muster roll for good.
+        const flagEntity = w.entities[playerId];
+        if (flagEntity?.ship) {
+          w = {
+            ...w,
+            entities: {
+              ...w.entities,
+              [playerId]: {
+                ...flagEntity,
+                ship: {
+                  ...flagEntity.ship,
+                  crew: { ...flagEntity.ship.crew, current: manning.flagshipCrew },
+                },
+              },
+            },
+          };
         }
+        w = addLogEntry(w, "battle.log_captured", { gold: prize.prize.gold });
+        w = addLogEntry(w, "battle.log_prize_crew", {
+          men: manning.fromOwn,
+          pressed: manning.pressed,
+          need: workingMinimum(enemyWorldEntity!.ship!.classId as string),
+        });
       } else {
         w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: prize.prize.gold });
       }

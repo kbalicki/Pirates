@@ -8,6 +8,7 @@ import { repriceItem } from "./PricingSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
+import { manPrize } from "./CrewSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
@@ -520,14 +521,28 @@ export function buyShipToFleet(
   // Check if player has enough crew to man the new ship
   const playerEntity = world.entities[world.player.shipId as string];
   const currentCrew = playerEntity?.ship?.crew.current ?? 0;
+  const flagshipClassId = playerEntity?.ship?.classId as string;
+
+  // Who walks aboard her (v0.49.0). No prisoners at a shipyard counter, so the
+  // whole crew comes off the flagship — which is what the gate below has always
+  // implied and what nothing before this release actually did. The yard sold a
+  // hull and a hundred and twenty imaginary men came with it.
+  const manning = manPrize(
+    currentCrew,
+    flagshipClassId,
+    newShipClassId as string,
+    0,
+    playerEntity?.ship?.crew.morale ?? 0.8,
+  );
+
   const newFleet = addToFleet(
     world.player.fleet ?? [],
     newShipClassId as string,
     world.captain?.training ?? 0.3,
+    { crew: manning.prizeCrew, morale: manning.prizeMorale },
   );
   if (!newFleet) return { world, bought: false, error: "fleet_full" };
 
-  const flagshipClassId = playerEntity?.ship?.classId as string;
   const minCrewNeeded = fleetMinCrew(flagshipClassId, newFleet);
   if (currentCrew < minCrewNeeded) {
     return { world, bought: false, error: "not_enough_crew" };
@@ -536,6 +551,18 @@ export function buyShipToFleet(
   const newWorld = addLogEntry(
     {
       ...world,
+      entities: playerEntity?.ship
+        ? {
+            ...world.entities,
+            [world.player.shipId as string]: {
+              ...playerEntity,
+              ship: {
+                ...playerEntity.ship,
+                crew: { ...playerEntity.ship.crew, current: manning.flagshipCrew },
+              },
+            },
+          }
+        : world.entities,
       player: {
         ...world.player,
         gold: world.player.gold - classDef.buyPrice,

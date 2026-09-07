@@ -221,3 +221,63 @@ describe("update", () => {
     expect(sails.isTransitioning()).toBe(true);
   });
 });
+
+// ===========================================================================
+// Hands enough to work the canvas (v0.49.0)
+// ===========================================================================
+
+describe("short-handedness at the halyards", () => {
+  it("changes nothing at all for a fully manned ship", () => {
+    const sails = new SailSystem(0);
+    sails.setHandling(1);
+    sails.raise();
+    for (let e = 0; e < STEP_MS; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(false);
+    expect(sails.getCurrentValue()).toBeCloseTo(SAIL_LEVELS[1].value, 6);
+  });
+
+  it("makes a sail change take proportionally longer with a thin watch", () => {
+    const sails = new SailSystem(0);
+    sails.setHandling(2.4);
+    sails.raise();
+    // The time a full crew needs is nowhere near enough.
+    for (let e = 0; e < STEP_MS; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(true);
+    for (let e = 0; e < STEP_MS * 1.5; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(false);
+    expect(sails.getCurrentValue()).toBeCloseTo(SAIL_LEVELS[1].value, 6);
+  });
+
+  it("never makes a change faster than a full crew could do it", () => {
+    const sails = new SailSystem(0);
+    sails.setHandling(0.2);
+    sails.raise();
+    for (let e = 0; e < STEP_MS - 100; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(true);
+  });
+
+  it("rescales a change already under way instead of restarting it", () => {
+    // Half the watch is called away mid-hoist. What is already set stays set;
+    // only the rest takes the new pace.
+    const sails = new SailSystem(0);
+    sails.raise();
+    for (let e = 0; e < STEP_MS / 2; e += 16) sails.update(16);
+    const halfway = sails.getCurrentValue();
+    expect(halfway).toBeGreaterThan(0);
+
+    sails.setHandling(3);
+    expect(sails.getCurrentValue()).toBeCloseTo(halfway, 10);
+    for (let e = 0; e < STEP_MS / 2; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(true);
+    for (let e = 0; e < STEP_MS * 2; e += 16) sails.update(16);
+    expect(sails.isTransitioning()).toBe(false);
+  });
+
+  it("orders the target the moment it is given, however thin the watch", () => {
+    // The captain's order is instant; only the canvas is slow.
+    const sails = new SailSystem(0);
+    sails.setHandling(3.5);
+    sails.raise();
+    expect(sails.getTargetLevel()).toBe(1);
+  });
+});

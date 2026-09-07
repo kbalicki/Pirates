@@ -163,7 +163,9 @@ export class HelpScene extends Phaser.Scene {
       { title: "Hals (close hauled)", desc: "Tuż za martwą strefą. Wolno, ale możliwe. Najlepsza do bicia pod wiatr." },
       { title: "Baksztag (beam reach)", desc: "~90° do wiatru. NAJSZYBSZY punkt żeglowania (150% prędkości bazowej)." },
       { title: "Z wiatrem (running)", desc: "Wiatr w rufę. ~90-110% prędkości, ale nie najszybciej." },
-      { title: "Poziomy żagli", desc: "W/S zmienia: Zwinięte → Zrefowane → Połowa → Pełne. Zmiana trwa 2s." },
+      { title: "Poziomy żagli", desc: "W/S zmienia: Zwinięte → Zrefowane → Połowa → Pełne. Zmiana trwa 2s przy pełnej obsadzie — przy szczątkowej nawet trzy razy dłużej." },
+      { title: "Obsada statku", desc: "Kolumna „Załoga” w tabeli obok to minimum i komplet. Minimum to tylu ludzi, ilu trzeba, żeby statek w ogóle pracował — poniżej niego wolniej się skręca, wolniej stawia i refuje żagle, a prędkość spada. Braki widać na HUD („Za mało rąk”) i w Kabinie (SPACE)." },
+      { title: "Załoga pryzowa", desc: "Zdobyty statek nie płynie sam: ludzi na niego bierzesz z własnego pokładu, a braki uzupełniasz przymuszonymi z jego pobitej załogi (zgadza się na to połowa ocalałych). Slup potrafi obsadzić brygantynę, ale nie galeon — taki pryz pełznie i ciągnie za sobą całą eskadrę, bo flota płynie tempem najwolniejszego. Czasem lepiej go zatopić." },
       { title: "Typ ożaglowania", desc: "Fore-and-aft (slup): bliżej pod wiatr (35°). Square (galeon): dalej (60°)." },
       { title: "Luneta", desc: "Zasięg widzenia zależy od wysokości masztów statku. Wyższy maszt = dalej widzisz." },
     ];

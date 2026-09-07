@@ -79,6 +79,13 @@ type ShipData = {
 };
 ```
 
+W v0.49.0 nie doszło **żadne** pole. Obsada to porównanie dwóch liczb, które od
+początku leżały obok siebie — `ship.crew.current` na encji i `crewMin` w tabeli
+klas — więc `CrewSystem` niczego nie zapisuje. Jedyna zmiana w modelu to nowy,
+opcjonalny czwarty argument `addToFleet`: `{ crew, morale }`, czyli ludzie
+naprawdę posłani na pokład. Pominięty przywraca dokładnie dawną, wymyśloną
+obsadę `crewMax × 0,8`, co znaczy dwuargumentowe wywołanie w starszych testach.
+
 `EntityState` dostał w v0.48.0 dwa dalsze pola opcjonalne, `aground?` i
 `shoaling?`. Oba są **wyprowadzane co tick** z `SeaDepth` i zanurzenia kadłuba, i
 oba są pisane albo kasowane przy każdym ruchu: opisują, gdzie statek *jest*, a nie

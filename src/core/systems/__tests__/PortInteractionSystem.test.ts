@@ -5,7 +5,9 @@ import {
   grainOffer,
   sellGrain,
   GRANARY_REPUTATION,
+  buyShipToFleet,
 } from "../PortInteractionSystem.ts";
+import { manningCondition } from "../CrewSystem.ts";
 import { baselineConsumptionRate } from "../../data/economyBaselines.ts";
 import { isPortClosed } from "../EventEffectsSystem.ts";
 import { ITEMS } from "../../data/items.ts";
@@ -417,5 +419,43 @@ describe("a shut harbour", () => {
     const past = withEvent(hungryWorld(0), "hurricane");
     const later = { ...past, time: { ...past.time, day: 2000 } } as WorldState;
     expect(isPortClosed(later, PORT)).toBe(false);
+  });
+});
+
+// ===========================================================================
+// The yard sells a hull, not a hull and a hundred men (v0.49.0)
+// ===========================================================================
+
+describe("buyShipToFleet takes the prize crew off the flagship", () => {
+  it("walks her working minimum aboard and off the flagship's roll", () => {
+    const w = makeWorld({ crew: SHIP_CLASSES.frigate.crewMax });
+    const out = buyShipToFleet(w, shipClassId("sloop"), portId(PORT));
+    expect(out.bought).toBe(true);
+    const left = out.world.entities.player_ship.ship!.crew.current;
+    expect(left).toBe(SHIP_CLASSES.frigate.crewMax - SHIP_CLASSES.sloop.crewMin);
+    expect(consortCrew(out.world.player.fleet[0])).toBe(SHIP_CLASSES.sloop.crewMin);
+    // Nobody appeared and nobody vanished.
+    expect(left + consortCrew(out.world.player.fleet[0])).toBe(SHIP_CLASSES.frigate.crewMax);
+  });
+
+  it("still refuses a hull the captain cannot crew at all", () => {
+    const w = makeWorld({ crew: SHIP_CLASSES.frigate.crewMin });
+    // Merchantman: 2000 gold (well within the purse) and 20 hands, against a
+    // frigate's own 25 — so this is a refusal about men, not money.
+    const out = buyShipToFleet(w, shipClassId("merchantman"), portId(PORT));
+    expect(out.bought).toBe(false);
+    expect(out.error).toBe("not_enough_crew");
+    // And the refusal costs nothing — no gold, no men.
+    expect(out.world.player.gold).toBe(w.player.gold);
+    expect(out.world.entities.player_ship.ship!.crew.current)
+      .toBe(SHIP_CLASSES.frigate.crewMin);
+  });
+
+  it("leaves the flagship fully manned by her own class after the sale", () => {
+    const w = makeWorld({ crew: SHIP_CLASSES.frigate.crewMax });
+    const out = buyShipToFleet(w, shipClassId("brigantine"), portId(PORT));
+    expect(out.bought).toBe(true);
+    const left = out.world.entities.player_ship.ship!.crew.current;
+    expect(manningCondition(left, "frigate")).toBe("full");
   });
 });

@@ -5,6 +5,7 @@ import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../se
 import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
 import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
 import { depthAt, soundings, AGROUND_HULL_PER_TICK } from "../services/SeaDepth.ts";
+import { manningSpeedMultiplier, manningTurnMultiplier } from "./CrewSystem.ts";
 
 export type TerrainQuery = (worldX: number, worldY: number) => TerrainType;
 
@@ -77,7 +78,12 @@ export function updateNavigation(
     entity.ship.hullHp, entity.ship.hullMax,
     entity.ship.sailsHp, entity.ship.sailsMax,
   );
-  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * damageMod * fleetSpeedMul;
+  // Hands enough to work her (v0.49.0). Reads 1.0 for every fully manned hull,
+  // which is every NPC and every consort in every save written before this
+  // release — see the measurement in `CrewSystem`. Nothing had to be passed in:
+  // the muster roll was already on the entity.
+  const manningMod = manningSpeedMultiplier(entity.ship.crew.current, entity.ship.classId as string);
+  const baseSpeed = shipClass.speedBase * entity.sailLevel * windMod * damageMod * fleetSpeedMul * manningMod;
 
   // Direction vector from heading
   const dir = headingToVec(entity.heading);
@@ -311,7 +317,11 @@ export function applyTurn(entity: EntityState, dir: "left" | "right", amount: nu
     const baseTurn = shipClass?.turnRate ?? 0.48;
     // Reefed sails = more maneuverable: 0→+50%, 0.33→+33%, 0.5→+25%, 1.0→+0%
     const sailBonus = 1 + (1 - entity.sailLevel) * 0.5;
-    return baseTurn * sailBonus;
+    // And men enough to brace the yards round (v0.49.0). Short-handedness costs
+    // a ship her handling before it costs her speed, so this multiplier falls
+    // roughly twice as fast as the one on `baseSpeed` above.
+    const hands = manningTurnMultiplier(entity.ship!.crew.current, entity.ship!.classId as string);
+    return baseTurn * sailBonus * hands;
   })();
 
   const clampedAmount = clamp(amount, 0, turnRate);

@@ -22,6 +22,7 @@
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
 | SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
+| Crew | `CrewSystem.ts` | Ilu ludzi trzeba, żeby statek pracował; obsada pryzu z własnego pokładu i z przymuszonych |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -389,6 +390,78 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Obsada (`CrewSystem.ts`, v0.49.0)
+
+`ShipClassDef.crewMin` był w tabeli od czasu, gdy powstały klasy statków — 4 dla
+pinasy, 40 dla galeonu — i czytało go **jedno** miejsce w grze: odmowa stoczni,
+która nie sprzeda konsorty kapitanowi mającemu mniej ludzi niż minimum całej
+floty. Poza tym była to dekoracja: liczbę drukował ekran pomocy i kolumna w
+stoczni, a statek obsadzony sześcioma ludźmi płynął, halsował i refował
+dokładnie tak samo jak obsadzony sześćdziesięcioma.
+
+Gorzej: **najczęstszy sposób zdobycia kadłuba omijał tę bramkę całkowicie.**
+Zdobyty galeon dołączał do floty z `crewMax × 0,8` ludźmi wziętymi znikąd —
+flagowiec nie tracił nikogo, a dwudziestoczteroosobowa partia abordażowa slupa
+zamieniała się w sto dwadzieścia osób na dwóch statkach.
+
+**Pula jest teraz prawdziwa.** Ludzi na pryz bierze się z własnego pokładu, a
+braki uzupełnia przymuszonymi z jego pobitej załogi (`PRESS_SHARE = 0,5`).
+Nikt nie pojawia się znikąd — ludzie są **przenoszeni**, nie tworzeni.
+
+| Obsada (ludzie ÷ `crewMin`) | Prędkość | Skręt | Czas zmiany żagli |
+|---|---|---|---|
+| ≥ 1,00 pełna | 1,00 | 1,00 | 1,0× |
+| ≥ 0,70 za mało rąk | 0,92 | 0,75 | 1,6× |
+| ≥ 0,40 szczątkowa | 0,78 | 0,50 | 2,4× |
+| > 0 nie ma komu pracować | 0,65 | 0,30 | 3,5× |
+
+Kształt jest ten sam co w `DamageSystem` — nazwane stopnie z grubymi mnożnikami,
+żeby przekroczenie progu **było czuć** — ale liczby przechylone w drugą stronę.
+Uszkodzenie zabiera prędkość; brak rąk zabiera **sterowność**. Załoga szczątkowa
+utrzyma postawione żagle i pobiegnie z wiatrem prawie tak szybko jak pełna;
+czego nie zrobi, to nie obróci rej w porę i nie zrefuje przed szkwałem. Dlatego
+`turnMul` spada co najmniej **dwa razy** szybciej niż `speedMul` — pilnuje tego
+test, nie tylko komentarz.
+
+**Neutralnym punktem jest „pełna obsada" i był nim już wcześniej.** Zmierzone
+przed napisaniem linijki kodu:
+
+```
+NPC przy spawnie (crewMax × 0,7):     1,87 .. 2,63 × crewMin
+konsorta z zapisu sprzed wydania:     2,13 .. 3,00 × crewMin
+startowy slup gracza: 30 ludzi kontra crewMin 8 = 3,75 ×
+```
+
+Każdy kadłub na wodzie w każdym zapisie jest wygodnie powyżej pierwszego progu,
+więc wszystkie mnożniki czytają dla nich 1,0 i **nic wyważonego nie zostało
+przeważone** — ta sama dyscyplina co wycentrowanie haków umiejętności na 5 w
+v0.47.0. Potwierdza to 1711 istniejących testów, które przeszły bez zmiany.
+
+**Tabela klas sama dała mechanikę skalującą się z karierą kapitana:**
+
+```
+slup (24 ludzi po abordażu) obsadzi w pełni: pinasę, barkę, brygantynę,
+  fluyt, merchantmana.  fregata 0,64, szybki galeon 0,53, galeon 0,40
+fregata (64) obsadzi wszystko poza galeonem, a jego na 0,97
+galeon (96) obsadzi cokolwiek
+```
+
+Gryzie więc ambitna wczesna zdobycz. Weteran nigdy tego nie czuje. Nic nie
+trzeba było stroić — wyszło z `crewMin` i `crewMax` tak, jak były napisane.
+
+Konsekwencja idzie dalej, bo `fleetSpeedMultiplier` od v0.6.0 trzyma flotę na
+tempie najwolniejszego statku: galeon obsadzony szesnastoma ludźmi **pełznie i
+ciągnie za sobą całą eskadrę**. Czasem lepiej go zatopić — i to jest decyzja,
+której w grze do tej pory nie było.
+
+**Przymuszony nie jest twój.** Nastrój pryzu to średnia ważona głowami: twoi
+ludzie z morale flagowca, przymuszeni z `PRESSED_MORALE = 0,2`. `fleetMorale`
+waży to potem ludźmi przy szturmie na miasto, więc obsadzenie zdobyczy jej
+własną pobitą załogą wraca przy oblężeniu.
+
+Jedyna odmowa to `manned: false` — kadłub, na który nie da się posłać **ani
+jednego** człowieka, nie jest pryzem, tylko wrakiem, obok którego się stoi.
 
 ### Sondowania (`services/SeaDepth.ts`, v0.48.0)
 

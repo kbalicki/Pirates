@@ -62,9 +62,37 @@ export class SailSystem {
   private transitionDuration = 0;
   /** Whether a transition is in progress. */
   private transitioning = false;
+  /**
+   * How much longer a sail change takes with the hands she has (v0.49.0).
+   *
+   * 1.0 for a fully manned ship, which is every ship until the captain takes a
+   * prize he cannot man — see `CrewSystem.manningHandlingMultiplier`. Canvas is
+   * the first thing short-handedness costs: a skeleton crew can keep the
+   * courses drawing and run before the wind, but it takes them two and a half
+   * times as long to shorten sail before a squall.
+   *
+   * Applied to the running change as well as to new orders, so ordering full
+   * sail and then losing half the watch to a boarding does not finish at the
+   * old pace.
+   */
+  private handlingMul = 1;
 
   constructor(initialLevel = 0) {
     this.setImmediate(initialLevel);
+  }
+
+  /** Set the short-handedness factor. 1 = fully manned; above 1 = slower. */
+  setHandling(mul: number): void {
+    const next = Math.max(1, mul);
+    if (next === this.handlingMul) return;
+    if (this.transitioning && this.transitionDuration > 0) {
+      // Rescale what is left of the running change rather than restarting it:
+      // the canvas already set stays set, the rest takes the new pace.
+      const remaining = Math.max(0, this.transitionDuration - this.transitionElapsed);
+      const scaled = remaining * (next / this.handlingMul);
+      this.transitionDuration = this.transitionElapsed + scaled;
+    }
+    this.handlingMul = next;
   }
 
   /** Raise sails one level. Returns new target level index. */
@@ -133,7 +161,7 @@ export class SailSystem {
     this.transitionElapsed = 0;
     // Counted from where the canvas is, not from the previous order: a second
     // key press mid-change adds a full level of work instead of coming free.
-    this.transitionDuration = TRANSITION_TIME_MS * Math.abs(newLevel - this.currentLevel);
+    this.transitionDuration = TRANSITION_TIME_MS * Math.abs(newLevel - this.currentLevel) * this.handlingMul;
     if (this.transitionDuration <= 0) {
       this.settleAtTarget();
       return;

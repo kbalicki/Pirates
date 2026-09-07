@@ -14,6 +14,7 @@
  */
 
 import { SHIP_CLASSES } from "../data/ships.ts";
+import { manningSpeedMultiplier, workingMinimum } from "./CrewSystem.ts";
 import type { FleetShip, PlayerState } from "../model/WorldState.ts";
 import type { ShipData } from "../model/EntityState.ts";
 
@@ -37,8 +38,16 @@ export function fleetSpeedMultiplier(flagshipClassId: string, fleet: FleetShip[]
   let minSpeed = flagshipClass.speedBase;
   for (const escort of fleet) {
     const cls = SHIP_CLASSES[escort.classId];
-    if (cls && cls.speedBase < minSpeed) {
-      minSpeed = cls.speedBase;
+    if (!cls) continue;
+    // What she can actually make, not what her class could (v0.49.0). A prize
+    // taken by a crew too small to work her is the slowest ship in the fleet,
+    // and the fleet has sailed at the pace of its slowest ship since v0.6.0 —
+    // so the whole squadron crawls home behind a galleon nobody can brace.
+    // Reads exactly `speedBase` for a fully manned consort, which every
+    // consort in every save written before this release is.
+    const speed = cls.speedBase * manningSpeedMultiplier(consortCrew(escort), escort.classId);
+    if (speed < minSpeed) {
+      minSpeed = speed;
     }
   }
   return minSpeed / flagshipClass.speedBase;
@@ -193,7 +202,14 @@ export function manConsorts(fleet: FleetShip[], men: number): { fleet: FleetShip
   return { fleet: fleet.map((c, i) => ({ ...c, crew: crews[i] })), placed };
 }
 
-/** Total minimum crew needed to operate the entire fleet. */
+/**
+ * Total minimum crew needed to operate the entire fleet.
+ *
+ * Kept as the shipyard's gate on a purchase — the yard will not sell a hull to
+ * a captain who cannot walk a crew aboard her. What it is *not*, since v0.49.0,
+ * is the only reader of `crewMin`: a ship worked by too few hands now answers
+ * her helm badly wherever she is, see `CrewSystem`.
+ */
 export function fleetMinCrew(flagshipClassId: string, fleet: FleetShip[]): number {
   const flagshipClass = SHIP_CLASSES[flagshipClassId];
   let total = flagshipClass?.crewMin ?? 8;
@@ -203,6 +219,27 @@ export function fleetMinCrew(flagshipClassId: string, fleet: FleetShip[]): numbe
     if (cls) total += cls.crewMin;
   }
   return total;
+}
+
+/**
+ * Hands and berths across the whole squadron (v0.49.0).
+ *
+ * `min` is what it takes to work every hull in it. The port screen and the
+ * cabin read this to say, in one line, whether the captain has bitten off more
+ * ship than he has people.
+ */
+export function fleetManning(
+  flagshipClassId: string,
+  flagshipCrew: number,
+  fleet: FleetShip[],
+): { men: number; min: number; short: boolean } {
+  let men = Math.max(0, Math.round(flagshipCrew));
+  let min = workingMinimum(flagshipClassId);
+  for (const escort of fleet) {
+    men += consortCrew(escort);
+    min += workingMinimum(escort.classId);
+  }
+  return { men, min, short: men < min };
 }
 
 /** Total cannons across the fleet (for future combat). */
@@ -224,6 +261,19 @@ export function addToFleet(
   fleet: FleetShip[],
   classId: string,
   captainTraining?: number,
+  /**
+   * The men actually put aboard her, and how they feel about it (v0.49.0).
+   *
+   * Until this release a hull joined manned by `crewMax x 0.8` people who came
+   * from nowhere: the flagship lost nobody, and a sloop's boarding party of two
+   * dozen became a hundred and twenty men across two ships. Both callers now
+   * work out the prize crew with `manPrize` and pass it here.
+   *
+   * Optional, and omitting it restores the old conjured complement exactly —
+   * which is what the two-argument call in older tests means and what a save
+   * written before the field existed keeps answering.
+   */
+  manning?: { crew: number; morale: number },
 ): FleetShip[] | null {
   if (fleet.length >= MAX_FLEET_SIZE - 1) return null; // -1 because flagship not in array
 
@@ -239,11 +289,8 @@ export function addToFleet(
       sailsHp: cls.sailsMax,
       sailsMax: cls.sailsMax,
       cannons: cls.cannons,
-      // A hull joining the fleet is manned by the prize crew that took it, or
-      // by the yard that sold it. Either way it is the notional complement, so
-      // buying and capturing behave the way they did before the field existed.
-      crew: Math.round(cls.crewMax * FLEET_CREW_FRACTION),
-      morale: FLEET_DEFAULT_MORALE,
+      crew: manning ? Math.max(0, Math.round(manning.crew)) : Math.round(cls.crewMax * FLEET_CREW_FRACTION),
+      morale: manning ? Math.max(0, Math.min(1, manning.morale)) : FLEET_DEFAULT_MORALE,
       ...(captainTraining === undefined ? {} : { training: greenCrewTraining(captainTraining) }),
     },
   ];

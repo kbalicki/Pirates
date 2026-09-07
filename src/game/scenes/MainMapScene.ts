@@ -62,6 +62,7 @@ import { PalmRenderer } from "../render/PalmRenderer.ts";
 import { MountainRenderer } from "../render/MountainRenderer.ts";
 import { InputMapper } from "../input/InputMapper.ts";
 import { SailSystem } from "../../core/systems/SailSystem.ts";
+import { manningTier } from "../../core/systems/CrewSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import {
@@ -1126,11 +1127,25 @@ export class MainMapScene extends Phaser.Scene {
     // starts, a shoal is just an unexplained loss of speed.
     const aground = pe3?.aground === true;
     const shoaling = pe3?.shoaling === true;
+
+    // Hands enough to work her (v0.49.0). The canvas takes longer to set and
+    // shorten with a thin watch, so the sail system has to be told before the
+    // player orders anything — and the label says which stage she is at, since
+    // a sail change that silently took two and a half times as long would read
+    // as an input that did not register.
+    const manning = pe3?.ship
+      ? manningTier(pe3.ship.crew.current, pe3.ship.classId as string)
+      : null;
+    this.sailSystem.setHandling(manning?.handlingMul ?? 1);
+    const shortHanded = manning !== null && manning.id !== "full";
+
     const sailLabel = aground
       ? t("sail.aground")
       : shoaling
         ? t("sail.shoaling")
-        : inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey);
+        : shortHanded
+          ? t(manning!.nameKey)
+          : inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey);
 
     this.uiOverlay?.updateSail(
       sailLabel,

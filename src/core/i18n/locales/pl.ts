@@ -163,6 +163,12 @@ export const PL: LocaleData = {
   "sail.in_irons": "⚠ Pod wiatr!",
   "sail.shoaling": "⚠ Płycizna!",
   "sail.aground": "⚠ NA MIELIŹNIE!",
+  // Poziomy obsady (v0.49.0). Na HUD trafiają tylko trzy niedobory —
+  // statek z pełną obsadą pokazuje poziom żagli, tak jak zawsze.
+  "manning.full": "Pełna obsada",
+  "manning.short": "⚠ Za mało rąk",
+  "manning.skeleton": "⚠ Obsada szczątkowa!",
+  "manning.unworkable": "⚠ NIE MA KOMU PRACOWAĆ!",
   "sail.transitioning": "Zmiana żagli...",
 
   // -- City info panel --
@@ -204,6 +210,8 @@ export const PL: LocaleData = {
 
   // -- Captain's Cabin --
   "cabin.crew_title": "Załoga",
+  "cabin.hands": "ręce {{men}}/{{need}}",
+  "cabin.fleet_hands": "Eskadra: {{men}} ludzi, do obsługi kadłubów trzeba {{need}}",
   "cabin.training": "Wyszkolenie załogi: {{pct}}%",
   "cabin.wounded": "Rannych pod pokładem: {{count}}",
   "cabin.cargo_title": "Manifest ładunku",
@@ -239,6 +247,7 @@ export const PL: LocaleData = {
   "battle.controls": "WSAD: Żagle/Ster  |  Q/E: Ogień L/P  |  1/2/3: Amunicja  |  B: Abordaż  |  H: Pomoc  |  ESC: Wycofaj",
   "battle.log_won": "Zwycięstwo na morzu! +{{gold}} Złoto.",
   "battle.log_captured": "Przejęto statek i dołączono do floty! +{{gold}} Złoto.",
+  "battle.log_prize_crew": "Załoga pryzowa: {{men}} naszych i {{pressed}} przymuszonych — potrzebuje {{need}}.",
   "battle.log_lost": "Bitwa przegrana — statek poważnie uszkodzony.",
   "battle.log_fled": "Wycofano się z bitwy.",
   "battle.continue_hint": "ENTER / SPACJA / ESC / kliknij aby kontynuować",

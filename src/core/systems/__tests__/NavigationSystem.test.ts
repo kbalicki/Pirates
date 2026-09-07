@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from "vitest";
-import { updateNavigation, type TerrainQuery } from "../NavigationSystem.ts";
+import { updateNavigation, applyTurn, type TerrainQuery } from "../NavigationSystem.ts";
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
 import { setDepthField, AGROUND_SPEED_MUL, SHOAL_SPEED_MUL } from "../../services/SeaDepth.ts";
 import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
@@ -622,5 +622,76 @@ describe("navigatedWindModifier", () => {
     const base = windSpeedModifier(0, 0, STRENGTH, 50);
     expect(navigatedWindModifier(base, 99)).toBeCloseTo(navigatedWindModifier(base, 10), 10);
     expect(navigatedWindModifier(base, -99)).toBeCloseTo(navigatedWindModifier(base, 0), 10);
+  });
+});
+
+// ===========================================================================
+// Hands enough to work her (v0.49.0)
+// ===========================================================================
+
+describe("manning", () => {
+  beforeAll(() => setDepthField(null));
+
+  it("does not touch a fully manned ship — which every ship in every old save is", () => {
+    const full = makeShip({ ship: { ...makeShip().ship!, crew: { current: 20, max: 30, morale: 1 } } });
+    const brim = makeShip({ ship: { ...makeShip().ship!, crew: { current: 30, max: 30, morale: 1 } } });
+    const a = updateNavigation(full, TAILWIND, () => "sea", 1);
+    const b = updateNavigation(brim, TAILWIND, () => "sea", 1);
+    expect(Math.hypot(a.vel.x, a.vel.y)).toBeCloseTo(Math.hypot(b.vel.x, b.vel.y), 10);
+  });
+
+  it("slows a ship worked by too few hands", () => {
+    const sloop = makeShip().ship!;
+    const manned = makeShip({ ship: { ...sloop, crew: { current: 20, max: 30, morale: 1 } } });
+    const thin = makeShip({ ship: { ...sloop, crew: { current: 3, max: 30, morale: 1 } } });
+    const fast = updateNavigation(manned, TAILWIND, () => "sea", 1);
+    const slow = updateNavigation(thin, TAILWIND, () => "sea", 1);
+    expect(Math.hypot(slow.vel.x, slow.vel.y)).toBeLessThan(Math.hypot(fast.vel.x, fast.vel.y));
+  });
+
+  it("still leaves her steerage way — a short-handed ship is never a dead end", () => {
+    const sloop = makeShip().ship!;
+    const skeleton = makeShip({ ship: { ...sloop, crew: { current: 1, max: 30, morale: 1 } } });
+    const moved = updateNavigation(skeleton, TAILWIND, () => "sea", 1);
+    expect(Math.hypot(moved.vel.x, moved.vel.y)).toBeGreaterThan(0);
+  });
+
+  it("costs her the helm harder than it costs her the log", () => {
+    const sloop = makeShip().ship!;
+    const manned = makeShip({ ship: { ...sloop, crew: { current: 20, max: 30, morale: 1 } } });
+    const thin = makeShip({ ship: { ...sloop, crew: { current: 3, max: 30, morale: 1 } } });
+
+    const speedOf = (e: EntityState) => {
+      const v = updateNavigation(e, TAILWIND, () => "sea", 1).vel;
+      return Math.hypot(v.x, v.y);
+    };
+    const speedRatio = speedOf(thin) / speedOf(manned);
+
+    const turnManned = applyTurn(manned, "right", 99).heading;
+    const turnThin = applyTurn(thin, "right", 99).heading;
+    const turnRatio = turnThin / turnManned;
+
+    expect(turnRatio).toBeLessThan(speedRatio);
+  });
+});
+
+describe("applyTurn and the men at the braces", () => {
+  it("turns a fully manned ship exactly as it always did", () => {
+    const ship = makeShip({ heading: 0, sailLevel: 1 });
+    const turned = applyTurn(ship, "right", 99);
+    // Sloop turnRate 0.72, full sail so no reefing bonus, full manning so 1.0.
+    expect(turned.heading).toBeCloseTo(0.72, 10);
+  });
+
+  it("takes half the rate off a skeleton crew", () => {
+    const sloop = makeShip().ship!;
+    const thin = makeShip({ heading: 0, sailLevel: 1, ship: { ...sloop, crew: { current: 4, max: 30, morale: 1 } } });
+    expect(applyTurn(thin, "right", 99).heading).toBeCloseTo(0.72 * 0.5, 10);
+  });
+
+  it("leaves a walking crew alone — men ashore are not working yards", () => {
+    const sloop = makeShip().ship!;
+    const landed = makeShip({ mode: "landed", heading: 0, ship: { ...sloop, crew: { current: 1, max: 30, morale: 1 } } });
+    expect(applyTurn(landed, "right", 99).heading).toBeCloseTo(0.96, 10);
   });
 });

@@ -218,6 +218,10 @@ export class PreloadScene extends Phaser.Scene {
     //   ?ship=galleon — start in that hull (v0.48.0). A deep draught is the
     //                   only way to feel the soundings: the starting sloop
     //                   draws 1.5 m and can go anywhere on the map
+    //   ?crew=16     — that many hands aboard her (v0.49.0). Every hull in the
+    //                  game is manned at 2-3x her working minimum, so
+    //                  short-handedness cannot be reached from a normal start;
+    //                  ?ship=galleon&crew=16 is the headline case
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -509,6 +513,37 @@ export class PreloadScene extends Phaser.Scene {
                 cannons: cls.cannons,
                 cargoCap: cls.cargoCap,
                 crew: { ...entity.ship.crew, current: Math.round(cls.crewMax * 0.8), max: cls.crewMax },
+              },
+            },
+          },
+        };
+      }
+    }
+
+    // ?crew=N — that many hands aboard the flagship (v0.49.0).
+    //
+    // The same lesson as `?ship=` one release back: the mechanic cannot be
+    // reached from a normal start. Every ship in the game is manned at two to
+    // three times her working minimum, so short-handedness is something the
+    // captain sails *into* over a campaign and there is no way to see it in the
+    // first minute of a debug world without this.
+    //
+    // Applied after `?ship=`, deliberately: `?ship=galleon&crew=16` is the
+    // headline case — a galleon worked by what a sloop's captain could spare.
+    const hands = Number(params.get("crew") ?? NaN);
+    if (Number.isFinite(hands) && hands >= 0) {
+      const shipId = w.player.shipId as unknown as string;
+      const entity = w.entities[shipId];
+      if (entity?.ship) {
+        w = {
+          ...w,
+          entities: {
+            ...w.entities,
+            [shipId]: {
+              ...entity,
+              ship: {
+                ...entity.ship,
+                crew: { ...entity.ship.crew, current: Math.round(hands) },
               },
             },
           },

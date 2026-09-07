@@ -163,6 +163,12 @@ export const EN: LocaleData = {
   "sail.in_irons": "⚠ Into the wind!",
   "sail.shoaling": "⚠ Shoal water!",
   "sail.aground": "⚠ AGROUND!",
+  // Manning tiers (v0.49.0). Only the three short ones are ever drawn on the
+  // HUD — a fully manned ship shows her sail level, as she always did.
+  "manning.full": "Fully manned",
+  "manning.short": "⚠ Short-handed",
+  "manning.skeleton": "⚠ Skeleton crew!",
+  "manning.unworkable": "⚠ TOO FEW HANDS!",
   "sail.transitioning": "Setting sails...",
 
   // -- City info panel --
@@ -204,6 +210,8 @@ export const EN: LocaleData = {
 
   // -- Captain's Cabin --
   "cabin.crew_title": "Crew",
+  "cabin.hands": "hands {{men}}/{{need}}",
+  "cabin.fleet_hands": "Squadron: {{men}} hands, {{need}} needed to work her hulls",
   "cabin.training": "Crew training: {{pct}}%",
   "cabin.wounded": "Below with the surgeon: {{count}}",
   "cabin.cargo_title": "Cargo Manifest",
@@ -239,6 +247,7 @@ export const EN: LocaleData = {
   "battle.controls": "WSAD: Sail/Turn  |  Q/E: Fire L/R broadside  |  1/2/3: Ammo  |  B: Board  |  H: Help  |  ESC: Flee",
   "battle.log_won": "Victory at sea! +{{gold}} gold.",
   "battle.log_captured": "Ship captured and added to fleet! +{{gold}} gold.",
+  "battle.log_prize_crew": "Prize crew: {{men}} of our own and {{pressed}} pressed — she wants {{need}}.",
   "battle.log_lost": "Battle lost — your ship was crippled.",
   "battle.log_fled": "Disengaged from battle.",
   "battle.continue_hint": "ENTER / SPACE / ESC / click to continue",

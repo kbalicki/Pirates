@@ -23,7 +23,9 @@ import {
   consortCrewMax,
   consortBerthsFree,
   manConsorts,
+  fleetManning,
 } from "../FleetSystem.ts";
+import { manningSpeedMultiplier } from "../CrewSystem.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import type { FleetShip, PlayerState } from "../../model/WorldState.ts";
 import type { ShipData } from "../../model/EntityState.ts";
@@ -433,5 +435,74 @@ describe("consortTraining / fleetTraining / greenCrewTraining", () => {
 
   it("is the flagship's own drill for a one-ship fleet", () => {
     expect(fleetTraining(0.44, 60, [])).toBeCloseTo(0.44, 6);
+  });
+});
+
+// ===========================================================================
+// Hands enough to work her (v0.49.0)
+// ===========================================================================
+
+describe("an undermanned consort is the slow ship in the fleet", () => {
+  it("changes nothing for a consort manned the way every old save mans one", () => {
+    // The fallback complement is 0.8 x crewMax, well above every crewMin, so a
+    // consort answers her class speed and the fleet is held to the slower of
+    // the two — the sloop herself here, and the fluyt in the second case.
+    expect(fleetSpeedMultiplier("sloop", [escort("brigantine")])).toBe(1);
+    expect(fleetSpeedMultiplier("sloop", [escort("fluyt")])).toBeCloseTo(
+      SHIP_CLASSES.fluyt.speedBase / SHIP_CLASSES.sloop.speedBase, 10);
+  });
+
+  it("drags the whole squadron down to what the prize crew can actually make", () => {
+    const galleon: FleetShip = { ...escort("galleon"), crew: 16 };
+    const mul = fleetSpeedMultiplier("sloop", [galleon]);
+    const manned = fleetSpeedMultiplier("sloop", [escort("galleon")]);
+    expect(mul).toBeLessThan(manned);
+    expect(mul).toBeCloseTo(
+      SHIP_CLASSES.galleon.speedBase * manningSpeedMultiplier(16, "galleon") / SHIP_CLASSES.sloop.speedBase,
+      10,
+    );
+  });
+
+  it("still lets a fast consort be irrelevant — the fleet is only as slow as its slowest", () => {
+    const fast: FleetShip = { ...escort("frigate"), crew: SHIP_CLASSES.frigate.crewMin };
+    expect(fleetSpeedMultiplier("sloop", [fast])).toBe(1);
+  });
+});
+
+describe("a hull joins with named men aboard her", () => {
+  it("takes the manning it is given", () => {
+    const fleet = addToFleet([], "galleon", 0.3, { crew: 16, morale: 0.4 })!;
+    expect(fleet[0].crew).toBe(16);
+    expect(fleet[0].morale).toBeCloseTo(0.4, 10);
+    expect(consortCrew(fleet[0])).toBe(16);
+  });
+
+  it("falls back to the conjured complement when nobody says otherwise", () => {
+    // Which is exactly what the two-argument call meant before this release.
+    const fleet = addToFleet([], "galleon", 0.3)!;
+    expect(fleet[0].crew).toBe(Math.round(SHIP_CLASSES.galleon.crewMax * 0.8));
+    expect(fleet[0].morale).toBe(0.8);
+  });
+
+  it("clamps a nonsense morale rather than carrying it into the fleet", () => {
+    const fleet = addToFleet([], "sloop", 0.3, { crew: 8, morale: 5 })!;
+    expect(fleet[0].morale).toBe(1);
+  });
+});
+
+describe("fleetManning", () => {
+  it("counts the flagship's own hands and her own minimum", () => {
+    const m = fleetManning("sloop", 30, []);
+    expect(m.men).toBe(30);
+    expect(m.min).toBe(SHIP_CLASSES.sloop.crewMin);
+    expect(m.short).toBe(false);
+  });
+
+  it("says a captain has bitten off more ship than he has people", () => {
+    const galleon: FleetShip = { ...escort("galleon"), crew: 16 };
+    const m = fleetManning("sloop", 8, [galleon]);
+    expect(m.men).toBe(24);
+    expect(m.min).toBe(SHIP_CLASSES.sloop.crewMin + SHIP_CLASSES.galleon.crewMin);
+    expect(m.short).toBe(true);
   });
 });

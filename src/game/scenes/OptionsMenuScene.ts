@@ -25,7 +25,8 @@ import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
-import { consortCrew, consortCrewMax, consortMorale, consortTraining } from "../../core/systems/FleetSystem.ts";
+import { consortCrew, consortCrewMax, consortMorale, consortTraining, fleetManning } from "../../core/systems/FleetSystem.ts";
+import { manningTier, workingMinimum } from "../../core/systems/CrewSystem.ts";
 import { activeQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
@@ -366,11 +367,18 @@ export class OptionsMenuScene extends Phaser.Scene {
     y += 20;
 
     const shipClassName = t("ship." + (ship.classId as string) + ".name");
+    // What it takes to work her, against what she has (v0.49.0). `crewMin` was
+    // printed in the shipyard's column and on the help screen and read by
+    // nothing that sailed; this is the line that makes it a fact about *this*
+    // ship rather than a fact about her class.
+    const flagTier = manningTier(ship.crew.current, ship.classId as string);
     const shipInfo = this.add.text(x + 10, y,
       `1. ${shipClassName} (${t("fleet.flagship")})\n` +
       `   ${t("hud.hull", { current: Math.round(ship.hullHp), max: ship.hullMax })}` +
       `  |  ${t("hud.sails", { current: Math.round(ship.sailsHp), max: ship.sailsMax })}` +
-      `  |  ${t("cabin.cannons", { count: ship.cannons })}`,
+      `  |  ${t("cabin.cannons", { count: ship.cannons })}` +
+      `  |  ${t("cabin.hands", { men: Math.round(ship.crew.current), need: workingMinimum(ship.classId as string) })}` +
+      (flagTier.id === "full" ? "" : `  ${t(flagTier.nameKey)}`),
       { ...txt(11), lineSpacing: 4 });
     this.contentContainer.add(shipInfo);
     y += 38;
@@ -388,6 +396,9 @@ export class OptionsMenuScene extends Phaser.Scene {
           `  |  ${t("hud.sails", { current: Math.round(fs.sailsHp), max: fs.sailsMax })}` +
           `  |  ${t("cabin.cannons", { count: fs.cannons })}` +
           `  |  ${t("hud.crew", { current: consortCrew(fs), max: consortCrewMax(fs) })}` +
+          (manningTier(consortCrew(fs), fs.classId).id === "full"
+            ? ""
+            : `  ${t(manningTier(consortCrew(fs), fs.classId).nameKey)}`) +
           ((fs.wounded ?? 0) > 0 ? `  |  ${t("cabin.wounded", { count: Math.round(fs.wounded ?? 0) })}` : "") +
           `  |  ${t("hud.morale", { pct: Math.round(consortMorale(fs) * 100) })}` +
           `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}`,
@@ -403,6 +414,16 @@ export class OptionsMenuScene extends Phaser.Scene {
 
         y += 38;
       }
+
+      // One line for the whole squadron (v0.49.0): a captain with three hulls
+      // and one ship's worth of people should be able to read that off a
+      // single row rather than adding up three.
+      const squadron = fleetManning(ship.classId as string, ship.crew.current, fleet);
+      const squadronLine = this.add.text(x + 10, y,
+        t("cabin.fleet_hands", { men: squadron.men, need: squadron.min }),
+        txt(11, { color: squadron.short ? "#aa3333" : "#666666" }));
+      this.contentContainer.add(squadronLine);
+      y += squadronLine.height + 8;
     }
 
     // Gold
