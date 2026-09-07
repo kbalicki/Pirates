@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-07 · **Wersja:** v0.47.0.0 · **Branch:** `main`
-**Kod:** 211 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1692 przechodzi, 0 failuje, 0 `todo`** w 48 plikach
+**Stan na:** 2026-09-07 · **Wersja:** v0.48.0.0 · **Branch:** `main`
+**Kod:** 213 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1711 przechodzi, 0 failuje, 0 `todo`** w 49 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.47.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1692/1692 zielone; **trzy z pięciu liczb na karcie postaci nic nie robiły** — tworzenie postaci od zawsze każe rozdać dziesięć punktów na pięć umiejętności, z których `navigation` i `medicine` nie były czytane **przez nikogo** (poza `AgingSystem`, który kazał im *rosnąć* po trzydziestce piątce), a `gunnery` decydowało wyłącznie o ostrzale murów fortu. Teraz nawigator jest wart piątą część prędkości ostro na wiatr i **dokładnie zero** na baksztagu (600 jednostek pod wiatr: 4,4 dnia przy 0, 2,9 przy 10), kanonier ładuje o jedną trzecią więcej żelaza w cel, a medyk oddaje **17 ze stu poległych zamiast 37**. Wszystkie trzy zaczepy wyśrodkowane na 5, więc kapitan z równo rozłożonymi punktami pływa jak w v0.46.0. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.48.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.48.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1711/1711 zielone; **woda ma dno** — cztery martwe rzeczy leżały obok siebie: `draft` zadeklarowane dla wszystkich dziewięciu klas i czytane przez **nikogo**, `TerrainType.shallow` i `.reef` z pełną obsługą, której **nigdy nie wywołano** (zapytanie o teren zwraca tylko `land`/`sea`), oraz skończony `ShallowWaterRenderer`, którego **nikt nigdy nie skonstruował**. Teraz turkusowa półka jest rysowana z **tego samego** pola, z którego liczone są sondowania: pinasa, slup, barka i brygantyna przechodzą wszędzie, a fluyt, fregata i trzy galeony są zamknięci przed **6,2%** morza — tym przybrzeżnym. Porty są pogłębione, bo zmierzone: **wszystkie 45** podejść leży w płyciźnie. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.49.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.47.0.0):** v0.47.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1692/1692 zielone; **trzy z pięciu liczb na karcie postaci nic nie robiły** — tworzenie postaci od zawsze każe rozdać dziesięć punktów na pięć umiejętności, z których `navigation` i `medicine` nie były czytane **przez nikogo** (poza `AgingSystem`, który kazał im *rosnąć* po trzydziestce piątce), a `gunnery` decydowało wyłącznie o ostrzale murów fortu. Teraz nawigator jest wart piątą część prędkości ostro na wiatr i **dokładnie zero** na baksztagu (600 jednostek pod wiatr: 4,4 dnia przy 0, 2,9 przy 10), kanonier ładuje o jedną trzecią więcej żelaza w cel, a medyk oddaje **17 ze stu poległych zamiast 37**. Wszystkie trzy zaczepy wyśrodkowane na 5, więc kapitan z równo rozłożonymi punktami pływa jak w v0.46.0. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.48.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.46.0.0):** v0.46.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1664/1664 zielone; **flota skarbowa wypływa** — `treasure_fleet` był typem zdarzenia od v0.9.7 i przez dziewiętnaście wydań był wyłącznie nagłówkiem („szykuje się w..."), który nigdy nie wypłynął. Teraz płyną **cztery kadłuby**: dwa galeony ze srebrem i dwa wiozące same działa, trasą, której **nikt nie wymyślił** — Puerto Bello/Vera Cruz → Hawana → Cieśnina Florydzka to po prostu najszybsza droga po tabeli prądów z v0.41.0. Kadłub wart ~8300, uzysk ~7200 po tym, jak cena spadnie z 77 do 31 za tonę. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.47.0 jest niżej.
 
@@ -28,7 +30,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) i [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci) i [SESSION-2026-09-07B.md](documentation/SESSION-2026-09-07B.md) (v0.48.0 — woda ma dno).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -91,6 +93,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Woda ma dno | ✅ | `services/SeaDepth.ts`: zanurzenie kadłuba kontra głębokość wyprowadzona z linii brzegowej; płycizna ostrzega, mielizna ściera kadłub, porty pogłębione, ścigający też ma zanurzenie |
+| Półka przybrzeżna na czarcie | ✅ | `ShallowWaterRenderer` wreszcie skonstruowany i karmiony **tym samym** polem co sondowania — obrazek jest mechaniką |
 | Trzy umiejętności wreszcie coś robią | ✅ | `navigatedWindModifier` (nawigator wart tyle, ile wiatr przeciwny), `gunneryAccuracy` (kanonier w bitwie morskiej, nie tylko pod murami), `SurgeonSystem` (medyk oddaje rannych) — wszystko wyśrodkowane na 5 |
 | Lazaret | ✅ | `SurgeonSystem`: 40% poległych trafia pod pokład, dzienne obchody, `medicine` decyduje kto wraca; `wounded?` na statku i na konsorcie |
 | Flota skarbowa wypływa | ✅ | `TreasureFleetSystem`: cztery kadłuby na kursie muster → Hawana → Atlantyk, srebro w dwóch z nich, `vars.hulls` pilnuje, że zatopiony nie wraca, a Hiszpania traci to, co nie dotarło |
@@ -1772,7 +1776,29 @@ te umiejętności **rosną** po trzydziestce piątce.
   choć arena prowadzi każdy kadłub na domyślnych 30°; pasek morale nachodził na
   napisy w kajucie (a pasek wyszkolenia robił to od v0.21.0)
 
-### v0.48.0 — co dalej
+### ~~v0.48.0 — Woda ma dno~~ ✅ (v0.48.0.0)
+
+Cztery martwe rzeczy, które razem są jedną mechaniką: `ShipClassDef.draft`
+(dziewięć klas, **zero** odczytów), `TerrainType.shallow` i `.reef` (pełna
+obsługa w `NavigationSystem`, nigdy nie wywołana, bo zapytanie o teren zwraca
+tylko `"land"` i `"sea"`) oraz `ShallowWaterRenderer.ts` (165 linii skończonego
+renderera, **nigdzie nie konstruowanego**).
+
+- **Głębokość wyprowadzona, nie zapisana** — BFS od lądu po siatce 32 px, ten
+  sam, z którego renderer maluje półkę. `coastDistanceField` karmi oba
+- **Pomiar rozstrzygnął projekt**: podejście do portu leży 0-2 komórki od brzegu
+  dla **wszystkich 45** miast (mediana 1), więc naiwna reguła zamknęłaby fregatę
+  przed każdym portem na mapie → `HARBOUR_RADIUS = 90`
+- **Trzy stany, nie dwa** — prześwit > 1,5 m nic; ≤ 1,5 m „⚠ Płycizna!" i ×0,75;
+  ≤ 0 „⚠ NA MIELIŹNIE!", ×0,25 i ścieranie kadłuba. Ostrzeżenie **jest** mechaniką
+- **6,2% morza** zamknięte dla pięciu dużych klas, 0% dla czterech małych
+- **Ścigający też ma zanurzenie** (`navigableFor(draft)` opakowuje zapytanie
+  o teren), więc ucieczka na płyciznę jest ucieczką, a nie dwoma osiadłymi statkami
+- Rozmycie półki ściśnięte z ~300 do ~80 jednostek: obrazek szerszy od mechaniki
+  jest gorszy niż brak obrazka
+- `TerrainType` schudł do `"sea" | "land"`; dwa testy martwych gałęzi przepisane
+
+### v0.49.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 

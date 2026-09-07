@@ -4,10 +4,20 @@ import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
 import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
+import { depthAt, soundings, AGROUND_HULL_PER_TICK } from "../services/SeaDepth.ts";
 
 export type TerrainQuery = (worldX: number, worldY: number) => TerrainType;
 
-export type TerrainType = "sea" | "shallow" | "reef" | "land";
+/**
+ * What is under the ship.
+ *
+ * `"shallow"` and `"reef"` were members here from the beginning, with real
+ * handling below, and **nothing ever returned them**: the map's terrain query
+ * answers `"land"` or `"sea"` and nothing else. Depth is not a property of a
+ * square of water anyway — it is a comparison between the water and the hull —
+ * so it lives in `SeaDepth` and the enum tells the truth again (v0.48.0).
+ */
+export type TerrainType = "sea" | "land";
 
 const LAND_WALK_SPEED = 0.25; // walking speed on land (much slower than sailing)
 
@@ -117,35 +127,41 @@ export function updateNavigation(
     }
   }
 
-  // Check final terrain for reef/shallow effects
-  const terrain = terrainAt(newPos.x, newPos.y);
+  // How much water there is where she is about to be, against how much she
+  // needs (v0.48.0). Replaces two branches keyed on terrain types no query
+  // ever returned; depth is a comparison with the hull, not a kind of square.
+  const sea = soundings(depthAt(newPos.x, newPos.y), shipClass.draft ?? 0);
 
-  if (terrain === "reef") {
-    const slowVel = vec2Scale(vel, 0.3);
-    const slowPos = vec2Add(entity.pos, vec2Scale(slowVel, dtTicks));
+  const finalVel = vec2Scale(vel, sea.speedMul);
+  const finalPos = vec2Add(entity.pos, vec2Scale(finalVel, dtTicks));
+
+  if (sea.aground) {
+    // She keeps steerage way — barely — so the player can back out of it. A
+    // true zero would strand a deep hull the first time she wandered inshore,
+    // which is the same reason a dismasted ship still crawls on the map.
     return {
       ...entity,
-      pos: slowPos,
-      vel: slowVel,
+      pos: finalPos,
+      vel: finalVel,
+      aground: true,
+      // Cleared, not left standing: she was shoaling on the way in and both
+      // flags are meant to describe this tick only.
+      shoaling: undefined,
       ship: {
         ...entity.ship,
-        hullHp: Math.max(0, entity.ship.hullHp - 0.5 * dtTicks),
+        hullHp: Math.max(0, entity.ship.hullHp - AGROUND_HULL_PER_TICK * dtTicks),
       },
     };
   }
 
-  let speedMul = 1.0;
-  if (terrain === "shallow") {
-    speedMul = 0.6;
-  }
-
-  const finalVel = vec2Scale(vel, speedMul);
-  const finalPos = vec2Add(entity.pos, vec2Scale(finalVel, dtTicks));
-
+  // Both flags are cleared rather than left standing: they describe where she
+  // is this tick, not something that happened to her.
   return {
     ...entity,
     pos: finalPos,
     vel: finalVel,
+    aground: undefined,
+    shoaling: sea.shoal ? true : undefined,
   };
 }
 

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { MusicManager } from "../audio/MusicManager.ts";
 import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -214,6 +215,9 @@ export class PreloadScene extends Phaser.Scene {
     //                     nothing at all before v0.47.0 and are hard to feel
     //                     without being able to set them)
     //   ?wounded=40  — that many men already below with the surgeon
+    //   ?ship=galleon — start in that hull (v0.48.0). A deep draught is the
+    //                   only way to feel the soundings: the starting sloop
+    //                   draws 1.5 m and can go anywhere on the map
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -483,6 +487,33 @@ export class PreloadScene extends Phaser.Scene {
         }
       }
       w = { ...w, captain: { ...w.captain, skills } };
+    }
+
+    const hull = params.get("ship");
+    if (hull && SHIP_CLASSES[hull]) {
+      const cls = SHIP_CLASSES[hull];
+      const shipId = w.player.shipId as unknown as string;
+      const entity = w.entities[shipId];
+      if (entity?.ship) {
+        w = {
+          ...w,
+          entities: {
+            ...w.entities,
+            [shipId]: {
+              ...entity,
+              ship: {
+                ...entity.ship,
+                classId: hull as typeof entity.ship.classId,
+                hullHp: cls.hullMax, hullMax: cls.hullMax,
+                sailsHp: cls.sailsMax, sailsMax: cls.sailsMax,
+                cannons: cls.cannons,
+                cargoCap: cls.cargoCap,
+                crew: { ...entity.ship.crew, current: Math.round(cls.crewMax * 0.8), max: cls.crewMax },
+              },
+            },
+          },
+        };
+      }
     }
 
     const below = Number(params.get("wounded") ?? NaN);

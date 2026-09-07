@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { updateNavigation, type TerrainQuery } from "../NavigationSystem.ts";
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
+import { setDepthField, AGROUND_SPEED_MUL, SHOAL_SPEED_MUL } from "../../services/SeaDepth.ts";
 import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
 import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../WeatherSystem.ts";
 import type { EntityState } from "../../model/EntityState.ts";
@@ -68,7 +69,7 @@ const CROSSWIND: WeatherState = {
   stormTimer: 0,
 };
 
-function realTerrainAt(wx: number, wy: number): "sea" | "shallow" | "reef" | "land" {
+function realTerrainAt(wx: number, wy: number): "sea" | "land" {
   if (wx < 0 || wy < 0 || wx > 3200 || wy > 2400) return "land";
   const pt = { x: wx, y: wy };
   for (const lm of LANDMASSES) {
@@ -378,29 +379,61 @@ describe("updateNavigation — sailing mechanics", () => {
     expect(r.pos.y).toBeLessThan(1800);
   });
 
-  it("reef: 0.3x speed + hull damage", () => {
-    const reefTerrain: TerrainQuery = () => "reef";
+  // ── Soundings (v0.48.0) ──
+  //
+  // These two tests used to drive `terrainAt` to return "reef" and "shallow".
+  // Nothing in the game ever returned either: the map's query answers "land"
+  // or "sea", so both branches — and both of these tests — exercised code that
+  // could not run. Depth is a comparison between the water and the hull now,
+  // and it comes from `SeaDepth`.
+
+  it("aground: she drags, and the hull grinds away", () => {
+    // The fixture is a sloop: she draws 1.5 m, and one metre of water is not
+    // enough for her.
+    setDepthField([[1]], 4000);
     const ship = makeShip({ pos: { x: 100, y: 100 }, heading: 0 });
-    const result = updateNavigation(ship, TAILWIND, reefTerrain, 1);
+    const result = updateNavigation(ship, TAILWIND, () => "sea", 1);
+    setDepthField(null);
+
+    expect(result.aground).toBe(true);
     expect(result.ship!.hullHp).toBeLessThan(60);
-    const normalResult = updateNavigation(
-      makeShip({ pos: { x: 100, y: 100 }, heading: 0 }),
-      TAILWIND, () => "sea", 1,
+
+    setDepthField(null);
+    const deep = updateNavigation(
+      makeShip({ pos: { x: 100, y: 100 }, heading: 0 }), TAILWIND, () => "sea", 1,
     );
-    const reefDist = ptDist(result.pos, ship.pos);
-    const normalDist = ptDist(normalResult.pos, { x: 100, y: 100 });
-    expect(reefDist).toBeCloseTo(normalDist * 0.3, 1);
+    const groundDist = ptDist(result.pos, { x: 100, y: 100 });
+    const deepDist = ptDist(deep.pos, { x: 100, y: 100 });
+    expect(groundDist).toBeCloseTo(deepDist * AGROUND_SPEED_MUL, 1);
   });
 
-  it("shallow: 0.6x speed", () => {
+  it("feeling the bottom: slower, unhurt, and warned", () => {
+    // 2.5 m over a 1.5 m draught: one metre of clearance, under the metre and
+    // a half at which a master starts watching the leadsman.
+    setDepthField([[2.5]], 4000);
     const ship = makeShip({ pos: { x: 100, y: 100 }, heading: 0 });
-    const result = updateNavigation(ship, TAILWIND, () => "shallow", 1);
-    const normalResult = updateNavigation(
-      makeShip({ pos: { x: 100, y: 100 }, heading: 0 }),
-      TAILWIND, () => "sea", 1,
+    const result = updateNavigation(ship, TAILWIND, () => "sea", 1);
+    setDepthField(null);
+
+    expect(result.shoaling).toBe(true);
+    expect(result.aground).toBeUndefined();
+    expect(result.ship!.hullHp).toBe(60);
+
+    const deep = updateNavigation(
+      makeShip({ pos: { x: 100, y: 100 }, heading: 0 }), TAILWIND, () => "sea", 1,
     );
     expect(ptDist(result.pos, { x: 100, y: 100 }))
-      .toBeCloseTo(ptDist(normalResult.pos, { x: 100, y: 100 }) * 0.6, 1);
+      .toBeCloseTo(ptDist(deep.pos, { x: 100, y: 100 }) * SHOAL_SPEED_MUL, 1);
+  });
+
+  it("open water is exactly what it always was", () => {
+    // No field loaded — every existing test in this project runs this way, and
+    // that is deliberate: an unset field answers open sea everywhere.
+    const ship = makeShip({ pos: { x: 100, y: 100 }, heading: 0 });
+    const result = updateNavigation(ship, TAILWIND, () => "sea", 1);
+    expect(result.aground).toBeUndefined();
+    expect(result.shoaling).toBeUndefined();
+    expect(result.ship!.hullHp).toBe(60);
   });
 
   it("non-ship entity returned unchanged", () => {

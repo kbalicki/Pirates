@@ -8,6 +8,13 @@
  * 4. Shimmer: 4 noise frames cycled for animation.
  *
  * Total: 5 Images (1 gradient + 4 shimmer). Zero Graphics objects.
+ *
+ * This file was finished and **never constructed** until v0.48.0 — a complete
+ * renderer for water the simulation had no opinion about. Now that a deep hull
+ * grounds in it, it is drawn, and it takes the coast-distance field from
+ * `SeaDepth` rather than computing its own: the shelf on the chart and the
+ * soundings under the keel are the same numbers, which is the only way the
+ * picture can be trusted.
  */
 import Phaser from "phaser";
 
@@ -23,14 +30,11 @@ export class ShallowWaterRenderer {
   private currentFrame = 0;
   private frameTimer = 0;
 
-  constructor(scene: Phaser.Scene, landGrid: boolean[][]) {
-    const gridRows = landGrid.length;
-    const gridCols = landGrid[0]?.length ?? 0;
+  constructor(scene: Phaser.Scene, waterDist: number[][]) {
+    const gridRows = waterDist.length;
+    const gridCols = waterDist[0]?.length ?? 0;
     const mapW = gridCols * CELL;
     const mapH = gridRows * CELL;
-
-    // ── 1. Water-coast distance (BFS from land into water) ──
-    const waterDist = this.buildWaterCoastDist(landGrid, gridRows, gridCols);
 
     // ── 2. Blurred turquoise gradient canvas ──
     const SCALE = 4; // pixels per grid cell → 400×300
@@ -64,10 +68,13 @@ export class ShallowWaterRenderer {
     blurred.width = cw;
     blurred.height = ch;
     const bctx = blurred.getContext("2d")!;
-    bctx.filter = "blur(5px)";
+    // Tightened in v0.48.0. One canvas pixel is eight world units, so the old
+    // 5+3 blur spread the shelf across roughly 300 world units — four times the
+    // water that actually costs a hull anything. The picture has to be the
+    // mechanic or it is worse than no picture at all.
+    bctx.filter = "blur(2px)";
     bctx.drawImage(gradCanvas, 0, 0);
-    // Second pass for extra smoothness
-    bctx.filter = "blur(3px)";
+    bctx.filter = "blur(1px)";
     bctx.drawImage(blurred, 0, 0);
 
     const gradKey = "shallow_water_grad";
@@ -151,36 +158,6 @@ export class ShallowWaterRenderer {
       this.currentFrame = (this.currentFrame + 1) % SHIMMER_FRAMES;
       this.shimmerImages[this.currentFrame].setVisible(true);
     }
-  }
-
-  private buildWaterCoastDist(landGrid: boolean[][], rows: number, cols: number): number[][] {
-    const dist: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(999));
-    const queue: [number, number][] = [];
-
-    for (let r = 0; r < rows; r++) {
-      for (let c = 0; c < cols; c++) {
-        if (landGrid[r][c]) {
-          dist[r][c] = 0;
-          queue.push([r, c]);
-        }
-      }
-    }
-
-    let head = 0;
-    while (head < queue.length) {
-      const [cr, cc] = queue[head++];
-      const nd = dist[cr][cc] + 1;
-      if (nd > 5) continue;
-      for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]] as const) {
-        const nr = cr + dr, nc = cc + dc;
-        if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-        if (dist[nr][nc] <= nd) continue;
-        dist[nr][nc] = nd;
-        queue.push([nr, nc]);
-      }
-    }
-
-    return dist;
   }
 
   destroy(): void {

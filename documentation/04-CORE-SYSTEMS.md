@@ -21,6 +21,7 @@
 | WeatherField | `WeatherFieldSystem.ts` | Pogoda **w danym miejscu**: strefy wiatru mapy i huragan jako prawdziwy sztorm z **wędrującym okiem** |
 | Fog | `FogSystem.ts` | Mgła: nie zabiera nic statkowi, zabiera oczy — **obu stronom** |
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
+| SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -388,6 +389,53 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Sondowania (`services/SeaDepth.ts`, v0.48.0)
+
+Cztery martwe rzeczy leżące obok siebie: `ShipClassDef.draft` (zadeklarowane dla
+wszystkich dziewięciu klas, **zero** odczytów), `TerrainType.shallow` i `.reef`
+(pełna obsługa w `NavigationSystem`, **nigdy nie wywołana** — zapytanie o teren
+zwraca wyłącznie `"land"` i `"sea"`) oraz `ShallowWaterRenderer.ts` (skończony
+renderer półki, **nigdzie nie konstruowany**).
+
+Głębokość jest **wyprowadzana**, nie zapisywana: BFS od lądu po siatce 32 px, ten
+sam, z którego renderer maluje turkus — `coastDistanceField` karmi oba, więc
+blada woda na czarcie jest płytką wodą pod kilem.
+
+| Odległość od brzegu (komórki) | Głębokość |
+|---|---|
+| 1 | 3,5 m |
+| 2 | 6 m |
+| 3 | 9 m |
+| 4 | 12 m |
+| 5+ | otwarte morze |
+
+**Porty są pogłębione.** Zmierzone: podejście do portu leży na odległości 0-2 od
+brzegu dla **wszystkich 45** miast (mediana 1), więc bez pogłębiania fregata nie
+weszłaby do żadnego. Woda w promieniu `HARBOUR_RADIUS = 90` od podejścia jest
+otwartym morzem — także w komórkach, które siatka uznaje za ląd, bo kolizję z
+lądem rozstrzygają wielokąty, nigdy to pole.
+
+`soundings(depth, draft)` daje trzy stany, nie dwa:
+
+| Prześwit | Co się dzieje |
+|---|---|
+| > 1,5 m | nic |
+| 0 < x ≤ 1,5 m | „⚠ Płycizna!", prędkość ×0,75 — **ostrzeżenie jest mechaniką** |
+| ≤ 0 | „⚠ NA MIELIŹNIE!", prędkość ×0,25, kadłub ściera się o 0,12/tick |
+
+Zmierzone na prawdziwej linii brzegowej: pinasa, slup, barka i brygantyna
+przechodzą wszędzie; fluyt, fregata, szybki galeon, galeon i merchantman są
+zamknięci przed **6,2%** morza — i to jest ta woda, do której się ucieka.
+
+**Ścigający też ma zanurzenie.** `WorldEngine` opakowuje zapytanie o teren w
+`navigableFor(draft)`, więc `findOpenSeaHeading` odwraca głęboki kadłub od
+płycizny, nie wiedząc, że płycizna istnieje; osiadnięcie NPC idzie tą samą
+ścieżką co wejście na ląd.
+
+Pole jest ustawiane raz (`setDepthField`), jak `LANDMASSES`, i **nieustawione
+odpowiada otwartym morzem wszędzie** — dlatego wszystkie wcześniejsze testy
+przechodzą bez podawania im linii brzegowej.
 
 ### Naprawa na morzu i rozbitkowie (`ShipRepairSystem.ts`, v0.10.0)
 

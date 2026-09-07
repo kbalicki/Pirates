@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.47.0.0 | **Ostatnia aktualizacja:** 2026-09-07
+**Wersja:** 0.48.0.0 | **Ostatnia aktualizacja:** 2026-09-07
 
 ---
 
@@ -64,3 +64,4 @@
 - [SESSION-2026-09-06H.md](SESSION-2026-09-06H.md) — v0.44.0.0 → v0.45.0.0: sztorm wędruje — jedno oko na drodze przez ostrzeżone miasta, `pickNeighbours`, droga na czarcie
 - [SESSION-2026-09-06I.md](SESSION-2026-09-06I.md) — v0.45.0.0 → v0.46.0.0: flota skarbowa wypływa — cztery kadłuby, trasa odczytana z prądów, srebro jako zwykły towar
 - [SESSION-2026-09-07.md](SESSION-2026-09-07.md) — v0.46.0.0 → v0.47.0.0: trzy z pięciu liczb na karcie postaci nic nie robiły — nawigator, kanonier i medyk; i dlaczego strefa martwa dalej nie jest martwa
+- [SESSION-2026-09-07B.md](SESSION-2026-09-07B.md) — v0.47.0.0 → v0.48.0.0: woda ma dno — zanurzenie kadłuba, płycizna i mielizna, pogłębione porty, i renderer półki, którego nikt nigdy nie skonstruował

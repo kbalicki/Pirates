@@ -79,6 +79,11 @@ type ShipData = {
 };
 ```
 
+`EntityState` dostał w v0.48.0 dwa dalsze pola opcjonalne, `aground?` i
+`shoaling?`. Oba są **wyprowadzane co tick** z `SeaDepth` i zanurzenia kadłuba, i
+oba są pisane albo kasowane przy każdym ruchu: opisują, gdzie statek *jest*, a nie
+co go spotkało. Czyta je dywersja NPC w `WorldEngine` i ostrzeżenie na HUD.
+
 `wounded` jest opcjonalne i czytane przez `?? 0`, więc nie wymagało kroku
 migracji (ta sama zasada, co `crew?` / `morale?` / `training?` na `FleetShip`).
 Ranny **nie liczy się jako ręka**: `crew` stracił go w chwili, w której padł, i

@@ -8,6 +8,8 @@ import { tickStormDamage } from "../systems/StormSystem.ts";
 import { weatherAt, hurricaneAt } from "../systems/WeatherFieldSystem.ts";
 import { fogDensity, inFogNow, FOG_FLAG } from "../systems/FogSystem.ts";
 import { currentAt } from "../systems/CurrentSystem.ts";
+import { depthAt } from "../services/SeaDepth.ts";
+import { SHIP_CLASSES } from "../data/ships.ts";
 import { updateNavigation, findOpenSeaHeading, type TerrainQuery } from "../systems/NavigationSystem.ts";
 import { fleetSpeedMultiplier } from "../systems/FleetSystem.ts";
 import { checkEncounters } from "../systems/EncounterSystem.ts";
@@ -427,6 +429,18 @@ export class WorldEngine {
 
     // 6.6 Update all AI ship navigation (movement + collision)
     const COAST_AVOID_TICKS = 60; // 3s cooldown after hitting land
+
+    /**
+     * The coast as *this* hull sees it (v0.48.0).
+     *
+     * A shoal a sloop crosses without noticing is a wall to a galleon, so
+     * "where can I go" is not a property of the map — it is a property of the
+     * map and the draught together. Wrapping the terrain query is the whole
+     * trick: `findOpenSeaHeading` then steers a deep hull out of shallow water
+     * with no idea that shallow water exists.
+     */
+    const navigableFor = (draft: number): TerrainQuery => (x, y) =>
+      (this.terrainQuery(x, y) === "land" || depthAt(x, y) - draft <= 0) ? "land" : "sea";
     for (const [id, entity] of Object.entries(updatedEntities)) {
       if (id === playerShipId) continue;
       if (entity.kind !== "ship" || !entity.ai) continue;
@@ -440,10 +454,12 @@ export class WorldEngine {
         const nextX = entity.pos.x + dir.x * spd * dtTicks;
         const nextY = entity.pos.y + dir.y * spd * dtTicks;
 
-        // Check if next position is land — if so, pick a new safe heading
-        if (this.terrainQuery(nextX, nextY) === "land") {
+        // Check if next position is land — or too little water for this hull —
+        // and if so, pick a new safe heading.
+        const shoalAware = navigableFor(SHIP_CLASSES[entity.ship?.classId as string]?.draft ?? 0);
+        if (shoalAware(nextX, nextY) === "land") {
           const newSafeHeading = findOpenSeaHeading(
-            entity.pos.x, entity.pos.y, this.terrainQuery, entity.heading,
+            entity.pos.x, entity.pos.y, shoalAware, entity.heading,
           );
           updatedEntities[id] = {
             ...entity,
@@ -473,10 +489,15 @@ export class WorldEngine {
         1,
         currentAt(entity.pos),
       );
-      // If NPC hits land: find open sea direction and set coast avoidance cooldown
-      if (updatedNpc.mode === "landed" && entity.mode === "sailing") {
+      // If NPC hits land — or feels the bottom — find open sea and set the
+      // coast avoidance cooldown. Touching is handled here rather than in the
+      // AI because it is the same event as a landfall from the AI's point of
+      // view: she is somewhere she cannot be and has to get off it.
+      if ((updatedNpc.mode === "landed" && entity.mode === "sailing") || updatedNpc.aground) {
         const safeHeading = findOpenSeaHeading(
-          entity.pos.x, entity.pos.y, this.terrainQuery, entity.heading,
+          entity.pos.x, entity.pos.y,
+          navigableFor(SHIP_CLASSES[entity.ship?.classId as string]?.draft ?? 0),
+          entity.heading,
         );
         updatedEntities[id] = {
           ...entity,

@@ -82,6 +82,10 @@ import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
+import { ShallowWaterRenderer } from "../render/ShallowWaterRenderer.ts";
+import { coastDistanceField, buildDepthField, setDepthField } from "../../core/services/SeaDepth.ts";
+import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
+import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 // APP_VERSION moved to UIOverlayScene
 
 // Variable timestep — 1 tick per frame, dtTicks proportional to delta
@@ -105,6 +109,11 @@ export class MainMapScene extends Phaser.Scene {
   private waterRenderer!: WaterRenderer;
   private cartographicGrid!: CartographicGrid;
   private landGrid!: boolean[][];
+  /** Cells from land, shared by the soundings and the painted shelf (v0.48.0). */
+  private coastDist: number[][] = [];
+  private shallowWater: ShallowWaterRenderer | null = null;
+  /** Was she touching last frame? Only the moment she takes the ground is worth a line. */
+  private wasAground = false;
   private inputMapper!: InputMapper;
   private sailSystem = new SailSystem(0);
   private commandQueue!: CommandQueue;
@@ -218,6 +227,10 @@ export class MainMapScene extends Phaser.Scene {
     this.cirrusRenderer = new CirrusRenderer(this, mapW, mapH);
 
 
+    // The shelf. `ShallowWaterRenderer` has been a finished, unreferenced file
+    // for a dozen releases: the water it describes now costs a deep hull
+    // something, so it is finally worth drawing (v0.48.0).
+    this.shallowWater = new ShallowWaterRenderer(this, this.coastDist);
     this.palmRenderer = new PalmRenderer(this, this.landGrid);
     this.mountainRenderer = new MountainRenderer(this, this.landGrid);
     this.seagullRenderer = new SeagullRenderer(this, this.landGrid);
@@ -596,6 +609,8 @@ export class MainMapScene extends Phaser.Scene {
 
     // Build land grid from polygons for navigation/seagulls
     // Sample a 4x4 sub-grid per cell so small islands (< 32px) aren't missed
+    // and, since v0.48.0, so the sea has a bottom: the same grid drives the
+    // soundings every hull is measured against.
     const CELL = 32;
     const cols = Math.ceil(mapW / CELL);
     const rows = Math.ceil(mapH / CELL);
@@ -621,6 +636,18 @@ export class MainMapScene extends Phaser.Scene {
         }
       }
     }
+
+    // Soundings (v0.48.0). Derived from the coastline like everything else in
+    // this project that could have been a saved table — and from the SAME
+    // breadth-first distance the shallow-water shelf is painted from, so the
+    // pale water on the chart is the thin water under the keel.
+    //
+    // Harbours are dredged around each town's water approach: measured against
+    // the real coastline, every one of the 45 approaches lies at coast
+    // distance 0-2, so without this a frigate could not enter a single port.
+    this.coastDist = coastDistanceField(this.landGrid);
+    const harbours = Object.keys(PORTS).map(k => getPortWaterPos(k));
+    setDepthField(buildDepthField(this.coastDist, harbours, CELL), CELL);
   }
 
   /** Short on-screen note through the renderer's toast channel. */
@@ -1093,10 +1120,35 @@ export class MainMapScene extends Phaser.Scene {
     const inIrons = pe3?.mode === "sailing" && pe3.sailLevel > 0
       && isInIrons(pe3.heading, wx.windDirRad, psc?.minWindAngle);
 
+    // Soundings beat the wind for the captain's attention (v0.48.0): a ship
+    // in irons is losing time, a ship on the putty is losing her bottom. The
+    // shoal warning is the whole mechanic — without a cue before the grinding
+    // starts, a shoal is just an unexplained loss of speed.
+    const aground = pe3?.aground === true;
+    const shoaling = pe3?.shoaling === true;
+    const sailLabel = aground
+      ? t("sail.aground")
+      : shoaling
+        ? t("sail.shoaling")
+        : inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey);
+
     this.uiOverlay?.updateSail(
-      inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey),
+      sailLabel,
+      // Not the warnings: the second argument appends the sail-change ellipsis,
+      // and "AGROUND!..." reads as though she is in the middle of doing it.
       this.sailSystem.isTransitioning(),
     );
+
+    // One line in the log the moment she takes the ground, not every frame she
+    // spends on it.
+    if (aground && !this.wasAground) {
+      const cls = psc ? t("ship." + pe3!.ship!.classId + ".name") : "";
+      this.worldState = addLogEntry(this.worldState, "event.ran_aground", { ship: cls });
+      this.registry.set("worldState", this.worldState);
+    }
+    this.wasAground = aground;
+
+    this.shallowWater?.update();
 
     // Ship speed display
     const vel3 = pe3?.vel ?? { x: 0, y: 0 };

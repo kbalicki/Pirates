@@ -161,6 +161,8 @@ export const PL: LocaleData = {
   "sail.half": "Połowa żagli",
   "sail.full": "Pełne żagle",
   "sail.in_irons": "⚠ Pod wiatr!",
+  "sail.shoaling": "⚠ Płycizna!",
+  "sail.aground": "⚠ NA MIELIŹNIE!",
   "sail.transitioning": "Zmiana żagli...",
 
   // -- City info panel --
@@ -404,6 +406,7 @@ export const PL: LocaleData = {
   "event.repaired": "Naprawiono statek za {{gold}} Złoto",
   "event.repaired_at_sea": "Cieśla z załogą załatali statek na morzu (+{{hull}} kadłuba, +{{sails}} takielunku)",
   "event.survivors_rescued": "Wyłowiono {{count}} rozbitków i wcielono do załogi",
+  "event.ran_aground": "Statek osiadł na płyciźnie",
   "event.wounded_recovered": "{{count}} rannych wróciło na list załogi",
   "event.wounded_died": "{{count}} rannych zmarło pod opieką medyka",
   "event.food_low": "Zapasy jedzenia się kończą!",

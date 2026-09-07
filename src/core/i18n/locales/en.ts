@@ -161,6 +161,8 @@ export const EN: LocaleData = {
   "sail.half": "Half Sail",
   "sail.full": "Full Sail",
   "sail.in_irons": "⚠ Into the wind!",
+  "sail.shoaling": "⚠ Shoal water!",
+  "sail.aground": "⚠ AGROUND!",
   "sail.transitioning": "Setting sails...",
 
   // -- City info panel --
@@ -404,6 +406,7 @@ export const EN: LocaleData = {
   "event.repaired": "Ship repaired for {{gold}} Gold",
   "event.repaired_at_sea": "The carpenter's crew patched the ship at sea (+{{hull}} hull, +{{sails}} rigging)",
   "event.survivors_rescued": "{{count}} survivors pulled from the water and pressed into the crew",
+  "event.ran_aground": "The ship took the ground in shoal water",
   "event.wounded_recovered": "{{count}} of the wounded are back on the muster roll",
   "event.wounded_died": "{{count}} of the wounded died in the surgeon's care",
   "event.food_low": "Food supplies running low!",

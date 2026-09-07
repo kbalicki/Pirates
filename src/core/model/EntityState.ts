@@ -137,6 +137,18 @@ export type EntityState = {
   anchorPos?: Vec2;
   ship?: ShipData;
   ai?: AiData;
+  /**
+   * She is touching the bottom this tick (v0.48.0).
+   *
+   * Derived every tick from `SeaDepth` and the hull's draught, never carried:
+   * both this and `shoaling` describe where she *is*, not something that
+   * happened to her, so they are written fresh or cleared on every move. NPC
+   * diversion and the HUD warning both read them rather than recomputing the
+   * comparison in two more places.
+   */
+  aground?: boolean;
+  /** Bottom close enough to slow her, not close enough to grind her (v0.48.0). */
+  shoaling?: boolean;
   /** Tick when crew last embarked — used for grace period to prevent instant re-landing. */
   embarkTick?: number;
   /** Tick when crew landed — cooldown prevents instant re-embark. */
