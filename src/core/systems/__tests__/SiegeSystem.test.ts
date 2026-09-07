@@ -40,6 +40,22 @@ import { getPortBaseline } from "../../data/economyBaselines.ts";
  * French outpost. Between them they cover both ends of every curve here.
  */
 const FORT = "cartagena";
+
+/** A world in which those two crowns are fighting, for the diplomacy reads. */
+function atWarWorld(a: string, b: string) {
+  const w = makeWorld();
+  return {
+    ...w,
+    worldEvents: [
+      ...w.worldEvents,
+      {
+        id: `war_${a}_${b}`, type: "war_start" as const,
+        startDay: 1, endDay: 9999, ports: [], factions: [a, b],
+        severity: 3 as const, headline: "news.war_start", vars: {},
+      },
+    ],
+  };
+}
 const OUTPOST = "tortuga";
 
 function makePort(portKey: string, over: Partial<PortRuntimeState> = {}): PortRuntimeState {
@@ -669,10 +685,35 @@ describe("capturePort", () => {
     }
   });
 
-  it("taking cities for a rival crown makes the others uneasy", () => {
+  it("is read by every other capital through its own quarrels, not a flat penalty", () => {
+    // Until v0.52.0 taking a town for a sponsor cost a flat 5 points with each
+    // of the other three crowns, which said that storming Cartagena for England
+    // offended the Dutch exactly as much as it offended Spain. Two facts are
+    // scored now, both off the relation matrix: the crown that LOST the place
+    // (its enemies are pleased) and the crown you SERVED (his enemies are not).
     const r = capturePort(makeWorld(), FORT, "sponsor", "england");
-    expect(r.world.player.reputation.france).toBeLessThan(0);
-    expect(r.world.player.reputation.netherlands).toBeLessThan(0);
+
+    // Cartagena is Spanish. France dislikes Spain (-20) and is indifferent to
+    // England (-10), so a French governor is glad of it and minds nothing.
+    expect(r.world.player.reputation.france).toBeGreaterThan(0);
+    // Spain lost the town and takes it badly whoever it went to.
+    expect(r.world.player.reputation.spain).toBeLessThan(0);
+  });
+
+  it("makes the sponsor's enemies mind that you serve him", () => {
+    // The crown that LOST the town is not scored on the service: handing it to
+    // a rival already costs it 5 more than plundering it would (-35 against
+    // -30), and reading the same fact twice is what the `settled` set exists to
+    // stop. So the claim has to be about a third crown.
+    //
+    // France dislikes Spain, so a Spanish town taken pleases her either way.
+    // With France at war with England, serving England takes most of that back.
+    const peace = capturePort(makeWorld(), FORT, "sponsor", "england");
+    const war = capturePort(
+      atWarWorld("france", "england"), FORT, "sponsor", "england",
+    );
+    expect(war.world.player.reputation.france)
+      .toBeLessThan(peace.world.player.reputation.france);
   });
 
   it("the gold reaches the hold", () => {

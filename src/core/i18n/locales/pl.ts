@@ -786,6 +786,8 @@ export const PL: LocaleData = {
   "captain.skills_title": "Umiejętności",
   "captain.ranks_title": "Rangi",
   "captain.crowns_title": "Korony",
+  "diplomacy.log_warmed": "{{faction}} patrzy na ciebie łaskawiej za twoją wojnę z {{victim}}.",
+  "diplomacy.log_soured": "{{faction}} ochłodła wobec ciebie przez {{victim}}.",
   "captain.at_war": "w wojnie z: {{enemies}}",
   "captain.allied_with": "trzyma z: {{allies}}",
   "captain.crowns_peace": "Na Karaibach pokój.",

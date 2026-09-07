@@ -79,6 +79,7 @@ import { FACTIONS } from "../data/factions.ts";
 import { PORTS } from "../data/ports.ts";
 import { rngNextFloat } from "../services/RNG.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
+import { changeReputation, getReputationLevel, type ReputationLevel } from "./ReputationSystem.ts";
 import { HISTORICAL_WARS } from "../data/wars.ts";
 import { calendarToDay } from "./TimeSystem.ts";
 
@@ -335,4 +336,153 @@ function concludeDynamicWars(world: WorldState): WorldState {
     w = addLogEntry(w, "news.war_end", vars);
   }
   return w;
+}
+
+// ── What the other crowns make of it (v0.52.0) ───────────
+
+/**
+ * How much a crown cares that you have hurt another crown.
+ *
+ * Reputation has been a **vector of four independent numbers** since it was
+ * written: every hand that moves it names one crown. Measured, that means six
+ * traders make Spain hostile (−60) and the other three crowns sit at **exactly
+ * zero for the rest of the career** unless the captain goes and serves them.
+ * Burning Spanish shipping for a year bought nothing at all in Port Royale —
+ * in a world whose own data says England is at −30 with Spain, and in a genre
+ * where "the enemy of my enemy" is the whole of the buccaneer's standing.
+ *
+ * The reward needed no inventing: `PortAccessSystem` has priced *friendly*
+ * since v0.24.0 (spread 0.08 instead of 0.12, half again the crew pool, the
+ * yard at 0.9). What was missing was any way to reach it without serving.
+ *
+ * ## Why tiers and not a proportion
+ *
+ * The obvious shape is `delta × relation / 100 × share`, and it was measured
+ * first. Two things killed it:
+ *
+ * - **Rounding eats the quiet relations.** Reputation is an integer, and
+ *   `Math.round(10 × 0.10 × 0.3)` is **zero** — at −10 the Dutch would not move
+ *   in sixty prizes. The same trap as `wealth` before v0.24.0 gave it a decimal
+ *   place, and the fix there was to find the fraction a home. Here there is a
+ *   better answer than a new field.
+ * - **A share large enough to fix that unmakes the letter of marque.** At 0.5 a
+ *   prize was worth +4 to a crown at war with the victim against the patron's
+ *   +5 — one release after v0.51.0 finally made a commission mean anything.
+ *
+ * Named tiers do what the manning tiers and the hull tiers do: they make
+ * crossing a stage something a player can feel and a reader can check at a
+ * glance, and they keep the numbers whole. Measured, they leave the letter
+ * **2.5× better in a war and 5× better in peace**, which is where it belongs.
+ */
+export type NoticeTier = {
+  id: "enemy" | "rival" | "indifferent" | "ally";
+  /** The highest relation that still falls in this tier. */
+  maxRelation: number;
+  /** Points per unit of act weight. */
+  perAct: number;
+};
+
+/**
+ * The table. Ordered, and read by walking it — the first row whose
+ * `maxRelation` the relation does not exceed wins.
+ *
+ * `rival` reaches to −15 on purpose: Spain sits at −30 with England and −20
+ * with France, but only −10 with the Dutch, so in peacetime a Spanish prize is
+ * something England and France thank you for and the Dutch shrug at. That is
+ * the relation matrix doing work rather than being a decoration, and it is why
+ * the boundary is not a round −20.
+ */
+export const NOTICE_TIERS: NoticeTier[] = [
+  { id: "enemy",       maxRelation: -60, perAct:  2 },
+  { id: "rival",       maxRelation: -15, perAct:  1 },
+  { id: "indifferent", maxRelation:  19, perAct:  0 },
+  { id: "ally",        maxRelation: 100, perAct: -1 },
+];
+
+/**
+ * What an act is worth, before the observer's opinion scales it.
+ *
+ * A city is not five traders; it is the largest thing a captain does to a
+ * crown, and the one that reaches every other capital in the Caribbean.
+ */
+export const ACT_TRADER = 1;
+export const ACT_NAVY = 2;
+export const ACT_CITY = 5;
+
+/**
+ * A **negative** weight, because handing a town to a crown is a favour to it
+ * rather than an injury.
+ *
+ * The sign does the whole of the work: a crown at war with the one you served
+ * reads it at −4, a crown that merely dislikes him at −2, and a crown standing
+ * beside him at +2. It replaced a flat −5 to every other capital, which said
+ * that taking Cartagena for England offended the Dutch exactly as much as it
+ * offended Spain.
+ */
+export const ACT_SERVICE = -2;
+
+export function noticeTier(relation: number): NoticeTier {
+  for (const tier of NOTICE_TIERS) {
+    if (relation <= tier.maxRelation) return tier;
+  }
+  return NOTICE_TIERS[NOTICE_TIERS.length - 1];
+}
+
+/** What this crown makes of an act of the given weight against that one. */
+export function noticedBy(
+  world: WorldState,
+  observer: string,
+  victim: string,
+  weight: number,
+): number {
+  if (observer === victim) return 0;
+  return noticeTier(relationBetween(world, observer, victim)).perAct * weight;
+}
+
+export type RippleResult = {
+  reputation: Record<string, number>;
+  /** Crowns whose standing band changed because of this, for the log. */
+  crossed: Array<{ faction: string; from: ReputationLevel; to: ReputationLevel }>;
+};
+
+/**
+ * Spread a hostile act against one crown across the others.
+ *
+ * **The brethren are not an observer here.** A pirate is not a crown, his
+ * relations run −80 to −40 with everybody, and he would take a cut of every
+ * prize on top of the credit `settleHostileAct` already pays him — the same act
+ * counted twice. `CROWNS` is the observer set for that reason.
+ *
+ * `settled` names the crowns the caller has **already** paid for this same act,
+ * and it is not an optimisation. A patron whose commission covers a prize is a
+ * crown at war with the victim *by definition* — that is what "covered" means —
+ * so without this he collects the patron's credit and the enemy-of-my-enemy
+ * credit for one act. The letter is the specific, larger accounting of exactly
+ * this relation; the ripple is the general one, for everyone holding no paper.
+ * Caught by four existing tests going red at +7 where they said +5.
+ *
+ * Returns the bands that changed rather than logging itself, because the caller
+ * knows what the act was and this does not.
+ */
+export function rippleReputation(
+  world: WorldState,
+  reputation: Record<string, number>,
+  victim: string,
+  weight: number,
+  settled: string[] = [],
+): RippleResult {
+  let out = reputation;
+  const crossed: RippleResult["crossed"] = [];
+  if (!CROWNS.includes(victim)) return { reputation: out, crossed };
+
+  for (const observer of CROWNS) {
+    if (settled.includes(observer)) continue;
+    const delta = noticedBy(world, observer, victim, weight);
+    if (delta === 0) continue;
+    const before = getReputationLevel(out[observer] ?? 0);
+    out = changeReputation(out, observer, delta);
+    const after = getReputationLevel(out[observer] ?? 0);
+    if (before !== after) crossed.push({ faction: observer, from: before, to: after });
+  }
+  return { reputation: out, crossed };
 }

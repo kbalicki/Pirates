@@ -17,9 +17,18 @@ import {
   WAR_MIN_YEARS,
   WAR_MAX_YEARS,
   TREATY_DAYS,
+  noticeTier,
+  noticedBy,
+  rippleReputation,
+  NOTICE_TIERS,
+  ACT_TRADER,
+  ACT_NAVY,
+  ACT_CITY,
+  ACT_SERVICE,
 } from "../DiplomacySystem.ts";
 import { seedHistoricalWars, updateWorldEvents } from "../WorldEventSystem.ts";
-import { coveringPatrons, marqueFlag } from "../PrivateerSystem.ts";
+import { coveringPatrons, marqueFlag, HOSTILE_REP_TRADER, PRIZE_PATRON_TRADER, PRIZE_PATRON_NAVY } from "../PrivateerSystem.ts";
+import { changeReputation, getReputationLevel } from "../ReputationSystem.ts";
 import { FACTIONS } from "../../data/factions.ts";
 import { HISTORICAL_WARS } from "../../data/wars.ts";
 import { entityId } from "../../model/ids.ts";
@@ -391,6 +400,178 @@ describe("the shape of a century, measured", () => {
   });
 });
 
+
+// ── The enemy of my enemy (v0.52.0) ──────────────────────
+
+/**
+ * Reputation was a vector of four independent numbers: every hand that moved it
+ * named one crown. Six traders make Spain hostile and the other three sit at
+ * **exactly zero for the rest of the career** unless the captain goes and serves
+ * them. A year of burning Spanish shipping bought nothing in Port Royale, in a
+ * world whose own data puts England at −30 with Spain.
+ */
+describe("what the other crowns make of it", () => {
+  it("reads a relation into one of four named tiers", () => {
+    expect(noticeTier(-70).id).toBe("enemy");
+    expect(noticeTier(-60).id).toBe("enemy");
+    expect(noticeTier(-30).id).toBe("rival");
+    expect(noticeTier(-15).id).toBe("rival");
+    expect(noticeTier(-10).id).toBe("indifferent");
+    expect(noticeTier(0).id).toBe("indifferent");
+    expect(noticeTier(10).id).toBe("indifferent");
+    expect(noticeTier(20).id).toBe("ally");
+    expect(noticeTier(35).id).toBe("ally");
+  });
+
+  it("keeps the tiers in order, so a reader can check the table at a glance", () => {
+    const per = NOTICE_TIERS.map(t => t.perAct);
+    for (let i = 1; i < per.length; i++) expect(per[i]).toBeLessThan(per[i - 1]);
+    expect(NOTICE_TIERS.find(t => t.id === "indifferent")!.perAct).toBe(0);
+  });
+
+  it("thanks a crown for a prize taken off one it quarrels with", () => {
+    const w = makeWorld();
+    // England is at -30 with Spain: a rival.
+    expect(noticedBy(w, "england", "spain", ACT_TRADER)).toBeGreaterThan(0);
+    expect(noticedBy(w, "england", "spain", ACT_NAVY))
+      .toBeGreaterThan(noticedBy(w, "england", "spain", ACT_TRADER));
+  });
+
+  it("pays a crown at war with the victim more than one that merely dislikes her", () => {
+    const peace = makeWorld();
+    const atWar = makeWorld({ events: [war("england", "spain")] });
+    expect(noticedBy(atWar, "england", "spain", ACT_TRADER))
+      .toBeGreaterThan(noticedBy(peace, "england", "spain", ACT_TRADER));
+  });
+
+  it("leaves an indifferent crown indifferent — the matrix has to mean something", () => {
+    const w = makeWorld();
+    // The Dutch are only at -10 with Spain, and France is at 0 with the Dutch.
+    expect(noticedBy(w, "netherlands", "spain", ACT_TRADER)).toBe(0);
+    expect(noticedBy(w, "france", "netherlands", ACT_TRADER)).toBe(0);
+  });
+
+  it("costs the captain with a crown standing beside his victim", () => {
+    const allied = makeWorld({
+      events: [war("england", "spain", 9999, "w1"), war("netherlands", "spain", 9999, "w2")],
+    });
+    expect(relationBetween(allied, "netherlands", "england")).toBeGreaterThanOrEqual(20);
+    expect(noticedBy(allied, "netherlands", "england", ACT_TRADER)).toBeLessThan(0);
+    // With no shared war they are at +10 and simply do not care.
+    expect(noticedBy(makeWorld(), "netherlands", "england", ACT_TRADER)).toBe(0);
+  });
+
+  it("never scores a crown against itself", () => {
+    const w = makeWorld({ events: [war("england", "spain")] });
+    for (const c of CROWNS) expect(noticedBy(w, c, c, ACT_CITY)).toBe(0);
+  });
+
+  it("never pays the brethren, who are already paid for the same act", () => {
+    // A pirate is not a crown; his relations run -80 to -40 with everybody, and
+    // `settleHostileAct` already credits him. CROWNS is the observer set.
+    const w = makeWorld();
+    const { reputation } = rippleReputation(w, {}, "spain", ACT_TRADER);
+    expect(reputation["pirates"]).toBeUndefined();
+  });
+
+  it("does nothing at all when the victim is not a crown", () => {
+    const w = makeWorld();
+    const { reputation, crossed } = rippleReputation(w, { england: 5 }, "pirates", ACT_TRADER);
+    expect(reputation).toEqual({ england: 5 });
+    expect(crossed).toEqual([]);
+  });
+
+  it("skips the crowns the caller has already settled with", () => {
+    const w = makeWorld({ events: [war("england", "spain")] });
+    const open = rippleReputation(w, {}, "spain", ACT_TRADER);
+    const held = rippleReputation(w, {}, "spain", ACT_TRADER, ["england"]);
+    expect(open.reputation["england"]).toBeGreaterThan(0);
+    expect(held.reputation["england"]).toBeUndefined();
+  });
+
+  it("reports the bands it crossed, and only those", () => {
+    const w = makeWorld({ events: [war("england", "spain")] });
+    // England sits one point below friendly; one prize carries her over.
+    const near = rippleReputation(w, { england: 19, france: 0 }, "spain", ACT_TRADER);
+    expect(near.crossed.map(c => c.faction)).toEqual(["england"]);
+    expect(near.crossed[0].from).toBe("neutral");
+    expect(near.crossed[0].to).toBe("friendly");
+    // Well inside a band, nothing is reported.
+    const mid = rippleReputation(w, { england: 0, france: 0 }, "spain", ACT_TRADER);
+    expect(mid.crossed).toEqual([]);
+  });
+
+  it("a service is the same table with the sign turned round", () => {
+    const w = makeWorld({ events: [war("france", "england")] });
+    // Taking a town FOR England: France, at war with her, minds.
+    expect(noticedBy(w, "france", "england", ACT_SERVICE)).toBeLessThan(0);
+    // And a crown standing with England is pleased by it.
+    const allied = makeWorld({
+      events: [war("england", "spain", 9999, "w1"), war("netherlands", "spain", 9999, "w2")],
+    });
+    expect(noticedBy(allied, "netherlands", "england", ACT_SERVICE)).toBeGreaterThan(0);
+  });
+});
+
+describe("a career, measured", () => {
+  const prizes = (w: WorldState, victim: string, n: number) => {
+    let rep: Record<string, number> = {};
+    for (let i = 0; i < n; i++) {
+      rep = changeReputation(rep, victim, HOSTILE_REP_TRADER);
+      rep = rippleReputation(w, rep, victim, ACT_TRADER).reputation;
+    }
+    return rep;
+  };
+
+  it("lets a captain who never served England be welcome there", () => {
+    // The defect: before this, twenty Spanish prizes left England at exactly 0.
+    const w = makeWorld();
+    const rep = prizes(w, "spain", 20);
+    expect(getReputationLevel(rep["spain"])).toBe("hostile");
+    expect(getReputationLevel(rep["england"])).toBe("friendly");
+    expect(getReputationLevel(rep["france"])).toBe("friendly");
+    // The Dutch barely mind Spain, so they are unmoved — as the data says.
+    expect(rep["netherlands"] ?? 0).toBe(0);
+  });
+
+  it("is worth more while that crown is actually at war with the victim", () => {
+    const peace = prizes(makeWorld(), "spain", 20);
+    const inWar = prizes(makeWorld({ events: [war("england", "spain")] }), "spain", 20);
+    expect(inWar["england"]).toBeGreaterThan(peace["england"]);
+  });
+
+  it("keeps the letter of marque the better deal, which is the whole risk here", () => {
+    // v0.51.0 made a commission mean something. A ripple large enough to fix
+    // the rounding on the quiet relations was measured at +4 a prize against
+    // the patron's +5, and was thrown away for exactly this reason.
+    const w = makeWorld({ events: [war("england", "spain")] });
+    const ripple = noticedBy(w, "england", "spain", ACT_TRADER);
+    expect(ripple).toBeGreaterThan(0);
+    expect(PRIZE_PATRON_TRADER).toBeGreaterThanOrEqual(ripple * 2);
+    expect(PRIZE_PATRON_NAVY).toBeGreaterThanOrEqual(noticedBy(w, "england", "spain", ACT_NAVY) * 2);
+  });
+
+  it("does not let an indiscriminate robber launder himself clean", () => {
+    const w = makeWorld();
+    let rep: Record<string, number> = {};
+    for (let i = 0; i < 20; i++) {
+      const victim = CROWNS[i % CROWNS.length];
+      rep = changeReputation(rep, victim, HOSTILE_REP_TRADER);
+      rep = rippleReputation(w, rep, victim, ACT_TRADER).reputation;
+    }
+    for (const c of CROWNS) {
+      expect(rep[c], c).toBeLessThan(0);
+    }
+  });
+
+  it("moves nothing at all in a career that harms nobody", () => {
+    const w = makeWorld();
+    const { reputation, crossed } = rippleReputation(w, { england: 30 }, "spain", 0);
+    expect(reputation).toEqual({ england: 30 });
+    expect(crossed).toEqual([]);
+  });
+});
+
 // ── The strings ──────────────────────────────────────────
 
 describe("what the player is told", () => {
@@ -402,7 +583,8 @@ describe("what the player is told", () => {
   });
 
   it("names the crowns and the state of them on the captain's own page", () => {
-    for (const key of ["captain.crowns_title", "captain.at_war", "captain.allied_with", "captain.crowns_peace"]) {
+    for (const key of ["captain.crowns_title", "captain.at_war", "captain.allied_with", "captain.crowns_peace",
+                       "diplomacy.log_warmed", "diplomacy.log_soured"]) {
       expect(EN[key], `EN ${key}`).toBeTruthy();
       expect(PL[key], `PL ${key}`).toBeTruthy();
     }
@@ -413,14 +595,19 @@ describe("what the player is told", () => {
     // `t()` replaces `{{name}}` and leaves a single brace alone, so a string
     // with one is not a wrong translation — it is a placeholder that never
     // fires, and no assertion about the key existing can see it.
-    const holders: Record<string, string> = {
-      "captain.at_war": "enemies",
-      "captain.allied_with": "allies",
+    const holders: Record<string, string[]> = {
+      "captain.at_war": ["enemies"],
+      "captain.allied_with": ["allies"],
+      "diplomacy.log_warmed": ["faction", "victim"],
+      "diplomacy.log_soured": ["faction", "victim"],
     };
-    for (const [key, varName] of Object.entries(holders)) {
+    for (const [key, varNames] of Object.entries(holders)) {
+      const vars = Object.fromEntries(varNames.map(v => [v, "Spain"]));
       for (const [tag, loc] of [["EN", EN], ["PL", PL]] as const) {
-        expect(loc[key], `${tag} ${key}`).toContain(`{{${varName}}}`);
-        expect(t(key, { [varName]: "Spain" }), `${tag} ${key} substituted`).not.toContain("{");
+        for (const varName of varNames) {
+          expect(loc[key], `${tag} ${key}`).toContain(`{{${varName}}}`);
+        }
+        expect(t(key, vars), `${tag} ${key} substituted`).not.toContain("{");
       }
     }
   });

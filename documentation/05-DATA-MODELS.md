@@ -79,6 +79,14 @@ type ShipData = {
 };
 ```
 
+W v0.52.0 również nie doszło żadne pole — ani jeden nowy plik. „Co inne korony
+myślą o tym, co zrobiłeś" jest liczone z `player.reputation`, które istnieje od
+początku, i z dzisiejszych wojen. Uwaga na przyszłość: **reputacja jest liczbą
+całkowitą**, i to ograniczenie ukształtowało projekt — proporcjonalny odprysk
+zaokrąglał się do zera przy relacji −10, więc wydane są nazwane progi zamiast
+udziału. Cokolwiek ma ruszać reputację powoli, musi albo mieć gdzie trzymać
+ułamek (jak `wealth` od v0.24.0), albo być progiem.
+
 W v0.51.0 również nie doszło żadne pole. Wojna wypowiedziana w trakcie gry jest
 zwykłym `WorldEventState` typu `war_start` — tym samym, który wystawia tabela
 historyczna — a **sojusz nie jest zapisywany w ogóle**: „te dwie korony stoją

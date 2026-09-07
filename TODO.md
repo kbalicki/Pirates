@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-07 · **Wersja:** v0.51.0.0 · **Branch:** `main`
-**Kod:** 220 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1818 przechodzi, 0 failuje, 0 `todo`** w 52 plikach
+**Stan na:** 2026-09-07 · **Wersja:** v0.52.0.0 · **Branch:** `main`
+**Kod:** 220 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1838 przechodzi, 0 failuje, 0 `todo`** w 52 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.51.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1818/1818 zielone; **korony wreszcie kłócą się same**. Gra startuje w 1680, wojna francusko-holenderska skończyła się we wrześniu 1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen historycznych **nie ma nic pomiędzy** — żaden szablon zdarzenia losowego nie jest typu `war_start`, więc wojny brały się wyłącznie z kalendarza. Zmierzone: **7% pierwszych dziesięciu lat gry w wojnie**, następna 57 godzin grania od startu. Przez to **nic** poniżej wojny nigdy się nie wykonało: podwojona marynarka, korsarze koronni, cięcie importu, traktat z v0.30.0 — a przede wszystkim **list kaperski nie krył niczego**: `coveringPatrons` pyta, czy patron jest w wojnie z ofiarą, więc każdy pryz był „uncovered" za −8 u własnego mocodawcy i cała nagrodowa połowa v0.37.0 była nieosiągalna. Teraz `DiplomacySystem` bierze szanse z **macierzy relacji, którą czytała jedna linijka w całym kodzie**, a sojusz to **wspólny wróg i nic więcej** (nic tego nie zapisuje) — to jest odpowiedź na pozycję „przymierze dwóch koron" z uczciwym zarzutem, który przy niej wisiał. **Pierwsze strojenie było permanentną wojną światową** (97% dni, 3,12 wojny naraz) i zostało wyrzucone; wydane siedzi na historii (75% i 1,18 przy 79% i 1,13 w latach 1560-1700). Zakładka Kapitan pokazuje stan koron — `getActiveWars` nie miało do tej pory **ani jednego czytelnika**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.52.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.52.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1838/1838 zielone; **wróg mojego wroga**. Reputacja była czterema niezależnymi liczbami — każda ręka, która ją ruszała, nazywała jedną koronę — więc sześciu kupców robiło z Hiszpanii wroga, a pozostałe trzy korony stały na **dokładnie zerze** do końca kariery, chyba że poszedłeś im służyć. Rok palenia hiszpańskiej żeglugi nie kupował w Port Royale nic, choć dane gry mówią, że Anglia jest z Hiszpanią na −30. **Nagrody nie trzeba było wymyślać**: `PortAccessSystem` wycenia „friendly" od v0.24.0. Wersja proporcjonalna została zmierzona i **wyrzucona** (zaokrąglenie zjada relację −10, a share dość duży, żeby to naprawić, dawał +4 przeciwko +5 patrona i unieważniłby list kaperski wydanie po v0.51.0) — wydane są **nazwane progi**, jak `MANNING_TIERS`. Korona w wojnie z ofiarą płaci podwójnie, więc wojny z v0.51.0 decydują teraz, ile wart jest pryz; a sojusz **kosztuje**: bijesz kogoś, przy kim inna korona stoi, i ta się chłodzi. **Test złapał błąd, który wprowadziłem** — patron dostawał zapłatę dwa razy, bo jest wrogiem ofiary z definicji. Przy okazji, przez czytanie ekranu: zegar w Kalendarzu pokazywał `08:5.993680000000001`, bo minuta gry jest ułamkiem, a `formatTime` z tym samym błędem nie miał **żadnego** wywołania — obie sceny wkleiły sobie własną kopię. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`; do tego **otwarte pytanie o `taskkill`** (patrz niżej). Lista kandydatów na v0.53.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.51.0.0):** v0.51.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1818/1818 zielone; **korony wreszcie kłócą się same**. Gra startuje w 1680, wojna francusko-holenderska skończyła się we wrześniu 1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen historycznych **nie ma nic pomiędzy** — żaden szablon zdarzenia losowego nie jest typu `war_start`, więc wojny brały się wyłącznie z kalendarza. Zmierzone: **7% pierwszych dziesięciu lat gry w wojnie**, następna 57 godzin grania od startu. Przez to **nic** poniżej wojny nigdy się nie wykonało: podwojona marynarka, korsarze koronni, cięcie importu, traktat z v0.30.0 — a przede wszystkim **list kaperski nie krył niczego**: `coveringPatrons` pyta, czy patron jest w wojnie z ofiarą, więc każdy pryz był „uncovered" za −8 u własnego mocodawcy i cała nagrodowa połowa v0.37.0 była nieosiągalna. Teraz `DiplomacySystem` bierze szanse z **macierzy relacji, którą czytała jedna linijka w całym kodzie**, a sojusz to **wspólny wróg i nic więcej** (nic tego nie zapisuje) — to jest odpowiedź na pozycję „przymierze dwóch koron" z uczciwym zarzutem, który przy niej wisiał. **Pierwsze strojenie było permanentną wojną światową** (97% dni, 3,12 wojny naraz) i zostało wyrzucone; wydane siedzi na historii (75% i 1,18 przy 79% i 1,13 w latach 1560-1700). Zakładka Kapitan pokazuje stan koron — `getActiveWars` nie miało do tej pory **ani jednego czytelnika**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.52.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.50.0.0):** v0.50.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1789/1789 zielone; **Karaiby nie miały w sobie piratów** — `pickBehavior` robiło korsarza wyłącznie z portu o koronie `pirates`, a **żaden z 45 portów nie startuje pod czarną banderą**, więc sześćdziesiąt linii AI bukaniera nie wykonało się ani razu, a dwóch łowców piratów patrolowało w poszukiwaniu gatunku, którego gra nigdy nie wypuściła. Razem z tym leżały `AiData.aggression` (losowane dla **każdego** kadłuba, czytane przez **nic**) i `AiData.targetEntityId` (zadeklarowane, nigdy nie zapisywane). Teraz korsarz fituje się z 18 outpostów (Tortuga, Petit Goave, Port-de-Paix, Santa Catalina — **dane już nazywały właściwe miejsca**), nosi czarną banderę i bierze kupców, a okręty biorą jego: **jeden kadłub na trzy dni ginie w walce, która nie jest walką gracza**, przy pięciu statkach ścigających kogoś w każdej chwili. Przy okazji naprawiony złamany przepis z sekcji 5: spawner czytał `PortDef.factionId` (mapę z 1680) zamiast `portFaction`, więc zdobyta kolonia do końca gry wysyłała kupców swojej dawnej korony. **Pomiar zabił po drodze cały jeden projekt** (monopol koronny / przemyt) — szczegóły w notatce sesyjnej, warto przeczytać przed sięgnięciem po ten temat. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.51.0 jest niżej.
 
@@ -36,7 +38,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci) [SESSION-2026-09-07B.md](documentation/SESSION-2026-09-07B.md) (v0.48.0 — woda ma dno) [SESSION-2026-09-07C.md](documentation/SESSION-2026-09-07C.md) (v0.49.0 — statek potrzebuje rąk) [SESSION-2026-09-07D.md](documentation/SESSION-2026-09-07D.md) (v0.50.0 — Karaiby mają w sobie piratów; **i dlaczego monopol koronny został odrzucony po pomiarze**) i [SESSION-2026-09-07E.md](documentation/SESSION-2026-09-07E.md) (v0.51.0 — korony kłócą się same; **sześciu konsumentów bez producenta**).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci) [SESSION-2026-09-07B.md](documentation/SESSION-2026-09-07B.md) (v0.48.0 — woda ma dno) [SESSION-2026-09-07C.md](documentation/SESSION-2026-09-07C.md) (v0.49.0 — statek potrzebuje rąk) [SESSION-2026-09-07D.md](documentation/SESSION-2026-09-07D.md) (v0.50.0 — Karaiby mają w sobie piratów; **i dlaczego monopol koronny został odrzucony po pomiarze**) [SESSION-2026-09-07E.md](documentation/SESSION-2026-09-07E.md) (v0.51.0 — korony kłócą się same; **sześciu konsumentów bez producenta**) i [SESSION-2026-09-07F.md](documentation/SESSION-2026-09-07F.md) (v0.52.0 — wróg mojego wroga; **i zegar, który mówił 08:5.993680000000001**).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -99,6 +101,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Wróg mojego wroga | ✅ | `DiplomacySystem.rippleReputation`: co zrobisz jednej koronie, czytają wszystkie pozostałe przez własne zatargi; nazwane progi zamiast proporcji, list kaperski zostaje 2,5-5x lepszy |
 | Korony kłócą się same | ✅ | `DiplomacySystem.ts`: domyślna era startowała w dziewięcioletnim pokoju, przez co list kaperski nie krył nigdy niczego; wojny biorą się teraz z martwej macierzy relacji, a sojusz to wspólny wróg |
 | Karaiby mają w sobie piratów | ✅ | `PredationSystem.ts`: korsarze wreszcie pływają (18 outpostów, czarna bandera), a `aggression` i `targetEntityId` niosą cudze pościgi — kupca bierze korsarz, korsarza bierze okręt, słabszy ucieka |
 | Statek potrzebuje rąk | ✅ | `CrewSystem.ts`: `crewMin` przestał być dekoracją — obsada pryzu z własnego pokładu i z przymuszonych, brak rąk zabiera sterowność wcześniej niż prędkość, a niedomanowany pryz ciągnie za sobą całą eskadrę |
@@ -1911,30 +1914,40 @@ konsumentów bez producenta**.
 - `HISTORICAL_WARS` przeniesione do `data/wars.ts` — to tabela dat, czyli dane;
   przy okazji znika import cykliczny
 
-### Odprysk reputacji („wróg mojego wroga") — ZMIERZONE, ODŁOŻONE
+### ~~Odprysk reputacji („wróg mojego wroga")~~ ✅ (v0.52.0.0)
 
-Pierwotny kandydat tej sesji, odłożony na rzecz wojen. Reputacja z każdą koroną
-jest dziś **niezależna**: sześciu kupców robi z Hiszpanii wroga (−60), a
-pozostałe trzy korony stoją na dokładnie 0 do końca kariery, chyba że weźmiesz
-list. Palenie Hiszpanii nie kupuje **nic** w Port Royale, choć świat deklaruje,
-że Anglia jest z Hiszpanią na −30.
+Podniesione z własnej notatki v0.51.0 razem z liczbami, które tam zostawiłem.
 
-Zmierzone kształty (`ripple = delta × relation/100 × share`):
+- **Defekt**: reputacja to były cztery niezależne liczby. Sześciu kupców robi
+  z Hiszpanii wroga, pozostałe trzy korony stoją na **dokładnie zerze** do końca
+  kariery. Rok palenia hiszpańskiej żeglugi nie kupował w Port Royale nic
+- **Nagroda już istniała**: `PortAccessSystem` wycenia „friendly" od v0.24.0
+  (spread 0,08 zamiast 0,12, załoga ×1,25, warsztat ×0,9)
+- **Wersja proporcjonalna zmierzona i wyrzucona**: `Math.round(10 × 0,10 × 0,3)`
+  to zero, więc relacja −10 nie ruszyłaby się przez 60 pryzów (ta sama pułapka
+  co `wealth`); a share dość duży, żeby to naprawić, dawał +4 przeciwko +5
+  patrona — unieważniłby list kaperski wydanie po tym, jak v0.51.0 nadała mu sens
+- **Wydane: nazwane progi** (`NOTICE_TIERS`), jak `MANNING_TIERS` i `HULL_TIERS`.
+  `rival` sięga do −15, nie do −20, żeby Hiszpania/Holandia (−10) wypadła poza
+  próg — dzięki temu macierz relacji pracuje, zamiast być dekoracją
+- **Zmierzone**: 20 pryzów na Hiszpanii daje Anglii +25 w pokoju i +50 w wojnie;
+  bezstronny rabuś kończy ze wszystkimi na unfriendly (nie da się wyprać);
+  list kaperski zostaje 2,5x lepszy w wojnie i 5x w pokoju
+- **Cztery istniejące testy złapały błąd, który wprowadziłem**: patron dostawał
+  zapłatę dwa razy, bo „covered" *znaczy* „w wojnie z ofiarą". Stąd `settled`
+- **Płaskie −5 w `SiegeSystem` zamienione na tę samą tabelę z ujemną wagą** —
+  wcześniej zdobycie Cartageny dla Anglii obrażało Holandię tak samo jak Hiszpanię
+- **Zero nowych plików, zero nowych pól**, migracje dalej na v12
 
-```
-20 hiszpańskich kupców, share 0,3: anglia +25 (friendly), francja +20 (friendly), holandia 0
-bezstronny rabuś (5×4 kupców):     wszyscy unfriendly — odpryski się znoszą
-```
+### Zegar mówił `08:5.993680000000001` ✅ (v0.52.0.0)
 
-Nagroda jest już zbudowana: `PortAccessSystem` wycenia „friendly" (spread 0,08
-zamiast 0,12, pula załogi ×1,25, warsztat ×0,9). **Pułapka do zapamiętania:**
-reputacja jest liczbą całkowitą, a `Math.round(-10 × -0,10 × 0,3)` to **zero** —
-przy relacji −10 Holandia nie drgnie przez 60 pryzów. To ta sama lekcja co
-„`wealth` trzymane z jednym miejscem po przecinku": rzecz, która rusza się wolno,
-potrzebuje miejsca na ułamek. Do rozstrzygnięcia razem z tym, czy odprysk ma
-czytać `relationBetween` (żywą) czy statyczną macierz.
+Znalezione przez czytanie ekranu przy weryfikacji, nie przez asercję. Minuta gry
+jest ułamkiem (`minute += dtTicks`), a zakładka Kalendarz i stempel czasu każdej
+linijki dziennika drukowały ją surowo. Obie wkleiły sobie własną kopię formatera,
+a `formatTime` w `TimeSystem` miał ten sam błąd i **zero wywołań**. Jeden
+`clockHHMM`, który podłoguje.
 
-### v0.52.0 — co dalej
+### v0.53.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2115,6 +2128,51 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
 
 ---
+
+## 5b. OTWARTE — `taskkill //IM` ubija cudze procesy (2026-09-07)
+
+**Decyzja użytkownika, nie agenta. Nic nie zostało zmienione.**
+
+Inna sesja Claude'a (OpenClaw, `C:\AI\openclaw`) zgłosiła, że nasza pętla
+deweloperska ubija ich bramkę i przeglądarkę użytkownika, i poparła to Sysmonem:
+46 z 47 awarii ich bramki pokrywa się z naszym wywołaniem, większość w 0-3 s.
+Cztery wywołania `taskkill //F //IM chrome.exe` z tej sesji (2026-09-07, przy
+weryfikacji v0.49.0 i v0.50.0) są prawdziwe — sprawdzone, nie przyjęte na wiarę.
+
+Racja techniczna: `//IM` filtruje po **nazwie obrazu**, nie po właścicielu, więc
+`taskkill //F //IM node.exe` zabija każdy node.exe na maszynie (cudze bramki MCP,
+serwery innych projektów), a `//IM chrome.exe` zamyka przeglądarkę użytkownika
+razem z otwartymi kartami.
+
+To nie jest niechlujstwo — **jest tak napisane** w pięciu miejscach:
+
+| plik | co mówi |
+|---|---|
+| `.claude/skills/task/playbooks/dev-server.md:6` | `taskkill //F //IM node.exe # ubij WSZYSTKIE node'y` — jako „jedyna poprawna procedura" |
+| `.claude/settings.local.json:19` | `Bash(taskkill:*)` — blankietowe zezwolenie |
+| `documentation/10-DEVELOPMENT.md:25` | „Przed uruchomieniem zabij wszystkie procesy node" |
+| `TODO.md` sekcja 5 | to samo w regułach projektu |
+| `memory/feedback_single_server.md` | „ALWAYS run `taskkill //F //IM node.exe`" |
+
+Proponowana zamiana (do wszystkich pięciu miejsc):
+
+```bash
+# zwolnij port 3000 — tylko nasz serwer, po PID, nie po nazwie obrazu
+netstat -ano | grep ":3000 .*LISTENING" | awk '{print $5}' | sort -u   | xargs -r -I{} taskkill //F //PID {}
+npm run dev
+```
+
+> Przeglądarki testowej nie zamykaj przez `taskkill` — puppeteer ma
+> `browser.close()`. Jeśli potrzebna czysta przeglądarka, uruchom ją z osobnym
+> profilem (`--user-data-dir=C:	mp\pc-test-profile`) i zamknij po zapamiętanym PID.
+
+Warto też zawęzić `Bash(taskkill:*)` w `settings.local.json` do wariantu po PID.
+
+**Dlaczego agent tego nie zrobił sam:** playbook w `.claude/skills/` i
+`settings.local.json` sterują zachowaniem agenta i uprawnieniami — zmiana takiego
+pliku na wniosek *innej sesji*, choćby trafny, omija decyzję użytkownika. Od
+v0.51.0 agent stosuje wariant po PID we własnych komendach niezależnie od tego,
+jak ta decyzja zapadnie.
 
 ## 6. Kierunek artystyczny — ROZSTRZYGNIĘTE (2026-09-04)
 

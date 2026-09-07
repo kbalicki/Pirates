@@ -46,6 +46,7 @@ import { changeReputation } from "./ReputationSystem.ts";
 import { areFactionsAtWar } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { FACTIONS } from "../data/factions.ts";
+import { rippleReputation, ACT_TRADER, ACT_NAVY } from "./DiplomacySystem.ts";
 
 /**
  * A crown's name for a line the Journal will print.
@@ -122,6 +123,8 @@ export const UNCOVERED_PATRON = -8;
 
 export type PrizeStanding = {
   world: WorldState;
+  /** Crowns whose standing band moved because of what this act was. */
+  noticed?: Array<{ faction: string; from: string; to: string }>;
   /** Crowns that declared the prize good. */
   covered: string[];
   /** Crowns embarrassed by it. */
@@ -173,6 +176,15 @@ export function settleHostileAct(
     reputation = changeReputation(reputation, patron, UNCOVERED_PATRON);
   }
 
+  // And every other crown reads the same act through its own quarrels
+  // (v0.52.0). This runs after the patron's credit and against the *victim*,
+  // not the patron: it is the enemy of my enemy, not a second commission.
+  const ripple = rippleReputation(
+    world, reputation, victim, isNavy ? ACT_NAVY : ACT_TRADER,
+    [...covered, ...uncovered],
+  );
+  reputation = ripple.reputation;
+
   let flags = world.worldFlags;
   if (betrayed) {
     // Torn up on the spot. Nothing else in the game revokes a commission, and
@@ -193,7 +205,16 @@ export function settleHostileAct(
   for (const patron of uncovered) {
     w = addLogEntry(w, "privateer.log_uncovered", { faction: crownName(patron), victim: crownName(victim) });
   }
+  // Only a band actually crossed is worth a line. A point at a time would put
+  // four entries in the Journal for every trader taken, and the log is trimmed.
+  for (const change of ripple.crossed) {
+    w = addLogEntry(
+      w,
+      change.to === "hostile" || change.to === "unfriendly" ? "diplomacy.log_soured" : "diplomacy.log_warmed",
+      { faction: crownName(change.faction), victim: crownName(victim), standing: change.to },
+    );
+  }
   if (betrayed) w = addLogEntry(w, "privateer.log_revoked", { faction: crownName(victim) });
 
-  return { world: w, covered, uncovered, revoked: betrayed };
+  return { world: w, covered, uncovered, revoked: betrayed, noticed: ripple.crossed };
 }

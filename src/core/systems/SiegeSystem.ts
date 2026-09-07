@@ -44,6 +44,7 @@ import { FACTIONS } from "../data/factions.ts";
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
+import { rippleReputation, ACT_CITY, ACT_SERVICE } from "./DiplomacySystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
 import { woundedFrom } from "./SurgeonSystem.ts";
@@ -603,14 +604,24 @@ export function capturePort(
 
   let reputation = world.player.reputation;
   reputation = changeReputation(reputation, oldOwner, choice === "sponsor" ? -35 : -30);
+  // Storming a town is the largest thing a captain does to a crown, and until
+  // v0.52.0 it was the only crown that noticed. Every capital in the Caribbean
+  // reads it through its own quarrel with the one that lost the place.
+  const townRipple = rippleReputation(
+    world, reputation, oldOwner, ACT_CITY, sponsor ? [sponsor] : [],
+  );
+  reputation = townRipple.reputation;
   if (choice === "brethren") reputation = changeReputation(reputation, "pirates", 20);
   if (choice === "plunder") reputation = changeReputation(reputation, "pirates", 10);
   if (choice === "sponsor" && sponsor) {
     reputation = changeReputation(reputation, sponsor, 25);
-    // Every other crown notices that a captain now takes cities for a rival.
-    for (const other of ["spain", "england", "france", "netherlands"]) {
-      if (other !== sponsor && other !== oldOwner) reputation = changeReputation(reputation, other, -5);
-    }
+    // Every other crown notices that a captain now takes cities for a rival —
+    // and reads it through its own quarrel with that rival rather than through
+    // a flat penalty (v0.52.0). A crown at war with the sponsor is the one that
+    // minds; a crown standing beside him in that same war is pleased.
+    reputation = rippleReputation(
+      world, reputation, sponsor, ACT_SERVICE, [oldOwner],
+    ).reputation;
   }
 
   const ranks = { ...world.player.ranks };

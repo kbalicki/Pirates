@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.51.0.0 | **Ostatnia aktualizacja:** 2026-09-07
+**Wersja:** 0.52.0.0 | **Ostatnia aktualizacja:** 2026-09-07
 
 ---
 
@@ -68,3 +68,4 @@
 - [SESSION-2026-09-07C.md](SESSION-2026-09-07C.md) — v0.48.0.0 → v0.49.0.0: statek potrzebuje rąk — `crewMin` czytany przez jedno miejsce w grze, zdobyty galeon z dziewięćdziesięcioma sześcioma ludźmi znikąd, i pryz, którego nie ma kim obsadzić
 - [SESSION-2026-09-07D.md](SESSION-2026-09-07D.md) — v0.49.0.0 → v0.50.0.0: Karaiby mają w sobie piratów — korsarzy nie było **wcale**, `aggression` i `targetEntityId` nie czytał nikt, a pomiar zabił po drodze cały jeden projekt (monopol koronny)
 - [SESSION-2026-09-07E.md](SESSION-2026-09-07E.md) — v0.50.0.0 → v0.51.0.0: korony kłócą się same — **sześciu konsumentów bez producenta**; domyślna era startowała w dziewięcioletnim pokoju, więc list kaperski nie krył nigdy niczego
+- [SESSION-2026-09-07F.md](SESSION-2026-09-07F.md) — v0.51.0.0 → v0.52.0.0: wróg mojego wroga — reputacja była czterema niezależnymi liczbami; dlaczego progi wygrały z proporcją, i zegar, który mówił `08:5.993680000000001`

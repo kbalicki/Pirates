@@ -786,6 +786,8 @@ export const EN: LocaleData = {
   "captain.skills_title": "Skills",
   "captain.ranks_title": "Ranks",
   "captain.crowns_title": "The crowns",
+  "diplomacy.log_warmed": "{{faction}} thinks the better of you for your war on {{victim}}.",
+  "diplomacy.log_soured": "{{faction}} has cooled towards you over {{victim}}.",
   "captain.at_war": "at war with {{enemies}}",
   "captain.allied_with": "stands with {{allies}}",
   "captain.crowns_peace": "The Caribbean is at peace.",

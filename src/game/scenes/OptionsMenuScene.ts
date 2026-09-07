@@ -7,6 +7,7 @@ import {
   dayToCalendar,
   getMonthName,
   daysInMonth,
+  clockHHMM,
 } from "../../core/systems/TimeSystem.ts";
 import { getRecentEvents } from "../../core/systems/EventLogSystem.ts";
 import {
@@ -600,8 +601,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     const cal = dayToCalendar(this.worldState.time.day);
     const monthName = getMonthName(cal.month);
     const dateStr = `${cal.dayOfMonth} ${monthName} ${cal.year}`;
-    const hh = String(this.worldState.time.hour).padStart(2, "0");
-    const mm = String(this.worldState.time.minute).padStart(2, "0");
+    const { hh, mm } = clockHHMM(this.worldState.time);
 
     const dateText = this.add.text(cx, y, dateStr, txt(16, { bold: true }));
     dateText.setOrigin(0.5, 0);
@@ -636,9 +636,8 @@ export class OptionsMenuScene extends Phaser.Scene {
     } else {
       const W = DLG_W - PAD * 2 - 16;
       for (const evt of [...events].reverse()) {
-        const evtHH = String(evt.hour).padStart(2, "0");
-        const evtMM = String(evt.minute).padStart(2, "0");
-        const timePrefix = `[D${evt.day} ${evtHH}:${evtMM}]`;
+        const stamp = clockHHMM(evt);
+        const timePrefix = `[D${evt.day} ${stamp.hh}:${stamp.mm}]`;
         const msg = t(evt.key, evt.vars);
         const line = this.add.text(this.dlgX + PAD + 12, y, `${timePrefix} ${msg}`,
           { ...txt(10, { color: "#444444" }), wordWrap: { width: W } });

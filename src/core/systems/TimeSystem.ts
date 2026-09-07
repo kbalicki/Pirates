@@ -65,9 +65,28 @@ export function tickBoundaryCrossed(
   return Math.floor((prevTick + offset) / interval) !== Math.floor((nowTick + offset) / interval);
 }
 
+/**
+ * The clock, as two digits and two digits.
+ *
+ * `minute` is **fractional** — `advanceTime` does `minute += dtTicks` and
+ * `dtTicks` carries the frame delta times the game speed — so printing it
+ * raw puts `08:5.993680000000001` on the screen. It did, on the Calendar tab
+ * and on the timestamp of every line in the Journal, and it took reading the
+ * rendered text off a built bundle to see it (v0.52.0).
+ *
+ * One helper rather than three copies, because there were three copies and
+ * `formatTime` — which had the bug too — had no callers at all: both places
+ * that print a clock had inlined it instead.
+ */
+export function clockHHMM(time: { hour: number; minute: number }): { hh: string; mm: string } {
+  return {
+    hh: String(Math.floor(time.hour)).padStart(2, "0"),
+    mm: String(Math.floor(time.minute)).padStart(2, "0"),
+  };
+}
+
 export function formatTime(time: GameTime): string {
-  const hh = String(time.hour).padStart(2, "0");
-  const mm = String(time.minute).padStart(2, "0");
+  const { hh, mm } = clockHHMM(time);
   return t("time.format", { day: String(time.day), hh, mm });
 }
 

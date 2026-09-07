@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { advanceTime, tickBoundaryCrossed, dayToCalendar, calendarToDay } from "../TimeSystem.ts";
+import { advanceTime, tickBoundaryCrossed, dayToCalendar, calendarToDay, clockHHMM } from "../TimeSystem.ts";
 import { hourBoundaryCrossed } from "../CrewConsumptionSystem.ts";
 import type { GameTime } from "../../model/WorldState.ts";
 
@@ -152,5 +152,26 @@ describe("calendarToDay", () => {
 
   it("clamps a date that is behind the start of the game", () => {
     expect(calendarToDay(1600, 6, 12, 1680)).toBe(1);
+  });
+});
+
+describe("the clock as it reaches the screen", () => {
+  it("floors a fractional minute instead of printing it", () => {
+    // `advanceTime` does `minute += dtTicks`, and dtTicks is the frame delta
+    // times the game speed, so `minute` is a float in ordinary play. Printed
+    // raw it read `08:5.993680000000001` on the Calendar tab and on the
+    // timestamp of every line in the Journal. Found by reading the rendered
+    // text off a built bundle, not by any assertion (v0.52.0).
+    expect(clockHHMM({ hour: 8, minute: 5.993680000000001 })).toEqual({ hh: "08", mm: "05" });
+    expect(clockHHMM({ hour: 0, minute: 0 })).toEqual({ hh: "00", mm: "00" });
+    expect(clockHHMM({ hour: 23, minute: 59.9 })).toEqual({ hh: "23", mm: "59" });
+  });
+
+  it("never widens past two digits, whatever it is handed", () => {
+    for (const minute of [0, 0.4, 9.99, 10, 59.999]) {
+      const { mm } = clockHHMM({ hour: 12, minute });
+      expect(mm).toHaveLength(2);
+      expect(mm).toMatch(/^\d\d$/);
+    }
   });
 });

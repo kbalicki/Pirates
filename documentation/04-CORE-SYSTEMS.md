@@ -24,7 +24,7 @@
 | SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
 | Crew | `CrewSystem.ts` | Ilu ludzi trzeba, żeby statek pracował; obsada pryzu z własnego pokładu i z przymuszonych |
 | Predation | `PredationSystem.ts` | Cudze pościgi: kto kogo chce, kto ucieka i jak to się kończy |
-| Diplomacy | `DiplomacySystem.ts` | Korony kłócą się same; sojusz to wspólny wróg |
+| Diplomacy | `DiplomacySystem.ts` | Korony kłócą się same; sojusz to wspólny wróg; co zrobisz jednej, czytają wszystkie |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -392,6 +392,86 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Wróg mojego wroga (`DiplomacySystem.rippleReputation`, v0.52.0)
+
+Reputacja była **czterema niezależnymi liczbami**: każda ręka, która ją rusza —
+pryz, blokada, kontrakt, ślub, oblężenie — nazywa jedną koronę. Zmierzone:
+
+```
+kariera przed v0.52.0:
+   6 kupców  -> hiszpania -60 (hostile),  pozostałe 0 (neutral)
+  20 pryzów  -> hiszpania -100 (hostile), pozostałe 0 (neutral)
+```
+
+Rok palenia hiszpańskiej żeglugi nie kupował w Port Royale **nic** — w świecie,
+którego dane mówią, że Anglia jest z Hiszpanią na −30, i w gatunku, w którym
+„wróg mojego wroga" jest całą pozycją bukaniera.
+
+**Nagrody nie trzeba było wymyślać.** `PortAccessSystem` wycenia „friendly" od
+v0.24.0. Brakowało wyłącznie drogi, żeby tam dojść, nie służąc.
+
+#### Dlaczego progi, a nie proporcja
+
+Oczywisty kształt to `delta × relacja/100 × share`, i został zmierzony pierwszy.
+Zabiły go dwie rzeczy:
+
+- **Zaokrąglenie zjada ciche relacje.** Reputacja jest liczbą całkowitą, a
+  `Math.round(10 × 0,10 × 0,3)` to **zero** — przy −10 Holandia nie drgnęłaby
+  przez sześćdziesiąt pryzów. Ta sama pułapka co `wealth` przed v0.24.0.
+- **Share dość duży, żeby to naprawić, unieważnia list kaperski.** Przy 0,5 pryz
+  był wart +4 u korony w wojnie z ofiarą przeciwko +5 od patrona — wydanie po
+  tym, jak v0.51.0 wreszcie nadała komisji sens.
+
+| próg | relacja | kupiec | okręt | miasto |
+|---|---|---|---|---|
+| `enemy` | ≤ −60 (wojna) | +2 | +4 | +10 |
+| `rival` | ≤ −15 | +1 | +2 | +5 |
+| `indifferent` | −15…+19 | 0 | 0 | 0 |
+| `ally` | ≥ +20 | −1 | −2 | −5 |
+
+`rival` sięga do **−15**, nie do okrągłego −20, i to jest celowe: Hiszpania stoi
+na −30 z Anglią, −20 z Francją, ale tylko −10 z Holandią. W czasie pokoju
+hiszpański pryz to coś, za co Anglia i Francja dziękują, a Holandia wzrusza
+ramionami — macierz relacji **pracuje**, zamiast być dekoracją.
+
+#### Co z tego wychodzi
+
+```
+20 pryzów na Hiszpanii, pokój:  hiszp -100(h)  anglia +25(f)  francja +25(f)  holandia 0(n)
+20 pryzów na Hiszpanii, wojna:  hiszp -100(h)  anglia +50(f)  francja +25(f)  holandia +50(f)
+bezstronny rabuś, 20 pryzów po wszystkich: wszyscy unfriendly
+list kaperski: 2,5x lepszy w wojnie, 5x w pokoju
+```
+
+Korona w wojnie z ofiarą płaci podwójnie, więc **wojny z v0.51.0 decydują, ile
+wart jest pryz**, a nie tylko kto się bije. I sojusz wreszcie **kosztuje**:
+uderz w koronę, przy której inna stoi w tej samej wojnie, a ta się ochłodzi.
+Współwalczenie miało jedną rolę, ma dwie.
+
+#### `settled`, czyli dlaczego patron nie płaci dwa razy
+
+Cztery istniejące testy `PrivateerSystem` zrobiły się czerwone na `expected 7 to
+be 5`. Patron, którego list **kryje** pryz, jest w wojnie z ofiarą **z
+definicji** — dokładnie to znaczy „covered" — więc bez tego zbierał kredyt
+patrona i kredyt wroga-mojego-wroga za jeden akt. List *jest* tą samą relacją,
+wycenioną wyżej; odprysk jest tą ogólną, dla wszystkich bez papieru.
+
+#### Płaska kara zamieniona na tę samą tabelę
+
+`SiegeSystem` odejmował płaskie −5 każdej z pozostałych koron, gdy gracz oddawał
+miasto sponsorowi — czyli zdobycie Cartageny dla Anglii obrażało Holandię tak
+samo jak Hiszpanię. Teraz to ta sama funkcja z **ujemną wagą**
+(`ACT_SERVICE = -2`): sam znak robi całą robotę.
+
+Korona, która **straciła** miasto, nie czyta usługi: oddanie rywalowi kosztuje
+ją już 5 punktów więcej niż złupienie (−35 zamiast −30), a to jest ten sam fakt.
+
+#### Wpis w dzienniku tylko przy przekroczeniu progu
+
+`rippleReputation` zwraca przekroczone pasma standingu zamiast logować samo —
+wołający wie, co się stało, a ono nie. Punkt po punkcie dałoby cztery wpisy na
+każdego wziętego kupca, a dziennik jest przycinany do stałej długości.
 
 ### Korony kłócą się same (`DiplomacySystem.ts`, v0.51.0)
 
