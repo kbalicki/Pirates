@@ -423,6 +423,9 @@ export const EN: LocaleData = {
   "event.food_out": "Food has run out! Crew is starving!",
   "event.water_out": "Water has run out! Crew is dying of thirst!",
   "event.crew_died": "{{count}} crew members have died.",
+  // Somebody else's fight, seen from your deck (v0.50.0).
+  "event.npc_plundered": "A rover has taken a {{prey}} merchantman off our bow.",
+  "event.npc_policed": "A {{hunter}} man-of-war has run down a rover within sight of us.",
   "event.morale_drop": "Crew morale is dropping.",
   "event.storm_start": "A storm has begun!",
   "event.storm_end": "The storm has passed.",

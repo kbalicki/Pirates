@@ -7,7 +7,7 @@
  */
 import type { WorldState, Vec2 } from "../model/WorldState.ts";
 import type { EntityState, AiData } from "../model/EntityState.ts";
-import { entityId } from "../model/ids.ts";
+import { entityId, factionId as makeFactionId } from "../model/ids.ts";
 import type { PortId } from "../model/ids.ts";
 import { PORTS } from "../data/ports.ts";
 import type { PortDef } from "../data/ports.ts";
@@ -23,6 +23,8 @@ import { routesFrom, type TradeRoute } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { repricePort } from "./PricingSystem.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
+import { portFaction } from "./SiegeSystem.ts";
+import { CITIES } from "../data/cities.ts";
 
 // ---- Configuration ----
 const MAX_NPC_SHIPS = 30;
@@ -216,10 +218,33 @@ function loadHold(
  * When `atWar` is true (faction is involved in an active war), navy frequency
  * jumps from ~45% to ~70% at the expense of traders.
  */
-function pickBehavior(factionId: string, roll: number, atWar: boolean): AiData["behavior"] {
+/**
+ * Share of a harbour's traffic that is a rover fitting out quietly (v0.50.0).
+ *
+ * Only an outpost: a quay with no fort and a governor a long way off. The town
+ * table already names the right eighteen — Tortuga, Petit Goave, Port-de-Paix,
+ * Leogane, Santa Catalina, the Bahamas — so this is derived from `CityDef.type`
+ * rather than hand-listed, the same way the trade lanes come off the coastline.
+ *
+ * Before this, `pickBehavior` returned "pirate" only for a port whose crown was
+ * `pirates`, and **no port starts pirate**: measured on a fresh world, 22 hulls
+ * afloat and not one of them a rover, while two pirate hunters patrolled for a
+ * species the game never put on the water.
+ */
+const ROVER_SHARE_OUTPOST = 0.22;
+
+function pickBehavior(
+  factionId: string,
+  roll: number,
+  atWar: boolean,
+  roverShare = 0,
+): AiData["behavior"] {
   if (factionId === "pirates") return "pirate";
-  if (roll < 0.10) return "pirate_hunter" as AiData["behavior"];
-  const traderCutoff = atWar ? 0.30 : 0.55;
+  // Spends the roll it already had rather than drawing another: an added die
+  // here would reshuffle every other random thing in the world (v0.24.0).
+  if (roll < roverShare) return "pirate";
+  if (roll < roverShare + 0.10) return "pirate_hunter" as AiData["behavior"];
+  const traderCutoff = roverShare + (atWar ? 0.30 : 0.55);
   if (roll < traderCutoff) return "trader";
   return "navy";
 }
@@ -377,7 +402,13 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
       }
 
       const [portKey, port] = portEntries[chosenIdx];
-      const factionKey = port.factionId as string;
+      // The flag flying over the town **today**, not the one on the 1680 map
+      // (v0.50.0). `PortDef.factionId` never changes, so a colony the player had
+      // stormed went on sending out its old crown's merchantmen for the rest of
+      // the game and never sent a rover — the one rule in TODO section 5 that
+      // says "read the owner only through `portFaction`", broken in the file
+      // where it shows most.
+      const factionKey = portFaction(world, portKey) as string;
       // A cordon puts a crown on a war footing at that harbour whether or not
       // it is at war with anybody: the ships that come out are men-of-war.
       const factionAtWar = (warMul[factionKey] ?? 1) > 1 || blockadeEffective(world, portKey);
@@ -389,7 +420,10 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
       // Pick behavior — wartime shifts traders → navy
       let behaviorRoll: number;
       ({ value: behaviorRoll, state: rng } = rngNext(rng));
-      const behavior = pickBehavior(factionKey, behaviorRoll, factionAtWar);
+      // A rover fits out where the crown's hand is lightest: an outpost, or a
+      // town already under the black flag (which `factionKey` above now sees).
+      const roverShare = CITIES[portKey]?.type === "outpost" ? ROVER_SHARE_OUTPOST : 0;
+      const behavior = pickBehavior(factionKey, behaviorRoll, factionAtWar, roverShare);
       const template = BEHAVIOR_TEMPLATES[behavior] ?? BEHAVIOR_TEMPLATES.trader;
 
       // Pick ship class
@@ -472,7 +506,12 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
         depthOffset: 0,
         ship: {
           classId: shipClass.id,
-          factionId: port.factionId,
+          // A rover flies the black flag, whatever quay she slipped out of
+          // (v0.50.0). Before this every hull took her port's ensign off the
+          // 1680 map, so a buccaneer out of Tortuga sailed under French colours
+          // and nothing — not the flag renderer, not `looksDangerous`, not the
+          // hunters paid to catch her — could tell her from a merchantman.
+          factionId: behavior === "pirate" ? makeFactionId("pirates") : (factionKey as PortDef["factionId"]),
           hullHp: shipClass.hullMax,
           hullMax: shipClass.hullMax,
           sailsHp: shipClass.sailsMax,

@@ -79,6 +79,14 @@ type ShipData = {
 };
 ```
 
+W v0.50.0 również nie doszło żadne pole. Pościg między dwoma NPC jest zapisany
+w dwóch polach, które `AiData` miało od zawsze: `aggression` (losowane dla
+każdego kadłuba i do v0.50.0 czytane przez **nic**) i `targetEntityId`
+(zadeklarowane, nigdy nie zapisywane ani nie czytane). Zmieniło się tylko to,
+że `NpcSpawnSystem` czyta właściciela portu przez `portFaction`, a nie przez
+`PortDef.factionId`, i że korsarz dostaje banderę `pirates` zamiast bandery
+swojego nabrzeża.
+
 W v0.49.0 nie doszło **żadne** pole. Obsada to porównanie dwóch liczb, które od
 początku leżały obok siebie — `ship.crew.current` na encji i `crewMin` w tabeli
 klas — więc `CrewSystem` niczego nie zapisuje. Jedyna zmiana w modelu to nowy,

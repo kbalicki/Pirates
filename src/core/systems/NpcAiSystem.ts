@@ -58,6 +58,7 @@ import { tradeRoutes } from "./TradeRouteSystem.ts";
 import { windSpeedModifier } from "./WeatherSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { boltFor, namedShipById, hullOf, harryCount, boundFor, type NamedShip } from "./NamedShipSystem.ts";
+import { PREY_REACH, fightingWeight, defenceWeight } from "./PredationSystem.ts";
 import { weatherAt } from "./WeatherFieldSystem.ts";
 import { fogDensity, fogAwarenessMultiplier } from "./FogSystem.ts";
 
@@ -106,6 +107,15 @@ const FLEE_NOTORIETY = 50;
 const TRADER_CRUISE_SAIL = 0.7;
 
 /**
+ * How much heavier a hunter has to be before her quarry gives up her business
+ * and runs (v0.50.0).
+ *
+ * Above one, so an even match stands and fights: two ships of a size passing
+ * each other should not both bolt.
+ */
+const FLIGHT_MARGIN = 1.15;
+
+/**
  * Update AI decisions for all NPC ships.
  */
 export function updateNpcAi(world: WorldState, dtTicks: number): WorldState {
@@ -132,7 +142,26 @@ export function updateNpcAi(world: WorldState, dtTicks: number): WorldState {
     const idHash = simpleHash(id);
     if (!tickBoundaryCrossed(prevTick, tick, AI_UPDATE_INTERVAL, idHash)) continue;
 
-    const result = updateSingleNpc(entity, playerEntity, world, rng);
+    let result = updateSingleNpc(entity, playerEntity, world, rng);
+    // A hull with a quarry steers at her — but only if her own behaviour has
+    // not just decided the *player* is the more interesting problem. Checking
+    // it this way round means none of the four behaviour functions had to learn
+    // that predation exists.
+    const quarryId = entity.ai.targetEntityId as string | undefined;
+    if (quarryId && result.entity.ai?.state !== "chase") {
+      const quarry = world.entities[quarryId];
+      if (quarry?.ship && quarry.mode === "sailing") {
+        result = {
+          entity: {
+            ...result.entity,
+            heading: headingToward(result.entity.pos, quarry.pos),
+            sailLevel: 1,
+            ai: { ...result.entity.ai!, state: "chase" as const },
+          },
+          rng: result.rng,
+        };
+      }
+    }
     if (result.entity !== entity) {
       entities = { ...entities, [id]: result.entity };
       changed = true;
@@ -159,6 +188,27 @@ function updateSingleNpc(
   // ship is closing on them.
   if (ai.namedShipId) return updateNamedTrader(entity, player, distToPlayer, world, rng);
   if (ai.namedEscortOf) return updateNamedEscort(entity, player, distToPlayer, world, rng);
+
+  // Somebody is after her, and it is not the captain (v0.50.0). Handled before
+  // the switch because it belongs to no one behaviour: a merchantman with a
+  // rover in her wake runs for exactly the reason she runs from a black flag,
+  // and `bestVmgHeading` is what makes either of them a wind problem rather
+  // than a comparison of two numbers in `ships.ts`.
+  const stalker = stalkerOf(entity, world);
+  if (stalker) {
+    // Running is not a merchant's privilege, it is the weaker ship's. Measured
+    // with it reserved for traders, men-of-war sank nineteen rovers in eighty
+    // days and rovers took one merchantman — the navy simply ran the buccaneers
+    // down, because a rover being hunted went on lurking. Whoever is outweighed
+    // runs, and `defenceWeight` is the same reading the hunter used to decide
+    // she liked the odds.
+    const outmatched = fightingWeight(stalker) > defenceWeight(entity) * FLIGHT_MARGIN;
+    // Unless the captain himself is the nearer problem: his threat outranks
+    // anyone else's, and `updateTrader` already knows how to answer it.
+    const playerCloser = distToPlayer < awarenessIn(world, entity)
+      && looksDangerous(world, player, entity.ship?.factionId as string);
+    if (outmatched && !playerCloser) return fleeFrom(entity, stalker.pos, world, rng);
+  }
 
   switch (ai.behavior) {
     case "trader":
@@ -580,6 +630,49 @@ function updatePirateHunter(
 
 function headingToward(from: Vec2, to: Vec2): number {
   return normalizeHeading(Math.atan2(to.x - from.x, -(to.y - from.y)));
+}
+
+/**
+ * The nearest hull that has *this* one as its quarry (v0.50.0).
+ *
+ * Read off `targetEntityId` rather than recomputed: `PredationSystem` has
+ * already decided who is after whom, and asking twice would let a merchantman
+ * run from a rover that had in fact passed her by.
+ */
+function stalkerOf(entity: EntityState, world: WorldState): EntityState | null {
+  let best: EntityState | null = null;
+  let bestD = Infinity;
+  for (const other of Object.values(world.entities)) {
+    if (other.ai?.targetEntityId !== entity.id) continue;
+    if (other.mode !== "sailing") continue;
+    const d = vec2Dist(entity.pos, other.pos);
+    if (d < bestD) { bestD = d; best = other; }
+  }
+  return bestD <= (entity.ai?.awarenessRadius ?? 200) * PREY_REACH * 1.5 ? best : null;
+}
+
+/**
+ * Run from a point, by the best speed made good.
+ *
+ * The same escape a trader has made from the player since v0.36.0, pointed at
+ * somebody else. Without it a hunt between two NPCs is over before the player
+ * can look up: a rover under full sail overhauls a merchantman cruising at 0.7
+ * in seconds, and what he would see is a ship vanishing, not a chase.
+ */
+function fleeFrom(
+  entity: EntityState,
+  from: Vec2,
+  world: WorldState,
+  rng: typeof world.rng,
+): { entity: EntityState; rng: typeof world.rng } {
+  const ai = entity.ai!;
+  const cls = SHIP_CLASSES[entity.ship?.classId as string];
+  const here = weatherAt(world, entity.pos);
+  const heading = bestVmgHeading(
+    headingToward(from, entity.pos),
+    here.windDirRad, here.windStrength, cls?.minWindAngle ?? 30,
+  );
+  return { entity: { ...entity, heading, sailLevel: 1, ai: { ...ai, state: "flee" } }, rng };
 }
 
 /** Small random heading adjustments for loitering ships */

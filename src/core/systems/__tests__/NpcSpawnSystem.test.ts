@@ -281,3 +281,75 @@ describe("purity", () => {
     expect(updateNpcSpawns(midInterval, 1)).toBe(midInterval);
   });
 });
+
+// ===========================================================================
+// Rovers (v0.50.0)
+// ===========================================================================
+
+describe("the Caribbean has pirates in it", () => {
+  /** Run the spawner long enough for the weighted port roll to reach outposts. */
+  function sail(days: number): WorldState {
+    let w = makeWorld();
+    for (let t = 0; t < days * 24 * 60; t++) {
+      w = updateNpcSpawns(w, 1);
+      w = { ...w, time: { ...w.time, tick: w.time.tick + 1 } };
+    }
+    return w;
+  }
+
+  it("puts rovers on the water at all", () => {
+    // Before v0.50.0 `pickBehavior` returned "pirate" only for a port whose
+    // crown was `pirates`, and no port starts pirate: measured on a fresh world,
+    // 22 hulls afloat and not one of them a rover, while two pirate hunters
+    // patrolled for a species the game never spawned.
+    const w = sail(3);
+    const rovers = Object.values(w.entities).filter(e => e.ai?.behavior === "pirate");
+    expect(rovers.length).toBeGreaterThan(0);
+  });
+
+  it("flies the black flag over every one of them", () => {
+    const w = sail(3);
+    const rovers = Object.values(w.entities).filter(e => e.ai?.behavior === "pirate");
+    for (const r of rovers) {
+      expect(r.ship!.factionId as unknown as string).toBe("pirates");
+    }
+  });
+
+  it("keeps them a minority of the traffic", () => {
+    const w = sail(3);
+    const npcs = Object.values(w.entities).filter(e => e.ai && e.id !== w.player.shipId);
+    const rovers = npcs.filter(e => e.ai!.behavior === "pirate");
+    expect(rovers.length / npcs.length).toBeLessThan(0.3);
+  });
+
+  it("gives every hull the aggression its trade calls for", () => {
+    const w = sail(3);
+    for (const e of Object.values(w.entities)) {
+      if (!e.ai || e.id === w.player.shipId) continue;
+      expect(e.ai.aggression).toBeGreaterThanOrEqual(0);
+      expect(e.ai.aggression).toBeLessThanOrEqual(1);
+      if (e.ai.behavior === "trader") expect(e.ai.aggression).toBeLessThan(0.2);
+      if (e.ai.behavior === "pirate") expect(e.ai.aggression).toBeGreaterThan(0.5);
+    }
+  });
+
+  it("reads the flag flying over the town today, not the one on the 1680 map", () => {
+    // A colony the player has stormed sends out *his* ships. Before v0.50.0 the
+    // spawner read `PortDef.factionId`, which never changes, so a captured town
+    // went on sending English merchantmen out for the rest of the game.
+    let w = makeWorld();
+    const key = Object.keys(w.ports).find(k => (CITIES[k].factionId as unknown as string) === "spain")!;
+    w = {
+      ...w,
+      ports: { ...w.ports, [key]: { ...w.ports[key], factionId: factionId("pirates"), capturedDay: 1 } },
+    };
+    let seen = false;
+    for (let t = 0; t < 20 * 24 * 60 && !seen; t++) {
+      w = updateNpcSpawns(w, 1);
+      w = { ...w, time: { ...w.time, tick: w.time.tick + 1 } };
+      seen = Object.values(w.entities).some(e => e.ai?.behavior === "pirate"
+        && (e.ship!.factionId as unknown as string) === "pirates");
+    }
+    expect(seen).toBe(true);
+  });
+});

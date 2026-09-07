@@ -17,6 +17,7 @@ import { processCrewConsumption, hourBoundaryCrossed } from "../systems/CrewCons
 import { addLogEntry } from "../systems/EventLogSystem.ts";
 import { updateNpcSpawns } from "../systems/NpcSpawnSystem.ts";
 import { updateNpcAi } from "../systems/NpcAiSystem.ts";
+import { runPredation } from "../systems/PredationSystem.ts";
 import { updateWorldEvents } from "../systems/WorldEventSystem.ts";
 import { tickReconquest, DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../systems/ReconquestSystem.ts";
 import { tickCampaigns } from "../systems/CrownCampaignSystem.ts";
@@ -413,7 +414,13 @@ export class WorldEngine {
     updatedEntities = { ...world.entities };
     allEvents.push(...plate.events);
 
-    // 6.5 NPC AI decisions (heading, behavior state)
+    // 6.5 Everybody else's quarrels (v0.50.0). Before the AI, because this is
+    // the pass that decides who is after whom; the AI then steers by it. It is
+    // also the only thing in the NPC layer that changes the *set* of ships, so
+    // running it first means the AI never steers a hull that has just gone down.
+    world = runPredation(world, dtTicks);
+
+    // 6.5a NPC AI decisions (heading, behavior state)
     world = updateNpcAi(world, dtTicks);
 
     // 6.5b NPC news exchange — check every ~20 ticks (~1s)

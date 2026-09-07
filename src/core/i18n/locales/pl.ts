@@ -423,6 +423,9 @@ export const PL: LocaleData = {
   "event.food_out": "Jedzenie się skończyło! Załoga głoduje!",
   "event.water_out": "Woda się skończyła! Załoga umiera z pragnienia!",
   "event.crew_died": "{{count}} członków załogi zginęło.",
+  // Cudza bitwa, widziana z naszego pokładu (v0.50.0).
+  "event.npc_plundered": "Korsarz wziął kupca ({{prey}}) tuż przed naszym dziobem.",
+  "event.npc_policed": "Okręt ({{hunter}}) dopadł korsarza w zasięgu naszego wzroku.",
   "event.morale_drop": "Morale załogi spada.",
   "event.storm_start": "Rozpoczął się sztorm!",
   "event.storm_end": "Sztorm minął.",

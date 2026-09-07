@@ -23,6 +23,7 @@
 | Current | `CurrentSystem.ts` | Prądy morskie: **znoszą** statek, nie sterują nim; mapa dostaje kierunek |
 | SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
 | Crew | `CrewSystem.ts` | Ilu ludzi trzeba, żeby statek pracował; obsada pryzu z własnego pokładu i z przymuszonych |
+| Predation | `PredationSystem.ts` | Cudze pościgi: kto kogo chce, kto ucieka i jak to się kończy |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -390,6 +391,88 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Cudze pościgi (`PredationSystem.ts`, v0.50.0)
+
+Każdy kadłub na tym morzu sterował dotąd jedną kwestią: **gdzie jest gracz**.
+Korsarz stał pod bogatą przystanią i *loaterował*, gdy objuczony kupiec
+przecinał mu dziób w odległości osiemdziesięciu jednostek. Łowca pirat
+patrolował obok korsarza. Fregata mijała obu. `NpcAiSystem` mówi to o sobie sam,
+przy jedynej linijce, która w ogóle czyta stan innego statku: „to jedyna rzecz
+w tym pliku, która czyta stan innego statku, żeby zdecydować o swoim".
+
+**A korsarzy nie było wcale.** `pickBehavior` zwracał `"pirate"` wyłącznie dla
+portu, którego korona to `pirates`, a **żaden z 45 portów nie startuje pod
+czarną banderą**. Sześćdziesiąt linii AI bukaniera nie wykonało się ani razu,
+a dwóch łowców piratów patrolowało w poszukiwaniu gatunku, którego gra nigdy nie
+wypuściła na wodę. Zmierzone na świeżym świecie: 22 kadłuby na wodzie, ani
+jednego korsarza.
+
+Trzy martwe rzeczy, które razem są jedną mechaniką:
+
+| Co | Stan przed v0.50.0 |
+|---|---|
+| `AiData.aggression` | losowane dla **każdego** kadłuba z tabeli zachowań (kupiec 0-0,1; marynarka 0,3-0,7; korsarz 0,6-1,0; łowca 0,5-0,9) i czytane przez **nic** |
+| `AiData.targetEntityId` | zadeklarowane w rekordzie, **nigdy nie zapisywane i nigdy nie czytane** |
+| zachowanie `pirate` | nieosiągalne, bo żaden port nie jest piracki |
+
+**Korsarz fituje się tam, gdzie zawsze.** Osiemnaście z 45 miast to `outpost` —
+nabrzeże bez fortu i gubernator daleko — a lista już czytała: Tortuga, Petit
+Goave, Port-de-Paix, Leogane, Santa Catalina, Bahamy. Nic nie trzeba było
+wymyślać ani wypisywać ręcznie, tak samo jak szlaki handlowe wychodzą z linii
+brzegowej. `ROVER_SHARE_OUTPOST = 0,22` ruchu takiego portu.
+
+**I nosi czarną banderę**, z którego nabrzeża by nie wyszła. Wcześniej każdy
+kadłub brał banderę swojego portu, więc bukanier z Tortugi płynął pod francuską
+flagą i **nic** — ani renderer bandery, ani `looksDangerous`, ani opłacani do
+łapania go łowcy — nie odróżniało go od kupca.
+
+#### Trzy bramki
+
+`wantsPrey` pyta po kolei, od najtańszego pytania: czy w ogóle jej chce
+(`preyKind` — korsarz chce **ładunku**, łowca i marynarka chcą **korsarzy**),
+czy ma na to ochotę (`aggression ≥ PREY_AGGRESSION_FLOOR`), czy lubi te szanse
+(`PREY_ODDS`). Korsarz chce też, żeby ładownia była warta prochu — pusty kupiec
+zostaje w spokoju, co złoty proporczyk mówi *graczowi* od v0.25.0.
+
+#### Kupiec nie bije się jak okręt
+
+`defenceWeight` skaluje papierową siłę przez `aggression`: kupiec (0,05) broni
+się za ~38% swojej wagi, fregata (0,7) za ~80%. Bez tego zmierzone: pinasa waży
+7 przeciwko 18 merchantmana, bramka szans odrzucała **każdy** pościg, a jedynymi
+walkami w osiemdziesiąt dni były okręty topiące korsarzy.
+
+#### Ucieczka to prawo słabszego, nie przywilej kupca
+
+Gdy ucieczka była zarezerwowana dla kupców, w osiemdziesiąt dni okręty zatopiły
+**dziewiętnastu** korsarzy, a korsarze wzięli **jednego** kupca — marynarka po
+prostu rozjechała bukanierów, bo ścigany korsarz dalej stał pod przystanią.
+Jedna linijka (`FLIGHT_MARGIN`, kto jest przeważony, ten ucieka) i wyszło
+**10 do 11**.
+
+#### Zmierzone
+
+Osiemdziesiąt dni gry, gracz stoi w miejscu, statki płyną:
+
+```
+kadłuby stracone w cudzej walce:      28   (0,35 dziennie)
+w zasięgu wzroku kapitana:            21
+  korsarz wziął kupca:                10
+  okręt zatopił korsarza:             11
+statków ścigających w danej chwili:  4,67
+statków uciekających:                1,21
+```
+
+Rozstrzygnięcie jest **jednym rzutem**, nie bitwą (`resolveHunt`): własne walki
+gracza dostają arenę, wiatr, amunicję i pojedynek, a dwa kadłuby, obok których
+akurat przepływa, dostają odpowiedź — bo symulowanie ich porządnie kosztowałoby
+budżet klatki tej walki, w której naprawdę jest, i bo z jego pokładu widać
+pościg, salwę i tonący statek, czyli dokładnie to.
+
+Konsekwencje są wyłącznie takie, które już istniały: kupiec stracony na szlaku
+to ten szlak nękany (`routeDisruption` z v0.22.0), a wpis w dzienniku dostaje
+gracz tylko wtedy, gdy był dość blisko, żeby to zobaczyć (`WITNESS_RANGE`).
+**Nic nowego nie jest zapisywane.**
 
 ### Obsada (`CrewSystem.ts`, v0.49.0)
 
