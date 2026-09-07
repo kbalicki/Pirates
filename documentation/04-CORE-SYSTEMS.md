@@ -24,6 +24,7 @@
 | SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
 | Crew | `CrewSystem.ts` | Ilu ludzi trzeba, żeby statek pracował; obsada pryzu z własnego pokładu i z przymuszonych |
 | Predation | `PredationSystem.ts` | Cudze pościgi: kto kogo chce, kto ucieka i jak to się kończy |
+| Diplomacy | `DiplomacySystem.ts` | Korony kłócą się same; sojusz to wspólny wróg |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -391,6 +392,103 @@ Mnożniki **mnożą się**: ciężko uszkodzony kadłub pod podartymi żaglami j
 - Pościg gdy ma przewagę, ucieczka przy niskim kadłubie
 - Przy ≥1.5× przewadze liczebnej załogi zbliża się na kartacz i prze do abordażu
 - Kapitulacja gdy kadłub ≤ 10%, żagle ≤ 10% lub załoga < 10 ludzi
+
+### Korony kłócą się same (`DiplomacySystem.ts`, v0.51.0)
+
+Zwykłe przeszukanie tego projektu szuka producenta bez konsumenta. Tu wyszła
+**odwrotność**: sześciu konsumentów bez producenta.
+
+Gra zaczyna się w 1680. Wojna francusko-holenderska skończyła się we wrześniu
+1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen
+historycznych **nie ma nic pomiędzy**. Żaden szablon zdarzenia losowego nie jest
+typu `war_start` — wojny brały się wyłącznie z kalendarza, co do miesiąca.
+
+```
+udział pierwszych 10 lat gry spędzony w wojnie:
+  silver_empire        1560:  17%
+  merchants_smugglers  1600: 100%
+  new_colonists        1620: 100%
+  war_for_profit       1640: 100%
+  buccaneer_heroes     1660:  32%
+  pirates_sunset       1680:   7%   <- DOMYŚLNA
+```
+
+Doba gry to realna minuta, więc do pierwszej wojny było **57 godzin grania**.
+
+| Co czekało na wojnę | Ile razy zadziałało |
+|---|---|
+| `NpcSpawnSystem` — podwojona marynarka i korsarze koronni | nigdy |
+| `EventEffectsSystem.importMul` 0,7 | nigdy |
+| `treaty_signed` (pokój z v0.30.0) | nigdy — nie ma czego kończyć |
+| znaczniki wojny na mapie | nigdy |
+| **`coveringPatrons` — list kaperski** | **nigdy** |
+
+Ostatni jest tym, o co naprawdę chodzi. List kaperski kryje pryz wzięty koronie,
+z którą **patron jest w wojnie**. Patron nie był w wojnie z nikim, więc **każdy**
+pryz był „uncovered" i kosztował −8 u własnego mocodawcy, a gubernator wydawał
+list na samą reputację, nie sprawdzając, czy ma po co. Kapitan, który zasłużył na
+komisję, był **ściśle stratny**, że ją wziął — cała nagrodowa połowa v0.37.0 była
+nieosiągalna.
+
+#### Skąd biorą się szanse
+
+Z `FACTIONS[x].relations` — pełnej macierzy 5×5, która siedzi w danych od
+pierwszego commita i którą czytała **jedna linijka** w całym kodzie (wybór korony
+złoczyńcy w wątku rodzinnym). `hostilityFactor` mapuje relację na gotowość do
+zerwania: Hiszpania i Anglia (−30) idą na siebie najszybciej.
+
+**Ale nie „nigdy" dla przyjaznych.** Anglia i Holandia to jedyna ciepła para na
+mapie (+10) — i stoczyły w tym okresie trzy prawdziwe wojny. `HOSTILITY_FLOOR`
+zostawia każdej parze 25% szansy: dobra opinia czyni wojnę mało prawdopodobną,
+nigdy niemożliwą. Ten sam kształt co `defenceWeight` w `PredationSystem`.
+
+#### Czym jest sojusz
+
+Pozycja „przymierze dwóch koron" nosiła w TODO uczciwy zarzut: *co sojusz miałby
+robić, skoro wojna już podwaja spawn marynarki?* Odpowiedź jest wyprowadzana, nie
+zapisywana. Dwie korony bijące się z tą samą trzecią są **współwalczące**, co
+podnosi ich relację o `CO_BELLIGERENT` na dokładnie tyle, ile trwa tamta wojna —
+a to z kolei czyni je najmniej skłonną do zerwania parą na mapie. Anglia
+i Holandia, +10 na papierze, stoją na +35 przez całą wojnę angielsko-hiszpańską.
+Żadnego pola, żadnego zapisu, żadnej migracji.
+
+#### Pierwsze strojenie było permanentną wojną światową
+
+```
+                          dni w wojnie   wojen naraz   3+ naraz
+  historia 1560-1700           79%          1,13          —
+  pierwsze strojenie           97%          3,12         76%   <- wyrzucone
+  wydane                       75%          1,18          7%
+```
+
+Sześć par i wojny po 2-6 lat dają przy każdym tempie, które wystawia wojnę
+wcześnie, komplet zwaśnionych naraz. Ratunkiem była **długość**, nie szansa:
+wojny karaibskie tego okresu trwały rok albo dwa, a osiemdziesięcioletnia to
+wyjątek z innej epoki. Pierwsza wojna kariery przychodzi po **1,3 roku gry**
+(mediana z 24 ziaren), a wyszły wszystkie sześć par koron.
+
+#### Widać to
+
+Zakładka Kapitan dostała blok „Korony" pod rangami: kto z kim w wojnie, kto z kim
+trzyma, a w spokojne lata „Na Karaibach pokój". `getActiveWars` było
+wyeksportowane od czasu warstwy zdarzeń i **nie miało ani jednego czytelnika**.
+Potwierdzone pomiarem przy weryfikacji: po czterech latach gry dziennik ma
+**zero** wpisów `news.war_start`, bo `addLogEntry` przycina log do stałej liczby
+pozycji — wojna była linijką, która przewijała się, gdy kapitan był na morzu.
+
+#### Dwie rzeczy o kolejności
+
+- `updateDiplomacy` idzie **przed** `expireEvents`: wojna kończąca się dzisiaj
+  musi zdążyć stać się traktatem, póki jest jeszcze na liście. Dokładnie ta sama
+  pułapka, którą opisuje przy sobie `checkHistoricalWars`.
+- **Tabela historyczna wygrywa.** Kości ustępują wojnie, którą kalendarz i tak
+  wypowie w ciągu dwóch lat, inaczej na tablicach wisiałyby dwie wojny tych
+  samych dwóch koron.
+
+Wojna z kości jest **tym samym zdarzeniem** co wojna z kalendarza i kończy się
+tym samym traktatem, więc tablice ogłoszeń, NPC roznoszący wieści, znaczniki na
+mapie, mnożnik marynarki, cięcie importu i listy kaperskie wiedziały, co robić,
+bez jednej zmiany.
 
 ### Cudze pościgi (`PredationSystem.ts`, v0.50.0)
 

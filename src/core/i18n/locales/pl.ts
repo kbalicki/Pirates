@@ -785,6 +785,10 @@ export const PL: LocaleData = {
   "captain.nationality_label": "Pochodzenie: {{nation}}",
   "captain.skills_title": "Umiejętności",
   "captain.ranks_title": "Rangi",
+  "captain.crowns_title": "Korony",
+  "captain.at_war": "w wojnie z: {{enemies}}",
+  "captain.allied_with": "trzyma z: {{allies}}",
+  "captain.crowns_peace": "Na Karaibach pokój.",
 
   // -- Changelog --
   "changelog.title": "LOG ZMIAN",

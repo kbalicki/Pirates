@@ -23,6 +23,7 @@ import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
+import { CROWNS, enemiesOf, coBelligerentAgainst } from "../../core/systems/DiplomacySystem.ts";
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale, consortTraining, fleetManning } from "../../core/systems/FleetSystem.ts";
@@ -531,6 +532,63 @@ export class OptionsMenuScene extends Phaser.Scene {
         this.add.text(x + 10, y, `${factionName}: ${rankName}`, txt(11)));
       y += 16;
     }
+
+    y = this.renderCrowns(x, y + 12);
+  }
+
+  /**
+   * What the crowns are doing to each other, on the page where the captain
+   * already reads what they think of him.
+   *
+   * Until v0.51.0 a war was only ever a line in the log: `getActiveWars` had
+   * been exported since the event layer was written and called from nowhere, so
+   * a captain who was at sea on the morning England declared could not find out
+   * that she had. It matters at the counter now — his patron's letter covers a
+   * prize taken from his patron's enemy and embarrasses him with anyone else —
+   * so the state of the crowns has to be somewhere he can look it up, and this
+   * is where standing already lives.
+   *
+   * The second line is the alliance the game did not have a word for: two
+   * crowns fighting the same third crown. Nothing stores it; it is read off
+   * today's wars, and it disappears with them.
+   */
+  private renderCrowns(x: number, startY: number): number {
+    let y = startY;
+    this.contentContainer.add(
+      this.add.text(x, y, t("captain.crowns_title"), txt(13, { bold: true })));
+    y += 20;
+
+    const name = (key: string) => t("faction." + key + ".name");
+    let said = false;
+
+    for (const crown of CROWNS) {
+      const foes = enemiesOf(this.worldState, crown);
+      const friends = CROWNS.filter(
+        other => other !== crown && coBelligerentAgainst(this.worldState, crown, other).length > 0,
+      );
+      if (foes.length === 0 && friends.length === 0) continue;
+      said = true;
+
+      const parts: string[] = [];
+      if (foes.length > 0) parts.push(t("captain.at_war", { enemies: foes.map(name).join(", ") }));
+      if (friends.length > 0) parts.push(t("captain.allied_with", { allies: friends.map(name).join(", ") }));
+
+      const line = this.add.text(
+        x + 10, y, `${name(crown)}: ${parts.join(" · ")}`,
+        { ...txt(11, { color: foes.length > 0 ? "#8a3a3a" : "#3a5a8a" }),
+          wordWrap: { width: DLG_W - PAD * 2 - 20 } },
+      );
+      this.contentContainer.add(line);
+      y += line.height + 2;
+    }
+
+    if (!said) {
+      this.contentContainer.add(
+        this.add.text(x + 10, y, t("captain.crowns_peace"), txt(11, { color: "#666666" })));
+      y += 16;
+    }
+
+    return y;
   }
 
   // ---- Tab 3: Calendar & Events ----

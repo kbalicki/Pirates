@@ -13,102 +13,8 @@ import { addLogEntry } from "./EventLogSystem.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { MUSTER_PORTS } from "./TreasureFleetSystem.ts";
 import { PORTS } from "../data/ports.ts";
-
-// ── Historical Wars ──────────────────────────────────────
-
-type HistoricalWar = {
-  id: string;
-  startYear: number;
-  startMonth: number;
-  endYear: number;
-  endMonth: number;
-  factions: [string, string];
-  headline: string;
-  endHeadline: string;
-};
-
-const HISTORICAL_WARS: HistoricalWar[] = [
-  {
-    id: "eighty_years_war",
-    startYear: 1568, startMonth: 5,
-    endYear: 1648, endMonth: 1,
-    factions: ["spain", "netherlands"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "anglo_spanish_war_1",
-    startYear: 1585, startMonth: 8,
-    endYear: 1604, endMonth: 8,
-    factions: ["spain", "england"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "anglo_spanish_war_2",
-    startYear: 1625, startMonth: 3,
-    endYear: 1630, endMonth: 11,
-    factions: ["spain", "england"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "anglo_french_war",
-    startYear: 1627, startMonth: 6,
-    endYear: 1629, endMonth: 4,
-    factions: ["england", "france"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "franco_spanish_war",
-    startYear: 1635, startMonth: 5,
-    endYear: 1659, endMonth: 11,
-    factions: ["france", "spain"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "first_anglo_dutch_war",
-    startYear: 1652, startMonth: 7,
-    endYear: 1654, endMonth: 4,
-    factions: ["england", "netherlands"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "second_anglo_dutch_war",
-    startYear: 1665, startMonth: 3,
-    endYear: 1667, endMonth: 7,
-    factions: ["england", "netherlands"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "war_of_devolution",
-    startYear: 1667, startMonth: 5,
-    endYear: 1668, endMonth: 5,
-    factions: ["france", "spain"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "franco_dutch_war",
-    startYear: 1672, startMonth: 4,
-    endYear: 1678, endMonth: 9,
-    factions: ["france", "netherlands"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-  {
-    id: "nine_years_war",
-    startYear: 1689, startMonth: 5,
-    endYear: 1697, endMonth: 9,
-    factions: ["france", "england"],
-    headline: "news.war_start",
-    endHeadline: "news.war_end",
-  },
-];
+import { HISTORICAL_WARS } from "../data/wars.ts";
+import { updateDiplomacy, TREATY_DAYS } from "./DiplomacySystem.ts";
 
 // ── Random Event Templates ───────────────────────────────
 
@@ -411,6 +317,12 @@ export function updateWorldEvents(world: WorldState): WorldState {
   // 1. Check historical war starts/ends
   w = checkHistoricalWars(w, cal);
 
+  // 1.5. The wars nobody wrote on the calendar (v0.51.0). Before `expireEvents`
+  // and deliberately so: a war that runs out today has to become a treaty while
+  // it is still in the list, which is the same trap the war-end check above
+  // documents.
+  w = updateDiplomacy(w);
+
   // 2. Expire old events
   w = expireEvents(w);
 
@@ -460,17 +372,6 @@ export function giveNpcPortNews(world: WorldState, entityId: string, portId: str
 
 // ── Internal helpers ─────────────────────────────────────
 
-/**
- * How long the peace itself is an event (v0.30.0).
- *
- * A treaty is not a new normal, it is the fortnight or two in which convoys
- * that had been laid up sail again and the underwriters come back. Sixty days
- * of `treaty_signed` (production and imports ×1.15, half a point of wealth a
- * day) is worth about twenty points of settled wealth to each town by the time
- * it lifts — the same order as any other good news, and deliberately less than
- * the war it ends took away.
- */
-const TREATY_DAYS = 60;
 
 function checkHistoricalWars(world: WorldState, cal: { year: number; month: number; dayOfMonth: number }): WorldState {
   let w = world;

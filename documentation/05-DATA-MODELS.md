@@ -79,6 +79,15 @@ type ShipData = {
 };
 ```
 
+W v0.51.0 również nie doszło żadne pole. Wojna wypowiedziana w trakcie gry jest
+zwykłym `WorldEventState` typu `war_start` — tym samym, który wystawia tabela
+historyczna — a **sojusz nie jest zapisywany w ogóle**: „te dwie korony stoją
+razem" to zdanie o dzisiejszych wojnach, które `relationBetween` wylicza za
+każdym razem. Jedyne, co odróżnia wojnę z kości od wojny z kalendarza, to
+prefiks jej `id` (`war_dyn_`), żeby traktat wiedział, kto go ma podpisać.
+`HISTORICAL_WARS` przeniosło się z `WorldEventSystem` do `data/wars.ts` — to
+tabela dat, czyli dane — co przy okazji usunęło import cykliczny.
+
 W v0.50.0 również nie doszło żadne pole. Pościg między dwoma NPC jest zapisany
 w dwóch polach, które `AiData` miało od zawsze: `aggression` (losowane dla
 każdego kadłuba i do v0.50.0 czytane przez **nic**) i `targetEntityId`

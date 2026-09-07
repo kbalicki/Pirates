@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-07 · **Wersja:** v0.50.0.0 · **Branch:** `main`
-**Kod:** 217 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1789 przechodzi, 0 failuje, 0 `todo`** w 51 plikach
+**Stan na:** 2026-09-07 · **Wersja:** v0.51.0.0 · **Branch:** `main`
+**Kod:** 220 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1818 przechodzi, 0 failuje, 0 `todo`** w 52 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.50.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1789/1789 zielone; **Karaiby nie miały w sobie piratów** — `pickBehavior` robiło korsarza wyłącznie z portu o koronie `pirates`, a **żaden z 45 portów nie startuje pod czarną banderą**, więc sześćdziesiąt linii AI bukaniera nie wykonało się ani razu, a dwóch łowców piratów patrolowało w poszukiwaniu gatunku, którego gra nigdy nie wypuściła. Razem z tym leżały `AiData.aggression` (losowane dla **każdego** kadłuba, czytane przez **nic**) i `AiData.targetEntityId` (zadeklarowane, nigdy nie zapisywane). Teraz korsarz fituje się z 18 outpostów (Tortuga, Petit Goave, Port-de-Paix, Santa Catalina — **dane już nazywały właściwe miejsca**), nosi czarną banderę i bierze kupców, a okręty biorą jego: **jeden kadłub na trzy dni ginie w walce, która nie jest walką gracza**, przy pięciu statkach ścigających kogoś w każdej chwili. Przy okazji naprawiony złamany przepis z sekcji 5: spawner czytał `PortDef.factionId` (mapę z 1680) zamiast `portFaction`, więc zdobyta kolonia do końca gry wysyłała kupców swojej dawnej korony. **Pomiar zabił po drodze cały jeden projekt** (monopol koronny / przemyt) — szczegóły w notatce sesyjnej, warto przeczytać przed sięgnięciem po ten temat. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.51.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.51.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1818/1818 zielone; **korony wreszcie kłócą się same**. Gra startuje w 1680, wojna francusko-holenderska skończyła się we wrześniu 1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen historycznych **nie ma nic pomiędzy** — żaden szablon zdarzenia losowego nie jest typu `war_start`, więc wojny brały się wyłącznie z kalendarza. Zmierzone: **7% pierwszych dziesięciu lat gry w wojnie**, następna 57 godzin grania od startu. Przez to **nic** poniżej wojny nigdy się nie wykonało: podwojona marynarka, korsarze koronni, cięcie importu, traktat z v0.30.0 — a przede wszystkim **list kaperski nie krył niczego**: `coveringPatrons` pyta, czy patron jest w wojnie z ofiarą, więc każdy pryz był „uncovered" za −8 u własnego mocodawcy i cała nagrodowa połowa v0.37.0 była nieosiągalna. Teraz `DiplomacySystem` bierze szanse z **macierzy relacji, którą czytała jedna linijka w całym kodzie**, a sojusz to **wspólny wróg i nic więcej** (nic tego nie zapisuje) — to jest odpowiedź na pozycję „przymierze dwóch koron" z uczciwym zarzutem, który przy niej wisiał. **Pierwsze strojenie było permanentną wojną światową** (97% dni, 3,12 wojny naraz) i zostało wyrzucone; wydane siedzi na historii (75% i 1,18 przy 79% i 1,13 w latach 1560-1700). Zakładka Kapitan pokazuje stan koron — `getActiveWars` nie miało do tej pory **ani jednego czytelnika**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.52.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.50.0.0):** v0.50.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1789/1789 zielone; **Karaiby nie miały w sobie piratów** — `pickBehavior` robiło korsarza wyłącznie z portu o koronie `pirates`, a **żaden z 45 portów nie startuje pod czarną banderą**, więc sześćdziesiąt linii AI bukaniera nie wykonało się ani razu, a dwóch łowców piratów patrolowało w poszukiwaniu gatunku, którego gra nigdy nie wypuściła. Razem z tym leżały `AiData.aggression` (losowane dla **każdego** kadłuba, czytane przez **nic**) i `AiData.targetEntityId` (zadeklarowane, nigdy nie zapisywane). Teraz korsarz fituje się z 18 outpostów (Tortuga, Petit Goave, Port-de-Paix, Santa Catalina — **dane już nazywały właściwe miejsca**), nosi czarną banderę i bierze kupców, a okręty biorą jego: **jeden kadłub na trzy dni ginie w walce, która nie jest walką gracza**, przy pięciu statkach ścigających kogoś w każdej chwili. Przy okazji naprawiony złamany przepis z sekcji 5: spawner czytał `PortDef.factionId` (mapę z 1680) zamiast `portFaction`, więc zdobyta kolonia do końca gry wysyłała kupców swojej dawnej korony. **Pomiar zabił po drodze cały jeden projekt** (monopol koronny / przemyt) — szczegóły w notatce sesyjnej, warto przeczytać przed sięgnięciem po ten temat. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.51.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.49.0.0):** v0.49.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1758/1758 zielone; **statek potrzebuje rąk** — `crewMin` stoi w tabeli klas od zawsze (4 dla pinasy, 40 dla galeonu), drukował go ekran pomocy i kolumna w stoczni, a czytała go **jedna** linijka kodu: odmowa sprzedaży konsorty. Statek obsadzony sześcioma ludźmi płynął i halsował jak obsadzony sześćdziesięcioma, a **pryz omijał tę bramkę całkowicie** — zdobyty galeon dołączał z dziewięćdziesięcioma sześcioma ludźmi wziętymi znikąd. Teraz pula jest prawdziwa: ludzi na pryz bierze się z własnego pokładu i z przymuszonych (połowa ocalałych), a brak rąk zabiera **sterowność wcześniej niż prędkość**. Slup obsadzi brygantynę, ale nie galeon — taki pryz pełznie i ciągnie za sobą całą eskadrę. **Zero nowych pól w modelu**, migracje dalej na v12 (dwunaste wydanie z rzędu), a 1711 istniejących testów przeszło bez jednej zmiany, bo każdy kadłub w każdym zapisie jest obsadzony na 2-3× swojego minimum. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.50.0 jest niżej.
 
@@ -34,7 +36,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci) [SESSION-2026-09-07B.md](documentation/SESSION-2026-09-07B.md) (v0.48.0 — woda ma dno) [SESSION-2026-09-07C.md](documentation/SESSION-2026-09-07C.md) (v0.49.0 — statek potrzebuje rąk) i [SESSION-2026-09-07D.md](documentation/SESSION-2026-09-07D.md) (v0.50.0 — Karaiby mają w sobie piratów; **i dlaczego monopol koronny został odrzucony po pomiarze**).
+> **Notatki z tej sesji:** [SESSION-2026-09-05.md](documentation/SESSION-2026-09-05.md) (v0.30.0), [SESSION-2026-09-05B.md](documentation/SESSION-2026-09-05B.md) (v0.31.0), [SESSION-2026-09-05C.md](documentation/SESSION-2026-09-05C.md) (v0.32.0), [SESSION-2026-09-05D.md](documentation/SESSION-2026-09-05D.md) (v0.33.0 — raporty na mapie, konwój), [SESSION-2026-09-05E.md](documentation/SESSION-2026-09-05E.md) (v0.34.0 — ona się dowiaduje) [SESSION-2026-09-05F.md](documentation/SESSION-2026-09-05F.md) (v0.35.0 — ona ucieka) [SESSION-2026-09-05G.md](documentation/SESSION-2026-09-05G.md) (v0.36.0 — morze zna twoje nazwisko) [SESSION-2026-09-05H.md](documentation/SESSION-2026-09-05H.md) (v0.37.0 — komisja jest posadą) [SESSION-2026-09-06.md](documentation/SESSION-2026-09-06.md) (v0.38.0 — szkwał) [SESSION-2026-09-06B.md](documentation/SESSION-2026-09-06B.md) (v0.39.0 — pogoda ma miejsce) [SESSION-2026-09-06C.md](documentation/SESSION-2026-09-06C.md) (v0.40.0 — mgła) [SESSION-2026-09-06D.md](documentation/SESSION-2026-09-06D.md) (v0.41.0 — prądy) [SESSION-2026-09-06E.md](documentation/SESSION-2026-09-06E.md) (v0.42.0 — handel uczy się prądu) [SESSION-2026-09-06F.md](documentation/SESSION-2026-09-06F.md) (v0.43.0 — korona przechodzi przez to samo morze) [SESSION-2026-09-06G.md](documentation/SESSION-2026-09-06G.md) (v0.44.0 — długa i krótka połowa rejsu) [SESSION-2026-09-06H.md](documentation/SESSION-2026-09-06H.md) (v0.45.0 — sztorm wędruje) [SESSION-2026-09-06I.md](documentation/SESSION-2026-09-06I.md) (v0.46.0 — flota skarbowa wypływa) [SESSION-2026-09-07.md](documentation/SESSION-2026-09-07.md) (v0.47.0 — trzy z pięciu liczb na karcie postaci) [SESSION-2026-09-07B.md](documentation/SESSION-2026-09-07B.md) (v0.48.0 — woda ma dno) [SESSION-2026-09-07C.md](documentation/SESSION-2026-09-07C.md) (v0.49.0 — statek potrzebuje rąk) [SESSION-2026-09-07D.md](documentation/SESSION-2026-09-07D.md) (v0.50.0 — Karaiby mają w sobie piratów; **i dlaczego monopol koronny został odrzucony po pomiarze**) i [SESSION-2026-09-07E.md](documentation/SESSION-2026-09-07E.md) (v0.51.0 — korony kłócą się same; **sześciu konsumentów bez producenta**).
 
 > **Zaczynasz pracę?** Wywołaj skill `/task` — prowadzi pełny cykl jednego zadania: wybór, implementacja, testy, weryfikacja w grze, changelog, dokumentacja, commit, push i deploy. Playbooki w `.claude/skills/task/playbooks/`. Do generowania grafiki jest skill `/comfyui`.
 
@@ -97,6 +99,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Korony kłócą się same | ✅ | `DiplomacySystem.ts`: domyślna era startowała w dziewięcioletnim pokoju, przez co list kaperski nie krył nigdy niczego; wojny biorą się teraz z martwej macierzy relacji, a sojusz to wspólny wróg |
 | Karaiby mają w sobie piratów | ✅ | `PredationSystem.ts`: korsarze wreszcie pływają (18 outpostów, czarna bandera), a `aggression` i `targetEntityId` niosą cudze pościgi — kupca bierze korsarz, korsarza bierze okręt, słabszy ucieka |
 | Statek potrzebuje rąk | ✅ | `CrewSystem.ts`: `crewMin` przestał być dekoracją — obsada pryzu z własnego pokładu i z przymuszonych, brak rąk zabiera sterowność wcześniej niż prędkość, a niedomanowany pryz ciągnie za sobą całą eskadrę |
 | Woda ma dno | ✅ | `services/SeaDepth.ts`: zanurzenie kadłuba kontra głębokość wyprowadzona z linii brzegowej; płycizna ostrzega, mielizna ściera kadłub, porty pogłębione, ścigający też ma zanurzenie |
@@ -1874,7 +1877,64 @@ Zakaz w jednym mieście przesuwa najlepszy interes do sąsiedniego i **nic nie
 kosztuje**. Żeby to uratować, trzeba by ruszyć ceny, czyli **wymyślić nagrodę**,
 a nie ją znaleźć. Do decyzji właściciela, nie agenta.
 
-### v0.51.0 — co dalej
+### ~~v0.51.0 — Korony kłócą się same~~ ✅ (v0.51.0.0)
+
+Odwrotność zwykłego przeszukania: nie producent bez konsumenta, tylko **sześciu
+konsumentów bez producenta**.
+
+- **Zmierzone przed napisaniem czegokolwiek**: domyślna era (`pirates_sunset`,
+  1680) spędza w wojnie **7%** pierwszych dziesięciu lat gry. Wojna
+  francusko-holenderska kończy się IX 1678, dziewięcioletnia zaczyna V 1689,
+  między nimi w tabeli **nie ma nic**, a żadne zdarzenie losowe nie jest typu
+  `war_start`. Doba gry to realna minuta — **57 godzin do pierwszej wojny**
+- **Nic poniżej wojny się nie wykonało**: podwojona marynarka, korsarze koronni,
+  `importMul` 0,7, znaczniki na mapie, `treaty_signed` z v0.30.0
+- **A list kaperski nie krył niczego.** `coveringPatrons` pyta, czy patron jest
+  w wojnie z ofiarą. Nie był z nikim, więc **każdy** pryz był „uncovered" za −8
+  u mocodawcy, a gubernator wydawał list na samą reputację, nie sprawdzając,
+  czy ma po co. Kapitan z komisją był ściśle stratny
+- **Szanse z macierzy `relations`**, którą czytała jedna linijka w całym kodzie
+- **Ale nie „nigdy" dla przyjaznych**: Anglia i Holandia (+10) stoczyły w tym
+  okresie trzy prawdziwe wojny, więc `HOSTILITY_FLOOR` zostawia im 25% szansy
+- **Sojusz to wspólny wróg i nic więcej** — nic tego nie zapisuje, znika razem
+  z wojną. To odpowiedź na zarzut, który przy tej pozycji wisiał od kilkunastu
+  wydań
+- **Pierwsze strojenie wyrzucone**: 97% dni w wojnie i 3,12 wojny naraz to
+  permanentna wojna światowa. Ratunkiem była **długość**, nie szansa: wojny
+  karaibskie tego okresu trwały 1-2 lata, osiemdziesięcioletnia to wyjątek
+  z innej epoki. Wydane: 75% dni i 1,18 naraz przy historycznych 79% i 1,13
+- **Pierwsza wojna kariery po 1,3 roku gry** (mediana z 24 ziaren); wszystkie
+  24 światy miały ją w 8,1 roku, i wyszły wszystkie sześć par koron
+- **Widać to**: zakładka Kapitan, blok „Korony". `getActiveWars` nie miało do
+  tej pory ani jednego czytelnika
+- **Zero nowych pól w modelu**, migracje dalej na v12 (czternaste wydanie)
+- `HISTORICAL_WARS` przeniesione do `data/wars.ts` — to tabela dat, czyli dane;
+  przy okazji znika import cykliczny
+
+### Odprysk reputacji („wróg mojego wroga") — ZMIERZONE, ODŁOŻONE
+
+Pierwotny kandydat tej sesji, odłożony na rzecz wojen. Reputacja z każdą koroną
+jest dziś **niezależna**: sześciu kupców robi z Hiszpanii wroga (−60), a
+pozostałe trzy korony stoją na dokładnie 0 do końca kariery, chyba że weźmiesz
+list. Palenie Hiszpanii nie kupuje **nic** w Port Royale, choć świat deklaruje,
+że Anglia jest z Hiszpanią na −30.
+
+Zmierzone kształty (`ripple = delta × relation/100 × share`):
+
+```
+20 hiszpańskich kupców, share 0,3: anglia +25 (friendly), francja +20 (friendly), holandia 0
+bezstronny rabuś (5×4 kupców):     wszyscy unfriendly — odpryski się znoszą
+```
+
+Nagroda jest już zbudowana: `PortAccessSystem` wycenia „friendly" (spread 0,08
+zamiast 0,12, pula załogi ×1,25, warsztat ×0,9). **Pułapka do zapamiętania:**
+reputacja jest liczbą całkowitą, a `Math.round(-10 × -0,10 × 0,3)` to **zero** —
+przy relacji −10 Holandia nie drgnie przez 60 pryzów. To ta sama lekcja co
+„`wealth` trzymane z jednym miejscem po przecinku": rzecz, która rusza się wolno,
+potrzebuje miejsca na ułamek. Do rozstrzygnięcia razem z tym, czy odprysk ma
+czytać `relationBetween` (żywą) czy statyczną macierz.
+
+### v0.52.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
