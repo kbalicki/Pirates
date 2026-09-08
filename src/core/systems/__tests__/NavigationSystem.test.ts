@@ -3,7 +3,10 @@ import { updateNavigation, applyTurn, type TerrainQuery } from "../NavigationSys
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
 import { setDepthField, AGROUND_SPEED_MUL, SHOAL_SPEED_MUL } from "../../services/SeaDepth.ts";
 import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
-import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../WeatherSystem.ts";
+import {
+  windSpeedModifier, windPolar, navigatedWindModifier,
+  NEUTRAL_NAVIGATION, BEAT_CEIL, IRONS_STEERAGE, bestBeatAngle,
+} from "../WeatherSystem.ts";
 import type { EntityState } from "../../model/EntityState.ts";
 import type { WeatherState, Vec2 } from "../../model/WorldState.ts";
 import type { EntityId, ShipClassId, FactionId } from "../../model/ids.ts";
@@ -214,30 +217,33 @@ describe("fallback landmass interior points", () => {
  *   180° = running before the wind
  *
  * Curve at full strength, with the default `minWindAngle` of 30°:
- *   0-30°    → 0     (no-go zone, ship makes no way)
- *   30-60°   → 0→0.4 (close hauled, linear)
+ *   0-30°    → IRONS_STEERAGE (no-go zone, bare steerage way)
+ *   30-60°   → 0→0.4 (close hauled, rising as sqrt off the edge)
  *   60-120°  → 0.4 → 1.5 → 1.1 (two quarter sines, peak at 90° beam reach)
  *   120-180° → 1.1 → 0.9 (running)
  *
- * The result is scaled by wind strength: `1 + (factor - 1) * strength`,
- * so strength 0 always yields 1.0 regardless of heading.
+ * At or above `BEAT_CEIL` the result is `1 + (factor - 1) * strength` exactly,
+ * at every wind strength — that is the guarantee v0.53.0 was built around, and
+ * it is asserted below. Below the ceiling the flat part of that blend is paid
+ * out in proportion to how much sail is drawing, which is what stopped the
+ * dead zone from being the fastest way to windward in the game.
  */
 describe("windSpeedModifier", () => {
-  it("no-go zone: sailing straight into the wind gives zero way", () => {
-    expect(windSpeedModifier(0, 0, 1.0)).toBe(0);
+  it("no-go zone: straight into the wind she keeps bare steerage way", () => {
+    expect(windSpeedModifier(0, 0, 1.0)).toBe(IRONS_STEERAGE);
   });
 
   it("no-go zone spans minWindAngle degrees", () => {
     const justInside = (29 * Math.PI) / 180;
     const justOutside = (31 * Math.PI) / 180;
-    expect(windSpeedModifier(justInside, 0, 1.0, 30)).toBe(0);
-    expect(windSpeedModifier(justOutside, 0, 1.0, 30)).toBeGreaterThan(0);
+    expect(windSpeedModifier(justInside, 0, 1.0, 30)).toBe(IRONS_STEERAGE);
+    expect(windSpeedModifier(justOutside, 0, 1.0, 30)).toBeGreaterThan(IRONS_STEERAGE);
   });
 
   it("square rig (wider minWindAngle) has a wider no-go zone", () => {
     const at40deg = (40 * Math.PI) / 180;
-    expect(windSpeedModifier(at40deg, 0, 1.0, 30)).toBeGreaterThan(0);
-    expect(windSpeedModifier(at40deg, 0, 1.0, 60)).toBe(0);
+    expect(windSpeedModifier(at40deg, 0, 1.0, 30)).toBeGreaterThan(IRONS_STEERAGE);
+    expect(windSpeedModifier(at40deg, 0, 1.0, 60)).toBe(IRONS_STEERAGE);
   });
 
   it("close hauled (60°) = 0.4", () => {
@@ -275,10 +281,12 @@ describe("windSpeedModifier", () => {
   });
 
   it("wind strength scales the deviation from 1.0", () => {
-    // No-go zone at half strength is halfway between 0 and 1.
-    expect(windSpeedModifier(0, 0, 0.5)).toBeCloseTo(0.5, 5);
     // Beam reach at half strength is halfway between 1.0 and 1.5.
     expect(windSpeedModifier(Math.PI / 2, 0, 0.5)).toBeCloseTo(1.25, 5);
+    // The no-go zone does NOT sit halfway between 0 and 1 any more. It used to,
+    // and 0.5 of base speed dead to windward was the fastest way upwind in the
+    // game — see the block on the dead zone below.
+    expect(windSpeedModifier(0, 0, 0.5)).toBeLessThan(0.1);
   });
 
   it("never negative for any heading/wind/strength combo", () => {
@@ -291,10 +299,10 @@ describe("windSpeedModifier", () => {
     }
   });
 
-  it("only the no-go zone yields zero — every other heading makes way", () => {
+  it("only the no-go zone crawls — every other heading makes real way", () => {
     for (let deg = 31; deg <= 180; deg += 1) {
       const rad = (deg * Math.PI) / 180;
-      expect(windSpeedModifier(rad, 0, 1.0, 30)).toBeGreaterThan(0);
+      expect(windSpeedModifier(rad, 0, 1.0, 30)).toBeGreaterThan(IRONS_STEERAGE);
     }
   });
 
@@ -352,11 +360,20 @@ describe("updateNavigation — sailing mechanics", () => {
     expect(r.mode).toBe("sailing");
   });
 
-  it("makes no way when pointed straight into the wind", () => {
+  it("barely moves when pointed straight into the wind", () => {
     // HEADWIND blows from the north at full strength; heading 0 is the no-go zone.
     const ship = makeShip({ pos: { x: 1600, y: 1800 }, heading: 0 });
     const r = updateNavigation(ship, HEADWIND, realTerrainAt, 1);
-    expect(r.pos).toEqual({ x: 1600, y: 1800 });
+    const crawl = ptDist(r.pos, { x: 1600, y: 1800 });
+    const beam = ptDist(
+      updateNavigation(
+        makeShip({ pos: { x: 1600, y: 1800 }, heading: Math.PI / 2 }),
+        HEADWIND, realTerrainAt, 1,
+      ).pos,
+      { x: 1600, y: 1800 },
+    );
+    expect(crawl).toBeGreaterThan(0);
+    expect(crawl).toBeLessThan(beam / 20);
     expect(r.mode).toBe("sailing");
   });
 
@@ -693,5 +710,171 @@ describe("applyTurn and the men at the braces", () => {
     const sloop = makeShip().ship!;
     const landed = makeShip({ mode: "landed", heading: 0, ship: { ...sloop, crew: { current: 1, max: 30, morale: 1 } } });
     expect(applyTurn(landed, "right", 99).heading).toBeCloseTo(0.96, 10);
+  });
+});
+
+// ===========================================================================
+// 9) The dead zone is not dead (v0.53.0)
+// ===========================================================================
+
+/**
+ * Beating to windward used to be strictly worse than not beating at all.
+ *
+ * The polar was blended with a flat base speed as `1 + (factor - 1) * W`, and
+ * the flat half of that blend was paid in full inside the dead zone. At the
+ * ordinary Caribbean trade wind (`W` around 0.5) a ship in irons therefore made
+ * 0.48 of base speed, and since `cos(0°) = 1`, pointing **straight into the
+ * wind** beat every tack every class could lay. Nine dead angles on the help
+ * screen, a polar diagram and an "in irons" warning changed no decision.
+ *
+ * These are the claims of the fix. The first two are the mechanic; the third
+ * and fourth are the promise that nothing else moved.
+ */
+describe("the dead zone is not dead", () => {
+  const D = Math.PI / 180;
+  const TRADE_WIND = 0.52; // the seasonal base is 0.48-0.62 all year
+
+  /** Speed made good to windward, and the heading that gives it. */
+  function bestBeat(minWindAngle: number, W = TRADE_WIND) {
+    let vmg = -Infinity;
+    let deg = 0;
+    for (let d = 0; d <= 180; d += 0.25) {
+      const made = windSpeedModifier(d * D, 0, W, minWindAngle) * Math.cos(d * D);
+      if (made > vmg) { vmg = made; deg = d; }
+    }
+    return { vmg, deg };
+  }
+
+  const RIGS = [30, 35, 40, 45, 50, 55, 60]; // every minWindAngle in ships.ts
+
+  it("every rig in the game makes better way to windward on a tack than in irons", () => {
+    for (const mwa of RIGS) {
+      const beat = bestBeat(mwa);
+      const irons = windSpeedModifier(0, 0, TRADE_WIND, mwa);
+      expect(beat.vmg).toBeGreaterThan(irons * 2);
+      expect(beat.deg).toBeGreaterThan(mwa);
+    }
+  });
+
+  it("the best beat lies inside the close-hauled band, not out on the beam", () => {
+    // If it landed at the reach the mechanic would still be a lie: the player
+    // would be sailing across the wind and calling it working to windward.
+    for (const mwa of RIGS) {
+      const { deg } = bestBeat(mwa);
+      expect(deg).toBeGreaterThan(mwa);
+      expect(deg).toBeLessThan(mwa + 30);
+    }
+  });
+
+  it("a fore-and-aft rig points closer and makes more ground than a square rig", () => {
+    const pinnace = bestBeat(30);
+    const galleon = bestBeat(60);
+    expect(pinnace.deg).toBeLessThan(galleon.deg);
+    expect(pinnace.vmg).toBeGreaterThan(galleon.vmg * 2);
+  });
+
+  it("at or above the close-hauled ceiling the curve is the one from v0.9.4", () => {
+    // The old shape was `1 + (factor - 1) * W`: affine in wind strength, and
+    // pinned by its own value at full strength. Assert exactly that, without
+    // naming a single factor, everywhere the release promised to change nothing.
+    for (const mwa of RIGS) {
+      for (let d = mwa + 30; d <= 180; d += 1) {
+        const full = windSpeedModifier(d * D, 0, 1.0, mwa);
+        for (const W of [0, 0.2, 0.48, 0.52, 0.62, 0.9, 1.0]) {
+          expect(windSpeedModifier(d * D, 0, W, mwa)).toBeCloseTo(1 + (full - 1) * W, 10);
+        }
+      }
+    }
+  });
+
+  it("the anchor points of the polar are untouched", () => {
+    expect(windSpeedModifier((60 * D), 0, 1.0, 30)).toBeCloseTo(BEAT_CEIL, 10);
+    expect(windSpeedModifier((90 * D), 0, 1.0, 30)).toBeCloseTo(1.5, 10);
+    expect(windSpeedModifier((120 * D), 0, 1.0, 30)).toBeCloseTo(1.1, 10);
+    expect(windSpeedModifier((180 * D), 0, 1.0, 30)).toBeCloseTo(0.9, 10);
+  });
+
+  it("a dead calm still reads base speed on every heading, dead zone included", () => {
+    for (const mwa of RIGS) {
+      for (let d = 0; d <= 180; d += 5) {
+        expect(windSpeedModifier(d * D, 0, 0, mwa)).toBeCloseTo(1.0, 10);
+      }
+    }
+  });
+
+  it("the curve never jumps: no step bigger than a tenth over one degree", () => {
+    for (const mwa of RIGS) {
+      for (const W of [0.3, TRADE_WIND, 1.0]) {
+        let prev = windSpeedModifier(0, 0, W, mwa);
+        for (let d = 0.5; d <= 180; d += 0.5) {
+          const cur = windSpeedModifier(d * D, 0, W, mwa);
+          expect(Math.abs(cur - prev)).toBeLessThan(0.1);
+          prev = cur;
+        }
+      }
+    }
+  });
+
+  it("draw is nothing at the eye of the wind and everything past the ceiling", () => {
+    expect(windPolar(0, 0, TRADE_WIND, 60).draw).toBe(0);
+    expect(windPolar(59 * D, 0, TRADE_WIND, 60).draw).toBe(0);
+    expect(windPolar(90 * D, 0, TRADE_WIND, 60).draw).toBe(1);
+    expect(windPolar(180 * D, 0, TRADE_WIND, 60).draw).toBe(1);
+    let prev = 0;
+    for (let d = 60; d <= 90; d += 1) {
+      const cur = windPolar(d * D, 0, TRADE_WIND, 60).draw;
+      expect(cur).toBeGreaterThanOrEqual(prev);
+      prev = cur;
+    }
+  });
+
+  it("the master navigator cannot sail into the eye of the wind", () => {
+    // He recovers a share of what the wind is not giving — and the dead zone is
+    // pure shortfall, so before `draw` existed he recovered a fifth of it and
+    // put a galleon back to making better way straight upwind than on her best
+    // beat. This is the assertion that the guard is wired all the way through.
+    const irons = windPolar(0, 0, TRADE_WIND, 60);
+    const sailed = navigatedWindModifier(irons.speed, 10, irons.draw);
+    expect(sailed).toBeCloseTo(irons.speed, 10);
+
+    let bestTack = -Infinity;
+    for (let d = 60; d <= 120; d += 0.5) {
+      const p = windPolar(d * D, 0, TRADE_WIND, 60);
+      bestTack = Math.max(bestTack, navigatedWindModifier(p.speed, 10, p.draw) * Math.cos(d * D));
+    }
+    expect(bestTack).toBeGreaterThan(sailed * 2);
+  });
+
+  it("he is still worth his keep where the wind serves worst", () => {
+    const beat = windPolar(70 * D, 0, TRADE_WIND, 60); // hard on the wind, drawing
+    expect(navigatedWindModifier(beat.speed, 10, beat.draw)).toBeGreaterThan(beat.speed);
+    const reach = windPolar(105 * D, 0, TRADE_WIND, 60);
+    expect(navigatedWindModifier(reach.speed, 10, reach.draw)).toBeCloseTo(reach.speed, 10);
+  });
+
+  it("the printed best beat is the one the polar actually gives", () => {
+    // The help screen prints this number beside the dead angle. Derived, never
+    // stored — so it cannot drift away from the curve the ship is sailed by.
+    for (const mwa of RIGS) {
+      expect(bestBeatAngle(mwa)).toBe(Math.round(bestBeat(mwa).deg));
+      expect(bestBeatAngle(mwa)).toBeGreaterThan(mwa);
+    }
+    // And it is not a flat offset off the dead angle — it is the meeting of two
+    // curves. A pinnace can afford to crack twenty degrees off hers, because at
+    // 51° the cosine still hands back two thirds of what she makes. A galleon
+    // beating at 70° has almost no cosine left to spend, so her best beat sits
+    // ten degrees off her dead angle and buys her very little. That is the whole
+    // reason a heavy square rigger is a downwind ship.
+    expect(bestBeatAngle(30)).toBe(51);
+    expect(bestBeatAngle(60)).toBe(70);
+    expect(bestBeatAngle(60) - 60).toBeLessThan(bestBeatAngle(30) - 30);
+  });
+
+  it("she keeps steerage way — never nailed to the sea", () => {
+    for (const mwa of RIGS) {
+      for (const W of [0.3, TRADE_WIND, 1.0]) {
+        expect(windSpeedModifier(0, 0, W, mwa)).toBeGreaterThanOrEqual(IRONS_STEERAGE);
+      }
+    }
   });
 });

@@ -160,7 +160,7 @@ export const PL: LocaleData = {
   "sail.reefed": "Żagle zrefowane",
   "sail.half": "Połowa żagli",
   "sail.full": "Pełne żagle",
-  "sail.in_irons": "⚠ Pod wiatr!",
+  "sail.in_irons": "⚠ Pod wiatr — odpadnij!",
   "sail.shoaling": "⚠ Płycizna!",
   "sail.aground": "⚠ NA MIELIŹNIE!",
   // Poziomy obsady (v0.49.0). Na HUD trafiają tylko trzy niedobory —

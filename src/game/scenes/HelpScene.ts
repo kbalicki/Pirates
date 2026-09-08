@@ -5,6 +5,7 @@
 import Phaser from "phaser";
 import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
 import { visionRangeForMast } from "../render/WorldRenderer.ts";
+import { bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
 import { txt } from "../ui/textStyle.ts";
 
 type HelpSection = "controls" | "ships" | "sailing" | "world" | "economy";
@@ -122,7 +123,7 @@ export class HelpScene extends Phaser.Scene {
     y += 8;
     // Header — max knots = speedBase × peakWindMod(1.5) × displayMultiplier(32)
     const cols = [0, 105, 160, 215, 265, 310, 365, 425, 500, 565, 630, 710];
-    const headers = ["Statek", "Max kn", "Skręt", "Kadłub", "Żagle", "Armaty", "Ładunek", "Załoga", "Wiatr°", "Luneta", "Tonaż", "Ożaglow."];
+    const headers = ["Statek", "Max kn", "Skręt", "Kadłub", "Żagle", "Armaty", "Ładunek", "Załoga", "Mart/Hals", "Luneta", "Tonaż", "Ożaglow."];
     headers.forEach((h, i) => {
       this.add.text(left + cols[i], y, h, { ...txt(10, { bold: true, color: "#888888" }) }).setDepth(5);
     });
@@ -147,7 +148,8 @@ export class HelpScene extends Phaser.Scene {
       this.add.text(left + cols[5], y, `${ship.cannons}`, { ...txt(11, { color: "#cc8888" }) }).setDepth(5);
       this.add.text(left + cols[6], y, `${ship.cargoCap}t`, { ...txt(11, { color: "#ccaa66" }) }).setDepth(5);
       this.add.text(left + cols[7], y, `${ship.crewMin}-${ship.crewMax}`, { ...txt(11, { color: "#cccccc" }) }).setDepth(5);
-      this.add.text(left + cols[8], y, `${ship.minWindAngle}°`, { ...txt(11, { color: "#ee8844" }) }).setDepth(5);
+      // Dead angle and the best beat: what she may not do, and what she should.
+      this.add.text(left + cols[8], y, `${ship.minWindAngle}/${bestBeatAngle(ship.minWindAngle)}°`, { ...txt(11, { color: "#ee8844" }) }).setDepth(5);
       this.add.text(left + cols[9], y, `${vision}`, { ...txt(11, { color: "#66ccff" }) }).setDepth(5);
       this.add.text(left + cols[10], y, `${ship.tonnage}t`, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
       this.add.text(left + cols[11], y, ship.rigType, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
@@ -159,14 +161,14 @@ export class HelpScene extends Phaser.Scene {
     y += 10;
     const lines = [
       { title: "Kierunek wiatru", desc: "Kompas pokazuje skąd wieje wiatr. Strzałka = kierunek." },
-      { title: "Martwa strefa", desc: "Nie można płynąć bezpośrednio pod wiatr. Kąt zależy od statku (35°–60°)." },
-      { title: "Hals (close hauled)", desc: "Tuż za martwą strefą. Wolno, ale możliwe. Najlepsza do bicia pod wiatr." },
+      { title: "Martwa strefa", desc: "Dziobem w wiatr statek staje — zostaje mu tyle ruchu, żeby słuchał steru, i nic więcej. Kąt zależy od ożaglowania (30°–60°), kolumna „Mart/Hals” obok." },
+      { title: "Hals (close hauled)", desc: "Tuż za martwą strefą. Wolniej niż w baksztag, ale to JEDYNY sposób, żeby posuwać się pod wiatr: druga liczba w kolumnie „Mart/Hals” to kurs, na którym ten sam statek zyskuje na wiatr najwięcej. Slup robi tak 6-7 razy więcej drogi niż z dziobem w wiatr, galeon 3 razy — i dlatego ciężki żaglowiec rejowy chodzi z wiatrem, a nie pod niego." },
       { title: "Baksztag (beam reach)", desc: "~90° do wiatru. NAJSZYBSZY punkt żeglowania (150% prędkości bazowej)." },
       { title: "Z wiatrem (running)", desc: "Wiatr w rufę. ~90-110% prędkości, ale nie najszybciej." },
       { title: "Poziomy żagli", desc: "W/S zmienia: Zwinięte → Zrefowane → Połowa → Pełne. Zmiana trwa 2s przy pełnej obsadzie — przy szczątkowej nawet trzy razy dłużej." },
       { title: "Obsada statku", desc: "Kolumna „Załoga” w tabeli obok to minimum i komplet. Minimum to tylu ludzi, ilu trzeba, żeby statek w ogóle pracował — poniżej niego wolniej się skręca, wolniej stawia i refuje żagle, a prędkość spada. Braki widać na HUD („Za mało rąk”) i w Kabinie (SPACE)." },
       { title: "Załoga pryzowa", desc: "Zdobyty statek nie płynie sam: ludzi na niego bierzesz z własnego pokładu, a braki uzupełniasz przymuszonymi z jego pobitej załogi (zgadza się na to połowa ocalałych). Slup potrafi obsadzić brygantynę, ale nie galeon — taki pryz pełznie i ciągnie za sobą całą eskadrę, bo flota płynie tempem najwolniejszego. Czasem lepiej go zatopić." },
-      { title: "Typ ożaglowania", desc: "Fore-and-aft (slup): bliżej pod wiatr (35°). Square (galeon): dalej (60°)." },
+      { title: "Typ ożaglowania", desc: "Fore-and-aft (slup): bliżej pod wiatr (30-40°), najlepszy hals około 50°. Square (galeon): martwa strefa 55-60°, najlepszy hals dopiero koło 70° — a tam cosinus daje już niewiele, więc na wschód, pod pasat, ciężki żaglowiec płynie po prostu długo." },
       { title: "Luneta", desc: "Zasięg widzenia zależy od wysokości masztów statku. Wyższy maszt = dalej widzisz." },
     ];
     for (const { title, desc } of lines) {

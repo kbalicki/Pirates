@@ -3,7 +3,7 @@ import type { CombatCommand } from "../model/Commands.ts";
 import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
-import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
+import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
 import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
@@ -149,9 +149,11 @@ export class CombatEngine {
           // The captain sails his own hull and his consorts; the enemy has a
           // navigator of his own and gets the neutral value (v0.47.0).
           const ownHull = id === (state.playerShipId as string) || id.startsWith("ally_");
+          const polar = windPolar(entity.heading, state.wind.dirRad, state.wind.strength);
           const windMod = navigatedWindModifier(
-            windSpeedModifier(entity.heading, state.wind.dirRad, state.wind.strength),
+            polar.speed,
             ownHull ? this.navigation : NEUTRAL_NAVIGATION,
+            polar.draw,
           );
           // Damage tiers (v0.9.9): hull and rigging each cost speed in stages.
           // A dismasted ship returns 0 and drifts, whatever the helm orders.

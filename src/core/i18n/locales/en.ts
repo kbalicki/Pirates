@@ -160,7 +160,7 @@ export const EN: LocaleData = {
   "sail.reefed": "Reefed",
   "sail.half": "Half Sail",
   "sail.full": "Full Sail",
-  "sail.in_irons": "⚠ Into the wind!",
+  "sail.in_irons": "⚠ In irons — bear away!",
   "sail.shoaling": "⚠ Shoal water!",
   "sail.aground": "⚠ AGROUND!",
   // Manning tiers (v0.49.0). Only the three short ones are ever drawn on the

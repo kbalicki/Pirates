@@ -2,7 +2,7 @@ import type { EntityState } from "../model/EntityState.ts";
 import type { WeatherState, Vec2 } from "../model/WorldState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../services/Geometry.ts";
-import { windSpeedModifier, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
+import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
 import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
 import { depthAt, soundings, AGROUND_HULL_PER_TICK } from "../services/SeaDepth.ts";
 import { manningSpeedMultiplier, manningTurnMultiplier } from "./CrewSystem.ts";
@@ -68,10 +68,10 @@ export function updateNavigation(
   // Calculate effective speed (fleet multiplier slows to slowest ship)
   // A good navigator is worth most where the wind serves worst, and nothing at
   // all on a broad reach — see `navigatedWindModifier`.
-  const windMod = navigatedWindModifier(
-    windSpeedModifier(entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30),
-    navigation,
+  const polar = windPolar(
+    entity.heading, weather.windDirRad, weather.windStrength, shipClass.minWindAngle ?? 30,
   );
+  const windMod = navigatedWindModifier(polar.speed, navigation, polar.draw);
   // Damage tiers (v0.9.9). Unlike in battle, a dismasted ship still crawls —
   // repairs only exist in port, so a true zero here would strand the player.
   const damageMod = mapDamageSpeedMultiplier(

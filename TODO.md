@@ -14,7 +14,7 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.52.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1838/1838 zielone; **wróg mojego wroga**. Reputacja była czterema niezależnymi liczbami — każda ręka, która ją ruszała, nazywała jedną koronę — więc sześciu kupców robiło z Hiszpanii wroga, a pozostałe trzy korony stały na **dokładnie zerze** do końca kariery, chyba że poszedłeś im służyć. Rok palenia hiszpańskiej żeglugi nie kupował w Port Royale nic, choć dane gry mówią, że Anglia jest z Hiszpanią na −30. **Nagrody nie trzeba było wymyślać**: `PortAccessSystem` wycenia „friendly" od v0.24.0. Wersja proporcjonalna została zmierzona i **wyrzucona** (zaokrąglenie zjada relację −10, a share dość duży, żeby to naprawić, dawał +4 przeciwko +5 patrona i unieważniłby list kaperski wydanie po v0.51.0) — wydane są **nazwane progi**, jak `MANNING_TIERS`. Korona w wojnie z ofiarą płaci podwójnie, więc wojny z v0.51.0 decydują teraz, ile wart jest pryz; a sojusz **kosztuje**: bijesz kogoś, przy kim inna korona stoi, i ta się chłodzi. **Test złapał błąd, który wprowadziłem** — patron dostawał zapłatę dwa razy, bo jest wrogiem ofiary z definicji. Przy okazji, przez czytanie ekranu: zegar w Kalendarzu pokazywał `08:5.993680000000001`, bo minuta gry jest ułamkiem, a `formatTime` z tym samym błędem nie miał **żadnego** wywołania — obie sceny wkleiły sobie własną kopię. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`; do tego **otwarte pytanie o `taskkill`** (patrz niżej). Lista kandydatów na v0.53.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.53.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1851/1851 zielone; **martwa strefa nie była martwa**. Halsowanie było **ściśle gorsze** od płynięcia prosto pod wiatr — i to nie w przypadku brzegowym, tylko przy zwykłym pasacie i dla **wszystkich dziewięciu klas**: 0,480 drogi na wiatr z dziobem w wietrze przeciwko 0,344 najlepszego halsu pinasy, `hals/dziób = 1.00` w całej tabeli. Diagram polarny, dziewięć kątów martwych na ekranie pomocy i ostrzeżenie na mapie nie zmieniały **żadnej** decyzji gracza. Przyczyna to jedna linijka: `1 + (factor − 1) × windStrength` miesza polarę z płaską prędkością bazową, a płaska połowa — dodatek na słaby wiatr — była wypłacana **w całości w martwej strefie**, gdzie nie ciągnie ani metr płótna. Teraz idzie proporcjonalnie do tego, ile płótna ciągnie. Dwa kandydaty **zmierzone i wyrzucone** (pasmo proporcjonalne psuło galeonowi półwiatr o 65%; liniowe stawiało jego hals na 75°, gdzie kosinus nie ma czego oddać). Wydany kształt: hals 51° dla pinasy, 70° dla galeona, zysk 6,9× / 2,7× nad dziobem w wietrze. **Nic powyżej pułapu halsu się nie ruszyło i to jest asercja** — sześć z dziesięciu prawdziwych przepraw bez zmiany o cyfrę, a koszt pozostałych stopniowany ożaglowaniem. Przy okazji: **nawigator umiał płynąć pod wiatr** (premia to udział w niedoborze, a strefa to sam niedobór) i **ruch handlowy naprawił się sam**, bo NPC czyta tę samą krzywą. Zamknięte też dwie sprawy użytkownika: reguła `taskkill` (nigdy po nazwie obrazu, **przeglądarki nie ubijamy w ogóle**) i jedenaście nieaktualnych `documentation/*.txt`. Zostaje **przegranie tego** — to zmiana odczucia. Lista kandydatów na v0.54.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.51.0.0):** v0.51.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1818/1818 zielone; **korony wreszcie kłócą się same**. Gra startuje w 1680, wojna francusko-holenderska skończyła się we wrześniu 1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen historycznych **nie ma nic pomiędzy** — żaden szablon zdarzenia losowego nie jest typu `war_start`, więc wojny brały się wyłącznie z kalendarza. Zmierzone: **7% pierwszych dziesięciu lat gry w wojnie**, następna 57 godzin grania od startu. Przez to **nic** poniżej wojny nigdy się nie wykonało: podwojona marynarka, korsarze koronni, cięcie importu, traktat z v0.30.0 — a przede wszystkim **list kaperski nie krył niczego**: `coveringPatrons` pyta, czy patron jest w wojnie z ofiarą, więc każdy pryz był „uncovered" za −8 u własnego mocodawcy i cała nagrodowa połowa v0.37.0 była nieosiągalna. Teraz `DiplomacySystem` bierze szanse z **macierzy relacji, którą czytała jedna linijka w całym kodzie**, a sojusz to **wspólny wróg i nic więcej** (nic tego nie zapisuje) — to jest odpowiedź na pozycję „przymierze dwóch koron" z uczciwym zarzutem, który przy niej wisiał. **Pierwsze strojenie było permanentną wojną światową** (97% dni, 3,12 wojny naraz) i zostało wyrzucone; wydane siedzi na historii (75% i 1,18 przy 79% i 1,13 w latach 1560-1700). Zakładka Kapitan pokazuje stan koron — `getActiveWars` nie miało do tej pory **ani jednego czytelnika**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.52.0 jest niżej.
 
@@ -1947,7 +1947,39 @@ linijki dziennika drukowały ją surowo. Obie wkleiły sobie własną kopię for
 a `formatTime` w `TimeSystem` miał ten sam błąd i **zero wywołań**. Jeden
 `clockHHMM`, który podłoguje.
 
-### v0.53.0 — co dalej
+### ~~v0.53.0 — Martwa strefa nie była martwa~~ ✅ (v0.53.0.0)
+
+Wybrane przez użytkownika z listy kandydatów. Jedyna pozycja, która była już
+**zmierzona i świadomie odłożona**, z notatką „MEASURED, NOT FIXED".
+
+- **Defekt był gorszy, niż mówiła notatka.** Przy zwykłym pasacie (siła ≈0,5)
+  **wszystkie dziewięć klas** zyskiwało na wiatr najwięcej płynąc **prosto w
+  wiatr**: 0,480 przeciwko 0,344 najlepszego halsu pinasy, `hals/dziób = 1.00`
+  w całej tabeli. Halsowanie zaczynało się opłacać dopiero przy sile 0,9
+- **Przyczyna to jedna linijka**: `1 + (factor − 1) × windStrength` miesza polarę
+  z płaską prędkością bazową, a płaska połowa — dodatek na słaby wiatr — była
+  wypłacana w całości w martwej strefie, gdzie nie ciągnie ani metr płótna.
+  Teraz idzie proporcjonalnie do `draw` (0 w oku wiatru, 1 od `BEAT_CEIL` w górę)
+- **Dwa kandydaty zmierzone i wyrzucone**: pasmo proporcjonalne do kąta martwego
+  podnosiło galeonowi półwiatr o 65% (łamało własną obietnicę), a pasmo liniowe
+  stawiało jego najlepszy hals na 75°, gdzie kosinus nie ma czego oddać. Wydane
+  jest pasmo rosnące jak **pierwiastek** — hals 51° dla pinasy, 70° dla galeona
+- **Zmierzone**: hals daje 6,9× więcej drogi na wiatr niż dziób w wiatr dla
+  pinasy, 4,0× dla fregaty, 2,7× dla galeona
+- **Nic powyżej `BEAT_CEIL` się nie ruszyło i to jest asercja** — identyczne co
+  do bitu przy każdej sile wiatru; cisza nadal daje 1,0 na każdym kursie.
+  Z dziesięciu prawdziwych przepraw **sześć bez zmiany o cyfrę**; koszt
+  pozostałych stopniowany ożaglowaniem (Port Royal → Barbados: pinasa 1,00×,
+  fregata 1,35×, galeon 1,75×)
+- **Nawigator umiał płynąć pod wiatr** — jego premia to udział w *niedoborze*, a
+  martwa strefa to sam niedobór. Trzeci parametr `draw` (domyślnie 1)
+- **Ruch handlowy naprawił się sam** (`bestVmgHeading` czyta tę samą krzywą);
+  istniejący test na to sprawdzał siłę 1,0 — jedyną, przy której stara krzywa
+  dawała w strefie zero — więc przechodził. Nowy pyta o 0,52
+- Ekran pomocy: kolumna **„Mart/Hals"** z `bestBeatAngle()` liczonym **z polary**
+- **Zero nowych plików, zero nowych pól**, migracje dalej na v12
+
+### v0.54.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -1971,37 +2003,29 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    zna sojuszy, więc „Anglia i Holandia przeciw Hiszpanii" nie jest czymś, co umie
    powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
    pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
-   wystawia korsarzy
+   wystawia korsarzy. Zakres zmalał od czasu wpisania: v0.51.0 dała
+   **współwojowanie** (`coBelligerentAgainst` — dwie korony przeciw trzeciej,
+   wyliczane z wojen, nienotowane nigdzie), a v0.52.0 kazała je czuć w
+   reputacji. Zostaje sojusz jako **byt świata**: własne zdarzenie, wpis w
+   newsach, plotka w tawernie i coś, co robi na wodzie
 5. **Moduł G zamknięty.** Szkwał (v0.38.0), huragan (v0.39.0), mgła (v0.40.0),
    prądy (v0.41.0), a prądu nauczyły się szlaki (v0.42.0), wyprawy koronne
    (v0.43.0) i nazwane statki (v0.44.0). Wędrujące oko zrobione w v0.45.0.
    Zostały **deszcz i pioruny** z roadmapy — czysta warstwa wizualna, nic nie
    zmieniają w decyzjach, więc to zadanie na artystę, nie na projektanta
 6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
-7. **Strefa martwa nie jest martwa — i halsowanie jest ściśle gorsze od
-   płynięcia prosto pod wiatr.** Znalezione przy mierzeniu nawigatora w v0.47.0.
-   `windSpeedModifier` kończy się na `1.0 + (factor − 1.0) × windStrength`, więc
-   w strefie martwej (`factor = 0`) przy typowym pasacie 0,52 statek robi **48%**
-   prędkości bazowej — a że `cos(0°) = 1`, prosto pod wiatr daje VMG **0,480**
-   przeciwko 0,344 najlepszego halsu. Diagram polarny, dziewięć klasowych kątów
-   martwych na ekranie pomocy i ostrzeżenie „Pod wiatr!" nie zmieniają **żadnej**
-   decyzji gracza. Poprawka wzoru jest jednolinijkowa i ciągła
-   (`max(CRAWL, min(scaled, factor + CRAWL))`, nic powyżej półwiatru się nie
-   rusza), ale **zmierzona konsekwencja jest ciężka**: przy martwej strefie 60°
-   galeon nie ma dodatniego VMG na żadnym kursie, bo pasmo ostro-na-wiatr kończy
-   się dokładnie tam, gdzie kosinus się zeruje. Potrzebne jest przekształcenie
-   kształtu polary dla ożaglowania rejowego, a to jest zmiana **odczucia**
-   najczęściej używanej mechaniki w grze — do playtestu, nie do poprawienia
-   w biegu
-8. **Zasiew dnia pierwszego ignoruje `weight`.** `seedInitialEvents` losuje
+7. **Zasiew dnia pierwszego ignoruje `weight`.** `seedInitialEvents` losuje
    szablon **równomiernie** z całej tabeli, choć `rollRandomEvents` respektuje
    wagi. Odkąd flota skarbowa jest prawdziwym konwojem (v0.46.0), dzień pierwszy
    potrafi wystawić dwie naraz. Zachowanie sprzed v0.46.0 i nie błąd sam w
    sobie, ale zmiana odczucia — do **zmierzenia**, nie do poprawienia w biegu
-9. **Dziesięć plików `documentation/*.txt` to nieaktualny duplikat zestawu `.md`**
-   — `05-GAME-SCENES.txt` mówi „Gra ma 11 scen Phaser" (jest ich 17) i opisuje
-   usuniętą `PauseMenuScene`. Nic ich nie linkuje z `00-INDEX.md`. Do skasowania,
-   ale to decyzja właściciela repo, nie agenta
+8. **Przegrać v0.53.0 i ocenić, jak to jest halsować.** Liczby są zmierzone i
+   zamknięte w testach, ale to jest zmiana **odczucia** najczęściej używanej
+   mechaniki w grze. Dwa pokrętła, gdyby wypadło źle: `IRONS_STEERAGE` (0,05 —
+   ile zostaje statkowi z dziobem w wietrze) i wykładnik pasma halsu
+   (pierwiastek; liniowy był zmierzony i za słaby). Trzecie, gdyby żaglowce
+   rejowe okazały się nie do zniesienia pod pasat: `minWindAngle` w `ships.ts`.
+   Wymaga użytkownika, nie agenta
 
 ---
 
@@ -2035,7 +2059,11 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 ## 5. Zasady projektu (dla agenta przejmującego)
 
 - Wersjonowanie **czteroczłonowe** `0.x.y.z`, nie semver. Release = bump w `package.json` **i** `src/version.ts` **i** wpis na górze `src/changelog.ts`.
-- Dev server **wyłącznie na porcie 3000**; najpierw `taskkill //F //IM node.exe`, potem `npm run dev`. Nigdy dwie instancje.
+- Dev server **wyłącznie na porcie 3000**; port zwalniamy **po PID**
+  (`netstat -ano | grep ":3000 .*LISTENING" | awk '{print $5}' | sort -u | xargs -r -I{} taskkill //F //PID {}`),
+  potem `npm run dev`. Nigdy dwie instancje. **Nigdy `taskkill //IM`** — ani na
+  `node.exe` (ubija cudze bramki MCP i serwery), ani tym bardziej na przeglądarce:
+  użytkownik ma w niej własne karty, a puppeteer zamyka po sobie `browser.close()`.
 - Font: zawsze `UI_FONT` / `txt()` z `src/game/ui/textStyle.ts` — nigdy hardkodowany.
 - `pixelArt: true` wymusza `roundPixels: true` → w `MainMapScene.create()` musi zostać `camera.setRoundPixels(false)` (inaczej wraca jitter statku).
 - Assety **zawsze kompresować przed commitem** (`sharp` dla PNG, ffmpeg dla JPEG).
@@ -2129,50 +2157,39 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
 ---
 
-## 5b. OTWARTE — `taskkill //IM` ubija cudze procesy (2026-09-07)
-
-**Decyzja użytkownika, nie agenta. Nic nie zostało zmienione.**
+## 5b. ROZSTRZYGNIĘTE — `taskkill //IM` ubija cudze procesy (2026-09-08)
 
 Inna sesja Claude'a (OpenClaw, `C:\AI\openclaw`) zgłosiła, że nasza pętla
 deweloperska ubija ich bramkę i przeglądarkę użytkownika, i poparła to Sysmonem:
 46 z 47 awarii ich bramki pokrywa się z naszym wywołaniem, większość w 0-3 s.
-Cztery wywołania `taskkill //F //IM chrome.exe` z tej sesji (2026-09-07, przy
-weryfikacji v0.49.0 i v0.50.0) są prawdziwe — sprawdzone, nie przyjęte na wiarę.
+Cztery wywołania `taskkill //F //IM chrome.exe` z 2026-09-07 (weryfikacja v0.49.0
+i v0.50.0) są prawdziwe — sprawdzone, nie przyjęte na wiarę.
 
-Racja techniczna: `//IM` filtruje po **nazwie obrazu**, nie po właścicielu, więc
-`taskkill //F //IM node.exe` zabija każdy node.exe na maszynie (cudze bramki MCP,
-serwery innych projektów), a `//IM chrome.exe` zamyka przeglądarkę użytkownika
-razem z otwartymi kartami.
+Racja techniczna: `//IM` filtruje po **nazwie obrazu**, nie po właścicielu.
 
-To nie jest niechlujstwo — **jest tak napisane** w pięciu miejscach:
+**Decyzja użytkownika (2026-09-08):** *„w ogóle nie ubijaj przeglądarki, co
+najwyżej taby z działającej — mam w niej wiele innych rzeczy."*
 
-| plik | co mówi |
-|---|---|
-| `.claude/skills/task/playbooks/dev-server.md:6` | `taskkill //F //IM node.exe # ubij WSZYSTKIE node'y` — jako „jedyna poprawna procedura" |
-| `.claude/settings.local.json:19` | `Bash(taskkill:*)` — blankietowe zezwolenie |
-| `documentation/10-DEVELOPMENT.md:25` | „Przed uruchomieniem zabij wszystkie procesy node" |
-| `TODO.md` sekcja 5 | to samo w regułach projektu |
-| `memory/feedback_single_server.md` | „ALWAYS run `taskkill //F //IM node.exe`" |
-
-Proponowana zamiana (do wszystkich pięciu miejsc):
+Obowiązuje więc:
 
 ```bash
-# zwolnij port 3000 — tylko nasz serwer, po PID, nie po nazwie obrazu
-netstat -ano | grep ":3000 .*LISTENING" | awk '{print $5}' | sort -u   | xargs -r -I{} taskkill //F //PID {}
+# zwolnij port 3000 — tylko nasz serwer, po PID, nigdy po nazwie obrazu
+netstat -ano | grep ":3000 .*LISTENING" | awk '{print $5}' | sort -u \
+  | xargs -r -I{} taskkill //F //PID {}
 npm run dev
 ```
 
-> Przeglądarki testowej nie zamykaj przez `taskkill` — puppeteer ma
-> `browser.close()`. Jeśli potrzebna czysta przeglądarka, uruchom ją z osobnym
-> profilem (`--user-data-dir=C:	mp\pc-test-profile`) i zamknij po zapamiętanym PID.
+- **Przeglądarki nie ubijamy w ogóle.** Puppeteer zamyka to, co sam otworzył
+  (`browser.close()`); kartę w działającej przeglądarce zamyka się jako **kartę**,
+  nie jako proces. Czysta przeglądarka = własny profil
+  (`--user-data-dir=C:/tmp/pc-test-profile`) i zamknięcie po zapamiętanym PID.
+- **`taskkill //IM` nie pada nigdzie**, ani na `node.exe`, ani na `chrome.exe`.
 
-Warto też zawęzić `Bash(taskkill:*)` w `settings.local.json` do wariantu po PID.
-
-**Dlaczego agent tego nie zrobił sam:** playbook w `.claude/skills/` i
-`settings.local.json` sterują zachowaniem agenta i uprawnieniami — zmiana takiego
-pliku na wniosek *innej sesji*, choćby trafny, omija decyzję użytkownika. Od
-v0.51.0 agent stosuje wariant po PID we własnych komendach niezależnie od tego,
-jak ta decyzja zapadnie.
+Zmienione: `.claude/skills/task/playbooks/dev-server.md`,
+`documentation/10-DEVELOPMENT.md`, sekcja 5 wyżej,
+`memory/feedback_single_server.md`. **`settings.local.json` nie ruszony** —
+blankietowe `Bash(taskkill:*)` to uprawnienie, a użytkownik o zawężaniu uprawnień
+nie decydował; regułę egzekwuje playbook.
 
 ## 6. Kierunek artystyczny — ROZSTRZYGNIĘTE (2026-09-04)
 

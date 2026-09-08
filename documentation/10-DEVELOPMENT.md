@@ -22,7 +22,11 @@ npm run dev
 
 **Ważne:**
 - Zawsze restartuj na porcie 3000
-- Przed uruchomieniem zabij wszystkie procesy node: `taskkill //F //IM node.exe`
+- Przed uruchomieniem zwolnij port 3000 **po PID**, nigdy po nazwie obrazu:
+  `netstat -ano | grep ":3000 .*LISTENING" | awk '{print $5}' | sort -u | xargs -r -I{} taskkill //F //PID {}`
+- **Nigdy `taskkill //F //IM node.exe`** — `//IM` ubija każdy `node.exe` na maszynie
+  (bramki MCP, serwery innych projektów). I **nigdy `taskkill` na przeglądarce**:
+  puppeteer ma `browser.close()`, a otwarte karty użytkownika to jego praca
 - Nie zostawiaj wielu instancji serwera
 
 ## Skrypty npm

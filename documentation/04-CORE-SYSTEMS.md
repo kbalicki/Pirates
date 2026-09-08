@@ -128,7 +128,7 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 - Kierunek: radiany (0=N, π/2=E, π=S, 3π/2=W)
 - Siła: 0.0 (cisza) do 1.0 (sztorm)
 
-### Model polarny prędkości (v0.9.4, poprawiony w v0.9.8.2)
+### Model polarny prędkości (v0.9.4, poprawiony w v0.9.8.2 i v0.53.0)
 
 `windSpeedModifier(shipHeading, windDirRad, windStrength, minWindAngle)`
 
@@ -136,16 +136,39 @@ newStrength  = currentStrength  + (seasonalBase - currentStrength)  × STRENGTH_
 
 | Kąt do wiatru | Współczynnik przy pełnej sile | Nazwa |
 |---------------|-------------------------------|-------|
-| 0° – minWindAngle | 0 | martwa strefa — statek nie robi drogi |
-| minWindAngle – +30° | 0 → 0.4 (liniowo) | ostro na wiatr (close hauled) |
+| 0° – minWindAngle | `IRONS_STEERAGE` (0.05) | martwa strefa — zostaje tyle drogi, żeby słuchała steru |
+| minWindAngle – +30° | 0 → 0.4 (jak pierwiastek) | ostro na wiatr (close hauled) |
 | minWindAngle+30° – 120° | 0.4 → **1.5** → 1.1 (dwie ćwiartki sinusoidy) | półwiatr i baksztag, szczyt w połowie przedziału |
 | 120° – 180° | 1.1 → 0.9 | baksztag i fordewind |
 
-Wynik jest skalowany siłą wiatru: `1 + (factor − 1) × windStrength`, więc przy ciszy (`strength = 0`) każdy kurs daje dokładnie 1.0.
+Wynik jest skalowany siłą wiatru: **od `BEAT_CEIL` (0.4) w górę** dokładnie jak zawsze, `1 + (factor − 1) × windStrength`. Poniżej tego progu płaska połowa tego mieszania — dodatek na słaby wiatr — jest wypłacana **proporcjonalnie do tego, ile płótna ciągnie** (`draw`, 0 w oku wiatru, 1 od pułapu halsu w górę). Przy ciszy (`strength = 0`) każdy kurs nadal daje dokładnie 1.0, martwa strefa włącznie.
+
+`windPolar()` zwraca `{ speed, draw }`; `windSpeedModifier()` to ta sama funkcja z odrzuconym drugim polem, dla wywołujących, którym `draw` nie jest potrzebny.
 
 `minWindAngle` jest cechą klasy statku: takielunek skośny 30-35°, rejowy do 60° — slup wyostrzy tam, gdzie galeon stanie w miejscu.
 
-**Konsekwencja dla gracza:** najszybszy kurs to półwiatr (1.5×), nie fordewind (0.9×), a płynięcie prosto pod wiatr jest niemożliwe — trzeba halsować.
+**Konsekwencja dla gracza:** najszybszy kurs to półwiatr (1.5×), nie fordewind (0.9×), a płynięcie prosto pod wiatr **kosztuje** — trzeba halsować.
+
+#### Martwa strefa nie była martwa (naprawione w v0.53.0)
+
+Ostatnia linijka brzmiała `1 + (factor − 1) × windStrength` dla **każdego** kąta, a to jest mieszanie polary z płaską prędkością bazową. Płaska połowa jest dodatkiem, który utrzymuje statek w ruchu przy słabym wietrze — i była wypłacana **w całości w martwej strefie**, gdzie nie ciągnie ani metr płótna.
+
+Zmierzone przy zwyczajnym pasacie (`windStrength ≈ 0.5`): statek z dziobem w wietrze robił **0.48** prędkości bazowej, a że `cos(0°) = 1`, **wszystkie dziewięć klas** zyskiwało na wiatr najwięcej płynąc **prosto pod wiatr** — 0.480 przeciwko 0.344 najlepszego halsu pinasy. Halsowanie było ściśle gorsze od niehalsowania, więc diagram polarny, dziewięć kątów martwych na ekranie pomocy i ostrzeżenie na mapie nie zmieniały **żadnej** decyzji gracza.
+
+| klasa (martwa strefa) | najlepszy hals | ile razy lepszy niż dziób w wiatr |
+|---|---|---|
+| pinasa (30°) | 51° | 6.9× |
+| brygantyna (40°) | 57° | 5.4× |
+| fregata (50°) | 63° | 4.0× |
+| galeon (60°) | 70° | 2.7× |
+
+Pasmo halsu rośnie teraz jak **pierwiastek**, nie liniowo. Zmierzone najpierw: linia prosta stawiała najlepszy hals żaglowca rejowego na 75°, gdzie kosinus nie ma już czego oddać.
+
+**Nic powyżej pułapu halsu się nie ruszyło i to jest asercja** (`NavigationSystem.test.ts`, „the dead zone is not dead"): od `BEAT_CEIL` w górę zwracana liczba jest identyczna co do bitu przy każdej sile wiatru. Z dziesięciu prawdziwych przepraw zmierzonych przy pasacie **sześć nie zmieniło się o cyfrę**; zmieniły się te pod pasat, a koszt jest stopniowany ożaglowaniem — Port Royal → Barbados nie kosztuje pinasy nic, fregatę o trzecią część dłużej, galeon o trzy czwarte.
+
+**Nawigator umiał płynąć pod wiatr.** `navigatedWindModifier` odzyskuje część tego, czego wiatr nie daje, a martwa strefa to sam niedobór — więc im lepszy nawigator, tym mniej znaczyła, aż do wymazania. Stąd trzeci parametr `draw`: może wytrymować to, co ciągnie, i wybrać hals; nie sprawi, że płótno ciągnie w łopocie.
+
+`bestBeatAngle(minWindAngle)` liczy najlepszy hals **z samej polary**, więc nie może się od niej oderwać — ekran pomocy drukuje go w kolumnie „Mart/Hals" obok kąta martwego.
 
 Szczyt (1.5×) leży w **połowie** przedziału półwiatru, więc zależy od takielunku: slup (`minWindAngle` 30°) osiąga go przy 90°, galeon (60°) dopiero przy 105°. Za szczytem prędkość spada monotonicznie aż do fordewindu.
 

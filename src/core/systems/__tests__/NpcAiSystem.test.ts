@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { updateNpcAi, bestVmgHeading, looksDangerous } from "../NpcAiSystem.ts";
-import { windSpeedModifier } from "../WeatherSystem.ts";
+import { windSpeedModifier, IRONS_STEERAGE } from "../WeatherSystem.ts";
+import { normalizeHeading } from "../../services/Geometry.ts";
 import { entityId, portId } from "../../model/ids.ts";
 import { CITIES } from "../../data/cities.ts";
 import type { WorldState } from "../../model/WorldState.ts";
@@ -203,7 +204,20 @@ describe("the wind decides it", () => {
     // A square rig with a sixty-degree dead zone asked to make good dead to
     // windward has to come back with something that moves her.
     const upwind = bestVmgHeading(0, 0, 1, 60);
-    expect(windSpeedModifier(upwind, 0, 1, 60)).toBeGreaterThan(0);
+    expect(windSpeedModifier(upwind, 0, 1, 60)).toBeGreaterThan(IRONS_STEERAGE);
+  });
+
+  it("tacks in an ordinary trade wind, not only in a gale (v0.53.0)", () => {
+    // The claim above held at full strength and nowhere near the water. At the
+    // seasonal wind the old polar paid a ship in irons 0.48 of base speed, so
+    // this same call handed back the bearing itself — dead into the wind — for
+    // every rig in the game. The captain was told to tack by the help screen
+    // and the traffic around him never did.
+    for (const mwa of [30, 45, 60]) {
+      const h = bestVmgHeading(0, 0, 0.52, mwa);
+      const off = Math.abs(normalizeHeading(h)) * (180 / Math.PI);
+      expect(Math.min(off, 360 - off)).toBeGreaterThanOrEqual(mwa);
+    }
   });
 
   it("agrees with the bearing when there is no wind to argue with", () => {
