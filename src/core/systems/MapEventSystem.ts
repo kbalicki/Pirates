@@ -57,10 +57,11 @@ const NOT_A_TOWN_MARK: ReadonlySet<WorldEventType> = new Set<WorldEventType>([
   // Drawn by ExpeditionCourseRenderer as a course and a ring.
   "reconquest",
   "campaign",
-  // Faction-scale, and `ports` is empty for all three.
+  // Faction-scale, and `ports` is empty for all four.
   "war_start",
   "war_end",
   "treaty_signed",
+  "alliance",
 ]);
 
 /**

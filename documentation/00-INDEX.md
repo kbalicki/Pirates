@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.53.0.0 | **Ostatnia aktualizacja:** 2026-09-08
+**Wersja:** 0.55.0.0 | **Ostatnia aktualizacja:** 2026-09-08
 
 ---
 
@@ -69,4 +69,5 @@
 - [SESSION-2026-09-07D.md](SESSION-2026-09-07D.md) — v0.49.0.0 → v0.50.0.0: Karaiby mają w sobie piratów — korsarzy nie było **wcale**, `aggression` i `targetEntityId` nie czytał nikt, a pomiar zabił po drodze cały jeden projekt (monopol koronny)
 - [SESSION-2026-09-07E.md](SESSION-2026-09-07E.md) — v0.50.0.0 → v0.51.0.0: korony kłócą się same — **sześciu konsumentów bez producenta**; domyślna era startowała w dziewięcioletnim pokoju, więc list kaperski nie krył nigdy niczego
 - [SESSION-2026-09-07F.md](SESSION-2026-09-07F.md) — v0.51.0.0 → v0.52.0.0: wróg mojego wroga — reputacja była czterema niezależnymi liczbami; dlaczego progi wygrały z proporcją, i zegar, który mówił `08:5.993680000000001`
+- [SESSION-2026-09-08B.md](SESSION-2026-09-08B.md) — v0.54.0.0 → v0.55.0.0: sojusz jest bytem świata — fakt tylko wyliczany nie ma dnia, w którym się zaczął; 28,8% dni gry było faktem, którego gra nie umiała wymienić; wspólna wyprawa, obca bandera w linii, i symulacja z wyłączoną połową świata odrzucona jako kontrola
 - [SESSION-2026-09-08.md](SESSION-2026-09-08.md) — v0.52.0.0 → v0.53.0.0: martwa strefa nie była martwa — halsowanie było ściśle gorsze od niehalsowania dla wszystkich dziewięciu klas; jedna linijka, dwa kandydaty wyrzucone po pomiarze, i sześć z dziesięciu przepraw bez zmiany

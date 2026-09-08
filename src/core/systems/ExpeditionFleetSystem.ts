@@ -441,6 +441,12 @@ export function materialize(
   const sideY = Math.sin(heading);
 
   const claimant = event.factions[0];
+  // A joint landing (v0.55.0): the ally's contingent is in the same line, and
+  // the **last** hull carries his colours. It is the last one deliberately —
+  // `planHulls` puts the escorts after the transports, so the ensign that is
+  // not the claimant's ends up on a warship rather than on a troopship, which
+  // is what a captain closing on the line will actually be shot at by.
+  const ally = event.vars.allyId as string | undefined;
   let entities = { ...world.entities };
   let r = rng;
   // All or nothing. `syncLedger` reads the landing's strength back off the
@@ -474,7 +480,9 @@ export function materialize(
         depthOffset: 0,
         ship: {
           classId: cls.id,
-          factionId: makeFactionId(claimant),
+          factionId: makeFactionId(
+            ally && i === plans.length - 1 && plan.role === "escort" ? ally : claimant,
+          ),
           hullHp: cls.hullMax,
           hullMax: cls.hullMax,
           sailsHp: cls.sailsMax,

@@ -13,8 +13,12 @@ import {
   CAMPAIGN_DEFENSE_CEILING,
   CAMPAIGN_SAIL_DAYS,
   MAX_CAMPAIGNS_IN_FLIGHT,
+  jointPartner,
+  ALLY_PRESSURE,
+  ALLY_CONTINGENT,
 } from "../CrownCampaignSystem.ts";
 import { resolveRelief } from "../ReconquestSystem.ts";
+import { materialize, hullsOf } from "../ExpeditionFleetSystem.ts";
 import { portFaction } from "../SiegeSystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
@@ -432,5 +436,128 @@ describe("a campaign that arrives", () => {
     });
     const { result } = resolveRelief(world, arriving, world.rng);
     expect(campaignsInFlight(result.world)).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// The ally sails too (v0.55.0)
+// ===========================================================================
+
+/**
+ * Co-belligerence has existed since v0.51.0 and moved nothing but a relation.
+ * Measured over 150 game-years, **42% of all war-days** have a third crown
+ * fighting the same defender, and in a century of crown warfare **54% of the
+ * expeditions launched** have one — so the commonest shape of a war in this
+ * world was one this module could not see.
+ */
+describe("the third crown already fighting the same enemy", () => {
+  const SOLO = [war("england", "spain")];
+  const JOINT = [war("england", "spain"), war("france", "spain")];
+  const attack = { attacker: "england", defender: "spain" };
+
+  it("is nobody when only two crowns are in it", () => {
+    expect(jointPartner(makeWorld({ worldEvents: SOLO }), attack)).toBeUndefined();
+  });
+
+  it("is the crown with the same enemy, and never the enemy itself", () => {
+    const w = makeWorld({ worldEvents: JOINT });
+    expect(jointPartner(w, attack)).toBe("france");
+    // Spain is at war with both and is therefore co-belligerent with neither.
+    expect(jointPartner(w, { attacker: "spain", defender: "england" })).toBeUndefined();
+  });
+
+  it("is not a crown that merely dislikes the defender", () => {
+    // A war between the Dutch and the French says nothing about Spain.
+    const w = makeWorld({ worldEvents: [war("england", "spain"), war("france", "netherlands")] });
+    expect(jointPartner(w, attack)).toBeUndefined();
+  });
+
+  it("makes the expedition likelier to be fitted out at all", () => {
+    const solo = makeWorld({ worldEvents: SOLO });
+    const joint = makeWorld({ worldEvents: JOINT });
+    expect(campaignChance(joint, attack)).toBeCloseTo(campaignChance(solo, attack) * ALLY_PRESSURE, 6);
+  });
+
+  it("puts more men on the beach, and names both crowns doing it", () => {
+    const solo = makeWorld({ worldEvents: SOLO });
+    const joint = makeWorld({ worldEvents: JOINT });
+    const a = launchCampaign(solo, attack, SPANISH, solo.rng).event;
+    const b = launchCampaign(joint, attack, SPANISH, joint.rng).event;
+
+    expect(a.headline).toBe("news.campaign");
+    expect(a.vars.ally).toBeUndefined();
+    expect(b.headline).toBe("news.campaign_joint");
+    expect(b.vars.allyId).toBe("france");
+
+    const men = Number(b.vars.soldiers) / Number(a.vars.soldiers);
+    expect(men).toBeGreaterThan(1 + ALLY_CONTINGENT[0] - 0.01);
+    expect(men).toBeLessThan(1 + ALLY_CONTINGENT[1] + 0.01);
+    // Guns follow the men, as they did before: the ratio is the landing's.
+    expect(Number(b.vars.guns)).toBeGreaterThan(Number(a.vars.guns));
+  });
+
+  it("sends less when the ally has less left to send", () => {
+    // Strip France of every colony she started with: `crownStrength` falls and
+    // so does the contingent. It is the same axis a crown uses to decide
+    // whether it can spare anything for its own wars.
+    const stripped: Record<string, PortRuntimeState> = {};
+    for (const key of Object.keys(CITIES)) {
+      const french = (CITIES[key].factionId as string) === "france";
+      stripped[key] = makePort(key, french ? { factionId: factionId("pirates") } : {});
+    }
+    const strong = makeWorld({ worldEvents: JOINT });
+    const weak = makeWorld({ worldEvents: JOINT, ports: stripped });
+    const a = launchCampaign(strong, attack, SPANISH, strong.rng).event;
+    const b = launchCampaign(weak, attack, SPANISH, weak.rng).event;
+    expect(Number(b.vars.soldiers)).toBeLessThan(Number(a.vars.soldiers));
+  });
+
+  it("leaves the landing arithmetic downstream two-sided", () => {
+    // The regression this release could most easily have caused. `factions` is
+    // read as [the one coming, the one holding] by `resolveRelief` and
+    // `CityDefenseSystem`, and a third entry there would have been read as the
+    // holder by one of them. The ally rides in `vars` and nowhere else.
+    const joint = makeWorld({ worldEvents: JOINT });
+    const ev = launchCampaign(joint, attack, SPANISH, joint.rng).event;
+    expect(ev.factions).toEqual(["england", "spain"]);
+  });
+
+  it("tells the ally's own colonies about it too", () => {
+    const joint = makeWorld({
+      worldEvents: JOINT,
+      ports: Object.fromEntries(Object.keys(CITIES).map(k => [k, makePort(k)])),
+    });
+    const ev = launchCampaign(joint, attack, SPANISH, joint.rng).event;
+    const french = Object.keys(CITIES).find(k => (CITIES[k].factionId as string) === "france");
+    expect(french).toBeDefined();
+    expect(ev.ports).toContain(french);
+  });
+
+  it("puts one hull of the line under the other ensign", () => {
+    const joint = makeWorld({
+      worldEvents: JOINT,
+      ports: Object.fromEntries(Object.keys(CITIES).map(k => [k, makePort(k)])),
+    });
+    const launched = launchCampaign(joint, attack, SPANISH, joint.rng);
+    const near = { x: CITIES[SPANISH].pos.x + 300, y: CITIES[SPANISH].pos.y + 300 };
+    const out = materialize(launched.world, launched.event, near, launched.rng);
+    const flags = hullsOf(out.world, launched.event.id).map(([, e]) => e.ship?.factionId as string);
+    expect(flags.length).toBeGreaterThan(1);
+    expect(flags).toContain("england");
+    expect(flags).toContain("france");
+    // One ally hull, not half the squadron: the landing is still England's.
+    expect(flags.filter(f => f === "france")).toHaveLength(1);
+  });
+
+  it("flies one ensign when nobody joined", () => {
+    const solo = makeWorld({
+      worldEvents: SOLO,
+      ports: Object.fromEntries(Object.keys(CITIES).map(k => [k, makePort(k)])),
+    });
+    const launched = launchCampaign(solo, attack, SPANISH, solo.rng);
+    const near = { x: CITIES[SPANISH].pos.x + 300, y: CITIES[SPANISH].pos.y + 300 };
+    const out = materialize(launched.world, launched.event, near, launched.rng);
+    const flags = new Set(hullsOf(out.world, launched.event.id).map(([, e]) => e.ship?.factionId as string));
+    expect([...flags]).toEqual(["england"]);
   });
 });

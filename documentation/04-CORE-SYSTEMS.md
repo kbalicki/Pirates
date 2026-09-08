@@ -24,7 +24,7 @@
 | SeaDepth | `services/SeaDepth.ts` | Głębokość wody kontra zanurzenie kadłuba: płycizna, mielizna, pogłębione porty |
 | Crew | `CrewSystem.ts` | Ilu ludzi trzeba, żeby statek pracował; obsada pryzu z własnego pokładu i z przymuszonych |
 | Predation | `PredationSystem.ts` | Cudze pościgi: kto kogo chce, kto ucieka i jak to się kończy |
-| Diplomacy | `DiplomacySystem.ts` | Korony kłócą się same; sojusz to wspólny wróg; co zrobisz jednej, czytają wszystkie |
+| Diplomacy | `DiplomacySystem.ts` | Korony kłócą się same; sojusz to wspólny wróg **stemplowany dniem**; co zrobisz jednej, czytają wszystkie |
 | Pathfinding | `services/Pathfinding.ts` | A\* po morzu — od v0.42.0 liczy **czas przejścia**, nie odległość; `passageCost` wycenia gotowy kurs w obie strony, `pointAlong` chodzi po nim |
 | ExpeditionDeparture | `ExpeditionFleetSystem.ts` | Skąd i jak długo płynie korona — port stemplowany, dni z mapy |
 | Combat | `CombatSystem.ts` + `engine/CombatEngine.ts` | Stałe walki + symulacja bitwy |
@@ -50,7 +50,7 @@
 | EventLog | `EventLogSystem.ts` | Historia zdarzeń |
 | Reconquest | `ReconquestSystem.ts` | Korona odbija zdobyte miasto; jedyne miejsce rozliczenia desantu |
 | CityDefense | `CityDefenseSystem.ts` | Rozgrywalna bitwa obronna z murów |
-| CrownCampaign | `CrownCampaignSystem.ts` | Wojny koron przesuwające flagi |
+| CrownCampaign | `CrownCampaignSystem.ts` | Wojny koron przesuwające flagi; wspólna wyprawa dwóch sojuszników |
 | ExpeditionFleet | `ExpeditionFleetSystem.ts` | Wyprawa jako eskadra na mapie, do przechwycenia |
 | DefenseContract | `DefenseContractSystem.ts` | Zlecenie obrony u gubernatora |
 | HomePort | `HomePortSystem.ts` | Port macierzysty po ślubie: klarowanie i magazyn |
@@ -545,7 +545,7 @@ mapie (+10) — i stoczyły w tym okresie trzy prawdziwe wojny. `HOSTILITY_FLOOR
 zostawia każdej parze 25% szansy: dobra opinia czyni wojnę mało prawdopodobną,
 nigdy niemożliwą. Ten sam kształt co `defenceWeight` w `PredationSystem`.
 
-#### Czym jest sojusz
+#### Czym jest sojusz (rozszerzone w v0.55.0 — patrz niżej)
 
 Pozycja „przymierze dwóch koron" nosiła w TODO uczciwy zarzut: *co sojusz miałby
 robić, skoro wojna już podwaja spawn marynarki?* Odpowiedź jest wyprowadzana, nie
@@ -592,6 +592,72 @@ Wojna z kości jest **tym samym zdarzeniem** co wojna z kalendarza i kończy si�
 tym samym traktatem, więc tablice ogłoszeń, NPC roznoszący wieści, znaczniki na
 mapie, mnożnik marynarki, cięcie importu i listy kaperskie wiedziały, co robić,
 bez jednej zmiany.
+
+### Sojusz jest bytem świata (`DiplomacySystem.stampAlliances`, v0.55.0)
+
+Sojusz z v0.51.0 był **wyłącznie wyliczany**. To działało — i miało jedną wadę,
+której nie widać, dopóki się nie policzy: **fakt tylko wyliczany nie ma dnia,
+w którym się zaczął**. Relacja podskakiwała w chwili wybuchu drugiej wojny
+i opadała w chwili jej końca, i nic nigdzie tego nie mówiło.
+
+```
+areAllied      — wyeksportowane w v0.51.0, czytelników przez cztery wydania: 0
+tablice newsów — nic
+NPC roznoszący — nic
+tawerna        — nic
+```
+
+Zmierzone na 150 latach gry (6 ziaren × 25 lat, `updateWorldEvents` dzień po
+dniu):
+
+```
+dni, w których dwie korony mają wspólnego wroga:  28,8%
+epizodów:                                         47  (jeden na ~3 lata)
+średnia długość epizodu:                          493 dni (16 miesięcy)
+najdłuższy:                                       1424 dni
+```
+
+Ćwierć kalendarza gry była faktem, którego gra nie umiała wymienić.
+
+#### Podział: stan wyliczany, początek stemplowany
+
+`areAllied` **zostaje wyprowadzane** — pyta dzisiejsze wojny i jest prawdą.
+Stemplowany jest wyłącznie **początek**, w zdarzeniu `alliance`:
+
+| Pole | Wartość |
+|---|---|
+| `startDay` | dzień, w którym stanęły razem — jedyna rzecz nie do odtworzenia |
+| `factions` | para koron (bez wroga) |
+| `ports` | `[]` — jak każde zdarzenie w skali korony, więc news idzie wszędzie |
+| `vars.against` / `.againstId` | wróg, który **zrobił** ten sojusz, stemplowany |
+| `endDay` | `dzień + ALLIANCE_HORIZON_DAYS` (3650), **odświeżane co dzień** |
+
+`stampAlliances` woła się na końcu `updateDiplomacy`, więc wojna wypowiedziana
+rano robi sojusz po południu, a `concludeDynamicWars` z góry funkcji zdążyło już
+zabrać tę, która się skończyła — dlatego wygaśnięcie jest wykrywalne w dniu,
+w którym następuje, a nie nazajutrz. Wygasając, `endDay` idzie **za dzisiaj**
+i `expireEvents` (następny krok w `updateWorldEvents`) zdejmuje je z tablic.
+
+**Restempel.** Gdy kończy się ta konkretna wojna, która sojusz zrobiła, a inna
+wspólna trwa dalej — pary łączy dalej coś, ale **coś innego**. Stary sojusz jest
+zamykany i tego samego dnia otwierany nowy, z nowym `againstId` i nowym dniem.
+Inaczej tablica ogłoszeń wymieniałaby wroga, z którym już nikt nie wojuje. To ta
+sama zasada co [derived vs recorded](../TODO.md): wyprowadzaj to, co jest prawdą
+teraz; stempluj to, co się wydarzyło.
+
+#### Gdzie to widać
+
+- **Tablica newsów** każdego portu (`ports: []` → `getPortNews` wpuszcza wszędzie),
+  a więc i NPC roznoszący wieści
+- **Tawerna** — `tavern.rumor_alliance`, jedyny fakt w `rumorsAt` bez geografii,
+  więc uzasadnia się inaczej: mówi o **fladze nad własnym dachem** (`portFaction`
+  miasta musi być jedną z dwóch koron)
+- **Zakładka Kapitan** — „stoi z Francją (247d)", licząc od stempla
+- **`?alliance=cartagena`** — świat debugowy, w którym wszystko powyżej jest na
+  ekranie od razu
+
+Bez nowego pola w `WorldState` i bez migracji: zdarzenie świata to coś, co zapis
+i tak trzyma. Migracje stoją na v12 osiemnaste wydanie.
 
 ### Cudze pościgi (`PredationSystem.ts`, v0.50.0)
 
@@ -2167,6 +2233,7 @@ listy — i to jest cała strategiczna treść tego modułu.
 p = CAMPAIGN_DAILY_BASE (0.03)
   × clamp(0.3, 1.2, 0.3 + siła_atakującego × 0.9)
   × clamp(0.4, 1.6, 0.6 + (siła_atakującego − siła_defendera) × 1.2)
+  × ALLY_PRESSURE (1.5), jeśli jest sojusznik bijący się z tym samym defenderem
 ```
 
 | Stała | Wartość | Po co |
@@ -2187,6 +2254,52 @@ by cokolwiek znaczyć.
 szło przed, wyprawa mogłaby zostać wystawiona i stoczona tego samego ranka:
 `tickReconquest` obsługuje każdą wyprawę z minionym `endDay`, a zerowy rejs
 się kwalifikuje.
+
+### Wspólna wyprawa (v0.55.0)
+
+Współwalczenie istnieje od v0.51.0 i do v0.55.0 **przesuwało wyłącznie relację**.
+Zmierzone: **42% wszystkich dni wojny** ma trzecią koronę bijącą się z tym samym
+defenderem, a w stuleciu wojen koronnych **54% wystawionych wypraw** ma
+sojusznika. Najczęstszy kształt wojny na tej mapie był kształtem, którego ten
+moduł nie widział.
+
+```
+jointPartner(świat, {attacker, defender}) =
+  pierwsza korona c z CROWNS taka, że
+    c ≠ attacker, c ≠ defender
+    i coBelligerentAgainst(attacker, c) zawiera defendera
+```
+
+To jest `coBelligerentAgainst` czytane z jedynej strony, z której wychodzi
+**czynność**, a nie relacja: nie „z kim ci dwaj obaj wojują", tylko „kto jeszcze
+bije się z tym, na kogo zaraz wysadzimy desant". Wybór idzie po `CROWNS`
+w kolejności tabeli, więc ten sam świat wystawia zawsze tę samą wyprawę.
+
+| Rzecz | Wartość |
+|---|---|
+| kontyngent sojusznika | `clamp(ALLY_CONTINGENT 0,25..0,8; 0,15 + crownStrength(ally) × 0,65)` |
+| żołnierze | `własni × (1 + udział)` — działa dalej `żołnierze / 4` |
+| nagłówek | `news.campaign_joint` (nazywa obie korony) |
+| `vars.ally` / `.allyId` | jedyne miejsce, w którym sojusznik jedzie |
+| `ports` | dochodzą kolonie sojusznika — jego tawerny też o tym mówią |
+| bandera | `materialize` daje **ostatniemu** kadłubowi linii banderę sojusznika |
+
+Udział skalowany tym, co sojusznik **jeszcze trzyma**: korona ogołocona
+z własnych kolonii wysyła symbol, a w pełni sił — prawie drugi desant. Pasmo
+celowo nie sięga podwojenia: sojusz ma poruszyć wojnę, nie rozstrzygnąć ją
+w jeden sezon.
+
+Zmierzone na typowej kolonii hiszpańskiej: **56 ludzi → 101**, a szansa, że
+miasto padnie, **75% → 91%**.
+
+**`factions` zostaje dwuelementowe** — `[atakujący, trzymający]` — i jest na to
+test. `resolveRelief` i `CityDefenseScene` czytają je w tej kolejności, więc
+trzeci wpis zostałby wzięty przez jedno z nich za właściciela miasta. Sojusznik
+jedzie w `vars` i nigdzie indziej: w tej grze jest **jeden** kształt desantu.
+
+Ostatni kadłub jest wybrany świadomie: `planHulls` układa eskorty **po**
+transportowcach, więc obca bandera ląduje na okręcie, a nie na transportowcu —
+czyli na tym, co odpowie ogniem kapitanowi zachodzącemu linię.
 
 ### Skutek uboczny na mapie
 

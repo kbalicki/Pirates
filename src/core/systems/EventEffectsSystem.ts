@@ -195,8 +195,13 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     // A relief squadron is a fleet at sea, not a condition in a town, and its
     // event lists every port its crown still holds so the news travels. Giving
     // it any per-port effect would apply that effect to a whole empire.
+    //
+    // An alliance (v0.55.0) is the same kind of thing one storey up: it is a
+    // fact about two crowns, its `ports` is empty on purpose, and what it does
+    // it does through the war it is an alliance in.
     case "reconquest":
     case "campaign":
+    case "alliance":
     case "war_end":
     default:
       return NEUTRAL;

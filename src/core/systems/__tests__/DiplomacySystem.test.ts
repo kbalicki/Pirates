@@ -8,6 +8,10 @@ import {
   hostilityFactor,
   crownPairs,
   dynamicWarId,
+  activeAlliances,
+  allianceBetween,
+  alliedSince,
+  stampAlliances,
   historicalWarPending,
   CROWNS,
   WAR_RELATION,
@@ -600,6 +604,149 @@ describe("what the player is told", () => {
       "captain.allied_with": ["allies"],
       "diplomacy.log_warmed": ["faction", "victim"],
       "diplomacy.log_soured": ["faction", "victim"],
+    };
+    for (const [key, varNames] of Object.entries(holders)) {
+      const vars = Object.fromEntries(varNames.map(v => [v, "Spain"]));
+      for (const [tag, loc] of [["EN", EN], ["PL", PL]] as const) {
+        for (const varName of varNames) {
+          expect(loc[key], `${tag} ${key}`).toContain(`{{${varName}}}`);
+        }
+        expect(t(key, vars), `${tag} ${key} substituted`).not.toContain("{");
+      }
+    }
+  });
+});
+
+// ===========================================================================
+// The alliance has a day it began (v0.55.0)
+// ===========================================================================
+
+/**
+ * `areAllied` was exported in v0.51.0 and read by **nobody** for four
+ * releases. Measured over 150 game-years, two crowns share an enemy on 28.8%
+ * of days in episodes averaging sixteen months — a quarter of the calendar
+ * that no news board, no NPC and no tavern could mention, because a fact that
+ * is only ever computed has no day it happened on.
+ *
+ * What follows tests the split: the *state* is still derived and still asks
+ * today's wars, and only the *beginning* is stamped.
+ */
+describe("the alliance is a thing that happened", () => {
+  it("stamps nothing while nobody shares an enemy", () => {
+    const w = stampAlliances(makeWorld({ events: [war("spain", "england")] }));
+    expect(activeAlliances(w)).toEqual([]);
+    expect(alliedSince(w, "france", "netherlands")).toBeUndefined();
+  });
+
+  it("stamps the day two crowns first stand against the same third", () => {
+    const w = stampAlliances(makeWorld({
+      day: 400,
+      events: [war("spain", "england"), war("spain", "france")],
+    }));
+    const ev = allianceBetween(w, "england", "france");
+    expect(ev).toBeDefined();
+    expect(ev!.type).toBe("alliance");
+    expect(ev!.startDay).toBe(400);
+    expect(alliedSince(w, "france", "england")).toBe(400);
+    // The pair, and not the enemy that made them a pair.
+    expect(ev!.factions.sort()).toEqual(["england", "france"]);
+    expect(ev!.vars.againstId).toBe("spain");
+  });
+
+  it("is news everywhere, because it is about crowns and not about a harbour", () => {
+    const w = stampAlliances(makeWorld({
+      events: [war("spain", "england"), war("spain", "france")],
+    }));
+    // Same convention as `war_start`: an empty `ports` reaches every town's
+    // board through `getPortNews`.
+    expect(allianceBetween(w, "england", "france")!.ports).toEqual([]);
+  });
+
+  it("tells the log about it once, not once a day", () => {
+    let w = stampAlliances(makeWorld({
+      day: 400,
+      events: [war("spain", "england"), war("spain", "france")],
+    }));
+    const after = w.eventLog.filter(e => e.key === "news.alliance").length;
+    expect(after).toBe(1);
+    for (let d = 401; d < 420; d++) {
+      w = stampAlliances({ ...w, time: { ...w.time, day: d } });
+    }
+    expect(w.eventLog.filter(e => e.key === "news.alliance").length).toBe(1);
+    expect(activeAlliances(w)).toHaveLength(1);
+  });
+
+  it("keeps itself ahead of the expiry sweep for as long as it holds", () => {
+    let w = stampAlliances(makeWorld({
+      day: 400,
+      events: [war("spain", "england"), war("spain", "france")],
+    }));
+    const first = allianceBetween(w, "england", "france")!.endDay;
+    w = stampAlliances({ ...w, time: { ...w.time, day: 500 } });
+    const later = allianceBetween(w, "england", "france")!;
+    expect(later.endDay).toBeGreaterThan(first);
+    expect(later.endDay).toBeGreaterThan(500);
+    expect(later.startDay).toBe(400);      // the stamp does not move
+  });
+
+  it("lapses the day the shared war does, and says so", () => {
+    let w = stampAlliances(makeWorld({
+      day: 400,
+      events: [war("spain", "england"), war("spain", "france", 410)],
+    }));
+    expect(activeAlliances(w)).toHaveLength(1);
+
+    // Day 411: the Franco-Spanish war is over, so the two are allies about
+    // nothing. `endDay` goes behind today, which is what `expireEvents` reads.
+    w = stampAlliances({ ...w, time: { ...w.time, day: 411 } });
+    expect(activeAlliances(w)).toEqual([]);
+    expect(w.eventLog.some(e => e.key === "news.alliance_end")).toBe(true);
+  });
+
+  it("re-stamps when the war that made it ends and another shared one runs on", () => {
+    // Allies against Spain first, then — the Spanish war having ended — allies
+    // against the Dutch. Same two crowns, different understanding, and the
+    // news board should not go on naming Spain.
+    let w = stampAlliances(makeWorld({
+      day: 400,
+      events: [
+        war("spain", "england", 410, "war_sp_en"),
+        war("spain", "france", 410, "war_sp_fr"),
+        war("netherlands", "england", 9999, "war_nl_en"),
+        war("netherlands", "france", 9999, "war_nl_fr"),
+      ],
+    }));
+    expect(allianceBetween(w, "england", "france")!.vars.againstId).toBe("spain");
+
+    w = stampAlliances({ ...w, time: { ...w.time, day: 411 } });
+    const now = allianceBetween(w, "england", "france");
+    expect(now).toBeDefined();
+    expect(now!.vars.againstId).toBe("netherlands");
+    expect(now!.startDay).toBe(411);       // a new understanding, a new day
+    expect(w.eventLog.some(e => e.key === "news.alliance_end")).toBe(true);
+  });
+
+  it("holds while the world runs a year of its own wars", () => {
+    // Through `updateWorldEvents`, so `expireEvents` gets its say: an alliance
+    // that quietly vanished from the boards would be the v0.30.0 bug again.
+    let w = makeWorld({
+      day: 400,
+      events: [war("spain", "england"), war("spain", "france")],
+    });
+    for (let d = 401; d <= 400 + 365; d++) {
+      w = { ...w, time: { ...w.time, day: d } };
+      w = updateWorldEvents(w);
+      if (enemiesOf(w, "england").includes("spain") && enemiesOf(w, "france").includes("spain")) {
+        expect(allianceBetween(w, "england", "france"), `day ${d}`).toBeDefined();
+      }
+    }
+  });
+
+  it("says the same thing in both locales, with every placeholder firing", () => {
+    const holders: Record<string, string[]> = {
+      "news.alliance": ["faction1", "faction2", "against"],
+      "news.alliance_end": ["faction1", "faction2", "against"],
+      "tavern.rumor_alliance": ["faction1", "faction2", "against"],
     };
     for (const [key, varNames] of Object.entries(holders)) {
       const vars = Object.fromEntries(varNames.map(v => [v, "Spain"]));

@@ -654,6 +654,11 @@ export const EN: LocaleData = {
   "news.famine": "Famine grips {{port}}. Food prices soar.",
   "news.harvest": "Bumper harvest near {{port}}. Markets overflow.",
   "news.royal_decree": "Royal decree from {{faction}} reshapes tariffs across its colonies.",
+  // ── Two crowns make common cause (v0.55.0) ───────────
+  "news.alliance": "{{faction1}} and {{faction2}} have made common cause against {{against}}.",
+  "news.alliance_end": "The understanding between {{faction1}} and {{faction2}} against {{against}} has lapsed.",
+  "tavern.rumor_alliance": "They say {{faction1}} and {{faction2}} are in it together now, and it is {{against}} who will pay for it.",
+  "crown.allied_since": "allied with {{faction}} against {{against}}, these {{days}} days",
   "news.treaty_signed": "Peace treaty signed — {{faction1}} and {{faction2}} resume trade.",
 
   // -- Ship Encounter --
@@ -846,6 +851,9 @@ export const EN: LocaleData = {
   // ── Crowns take colonies off each other (v0.16.0) ──────
   "news.campaign": "{{faction}} is fitting out against {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
   "campaign.toast_sailing": "A {{faction}} expedition has sailed for {{port}}. {{days}} days.",
+  // A joint landing (v0.55.0): the ally is named, because one of the hulls in
+  // that line will be flying his colours and the captain should know whose.
+  "news.campaign_joint": "{{faction}} and {{ally}} are fitting out together against {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
 
   // ── The invasion gets hulls (v0.17.0) ──────────────────
   // -- The home port (v0.18.0) --

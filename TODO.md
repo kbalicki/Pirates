@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-07 · **Wersja:** v0.52.0.0 · **Branch:** `main`
-**Kod:** 220 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1838 przechodzi, 0 failuje, 0 `todo`** w 52 plikach
+**Stan na:** 2026-09-08 · **Wersja:** v0.55.0.0 · **Branch:** `main`
+**Kod:** 221 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1888 przechodzi, 0 failuje, 0 `todo`** w 53 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.53.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1851/1851 zielone; **martwa strefa nie była martwa**. Halsowanie było **ściśle gorsze** od płynięcia prosto pod wiatr — i to nie w przypadku brzegowym, tylko przy zwykłym pasacie i dla **wszystkich dziewięciu klas**: 0,480 drogi na wiatr z dziobem w wietrze przeciwko 0,344 najlepszego halsu pinasy, `hals/dziób = 1.00` w całej tabeli. Diagram polarny, dziewięć kątów martwych na ekranie pomocy i ostrzeżenie na mapie nie zmieniały **żadnej** decyzji gracza. Przyczyna to jedna linijka: `1 + (factor − 1) × windStrength` miesza polarę z płaską prędkością bazową, a płaska połowa — dodatek na słaby wiatr — była wypłacana **w całości w martwej strefie**, gdzie nie ciągnie ani metr płótna. Teraz idzie proporcjonalnie do tego, ile płótna ciągnie. Dwa kandydaty **zmierzone i wyrzucone** (pasmo proporcjonalne psuło galeonowi półwiatr o 65%; liniowe stawiało jego hals na 75°, gdzie kosinus nie ma czego oddać). Wydany kształt: hals 51° dla pinasy, 70° dla galeona, zysk 6,9× / 2,7× nad dziobem w wietrze. **Nic powyżej pułapu halsu się nie ruszyło i to jest asercja** — sześć z dziesięciu prawdziwych przepraw bez zmiany o cyfrę, a koszt pozostałych stopniowany ożaglowaniem. Przy okazji: **nawigator umiał płynąć pod wiatr** (premia to udział w niedoborze, a strefa to sam niedobór) i **ruch handlowy naprawił się sam**, bo NPC czyta tę samą krzywą. Zamknięte też dwie sprawy użytkownika: reguła `taskkill` (nigdy po nazwie obrazu, **przeglądarki nie ubijamy w ogóle**) i jedenaście nieaktualnych `documentation/*.txt`. Zostaje **przegranie tego** — to zmiana odczucia. Lista kandydatów na v0.54.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.55.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1888/1888 zielone; **sojusz jest bytem świata**. Współwalczenie istnieje od v0.51.0 i przesuwało wyłącznie relację — `areAllied` było wyeksportowane i przez cztery wydania **nie miało ani jednego czytelnika**, żadna tablica newsów go nie nosiła, żaden NPC nie powtarzał, a tawerna, która powie ci cenę chleba w sąsiedniej zatoce, nie miała o tym nic do powiedzenia. Powód jest ogólniejszy niż ta jedna funkcja: **fakt tylko wyliczany nie ma dnia, w którym się zaczął**. Zmierzone na 150 latach gry: dwie korony mają wspólnego wroga przez **28,8% dni**, w epizodach po średnio 16 miesięcy — ćwierć kalendarza była faktem, którego gra nie umiała wymienić. Stan **zostaje wyliczany**, stemplowany jest wyłącznie początek (zdarzenie `alliance`, `ports: []`, `vars.againstId` stemplowane, restempel gdy wojnę robiącą sojusz zastąpi inna wspólna). Na wodzie: **wspólna wyprawa** — 42% dni wojny ma trzecią koronę bijącą się z tym samym defenderem, 54% wypraw w stuleciu ma sojusznika, jego kontyngent skalowany tym, co jeszcze trzyma (56 ludzi → 101, szansa upadku miasta 75% → 91%), a **ostatni kadłub linii nosi jego banderę**. `factions` zostaje dwuelementowe i jest na to test — trzeci wpis zostałby przez `resolveRelief` wzięty za właściciela miasta. Bez nowego pola, migracje na v12 osiemnaste wydanie. Odrzucony po drodze pomiar: stulecie wojen koronnych z licznikiem flag, bo bez `EconomyTickSystem` mapa kotłuje się niezależnie od zmiany — **symulacja z wyłączoną połową świata nie jest kontrolą**. Lista kandydatów na v0.56.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.53.0.0):** v0.53.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1851/1851 zielone; **martwa strefa nie była martwa**. Halsowanie było **ściśle gorsze** od płynięcia prosto pod wiatr — i to nie w przypadku brzegowym, tylko przy zwykłym pasacie i dla **wszystkich dziewięciu klas**: 0,480 drogi na wiatr z dziobem w wietrze przeciwko 0,344 najlepszego halsu pinasy, `hals/dziób = 1.00` w całej tabeli. Diagram polarny, dziewięć kątów martwych na ekranie pomocy i ostrzeżenie na mapie nie zmieniały **żadnej** decyzji gracza. Przyczyna to jedna linijka: `1 + (factor − 1) × windStrength` miesza polarę z płaską prędkością bazową, a płaska połowa — dodatek na słaby wiatr — była wypłacana **w całości w martwej strefie**, gdzie nie ciągnie ani metr płótna. Teraz idzie proporcjonalnie do tego, ile płótna ciągnie. Dwa kandydaty **zmierzone i wyrzucone** (pasmo proporcjonalne psuło galeonowi półwiatr o 65%; liniowe stawiało jego hals na 75°, gdzie kosinus nie ma czego oddać). Wydany kształt: hals 51° dla pinasy, 70° dla galeona, zysk 6,9× / 2,7× nad dziobem w wietrze. **Nic powyżej pułapu halsu się nie ruszyło i to jest asercja** — sześć z dziesięciu prawdziwych przepraw bez zmiany o cyfrę, a koszt pozostałych stopniowany ożaglowaniem. Przy okazji: **nawigator umiał płynąć pod wiatr** (premia to udział w niedoborze, a strefa to sam niedobór) i **ruch handlowy naprawił się sam**, bo NPC czyta tę samą krzywą. Zamknięte też dwie sprawy użytkownika: reguła `taskkill` (nigdy po nazwie obrazu, **przeglądarki nie ubijamy w ogóle**) i jedenaście nieaktualnych `documentation/*.txt`. Zostaje **przegranie tego** — to zmiana odczucia. Lista kandydatów na v0.54.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.51.0.0):** v0.51.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1818/1818 zielone; **korony wreszcie kłócą się same**. Gra startuje w 1680, wojna francusko-holenderska skończyła się we wrześniu 1678, dziewięcioletnia zaczyna się w maju 1689, a tabela dziesięciu wojen historycznych **nie ma nic pomiędzy** — żaden szablon zdarzenia losowego nie jest typu `war_start`, więc wojny brały się wyłącznie z kalendarza. Zmierzone: **7% pierwszych dziesięciu lat gry w wojnie**, następna 57 godzin grania od startu. Przez to **nic** poniżej wojny nigdy się nie wykonało: podwojona marynarka, korsarze koronni, cięcie importu, traktat z v0.30.0 — a przede wszystkim **list kaperski nie krył niczego**: `coveringPatrons` pyta, czy patron jest w wojnie z ofiarą, więc każdy pryz był „uncovered" za −8 u własnego mocodawcy i cała nagrodowa połowa v0.37.0 była nieosiągalna. Teraz `DiplomacySystem` bierze szanse z **macierzy relacji, którą czytała jedna linijka w całym kodzie**, a sojusz to **wspólny wróg i nic więcej** (nic tego nie zapisuje) — to jest odpowiedź na pozycję „przymierze dwóch koron" z uczciwym zarzutem, który przy niej wisiał. **Pierwsze strojenie było permanentną wojną światową** (97% dni, 3,12 wojny naraz) i zostało wyrzucone; wydane siedzi na historii (75% i 1,18 przy 79% i 1,13 w latach 1560-1700). Zakładka Kapitan pokazuje stan koron — `getActiveWars` nie miało do tej pory **ani jednego czytelnika**. Trzy rzeczy dalej **czekają na użytkownika**: przegranie v0.36.0, decyzje z sekcji 6 o pixel arcie i skasowanie dziesięciu nieaktualnych `.txt`. Lista kandydatów na v0.52.0 jest niżej.
 
@@ -101,6 +103,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Sojusz jest bytem świata | ✅ | `DiplomacySystem.stampAlliances` + `CrownCampaignSystem.jointPartner`: stan wyliczany, początek stemplowany; news, plotka, data w zakładce Kapitan, a na wodzie wspólna wyprawa z obcą banderą w linii |
 | Wróg mojego wroga | ✅ | `DiplomacySystem.rippleReputation`: co zrobisz jednej koronie, czytają wszystkie pozostałe przez własne zatargi; nazwane progi zamiast proporcji, list kaperski zostaje 2,5-5x lepszy |
 | Korony kłócą się same | ✅ | `DiplomacySystem.ts`: domyślna era startowała w dziewięcioletnim pokoju, przez co list kaperski nie krył nigdy niczego; wojny biorą się teraz z martwej macierzy relacji, a sojusz to wspólny wróg |
 | Karaiby mają w sobie piratów | ✅ | `PredationSystem.ts`: korsarze wreszcie pływają (18 outpostów, czarna bandera), a `aggression` i `targetEntityId` niosą cudze pościgi — kupca bierze korsarz, korsarza bierze okręt, słabszy ucieka |
@@ -2079,7 +2082,50 @@ więc tylko jeden hals w ogóle tam prowadzi). Symulator liczy prostą bez lądu
 nie jest wierny temu, co robi gracz — do sprawdzenia przy grze, nie do strojenia
 na ślepo.
 
-### v0.55.0 — co dalej
+### ~~v0.55.0 — Sojusz jest bytem świata~~ ✅ (v0.55.0.0)
+
+Wzięte samodzielnie z listy kandydatów (pozycja 4 poniżej) — jedyna, której nie
+blokuje ani brak assetów, ani playtest użytkownika.
+
+- **Defekt: fakt tylko wyliczany nie ma dnia, w którym się zaczął.** `areAllied`
+  wyeksportowane w v0.51.0, czytelników przez cztery wydania **zero**. Zmierzone
+  na 150 latach gry: wspólny wróg przez **28,8% dni**, 47 epizodów, średnio
+  **493 dni** (16 miesięcy), najdłuższy 1424
+- **Podział**: stan zostaje wyliczany (`areAllied` dalej pyta dzisiejsze wojny),
+  stemplowany jest wyłącznie **początek** — zdarzenie `alliance` z `startDay`,
+  `ports: []`, `vars.against`/`.againstId`. Bez nowego pola w `WorldState`
+- **Kolejność**: `stampAlliances` na końcu `updateDiplomacy`, więc wojna
+  wypowiedziana rano robi sojusz po południu, a `concludeDynamicWars` z góry
+  funkcji zdążyło zabrać tę, która się skończyła. Wygaszanie przez cofnięcie
+  `endDay` za dzisiaj — `expireEvents` robi resztę
+- **Restempel**: gdy kończy się ta wojna, która sojusz zrobiła, a inna wspólna
+  trwa — stary sojusz zamykany, nowy otwierany tego samego dnia. Inaczej tablica
+  wymieniałaby wroga, z którym już nikt nie wojuje
+- **Na wodzie — wspólna wyprawa.** 42% dni wojny ma trzecią koronę bijącą się
+  z tym samym defenderem; 54% wypraw w stuleciu ma sojusznika. Kontyngent
+  `clamp(0,25..0,8; 0,15 + crownStrength × 0,65)`, nagłówek `news.campaign_joint`,
+  kolonie sojusznika w `ports`, `ALLY_PRESSURE = 1,5` na szansę wystawienia
+- **Obca bandera w linii**: `materialize` daje ją **ostatniemu** kadłubowi, bo
+  `planHulls` układa eskorty po transportowcach — więc trafia na okręt, nie na
+  transportowiec
+- **Pułapka, która była o krok**: dopisanie sojusznika do `event.factions` by się
+  skompilowało i cicho zepsuło desant (`resolveRelief` czyta `[atakujący,
+  trzymający]`). Sojusznik jedzie w `vars` i jest na to osobny test
+- Zmierzone na typowej kolonii hiszpańskiej: **56 ludzi → 101**, szansa upadku
+  miasta **75% → 91%**
+- Zweryfikowane w pakiecie przez `?alliance=cartagena`: news w Port Royale,
+  plotka w tawernie dnia 3, „stands with France (0d)" w zakładce Kapitan, i
+  `fast_galleon flag:france` w linii czterech kadłubów. Konsola bez błędu
+- **Pomiar odrzucony**: stulecie wojen koronnych z licznikiem zmian flagi (1622
+  przeciw 1775 w kontroli) — bez `EconomyTickSystem` `defense` raz zbite nigdy
+  nie wraca i mapa kotłuje się niezależnie od zmiany. **Symulacja z wyłączoną
+  połową świata nie jest kontrolą**; lepiej zmierzyć czystą funkcję niż nieczysty
+  świat
+- **Pierwsze strojenie kontyngentu było martwe**: `0,2 + siła × 0,9` daje przy
+  pełnej sile 1,1, czyli zawsze sufit — pasmo nie robiło nic. Poprawione na
+  `0,15 + siła × 0,65`
+
+### v0.56.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2098,16 +2144,15 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    (`awarenessRadius` z szablonu kupca) to liczby wybrane z namysłem, nie
    zmierzone przy graniu. Jeśli pościgi okażą się nużące albo przeciwnie —
    niezauważalne — to są dwa pokrętła. Wymaga użytkownika, nie agenta
-4. **Przymierze dwóch koron dalej nie istnieje.** v0.37.0 rozstrzygnęła drugie
-   odczytanie tej pozycji (list kaperski), to zostało: świat zna **wojny** i nie
-   zna sojuszy, więc „Anglia i Holandia przeciw Hiszpanii" nie jest czymś, co umie
-   powiedzieć. To nowa warstwa w `WorldEventSystem` i osobne wydanie — a przed nim
-   pytanie, co sojusz miałby *robić*, skoro wojna już podwaja spawn marynarki i
-   wystawia korsarzy. Zakres zmalał od czasu wpisania: v0.51.0 dała
-   **współwojowanie** (`coBelligerentAgainst` — dwie korony przeciw trzeciej,
-   wyliczane z wojen, nienotowane nigdzie), a v0.52.0 kazała je czuć w
-   reputacji. Zostaje sojusz jako **byt świata**: własne zdarzenie, wpis w
-   newsach, plotka w tawernie i coś, co robi na wodzie
+4. ~~**Przymierze dwóch koron dalej nie istnieje.**~~ ✅ v0.55.0.0 — sojusz ma
+   własne zdarzenie, wpis w newsach, plotkę w tawernie i wspólną wyprawę na
+   wodzie. Zostaje **jedna rzecz z tej pozycji nietknięta**: sojusz nie zmienia
+   niczego przy ladzie. Kolonia sojusznika dalej patrzy na kapitana wyłącznie
+   przez własną reputację (`PortAccessSystem`), choć jego patron i ten port biją
+   się z tym samym wrogiem. Naturalne miejsce: `noticedBy` / `PortAccessSystem`,
+   jeden stopień standingu w górę w portach korony sojuszniczej **patrona**, na
+   czas trwania sojuszu i ani dnia dłużej. Do zmierzenia, czy to nie unieważnia
+   listu kaperskiego — dokładnie ten sam zarzut zabił pierwsze strojenie v0.52.0
 5. **Moduł G zamknięty.** Szkwał (v0.38.0), huragan (v0.39.0), mgła (v0.40.0),
    prądy (v0.41.0), a prądu nauczyły się szlaki (v0.42.0), wyprawy koronne
    (v0.43.0) i nazwane statki (v0.44.0). Wędrujące oko zrobione w v0.45.0.
@@ -2119,13 +2164,13 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    wagi. Odkąd flota skarbowa jest prawdziwym konwojem (v0.46.0), dzień pierwszy
    potrafi wystawić dwie naraz. Zachowanie sprzed v0.46.0 i nie błąd sam w
    sobie, ale zmiana odczucia — do **zmierzenia**, nie do poprawienia w biegu
-8. **Przegrać v0.53.0 i ocenić, jak to jest halsować.** Liczby są zmierzone i
-   zamknięte w testach, ale to jest zmiana **odczucia** najczęściej używanej
-   mechaniki w grze. Dwa pokrętła, gdyby wypadło źle: `IRONS_STEERAGE` (0,05 —
-   ile zostaje statkowi z dziobem w wietrze) i wykładnik pasma halsu
-   (pierwiastek; liniowy był zmierzony i za słaby). Trzecie, gdyby żaglowce
-   rejowe okazały się nie do zniesienia pod pasat: `minWindAngle` w `ships.ts`.
-   Wymaga użytkownika, nie agenta
+8. **Przegrać v0.54.0 i ocenić halsowanie po strojeniu.** Playtest v0.53.0 dał
+   odpowiedź („OK, ale bardzo wolno") i wydanie v0.54.0; od tamtej pory nikt tym
+   nie grał. Pokrętła: `BEAT_RISE` (12° — jak szybko napełnia się płótno),
+   `BEAT_SHAPE` (0,5), `IRONS_STEERAGE` (0,05), a w ostateczności `minWindAngle`
+   w `ships.ts`. **Otwarte z v0.54.0**: galeon i merchantman nie pokonują Port
+   Royal → Barbados prostą — symulator liczy prostą bez lądu i nie jest wierny
+   temu, co robi gracz. Wymaga użytkownika, nie agenta
 
 ---
 

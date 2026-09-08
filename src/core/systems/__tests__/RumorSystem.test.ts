@@ -7,7 +7,8 @@ import { getPortBaseline } from "../../data/economyBaselines.ts";
 import { portId, entityId, factionId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
-import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
+import { stampAlliances } from "../DiplomacySystem.ts";
+import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
 
 // ===========================================================================
 // RumorSystem — the tavern reports the world (v0.28.0)
@@ -275,5 +276,53 @@ describe("every line the tavern can say", () => {
       expect(EN[rumor.key]).toBeDefined();
       expect(PL[rumor.key]).toBeDefined();
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * The one fact in `rumorsAt` with no geography in it (v0.55.0), so it earns
+ * its place a different way: the tavern talks about the flag over its own
+ * roof. A Dutch quay reports what the Dutch are doing; it does not read the
+ * whole Caribbean's diplomatic post.
+ */
+describe("two crowns standing together", () => {
+  function war(a: string, b: string, endDay = 9999): WorldEventState {
+    return {
+      id: `war_${a}_${b}`, type: "war_start", startDay: 1, endDay,
+      ports: [], factions: [a, b], severity: 3, headline: "news.war_start", vars: {},
+    };
+  }
+
+  /** Port Royal is English; Havana is Spanish, and Spain is the enemy here. */
+  const allied = () => stampAlliances(makeWorld({
+    worldEvents: [war("spain", "england"), war("spain", "france")],
+  }));
+
+  it("is told in a town of one of the two crowns", () => {
+    const said = rumorsAt(allied(), HERE).find(r => r.key === "tavern.rumor_alliance");
+    expect(said).toBeDefined();
+    expect(said!.vars!.against).toBe("Spain");
+  });
+
+  it("is not told in a town of the crown it is aimed at", () => {
+    const spanish = Object.keys(CITIES).find(k => (CITIES[k].factionId as string) === "spain")!;
+    expect(rumorsAt(allied(), spanish).some(r => r.key === "tavern.rumor_alliance")).toBe(false);
+  });
+
+  it("is not told at all while nobody shares an enemy", () => {
+    const w = stampAlliances(makeWorld({ worldEvents: [war("spain", "england")] }));
+    expect(rumorsAt(w, HERE).some(r => r.key === "tavern.rumor_alliance")).toBe(false);
+  });
+
+  it("repeats what was stamped, not what is true this morning", () => {
+    // The alliance names the enemy that made it. That is the whole reason the
+    // event exists: the tavern is retelling something that happened on a day.
+    const w = allied();
+    const said = rumorsAt(w, HERE).find(r => r.key === "tavern.rumor_alliance")!;
+    const stamped = w.worldEvents.find(ev => ev.type === "alliance")!;
+    expect(said.vars!.faction1).toBe(stamped.vars.faction1);
+    expect(said.vars!.faction2).toBe(stamped.vars.faction2);
   });
 });

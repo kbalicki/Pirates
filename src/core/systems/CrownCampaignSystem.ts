@@ -38,6 +38,19 @@
  * flag would be provisional, and taking a town yourself would stop meaning
  * anything.
  *
+ * ## The ally sails too (v0.55.0)
+ *
+ * Two crowns at war with the same third one have been co-belligerents since
+ * v0.51.0 and it did nothing but move a relation. Measured over 150
+ * game-years, **42% of all war-days** have a third crown fighting the same
+ * defender — so the commonest shape of a war in this world was one this module
+ * could not see. A joint expedition is what it looks like from the water: the
+ * ally's contingent is added to the landing, sized by what the ally has left
+ * to give, one of the escorts flies **his** ensign, and the news names both
+ * crowns. The rest of the machinery is untouched — `factions` still reads
+ * attacker-then-defender, because `resolveRelief` and `CityDefenseSystem` read
+ * it that way and there is deliberately only one shape of landing in this game.
+ *
  * Pure and seeded from `RngState`, like the rest of `core/`.
  */
 
@@ -52,6 +65,7 @@ import { addLogEntry } from "./EventLogSystem.ts";
 import { portFaction, SIZE_SOLDIERS } from "./SiegeSystem.ts";
 import { crownStrength, activeExpeditionFor, SIZE_PRIORITY } from "./ReconquestSystem.ts";
 import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
+import { CROWNS, coBelligerentAgainst } from "./DiplomacySystem.ts";
 
 // ── Constants ─────────────────────────────────────────────
 
@@ -85,6 +99,24 @@ export const CAMPAIGN_COOLDOWN_DAYS = 90;
 export const CAMPAIGN_DEFENSE_CEILING = 70;
 
 /**
+ * How much of the attacker's landing the ally adds to it (v0.55.0).
+ *
+ * Scaled by what the ally still holds, so a crown that has been stripped of
+ * its own colonies sends a token and one at full strength sends most of a
+ * second landing. The band is deliberately short of doubling: an alliance
+ * should make a war move, not decide it in one season.
+ */
+export const ALLY_CONTINGENT: [number, number] = [0.25, 0.8];
+
+/**
+ * How much likelier a joint expedition is to be fitted out at all.
+ *
+ * Two ministries with the same enemy find the hulls sooner than one does, and
+ * this is the only place the alliance touches the odds rather than the load.
+ */
+export const ALLY_PRESSURE = 1.5;
+
+/**
  * Bounds first, value last — the **opposite** order to `services/Geometry.clamp`.
  *
  * Renamed from `clamp` in v0.45.0 because the collision was live ammunition:
@@ -116,6 +148,22 @@ export function warPairs(world: WorldState): CrownWar[] {
     pairs.push({ attacker: b, defender: a });
   }
   return pairs;
+}
+
+/**
+ * A third crown already at war with this defender, if there is one.
+ *
+ * This is `coBelligerentAgainst` read from the one direction that produces an
+ * action rather than a relation: not "who do these two both fight" but "who
+ * else is fighting the man we are about to land on". Picked off `CROWNS` in
+ * table order so the same world always fits out the same expedition.
+ */
+export function jointPartner(world: WorldState, war: CrownWar): string | undefined {
+  return CROWNS.find(
+    c => c !== war.attacker
+      && c !== war.defender
+      && coBelligerentAgainst(world, war.attacker, c).includes(war.defender),
+  );
 }
 
 /** Expeditions between crowns currently at sea. */
@@ -175,7 +223,8 @@ export function campaignChance(world: WorldState, war: CrownWar): number {
   // A crown that is winning the wider war presses; one being stripped of its
   // own colonies has nothing to spare for anyone else's.
   const momentum = clampTo(0.4, 1.6, 0.6 + (mine - theirs) * 1.2);
-  return CAMPAIGN_DAILY_BASE * clampTo(0.3, 1.2, 0.3 + mine * 0.9) * momentum;
+  const joint = jointPartner(world, war) ? ALLY_PRESSURE : 1;
+  return CAMPAIGN_DAILY_BASE * clampTo(0.3, 1.2, 0.3 + mine * 0.9) * momentum * joint;
 }
 
 // ── Picking a town and fitting out for it ─────────────────
@@ -227,10 +276,18 @@ export function launchCampaign(
   const def = CITIES[portKey];
   const strength = clampTo(0.5, 1.2, 0.4 + crownStrength(world, war.attacker) * 0.8);
   const sizeRoll = rngNextFloat(rng, 0.85, 1.35);
-  const soldiers = Math.max(
+  const own = Math.max(
     25,
     Math.round(SIZE_SOLDIERS[def.population] * sizeRoll.value * strength),
   );
+  // The ally's contingent, sized by what he still holds (v0.55.0). Added to the
+  // landing rather than replacing part of it: an alliance is more men on the
+  // beach, which is the only form in which the player can be made to feel it.
+  const ally = jointPartner(world, war);
+  const allyShare = ally
+    ? clampTo(ALLY_CONTINGENT[0], ALLY_CONTINGENT[1], 0.15 + crownStrength(world, ally) * 0.65)
+    : 0;
+  const soldiers = Math.round(own * (1 + allyShare));
   // One roll, as before — but what varies is the fitting out, not the voyage.
   const sailRoll = rngNextInt(sizeRoll.state, -CAMPAIGN_FIT_JITTER, CAMPAIGN_FIT_JITTER);
   const departure = expeditionDeparture(world, portKey, war.attacker as string);
@@ -249,10 +306,17 @@ export function launchCampaign(
     days: sailDays,
   };
   if (departure?.origin) vars.origin = departure.origin;
+  if (ally) {
+    vars.ally = FACTIONS[ally]?.name ?? ally;
+    // Read by `materialize` to put one escort under the other ensign, and by
+    // nothing else: the landing arithmetic downstream stays two-sided.
+    vars.allyId = ally;
+  }
 
   const involved = Object.keys(CITIES).filter(k => {
     const owner = portFaction(world, k) as string;
-    return k !== portKey && (owner === war.attacker || owner === war.defender);
+    return k !== portKey
+      && (owner === war.attacker || owner === war.defender || owner === ally);
   });
 
   const event: WorldEventState = {
@@ -264,7 +328,7 @@ export function launchCampaign(
     // Same order `resolveRelief` reads: the one coming, then the one holding.
     factions: [war.attacker, war.defender],
     severity: 3,
-    headline: "news.campaign",
+    headline: ally ? "news.campaign_joint" : "news.campaign",
     vars,
   };
 
@@ -279,7 +343,7 @@ export function launchCampaign(
       [portKey]: { ...world.ports[portKey], nextCampaignDay: world.time.day + CAMPAIGN_COOLDOWN_DAYS },
     },
   };
-  w = addLogEntry(w, "news.campaign", vars);
+  w = addLogEntry(w, event.headline, vars);
   return { world: w, event, rng: sailRoll.state };
 }
 

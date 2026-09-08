@@ -299,6 +299,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 | `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
 | `?blockade=havana` | Fregata na stanowisku pod tym portem, kordon dzień przed zaciśnięciem |
+| `?alliance=cartagena` | Dwie korony robiące wspólną sprawę i wspólna wyprawa, którą to wystawia (v0.55.0): kapitan leży pół przeprawy od tej kolonii, angielski desant idzie na nią, a jeden kadłub linii ma banderę francuską. W zwykłej grze sojusz wymaga, żeby dwie korony wypowiedziały wojnę tej samej trzeciej — to 28,8% dni, ale nigdy pierwszy |
 | `?famine=tortuga` | Kapitan stoi w mieście, którego dostawca jest pod czarną banderą; miasto od dwóch tygodni głoduje |
 | `&stand=cover` | Stoi zamiast tego w porcie, który przejął cudze kursy — razem z `?famine=` |
 | `?skills=navigation:10,medicine:0` | Kapitan, który wydał punkty gdzie indziej (v0.47.0). Działa z `?skip` i `?battle=`. Trzy z pięciu umiejętności nic nie robiły do tego wydania, a jedyną drogą do konkretnego zestawu było przejście tworzenia postaci ręcznie |

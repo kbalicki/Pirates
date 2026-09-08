@@ -654,6 +654,11 @@ export const PL: LocaleData = {
   "news.famine": "Klęska głodu w {{port}}. Ceny żywności szybują w górę.",
   "news.harvest": "Rekordowe zbiory pod {{port}}. Spichlerze pełne.",
   "news.royal_decree": "Dekret królewski {{faction}} zmienia taryfy w koloniach.",
+  // ── Dwie korony robią wspólną sprawę (v0.55.0) ───────
+  "news.alliance": "{{faction1}} i {{faction2}} stały ramię w ramię przeciwko {{against}}.",
+  "news.alliance_end": "Porozumienie {{faction1}} i {{faction2}} przeciwko {{against}} wygasło.",
+  "tavern.rumor_alliance": "Mówią, że {{faction1}} i {{faction2}} trzymają się teraz razem, a zapłaci za to {{against}}.",
+  "crown.allied_since": "w sojuszu z {{faction}} przeciw {{against}} od {{days}} dni",
   "news.treaty_signed": "Pokój podpisany — {{faction1}} i {{faction2}} wznawiają handel.",
 
   // -- Ship Encounter --
@@ -845,6 +850,7 @@ export const PL: LocaleData = {
 
   // ── Korony odbierają sobie kolonie (v0.16.0) ───────────
   "news.campaign": "{{faction}} zbroi wyprawę na {{port}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.campaign_joint": "{{faction}} i {{ally}} zbroją wspólną wyprawę na {{port}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
   "campaign.toast_sailing": "Wyprawa ({{faction}}) wypłynęła na {{port}}. {{days}} dni.",
 
   // ── Wyprawa dostaje kadłuby (v0.17.0) ──────────────────

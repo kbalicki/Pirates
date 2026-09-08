@@ -230,7 +230,9 @@ export type WorldEventType =
   // ── v0.15.0 the crown comes back ────────────────────────
   | "reconquest"
   // ── v0.16.0 crowns take colonies off each other ─────────
-  | "campaign";
+  | "campaign"
+  // ── v0.55.0 two crowns make common cause ────────────────
+  | "alliance";
 
 export type WorldEventState = {
   id: string;

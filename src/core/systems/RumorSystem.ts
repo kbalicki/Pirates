@@ -48,6 +48,8 @@ import { blockadeEffective } from "./BlockadeSystem.ts";
 import { isPortClosed } from "./EventEffectsSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
 import { tradeIncome } from "./TradeLedgerSystem.ts";
+import { activeAlliances } from "./DiplomacySystem.ts";
+import { portFaction } from "./SiegeSystem.ts";
 
 /** One thing the tavern has to say, ready for `t()`. */
 export type Rumor = { key: string; vars?: Record<string, string | number> };
@@ -258,7 +260,27 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     break;
   }
 
-  // 8. Where the money is crossing a quay. The slowest fact, told last.
+  // 8. Two crowns standing together (v0.55.0). The one fact in this list with
+  //    no geography in it, so it earns its place a different way: it has to be
+  //    about **this town's own flag**. A Dutch quay talks about what the Dutch
+  //    are doing; it does not read the whole Caribbean's diplomatic post. The
+  //    alliance is stamped, so the tavern is repeating something that happened
+  //    on a day rather than reciting a computation.
+  const flag = portFaction(world, portKey) as string;
+  for (const ev of activeAlliances(world)) {
+    if (!ev.factions.includes(flag)) continue;
+    out.push({
+      key: "tavern.rumor_alliance",
+      vars: {
+        faction1: ev.vars.faction1 as string,
+        faction2: ev.vars.faction2 as string,
+        against: ev.vars.against as string,
+      },
+    });
+    break;
+  }
+
+  // 9. Where the money is crossing a quay. The slowest fact, told last.
   let busiest: string | null = null;
   let best = RUMOR_BUSY_QUAY;
   for (const key of neighbours) {

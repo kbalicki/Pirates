@@ -5,6 +5,7 @@ import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
+import { FACTIONS } from "../../core/data/factions.ts";
 import { pickNeighbours } from "../../core/systems/WorldEventSystem.ts";
 import {
   platePos,
@@ -33,6 +34,8 @@ import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { fogPatch, fogNight } from "../../core/systems/FogSystem.ts";
 import { CURRENTS } from "../../core/data/currents.ts";
 import { expeditionDeparture } from "../../core/systems/ExpeditionFleetSystem.ts";
+import { launchCampaign } from "../../core/systems/CrownCampaignSystem.ts";
+import { stampAlliances } from "../../core/systems/DiplomacySystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -222,6 +225,14 @@ export class PreloadScene extends Phaser.Scene {
     //                  game is manned at 2-3x her working minimum, so
     //                  short-handedness cannot be reached from a normal start;
     //                  ?ship=galleon&crew=16 is the headline case
+    //   ?alliance=cartagena — two crowns making common cause, and the joint
+    //                    landing it puts to sea: the captain is lying half a
+    //                    passage off that Spanish colony with an English
+    //                    expedition bearing down on it and one hull of the line
+    //                    under French colours (v0.55.0). An alliance in an
+    //                    ordinary game means waiting for two crowns to declare
+    //                    war on the same third one, which is 28.8% of days but
+    //                    never the first one
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -298,6 +309,12 @@ export class PreloadScene extends Phaser.Scene {
           allied: ally,
         },
       });
+      return;
+    }
+    if (params.has("alliance")) {
+      const world = this.createAllianceWorld(params.get("alliance") || "cartagena");
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
       return;
     }
     if (params.has("intercept")) {
@@ -791,6 +808,67 @@ export class PreloadScene extends Phaser.Scene {
       entities: entity
         ? { ...staged.entities, [shipId]: { ...entity, pos: { ...pos } } }
         : staged.entities,
+    };
+  }
+
+  /**
+   * Two crowns standing together and the landing it puts to sea, for
+   * `?alliance=` (v0.55.0).
+   *
+   * Everything here goes through the production functions rather than being
+   * assembled by hand — `stampAlliances` opens the alliance and
+   * `launchCampaign` fits out the expedition — because a debug world that
+   * builds the *shape* of a thing rather than running the thing that makes it
+   * is a world that tests a second implementation. That mistake has been made
+   * twice in this file already; see `?famine=`.
+   */
+  private createAllianceWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const holder = def.factionId as unknown as string;
+    const attacker = holder === "england" ? "spain" : "england";
+    const ally = holder === "france" ? "netherlands" : "france";
+    const day = base.time.day;
+
+    const wars = [attacker, ally].map(crown => ({
+      id: `war_dyn_${[crown, holder].sort().join("_")}`,
+      type: "war_start" as const,
+      startDay: day - 200,
+      endDay: day + 500,
+      ports: [],
+      factions: [crown, holder],
+      severity: 3 as const,
+      headline: "news.war_start",
+      vars: { faction1: FACTIONS[crown]?.name ?? crown, faction2: FACTIONS[holder]?.name ?? holder },
+    }));
+
+    // The alliance is stamped by the same function the daily tick calls, so it
+    // carries a real start day and the tavern has something to repeat.
+    const atWar = stampAlliances({ ...base, worldEvents: [...base.worldEvents, ...wars] });
+    const launched = launchCampaign(atWar, { attacker, defender: holder }, portKey, atWar.rng);
+    const staged = { ...launched.world, rng: launched.rng };
+
+    // Half a passage out, off the same function the running game draws with.
+    const halfway = {
+      ...staged,
+      worldEvents: staged.worldEvents.map(ev =>
+        ev.id === launched.event.id
+          ? { ...ev, startDay: day - Math.round((ev.endDay - day) / 2) }
+          : ev,
+      ),
+    };
+    const event = halfway.worldEvents.find(ev => ev.id === launched.event.id)!;
+    const pos = expeditionPos(halfway, event) ?? { x: def.pos.x + 200, y: def.pos.y + 200 };
+    const shipId = halfway.player.shipId as string;
+    const entity = halfway.entities[shipId];
+
+    return {
+      ...halfway,
+      player: { ...halfway.player, location: { type: "sea", pos: { ...pos } } },
+      entities: entity
+        ? { ...halfway.entities, [shipId]: { ...entity, pos: { ...pos } } }
+        : halfway.entities,
     };
   }
 

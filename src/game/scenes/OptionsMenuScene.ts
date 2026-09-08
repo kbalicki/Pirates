@@ -24,7 +24,7 @@ import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
-import { CROWNS, enemiesOf, coBelligerentAgainst } from "../../core/systems/DiplomacySystem.ts";
+import { CROWNS, enemiesOf, coBelligerentAgainst, alliedSince } from "../../core/systems/DiplomacySystem.ts";
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale, consortTraining, fleetManning } from "../../core/systems/FleetSystem.ts";
@@ -550,8 +550,10 @@ export class OptionsMenuScene extends Phaser.Scene {
    * is where standing already lives.
    *
    * The second line is the alliance the game did not have a word for: two
-   * crowns fighting the same third crown. Nothing stores it; it is read off
-   * today's wars, and it disappears with them.
+   * crowns fighting the same third crown. Whether it holds is still read off
+   * today's wars and disappears with them — but since v0.55.0 the day it began
+   * is stamped in an `alliance` event, so the line can say how long it has
+   * stood. That is the half of it a computation could never answer.
    */
   private renderCrowns(x: number, startY: number): number {
     let y = startY;
@@ -572,7 +574,15 @@ export class OptionsMenuScene extends Phaser.Scene {
 
       const parts: string[] = [];
       if (foes.length > 0) parts.push(t("captain.at_war", { enemies: foes.map(name).join(", ") }));
-      if (friends.length > 0) parts.push(t("captain.allied_with", { allies: friends.map(name).join(", ") }));
+      if (friends.length > 0) {
+        const since = (other: string) => {
+          const day = alliedSince(this.worldState, crown, other);
+          return day === undefined
+            ? name(other)
+            : `${name(other)} (${Math.max(0, this.worldState.time.day - day)}d)`;
+        };
+        parts.push(t("captain.allied_with", { allies: friends.map(since).join(", ") }));
+      }
 
       const line = this.add.text(
         x + 10, y, `${name(crown)}: ${parts.join(" · ")}`,

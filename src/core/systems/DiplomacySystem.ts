@@ -64,6 +64,26 @@
  * fight Spain. No field, no save, no migration: an alliance is a fact about
  * today's wars, and `relationBetween` computes it.
  *
+ * ## The alliance had no day it began (v0.55.0)
+ *
+ * All of the above stayed true and one thing about it did not survive contact
+ * with the world: a fact that is only ever *computed* has no history. The
+ * relation lifted the moment the second war began and dropped the moment it
+ * ended, and nothing anywhere said so — `areAllied` was exported for four
+ * releases and read by **nobody**, no news board carried it, no NPC repeated
+ * it, and the tavern that will tell a captain the price of bread in the next
+ * bay had nothing to say about two crowns making common cause against a third.
+ * Measured over 150 game-years: two crowns share an enemy on **28.8% of days**,
+ * in episodes averaging sixteen months. A quarter of the game's calendar was a
+ * fact the game could not mention.
+ *
+ * So the *state* stays derived — `areAllied` is still the truth and still asks
+ * today's wars — and only the **beginning** is stamped, in an `alliance`
+ * event, on the day it happens. That is the split this project keeps arriving
+ * at (see `project_derived_vs_recorded_facts`): derive what is true now, stamp
+ * what happened then. Nothing new goes into the save, because a world event is
+ * something the save already holds.
+ *
  * ## Why the same event and not a new one
  *
  * A war declared here is a `war_start` `WorldEventState`, identical in shape to
@@ -236,6 +256,123 @@ export function areAllied(world: WorldState, a: string, b: string): boolean {
   return coBelligerentAgainst(world, a, b).length > 0;
 }
 
+// ── The alliance as a thing that happened (v0.55.0) ───────
+
+/**
+ * How far ahead an alliance event is dated.
+ *
+ * It is refreshed every day the alliance holds and pulled back behind today the
+ * day it does not, so this number is never reached and never read as a
+ * prediction — it exists only so that `expireEvents` leaves a living alliance
+ * alone. Ten years is longer than any war this world runs.
+ */
+export const ALLIANCE_HORIZON_DAYS = 3650;
+
+/** Every alliance currently on the news boards. */
+export function activeAlliances(world: WorldState): WorldEventState[] {
+  return world.worldEvents.filter(
+    ev => ev.type === "alliance" && ev.endDay >= world.time.day,
+  );
+}
+
+/** The alliance event for this pair, in whichever order it was stamped. */
+export function allianceBetween(
+  world: WorldState,
+  a: string,
+  b: string,
+): WorldEventState | undefined {
+  return activeAlliances(world).find(
+    ev => ev.factions.includes(a) && ev.factions.includes(b),
+  );
+}
+
+/**
+ * The day these two made common cause, or undefined if they have not.
+ *
+ * The one thing about an alliance that cannot be recomputed from today's wars,
+ * and therefore the one thing worth writing down.
+ */
+export function alliedSince(world: WorldState, a: string, b: string): number | undefined {
+  return allianceBetween(world, a, b)?.startDay;
+}
+
+/**
+ * Open, refresh and close the alliances the wars imply.
+ *
+ * Called at the end of `updateDiplomacy`, so a war declared this morning can
+ * make an alliance this afternoon, and `concludeDynamicWars` at the top has
+ * already taken away the one that ended — which is what makes a lapse
+ * detectable on the day it happens rather than the day after.
+ *
+ * `vars.against` is stamped, not recomputed: it names the enemy that *made*
+ * this alliance. When that particular war ends while another shared one runs
+ * on, the pair are still allies but they are allies about something else, so
+ * the old alliance is concluded and a new one opened the same day. That is
+ * cheaper than it sounds and it keeps every sentence on the news boards true
+ * of the day it was written.
+ */
+export function stampAlliances(world: WorldState): WorldState {
+  let w = world;
+
+  for (const [a, b] of crownPairs()) {
+    const shared = coBelligerentAgainst(w, a, b);
+    const existing = allianceBetween(w, a, b);
+    const stale = existing !== undefined
+      && !shared.includes(existing.vars.againstId as string);
+
+    if (existing && (shared.length === 0 || stale)) {
+      w = {
+        ...w,
+        // Behind today: `expireEvents` runs next and takes it off the boards.
+        worldEvents: w.worldEvents.map(ev =>
+          ev.id === existing.id ? { ...ev, endDay: w.time.day - 1 } : ev,
+        ),
+      };
+      w = addLogEntry(w, "news.alliance_end", {
+        faction1: crownName(a),
+        faction2: crownName(b),
+        against: existing.vars.against as string,
+      });
+    }
+
+    if (shared.length === 0) continue;
+    if (existing && !stale) {
+      w = {
+        ...w,
+        worldEvents: w.worldEvents.map(ev =>
+          ev.id === existing.id
+            ? { ...ev, endDay: w.time.day + ALLIANCE_HORIZON_DAYS }
+            : ev,
+        ),
+      };
+      continue;
+    }
+
+    const vars = {
+      faction1: crownName(a),
+      faction2: crownName(b),
+      against: crownName(shared[0]),
+      againstId: shared[0],
+    };
+    const ev: WorldEventState = {
+      id: `alliance_${[a, b].sort().join("_")}_${w.time.day}`,
+      type: "alliance",
+      startDay: w.time.day,
+      endDay: w.time.day + ALLIANCE_HORIZON_DAYS,
+      // Empty, like every other faction-scale event: it is news everywhere.
+      ports: [],
+      factions: [a, b],
+      severity: 2,
+      headline: "news.alliance",
+      vars,
+    };
+    w = { ...w, worldEvents: [...w.worldEvents, ev] };
+    w = addLogEntry(w, "news.alliance", vars);
+  }
+
+  return w;
+}
+
 /**
  * How ready this pair is to fall out, as a share of the base odds.
  *
@@ -266,7 +403,7 @@ export function crownPairs(): Array<[string, string]> {
  */
 export function updateDiplomacy(world: WorldState): WorldState {
   let w = concludeDynamicWars(world);
-  if (w.time.day <= PEACE_GRACE_DAYS) return w;
+  if (w.time.day <= PEACE_GRACE_DAYS) return stampAlliances(w);
   let rng = w.rng;
 
   for (const [a, b] of crownPairs()) {
@@ -296,7 +433,7 @@ export function updateDiplomacy(world: WorldState): WorldState {
     w = addLogEntry(w, "news.war_start", vars);
   }
 
-  return { ...w, rng };
+  return stampAlliances({ ...w, rng });
 }
 
 /**
