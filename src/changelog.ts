@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.53.0.1",
+    date: "2026-09-08",
+    changes: [
+      "NPC SHIPS HAD TURBO WHEN THEY TOUCHED A COAST",
+      "  Reported from play: a ship standing north from Jamaica touched the Cuban",
+      "  shore, turned ninety degrees east and left at a speed nothing in the",
+      "  game can make",
+      "  The turn was right — that branch is meant to put her along the coast —",
+      "  but the coast-avoidance cooldown moved her at a hardcoded 1.5 world",
+      "  units per tick, written in v0.8.4.1 and untouched for forty-five",
+      "  releases. Hull speeds run from 0.104 to 0.250, so EVERY SHIP escaped at",
+      "  four times what the fastest hull in the game makes at her best point of",
+      "  sail, and a merchantman at nine and a half times her own cruise",
+      "  Over the sixty ticks of the cooldown that is 90 world units. The whole",
+      "  Jamaica-to-Cuba passage is 165 — half the crossing in three seconds",
+      "  She works off the shore on her own legs now: her hull speed at full",
+      "  canvas, with no wind term, so a frigate leaves a beach faster than a",
+      "  merchantman and neither of them flies",
+      "  The constant had a reason, and it is kept: working off a shore has to be",
+      "  deterministic or a hull pinned on a lee shore would grind along it for",
+      "  ever — which v0.53.0 turned from a theoretical risk into a real one",
+    ],
+  },
+  {
     version: "0.53.0.0",
     date: "2026-09-08",
     changes: [

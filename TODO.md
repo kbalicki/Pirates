@@ -1979,6 +1979,27 @@ Wybrane przez użytkownika z listy kandydatów. Jedyna pozycja, która była ju�
 - Ekran pomocy: kolumna **„Mart/Hals"** z `bestBeatAngle()` liczonym **z polary**
 - **Zero nowych plików, zero nowych pól**, migracje dalej na v12
 
+### ~~NPC miały turbo przy dotknięciu brzegu~~ ✅ (v0.53.0.1)
+
+**Zgłoszone z gry** przez użytkownika: statek idący z Jamajki na północ dotknął
+brzegu Kuby, skręcił 90° na wschód i odpłynął „jakby miał turbo".
+
+- **Skręt był poprawny** — `findOpenSeaHeading` ma ustawić ją wzdłuż brzegu.
+  Błędem była prędkość: gałąź karencji `coastAvoidTick` w `WorldEngine` niosła ją
+  **stałą `1.5`** jednostki na tik, wpisaną w v0.8.4.1 i nietkniętą przez
+  czterdzieści pięć wydań
+- **Zmierzone**: `speedBase` klas idzie od 0,104 do 0,250, więc `1.5` to **4×
+  najszybszy kadłub w grze na najlepszym kursie**, a dla merchantmana 9,6× jego
+  własnego marszu. Przez 60 tików karencji to **90 jednostek**, przy przeprawie
+  Jamajka–Kuba długiej na **165** — pół przeprawy w trzy sekundy
+- **Poprawka**: schodzi z brzegu na własnych nogach (`speedBase`, pełne płótno,
+  bez członu wiatru). Stała miała powód i on zostaje: schodzenie z brzegu musi
+  być deterministyczne, bo inaczej kadłub przyparty do brzegu ocierałby się o
+  niego bez końca — a v0.53.0 zamieniła to ryzyko z teoretycznego w realne
+- **Test regresji sprawdzony przez cofnięcie poprawki** (3 z 4 asercji czerwone
+  na starym kodzie). Test, który przechodzi na kodzie z błędem, niczego nie
+  dowodzi — to ta sama lekcja co przypięty do `windStrength = 1.0` w v0.53.0
+
 ### v0.54.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:

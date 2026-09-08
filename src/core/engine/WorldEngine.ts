@@ -457,7 +457,19 @@ export class WorldEngine {
       const ticksSinceCoast = newTime.tick - coastTick;
       if (coastTick > 0 && ticksSinceCoast < COAST_AVOID_TICKS) {
         const dir = { x: Math.sin(entity.heading), y: -Math.cos(entity.heading) };
-        const spd = 1.5;
+        // Her own way through the water, with no wind term (v0.53.0.1).
+        //
+        // Working off a shore has to be deterministic — a hull pinned on a lee
+        // shore by the polar would grind along it for ever, and since v0.53.0
+        // that is a real risk rather than a theoretical one. But the constant
+        // that bought the determinism was `1.5`, and `speedBase` runs from
+        // 0.104 to 0.250, so every hull in the game escaped at FOUR TIMES what
+        // the fastest ship afloat can make at her best point of sail — a
+        // merchantman at nine and a half times her own cruise. Over the sixty
+        // ticks of the cooldown that is 90 world units, on a Jamaica-to-Cuba
+        // passage that is 165 units long: half the crossing in three seconds,
+        // which is exactly what it looked like.
+        const spd = SHIP_CLASSES[entity.ship?.classId as string]?.speedBase ?? 0.167;
         const nextX = entity.pos.x + dir.x * spd * dtTicks;
         const nextY = entity.pos.y + dir.y * spd * dtTicks;
 
