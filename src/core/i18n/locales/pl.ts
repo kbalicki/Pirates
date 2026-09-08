@@ -82,6 +82,10 @@ export const PL: LocaleData = {
 
   // -- HUD --
   "hud.gold": "Złoto",
+  "hud.beat": "hals",
+  "hud.made_good": "na wiatr",
+  "hud.go_about": "zwrot",
+  "hud.set": "znos",
   "hud.wind": "Wiatr: {{pct}}%",
   "hud.hull": "Kadłub: {{current}}/{{max}}",
   "hud.sails": "Żagle: {{current}}/{{max}}",

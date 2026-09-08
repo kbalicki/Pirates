@@ -82,6 +82,10 @@ export const EN: LocaleData = {
 
   // -- HUD --
   "hud.gold": "Gold",
+  "hud.beat": "beat",
+  "hud.made_good": "made good",
+  "hud.go_about": "go about",
+  "hud.set": "set",
   "hud.wind": "Wind: {{pct}}%",
   "hud.hull": "Hull: {{current}}/{{max}}",
   "hud.sails": "Sails: {{current}}/{{max}}",

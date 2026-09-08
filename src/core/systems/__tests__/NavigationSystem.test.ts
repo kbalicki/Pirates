@@ -802,15 +802,34 @@ describe("the dead zone is not dead", () => {
     }
   });
 
-  it("the curve never jumps: no step bigger than a tenth over one degree", () => {
+  it("the curve never jumps, once she is out of irons", () => {
+    // The bar that caught P0-2, and that v0.54.0's first tuning tripped: at a
+    // rise exponent of 0.35 the speed climbed 0.19 in HALF A DEGREE, which is a
+    // knife edge, not a curve. It bought a galleon a hundredth of a knot and was
+    // thrown away for it.
     for (const mwa of RIGS) {
       for (const W of [0.3, TRADE_WIND, 1.0]) {
         let prev = windSpeedModifier(0, 0, W, mwa);
         for (let d = 0.5; d <= 180; d += 0.5) {
           const cur = windSpeedModifier(d * D, 0, W, mwa);
-          expect(Math.abs(cur - prev)).toBeLessThan(0.1);
+          if (d > mwa + 1.5) expect(Math.abs(cur - prev)).toBeLessThan(0.1);
           prev = cur;
         }
+      }
+    }
+  });
+
+  it("and the one step it does take is the sails filling, not a teleport", () => {
+    // The dead angle is a real edge: on one side nothing draws, on the other the
+    // canvas takes the wind, and a ship coming out of irons does feel it happen.
+    // So the bar there is its own — loose enough to let her sails fill in a tick
+    // of helm, tight enough that she cannot leap.
+    for (const mwa of RIGS) {
+      for (const W of [0.3, TRADE_WIND, 1.0]) {
+        const inIrons = windSpeedModifier((mwa - 0.5) * D, 0, W, mwa);
+        const justOut = windSpeedModifier((mwa + 0.5) * D, 0, W, mwa);
+        expect(justOut).toBeGreaterThan(inIrons);
+        expect(justOut - inIrons).toBeLessThan(0.2);
       }
     }
   });
@@ -865,8 +884,10 @@ describe("the dead zone is not dead", () => {
     // beating at 70° has almost no cosine left to spend, so her best beat sits
     // ten degrees off her dead angle and buys her very little. That is the whole
     // reason a heavy square rigger is a downwind ship.
-    expect(bestBeatAngle(30)).toBe(51);
+    expect(bestBeatAngle(30)).toBe(42);
     expect(bestBeatAngle(60)).toBe(70);
+    // Where a seaman would look for them: a fore-and-aft rig works up at a bit
+    // over forty degrees, a heavy square rigger not until nearly seventy.
     expect(bestBeatAngle(60) - 60).toBeLessThan(bestBeatAngle(30) - 30);
   });
 

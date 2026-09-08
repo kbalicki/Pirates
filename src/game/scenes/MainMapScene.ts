@@ -72,7 +72,9 @@ import {
 } from "../../core/systems/TreasureSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
-import { isInIrons } from "../../core/systems/WeatherSystem.ts";
+import { isInIrons, windPolar, bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
+import type { EntityState } from "../../core/model/EntityState.ts";
+import type { ShipClassDef } from "../../core/data/ships.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { CommandQueue } from "../input/CommandQueue.ts";
 import { PORTS } from "../../core/data/ports.ts";
@@ -477,6 +479,95 @@ export class MainMapScene extends Phaser.Scene {
    * (v0.22.0). A blockade is pressed by *being there*, so the only way he can
    * learn the rule is by being told while he is.
    */
+  /**
+   * What a captain working to windward could not see (v0.54.0).
+   *
+   * Three complaints from the playtest, in one place: he did not know which
+   * course was best, when to go about, or how far the water was setting him.
+   * All three are read off the same polar the ship is sailed by — the compass
+   * gets the dead-zone wedge and the two best beats, the line under it gets the
+   * ground he is actually making to windward, and the line under THAT appears
+   * only when the current is doing enough to matter.
+   *
+   * Nothing here is stored and nothing is a second copy of the arithmetic: the
+   * dead angle comes from her class, the beat from `bestBeatAngle`, and the set
+   * from the difference between where her bow is and where she is going.
+   */
+  private updateWindwardHud(
+    entity: EntityState | undefined,
+    cls: ShipClassDef | null,
+    wx: { windDirRad: number; windStrength: number },
+  ): void {
+    if (!entity?.ship || entity.mode !== "sailing" || !cls) {
+      this.uiOverlay?.updateWindward(null);
+      this.uiOverlay?.updateDrift(null, 0);
+      return;
+    }
+    const D = Math.PI / 180;
+    const mwa = cls.minWindAngle ?? 30;
+    const beat = bestBeatAngle(mwa, wx.windStrength);
+
+    let off = Math.abs(entity.heading - wx.windDirRad) % (Math.PI * 2);
+    if (off > Math.PI) off = Math.PI * 2 - off;
+    const offDeg = off / D;
+
+    this.uiOverlay?.updateCompassSectors(wx.windDirRad, mwa, beat, entity.heading);
+
+    // Only while she is on the wind. Past the close-hauled band the question
+    // does not arise and the line would be noise on every reach in the game.
+    const beating = offDeg < mwa + 30;
+    if (beating) {
+      // Her speed through the water times how much of it points to windward.
+      const polar = windPolar(entity.heading, wx.windDirRad, wx.windStrength, mwa);
+      const made = polar.speed * Math.cos(off) * cls.speedBase * (entity.sailLevel ?? 0);
+      // The other tack, at the same angle off the wind on the other side. Worth
+      // saying only when she is genuinely on one, not when she is in irons —
+      // there, "bear away" is already on the screen.
+      const goAbout = offDeg >= mwa && this.otherTackIsBetter(entity, wx, mwa, beat);
+      this.uiOverlay?.updateWindward({ beating: true, beatDeg: beat, offWind: offDeg, made, goAbout });
+    } else {
+      this.uiOverlay?.updateWindward(null);
+    }
+
+    // Where she is actually going, against where she is pointed.
+    const vel = entity.vel ?? { x: 0, y: 0 };
+    const overGround = Math.hypot(vel.x, vel.y);
+    if (overGround < 0.005) { this.uiOverlay?.updateDrift(null, 0); return; }
+    const track = Math.atan2(vel.x, -vel.y);
+    let set = (track - entity.heading) % (Math.PI * 2);
+    if (set > Math.PI) set -= Math.PI * 2;
+    if (set < -Math.PI) set += Math.PI * 2;
+    this.uiOverlay?.updateDrift(set / D, overGround);
+  }
+
+  /**
+   * Whether the board she is not on would carry her better than the one she is.
+   *
+   * Measured against the course she is *making*, not a destination she has not
+   * told anybody about: if her track is being bent away from her best beat by
+   * the set, the other tack is the answer. The merchant traffic has had this
+   * comparison since v0.53.0.2 and the player had no version of it at all.
+   */
+  private otherTackIsBetter(
+    entity: EntityState,
+    wx: { windDirRad: number; windStrength: number },
+    mwa: number,
+    beatDeg: number,
+  ): boolean {
+    const D = Math.PI / 180;
+    const vel = entity.vel ?? { x: 0, y: 0 };
+    if (Math.hypot(vel.x, vel.y) < 0.005) return false;
+    const track = Math.atan2(vel.x, -vel.y);
+    const made = (h: number) =>
+      windPolar(h, wx.windDirRad, wx.windStrength, mwa).speed * Math.cos(h - track);
+    const side = Math.sign(
+      ((entity.heading - wx.windDirRad + Math.PI * 3) % (Math.PI * 2)) - Math.PI,
+    ) || 1;
+    const here = wx.windDirRad + side * beatDeg * D;
+    const there = wx.windDirRad - side * beatDeg * D;
+    return made(there) > made(here) * 1.1;
+  }
+
   private updateBlockadeHud(): void {
     const harbour = harbourInReach(this.worldState);
     if (!harbour) {
@@ -1169,6 +1260,7 @@ export class MainMapScene extends Phaser.Scene {
     const vel3 = pe3?.vel ?? { x: 0, y: 0 };
     const shipSpeed = Math.sqrt(vel3.x * vel3.x + vel3.y * vel3.y);
     this.uiOverlay?.updateSpeed(pe3?.mode === "sailing" ? shipSpeed : 0);
+    this.updateWindwardHud(pe3, psc, wx);
 
     // Animate water surface with wind
     this.waterRenderer.update(wx.windDirRad, wx.windStrength);

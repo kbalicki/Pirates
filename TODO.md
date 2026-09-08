@@ -2042,7 +2042,44 @@ który czyścił linijkę komunikatu. Teraz: etykieta mówi ilu zejdzie, **osobn
 ekran potwierdzenia** ostrzega wprost (na życzenie użytkownika), a tawerna mówi,
 co się stało.
 
-### v0.54.0 — co dalej
+### ~~v0.54.0 — Ona pracuje na wiatr, i widać, jak to robi~~ ✅ (v0.54.0.0)
+
+Z playtestu użytkownika: halsowanie jest OK, ale bardzo wolno, i **nie wiadomo,
+czy robi się to dobrze**. Trzy braki czytelności wskazane wprost.
+
+- **Pasmo było za szerokie.** Płótno napełniało się przez całe 30° pasma halsu,
+  co stawiało najlepszy hals ciężkiego rejowca na 70°, gdzie kosinus nie ma już
+  czego oddać. Teraz napełnia się w **12°** i tam zostaje. Najlepszy hals: 42°
+  (skośne) i 67° (rejowe) — tam, gdzie szukałby go marynarz
+- **Droga na wiatr w górę o połowę**: pinasa 0,368→0,511, fregata 0,214→0,323,
+  galeon 0,144→0,216. Port Royal → San Juan prosto pod wiatr: galeon 21,5 →
+  **13,7 dnia**; Havana → Santo Domingo 23,6 → **13,9**
+- **Obietnica trzyma się dalej**: pasmo KOŃCZY się tam, gdzie kończyło, więc
+  gałąź półwiatru zaczyna się bez zmiany — zmierzone na czterech ożaglowaniach,
+  pięciu siłach wiatru i co pół stopnia: **0,000000000**
+- **Ostrzejsze narastanie zmierzone i wyrzucone**: przy wykładniku 0,35 prędkość
+  rosła o 0,19 na **pół stopnia** od kąta martwego — nóż, nie krzywa — a dawało
+  to galeonowi setną część węzła. Złapała to asercja ciągłości i po to jest
+- **Kompas pokazuje dwa wyroki wiatru**: czerwony klin kąta martwego tego
+  kadłuba i dwa zielone znaczniki najlepszych halsów, lewego i prawego. Złota
+  kropka to dziób. „W którą stronę zwrot" przestaje być zgadywaniem
+- **Linijka pod kompasem, tylko gdy jest na wietrze**: kąt trzymany kontra kąt
+  chciany, ptaszek gdy trafiony, i **droga faktycznie robiona na wiatr** (nie
+  prędkość przez wodę, która na halsie schlebia). Podpowiedź o zwrocie, gdy
+  drugi hals niósłby lepiej
+- **I co robi z nią woda**: o ile prąd znosi ją z własnego kursu i prędkość nad
+  dnem. Tylko gdy jest czego pilnować — a ostro na wiatr bardzo często jest
+- Zweryfikowane w pakiecie: w martwej strefie `beat 5°/47° →  made good 0.4`,
+  na halsie `beat 46°/47° ✓  made good 3.1` (**7,7× więcej drogi**), w półwiatr
+  linijka znika, w prądzie `set +9°`. Konsola bez błędu
+
+**Zostaje otwarte:** galeon i merchantman dalej nie pokonają Port Royal →
+Barbados prostą (1289 jednostek, cel **27° od wiatru** przy martwej strefie 60°,
+więc tylko jeden hals w ogóle tam prowadzi). Symulator liczy prostą bez lądu i
+nie jest wierny temu, co robi gracz — do sprawdzenia przy grze, nie do strojenia
+na ślepo.
+
+### v0.55.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 

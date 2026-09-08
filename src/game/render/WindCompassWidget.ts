@@ -78,7 +78,11 @@ export class WindCompassWidget {
   private disc: Phaser.GameObjects.Image;
   private needle: Phaser.GameObjects.Image;
   private windLabel: Phaser.GameObjects.Text;
+  /** The dead zone and the two best beats, drawn over the disc (v0.54.0). */
+  private sectors: Phaser.GameObjects.Graphics;
   private size: number;
+  private cx = 0;
+  private cy = 0;
   private currentAngle = 0;
 
   constructor(scene: Phaser.Scene, x: number, y: number, size: number) {
@@ -99,6 +103,13 @@ export class WindCompassWidget {
     this.disc = scene.add.image(x, y, DISC_TEX_KEY);
     this.disc.setScale(texScale);
     this.disc.setDepth(10);
+
+    // Under the needle, over the disc: the two sectors that decide every course
+    // a captain steers, and which he had no way of seeing before v0.54.0.
+    this.sectors = scene.add.graphics();
+    this.sectors.setDepth(15);
+    this.cx = x;
+    this.cy = y;
 
     this.needle = scene.add.image(x, y, NEEDLE_TEX_KEY);
     this.needle.setScale(texScale);
@@ -140,11 +151,64 @@ export class WindCompassWidget {
     }
   }
 
+  /**
+   * Draw the wind's two verdicts on the rose (v0.54.0).
+   *
+   * The red wedge is where this hull's canvas will not draw at all — her own
+   * dead angle, 30° for a pinnace and 60° for a galleon, and the reason a
+   * course can be simply unsailable. The two green ticks are her best beats:
+   * the port and starboard courses that make the most ground to windward, so
+   * "which way do I go about" stops being a guess. The gold pip is where her
+   * bow is now.
+   *
+   * All three are derived every frame from the polar itself — nothing here is
+   * a number somebody wrote down, so nothing here can go stale.
+   */
+  updateSailing(
+    windDirRad: number,
+    minWindAngleDeg: number,
+    bestBeatDeg: number,
+    shipHeading: number | null,
+  ): void {
+    const g = this.sectors;
+    g.clear();
+    const r = this.size / 2 - 3;
+    const D = Math.PI / 180;
+    // Headings are 0 = north; Phaser's arcs are 0 = east.
+    const arc = (h: number) => h - Math.PI / 2;
+
+    g.fillStyle(0x8a3a3a, 0.30);
+    g.slice(
+      this.cx, this.cy, r,
+      arc(windDirRad - minWindAngleDeg * D),
+      arc(windDirRad + minWindAngleDeg * D),
+      false,
+    );
+    g.fillPath();
+
+    g.lineStyle(2, 0x66cc66, 0.95);
+    for (const side of [-1, 1]) {
+      const a = arc(windDirRad + side * bestBeatDeg * D);
+      g.beginPath();
+      g.moveTo(this.cx + Math.cos(a) * (r - 9), this.cy + Math.sin(a) * (r - 9));
+      g.lineTo(this.cx + Math.cos(a) * r, this.cy + Math.sin(a) * r);
+      g.strokePath();
+    }
+
+    if (shipHeading !== null) {
+      const a = arc(shipHeading);
+      g.fillStyle(0xffdd88, 1);
+      g.fillCircle(this.cx + Math.cos(a) * (r - 5), this.cy + Math.sin(a) * (r - 5), 2.5);
+    }
+  }
+
   /** Reposition after a window resize. */
   reposition(x: number, y: number): void {
     this.disc.setPosition(x, y);
     this.needle.setPosition(x, y);
     this.windLabel.setPosition(x, y + this.size / 2 + 6);
+    this.cx = x;
+    this.cy = y;
   }
 
   /** Clean up game objects. */
@@ -152,6 +216,7 @@ export class WindCompassWidget {
     this.disc.destroy();
     this.needle.destroy();
     this.windLabel.destroy();
+    this.sectors.destroy();
   }
 
   // ---- Texture generation ----------------------------------------------- //

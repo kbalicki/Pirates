@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "../../core/i18n/I18n.ts";
 import { UI_FONT, TEXT_RES, txt } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
 import { WindCompassWidget } from "../render/WindCompassWidget.ts";
@@ -32,6 +33,8 @@ export class UIOverlayScene extends Phaser.Scene {
   private speedText!: Phaser.GameObjects.Text;
   private fleetText!: Phaser.GameObjects.Text;
   private blockadeText!: Phaser.GameObjects.Text;
+  private windwardText!: Phaser.GameObjects.Text;
+  private driftText!: Phaser.GameObjects.Text;
   private stormText!: Phaser.GameObjects.Text;
   /**
    * The squall itself (v0.38.0).
@@ -114,8 +117,27 @@ export class UIOverlayScene extends Phaser.Scene {
     this.speedText.setOrigin(1, 0);
     this.speedText.setDepth(30);
 
+    // Working to windward — below speed (v0.54.0). Only drawn when she is
+    // actually on the wind, so it costs nothing on a reach.
+    this.windwardText = this.add.text(cam.width - MARGIN, sailY + 36, "", {
+      ...txt(11, { color: "#88cc88" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.windwardText.setOrigin(1, 0);
+    this.windwardText.setDepth(30);
+
+    // What the water is doing to her, when it is doing enough to matter.
+    this.driftText = this.add.text(cam.width - MARGIN, sailY + 52, "", {
+      ...txt(11, { color: "#66aacc" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.driftText.setOrigin(1, 0);
+    this.driftText.setDepth(30);
+
     // Fleet info — below speed
-    this.fleetText = this.add.text(cam.width - MARGIN, sailY + 36, "", {
+    this.fleetText = this.add.text(cam.width - MARGIN, sailY + 68, "", {
       ...txt(11, { color: "#6699cc" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -125,7 +147,7 @@ export class UIOverlayScene extends Phaser.Scene {
 
     // Blockade — under the fleet line. Silent unless the player is actually
     // standing off a harbour, which is the only time it has anything to say.
-    this.blockadeText = this.add.text(cam.width - MARGIN, sailY + 54, "", {
+    this.blockadeText = this.add.text(cam.width - MARGIN, sailY + 86, "", {
       ...txt(11, { color: "#cc8844" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -139,7 +161,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.stormVeil.setDepth(-10);
 
     // Weather warning — under the blockade line, and silent in fair weather.
-    this.stormText = this.add.text(cam.width - MARGIN, sailY + 72, "", {
+    this.stormText = this.add.text(cam.width - MARGIN, sailY + 104, "", {
       ...txt(12, { bold: true, color: "#88aacc" }),
       stroke: "#000000",
       strokeThickness: 3,
@@ -165,8 +187,10 @@ export class UIOverlayScene extends Phaser.Scene {
     const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
     if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY);
     if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
-    if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 36);
-    if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + 54);
+    if (this.windwardText) this.windwardText.setPosition(width - MARGIN, sailY + 36);
+    if (this.driftText) this.driftText.setPosition(width - MARGIN, sailY + 52);
+    if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 68);
+    if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + 86);
     if (this.stormText) this.stormText.setPosition(width - MARGIN, sailY + 72);
     if (this.stormVeil) this.stormVeil.setSize(width, height);
   }
@@ -203,6 +227,47 @@ export class UIOverlayScene extends Phaser.Scene {
         this.speedText.setText(`${knots} kn`);
       }
     }
+  }
+
+  /**
+   * The three things a captain could not see while beating (v0.54.0).
+   *
+   * `beatDeg` is her best beat off the wind, `offWind` where her bow is now,
+   * and `made` the share of her speed that is actually going to windward. The
+   * hint fires when the other tack would do better than the one she is on —
+   * the same comparison the merchant traffic has been making since v0.53.0.2,
+   * which the player had no version of at all.
+   */
+  updateWindward(info: {
+    beating: boolean; beatDeg: number; offWind: number;
+    made: number; goAbout: boolean;
+  } | null): void {
+    if (!this.windwardText) return;
+    if (!info || !info.beating) { this.windwardText.setText(""); return; }
+    const onIt = Math.abs(info.offWind - info.beatDeg) <= 4;
+    const arrow = info.offWind < info.beatDeg ? "\u2192" : "\u2190"; // fall off / come up
+    this.windwardText.setText(
+      `${t("hud.beat")} ${Math.round(info.offWind)}\u00b0/${Math.round(info.beatDeg)}\u00b0 `
+      + `${onIt ? "\u2713" : arrow}  ${t("hud.made_good")} ${(info.made * 32).toFixed(1)}`
+      + (info.goAbout ? `  \u21bb ${t("hud.go_about")}` : ""),
+    );
+    this.windwardText.setColor(onIt ? "#88cc88" : "#ccaa55");
+  }
+
+  /** How far the water is setting her off her own heading, in degrees. */
+  updateDrift(setDeg: number | null, overGround: number): void {
+    if (!this.driftText) return;
+    if (setDeg === null || Math.abs(setDeg) < 3) { this.driftText.setText(""); return; }
+    this.driftText.setText(
+      `${t("hud.set")} ${setDeg > 0 ? "+" : ""}${Math.round(setDeg)}\u00b0  ${(overGround * 32).toFixed(1)} kn`,
+    );
+  }
+
+  /** Pass the sailing sectors down to the rose. */
+  updateCompassSectors(
+    windDirRad: number, minWindAngleDeg: number, bestBeatDeg: number, shipHeading: number,
+  ): void {
+    this.compass?.updateSailing(windDirRad, minWindAngleDeg, bestBeatDeg, shipHeading);
   }
 
   /** Called from MainMapScene each frame with fleet info */

@@ -106,6 +106,30 @@ export const BEAT_CEIL = 0.4;
 export const IRONS_STEERAGE = 0.05;
 
 /**
+ * How far off her dead angle a ship's canvas is fully drawing (v0.54.0).
+ *
+ * v0.53.0 spread the rise across the whole 30° close-hauled band, which put a
+ * heavy square rigger's best beat at 70° — where the cosine has almost nothing
+ * left to give — and made working to windward in her a matter of weeks. Twelve
+ * degrees puts each rig's best beat where a seaman would look for it: 42° for
+ * fore-and-aft, 67° for square. The band still ENDS at `minWindAngle + 30`, so
+ * the reach branch starts exactly where it always has and nothing at or above
+ * `BEAT_CEIL` moves by a single bit — measured across four rigs, five wind
+ * strengths and every half degree: 0.000000000.
+ */
+export const BEAT_RISE = 12;
+
+/**
+ * The shape of that rise — a square root, unchanged since v0.53.0.
+ *
+ * A steeper one was measured and thrown away: at 0.35 the speed climbs 0.19 in
+ * HALF A DEGREE off the dead angle, which is a knife edge rather than a curve,
+ * and it bought a galleon a hundredth of a knot. The continuity assertion
+ * caught it, which is what that assertion is for.
+ */
+export const BEAT_SHAPE = 0.5;
+
+/**
  * Realistic wind speed modifier based on a sailing polar diagram.
  *
  * Wind angle (degrees from wind), for the default 30° dead zone:
@@ -184,8 +208,11 @@ export function windPolar(
     // Dead zone: can't sail into wind (ship-specific angle)
     factor = 0;
   } else if (deg < minWindAngle + 30) {
-    // Close hauled: 0→0.4 off the dead-zone edge, steeply at first
-    factor = Math.sqrt((deg - minWindAngle) / 30) * BEAT_CEIL;
+    // Close hauled: 0→0.4 within BEAT_RISE degrees of the dead-zone edge, then
+    // held there until the reach branch takes over at +30. Holding it flat is
+    // what keeps `reachStart` — and therefore the whole rest of the polar —
+    // exactly where it was.
+    factor = Math.pow(Math.min(1, (deg - minWindAngle) / BEAT_RISE), BEAT_SHAPE) * BEAT_CEIL;
   } else if (deg < 120) {
     // Beam reach to broad reach: 0.4 → 1.5 → 1.1, peak halfway across the band.
     // Two quarter-sine arcs: the first rises to the peak, the second falls to
