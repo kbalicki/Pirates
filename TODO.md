@@ -2000,6 +2000,48 @@ brzegu Kuby, skręcił 90° na wschód i odpłynął „jakby miał turbo".
   na starym kodzie). Test, który przechodzi na kodzie z błędem, niczego nie
   dowodzi — to ta sama lekcja co przypięty do `windStrength = 1.0` w v0.53.0
 
+### ~~Trzy rzeczy znalezione przez granie~~ ✅ (v0.53.0.2)
+
+Pierwsza tura playtestu użytkownika. Wszystkie trzy zgłoszone z gry, żadnej nie
+znalazłby test jednostkowy — dwie z nich to skutki v0.53.0.
+
+**1. Statki chodzące w niewidzialną ścianę** (moja regresja, wydanie stare).
+`updatePortToPort` celuje dziobem w następny znak i **nigdy nie musiał wiedzieć
+o wietrze**, bo kurs prosto pod wiatr był wart 0,48 prędkości bazowej. Od
+v0.53.0 jest wart `IRONS_STEERAGE`.
+
+- **Zmierzone**: ciąg fluyta w martwej strefie to **0,0046** przeciwko prądowi
+  **0,06** — jedna trzynasta wody, w której pływa. Na odcinku 600 jednostek
+  prosto pod wiatr, 4000 tików: zamknęła **minus 28** jednostek. Kończyła
+  **dalej** od znaku, niż zaczęła, znoszona z powrotem po własnym śladzie
+- Halsuje teraz i zamyka 54. **Wszystko, co da się wziąć wprost, dalej bierze
+  wprost** — nic poza martwą strefą się nie ruszyło (asercja na 51-180°)
+- **Naiwna poprawka jest gorsza w sposób, który widać**: dwa halsy po obu
+  stronach kursu punktują niemal identycznie, więc decydowanie od nowa co tik
+  zmienia kurs **co tik** — 4000 zmian na 4000 tików, czyli to samo dreptanie z
+  nową przyczyną. `TACK_HOLD_SHARE = 0.9`: **9 zwrotów zamiast 3999**
+- Zweryfikowane na wodzie w zbudowanym pakiecie: 8 kadłubów, **zero stojących**,
+  zero w martwej strefie, 37 zwrotów na 8 statków przez 1200 tików
+
+**2. Wyjście z portu przerzucało na drugą stronę miasta.** Statek lądował na
+płaskie 65 jednostek **na południe od środka miasta**, niezależnie od tego,
+gdzie jest morze. Woda Port Royal jest **40 jednostek na PÓŁNOC**, więc kapitan,
+który wszedł od północy, dostawał z powrotem statek 105 jednostek dalej, po
+drugiej stronie miasta i wciąż dziobem na północ — co czyta się jak teleport i
+tak zostało zgłoszone. `getPortWaterPos` wie, gdzie jest woda każdego portu, od
+v0.19.0; wyjście było jedynymi drzwiami, które nigdy nie zapytały.
+Zmierzone po poprawce: (1675,1442), 75 jednostek od miasta, **na północ**,
+dziobem w morze.
+
+**3. Osiem rąk zwerbowanych, cztery na pokładzie.** Nic nie zginęło: podział
+łupów płaci załodze i **dwie trzecie schodzi z pieniędzmi na ląd** — razem z
+ludźmi zaciągniętymi dwa wiersze wyżej. `10 × CREW_REMAINING_AFTER_SHARE` to
+**dokładnie 4**. Arytmetyka była poprawna, a ekran nie mówił nic: etykieta
+podawała tylko dni, a liczba, która zeszła, szła do dziennika za `scene.restart`,
+który czyścił linijkę komunikatu. Teraz: etykieta mówi ilu zejdzie, **osobny
+ekran potwierdzenia** ostrzega wprost (na życzenie użytkownika), a tawerna mówi,
+co się stało.
+
 ### v0.54.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:

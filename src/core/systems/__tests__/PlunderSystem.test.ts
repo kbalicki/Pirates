@@ -475,3 +475,55 @@ describe("the loop as a whole", () => {
     expect(shipOf(divided.world).crew.morale).toBe(1);
   });
 });
+
+// ===========================================================================
+// What the tavern has to say before he presses it (v0.53.0.2)
+// ===========================================================================
+
+/**
+ * Reported from play: "I hired eight hands in the tavern, I had two, so it
+ * should be ten — and after leaving port I see four."
+ *
+ * Ten times `CREW_REMAINING_AFTER_SHARE` rounds to exactly four. Nothing was
+ * lost: he divided the plunder two menu items below the recruiter, and
+ * two thirds of the men — the ones he had just paid to sign — took their share
+ * and went ashore. The arithmetic was right and the screen said nothing: the
+ * label offered a division and named only the days, and the count that left
+ * went into the event log, behind a `scene.restart` that cleared the message
+ * line on the way past.
+ *
+ * So the number the label promises has to be the number that actually leaves.
+ */
+describe("dividing the plunder tells him what it costs", () => {
+  /** The figure the tavern label prints. */
+  const leaving = (crew: number) =>
+    Math.max(0, crew - Math.max(1, Math.round(crew * CREW_REMAINING_AFTER_SHARE)));
+
+  it("the count on the label is the count that walks", () => {
+    for (const crew of [2, 4, 5, 8, 10, 17, 30, 60, 120]) {
+      const result = dividePlunder(makeWorld({ crew, gold: 5000 }));
+      expect(result.error).toBeUndefined();
+      expect(result.crewLeft).toBe(leaving(crew));
+    }
+  });
+
+  it("ten hands become four — the number he reported", () => {
+    const result = dividePlunder(makeWorld({ crew: 10, gold: 5000 }));
+    expect(result.crewLeft).toBe(6);
+    expect(leaving(10)).toBe(6);
+  });
+
+  it("she is never left without a soul aboard", () => {
+    for (const crew of [1, 2, 3]) {
+      const w = dividePlunder(makeWorld({ crew, gold: 500 })).world;
+      const left = w.entities[w.player.shipId as string].ship!.crew.current;
+      expect(left).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it("the outcome carries every number the message needs", () => {
+    const r = dividePlunder(makeWorld({ crew: 20, gold: 4000 }));
+    expect(r.crewPaid + r.captainKept).toBe(4000);
+    expect(r.crewLeft).toBeGreaterThan(0);
+  });
+});

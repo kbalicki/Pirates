@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { updateNpcAi, bestVmgHeading, looksDangerous } from "../NpcAiSystem.ts";
+import { updateNpcAi, bestVmgHeading, layOrTack, looksDangerous } from "../NpcAiSystem.ts";
 import { windSpeedModifier, IRONS_STEERAGE } from "../WeatherSystem.ts";
+import { SHIP_CLASSES } from "../../data/ships.ts";
 import { normalizeHeading } from "../../services/Geometry.ts";
 import { entityId, portId } from "../../model/ids.ts";
 import { CITIES } from "../../data/cities.ts";
@@ -229,5 +230,97 @@ describe("HOME is a real port key", () => {
   it("so the fixture is not quietly testing nothing", () => {
     expect(CITIES[HOME]).toBeDefined();
     expect(CITIES[AWAY]).toBeDefined();
+  });
+});
+
+// ===========================================================================
+// Working to windward (v0.53.0.2)
+// ===========================================================================
+
+/**
+ * Two things reported from play, one release after the dead zone started to
+ * cost something:
+ *
+ *   • NPC ships walking a few lengths one way and a few lengths back, for ever,
+ *     in open water — "bouncing off an invisible wall";
+ *   • traffic that simply stopped where its next mark lay upwind.
+ *
+ * Both are the same hole. `updatePortToPort` steers the bow at the mark and had
+ * never needed to know about the wind, because before v0.53.0 a bearing dead to
+ * windward was worth 0.48 of base speed. It is now worth `IRONS_STEERAGE` —
+ * a thirteenth of the current she is floating in — so she is a cork, and the
+ * bearing to the mark walks about as the water carries her.
+ *
+ * The naive repair is worse in a way the player can see: the two tacks either
+ * side of the bearing score within a hair of each other, so re-deciding every
+ * tick changes her heading **every tick**. Measured on a 600-unit leg: 4000
+ * changes in 4000 ticks. Hence `TACK_HOLD_SHARE`.
+ */
+describe("working to windward", () => {
+  const TRADE = 0.52;
+  const toward = (from: { x: number; y: number }, to: { x: number; y: number }) =>
+    Math.atan2(to.x - from.x, -(to.y - from.y));
+
+  /** A hull sailing 600 units dead upwind, with the water setting her across. */
+  function voyage(classId: string, steer: "at_mark" | "naive" | "hold", cross: number) {
+    const cls = SHIP_CLASSES[classId];
+    const mwa = cls.minWindAngle;
+    const mark = { x: 0, y: -600 };
+    let pos = { x: 0, y: 0 };
+    let heading = toward(pos, mark);
+    let tacks = 0;
+    for (let i = 0; i < 4000; i++) {
+      const wanted = toward(pos, mark);
+      const next = steer === "at_mark" ? wanted
+        : steer === "naive" ? bestVmgHeading(wanted, 0, TRADE, mwa)
+        : layOrTack(heading, wanted, 0, TRADE, mwa);
+      if (Math.abs(next - heading) > (20 * Math.PI) / 180) tacks++;
+      heading = next;
+      const spd = cls.speedBase * 0.7 * windSpeedModifier(heading, 0, TRADE, mwa);
+      pos = { x: pos.x + Math.sin(heading) * spd + cross, y: pos.y - Math.cos(heading) * spd };
+      if (Math.hypot(mark.x - pos.x, mark.y - pos.y) < 20) break;
+    }
+    return { closed: 600 - Math.hypot(mark.x - pos.x, mark.y - pos.y), tacks };
+  }
+
+  const HULLS = ["fluyt", "merchantman", "frigate", "sloop"];
+
+  it("pointing at a mark dead upwind carries her BACKWARDS in a current", () => {
+    // This is the bug as the player saw it, kept as the thing being fixed.
+    for (const h of HULLS) expect(voyage(h, "at_mark", 0.06).closed).toBeLessThan(0);
+  });
+
+  it("she works up to it instead, and gets there", () => {
+    for (const h of HULLS) {
+      expect(voyage(h, "hold", 0.06).closed).toBeGreaterThan(20);
+      expect(voyage(h, "hold", 0).closed).toBeGreaterThan(voyage(h, "at_mark", 0).closed * 1.3);
+    }
+  });
+
+  it("and she stands on: no ship goes about more than twenty times a voyage", () => {
+    // Without the hold she goes about on every tick of the leg. That is the
+    // "invisible wall" — a few lengths one way, a few lengths back, for ever.
+    for (const h of HULLS) {
+      expect(voyage(h, "naive", 0).tacks).toBeGreaterThan(3000);
+      expect(voyage(h, "hold", 0).tacks).toBeLessThan(20);
+    }
+  });
+
+  it("holding a tack costs her nothing worth having", () => {
+    for (const h of HULLS) {
+      const held = voyage(h, "hold", 0).closed;
+      const naive = voyage(h, "naive", 0).closed;
+      expect(held).toBeGreaterThan(naive * 0.97);
+    }
+  });
+
+  it("a bearing she can lay is still steered straight at, exactly as before", () => {
+    // The release promised that everything outside the dead zone is untouched.
+    for (const mwa of [30, 40, 50, 60]) {
+      for (let deg = mwa + 1; deg <= 180; deg += 1) {
+        const wanted = (deg * Math.PI) / 180;
+        expect(layOrTack(0, wanted, 0, TRADE, mwa)).toBe(wanted);
+      }
+    }
   });
 });

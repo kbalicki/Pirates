@@ -3,6 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { PortId } from "../../core/model/ids.ts";
 import { itemId, shipClassId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
+import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
 import { portFaction, portChangedHands, garrisonFor } from "../../core/systems/SiegeSystem.ts";
 import {
   garrisonAt,
@@ -126,7 +127,7 @@ import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { captainAge } from "../../core/systems/AgingSystem.ts";
 import { computeScore, retire, hasRetired } from "../../core/systems/RetirementSystem.ts";
-import { dividePlunder, plunderStatus } from "../../core/systems/PlunderSystem.ts";
+import { dividePlunder, plunderStatus, captainShare, CREW_REMAINING_AFTER_SHARE } from "../../core/systems/PlunderSystem.ts";
 import { startQuest } from "../../core/systems/QuestSystem.ts";
 import {
   createTreasureMap,
@@ -147,7 +148,7 @@ const DLG_H = 420;
 const BORDER = 3;
 const PAD = 16;
 
-type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison" | "warehouse" | "charter";
+type PortView = "menu" | "governor" | "tavern" | "merchant" | "shipyard" | "daughter" | "garrison" | "warehouse" | "charter" | "divide_confirm";
 
 // Ships available at each shipyard level
 const SHIPYARD_TIERS: Record<number, string[]> = {
@@ -221,11 +222,19 @@ export class PortScene extends Phaser.Scene {
 
   private isOnFoot = false;
 
-  init(data: { worldState: WorldState; portId: PortId; returnToView?: PortView; isOnFoot?: boolean }): void {
+  init(data: {
+    worldState: WorldState; portId: PortId; returnToView?: PortView;
+    isOnFoot?: boolean; tavernMessage?: string;
+  }): void {
     this.worldState = data.worldState;
     this.currentPortId = data.portId;
     this.currentView = data.returnToView ?? "menu";
     this.isOnFoot = data.isOnFoot ?? false;
+    // A transaction made inside a view has to survive the restart that redraws
+    // it, or the only account of what just happened is a line in a log the
+    // player is not looking at. Dividing the plunder was exactly that: it took
+    // two thirds of the crew and said nothing.
+    this.tavernMessage = data.tavernMessage ?? null;
     // `returnToView` means we are coming back from the shipyard or the duel
     // screen, not walking through the gate. Only the walk counts as arriving.
     this.justArrived = data.returnToView === undefined;
@@ -358,6 +367,7 @@ export class PortScene extends Phaser.Scene {
       case "garrison": this.renderGarrison(); break;
       case "warehouse": this.renderWarehouse(); break;
       case "charter": this.renderCharter(); break;
+      case "divide_confirm": this.renderDivideConfirm(); break;
     }
   }
 
@@ -793,9 +803,16 @@ export class PortScene extends Phaser.Scene {
 
     // The crew's patience is a running clock; say where it stands on the button.
     const status = plunderStatus(this.worldState);
+    // What it costs, on the label, because it costs the crew he has just paid
+    // to hire and there is no way back from it (v0.53.0.2). Kept short: this
+    // list does not wrap, it just runs out of the frame.
+    const plunderCrew = this.worldState.entities[this.worldState.player.shipId as string]?.ship?.crew;
+    const plunderLeaving = plunderCrew
+      ? Math.max(0, plunderCrew.current - Math.max(1, Math.round(plunderCrew.current * CREW_REMAINING_AFTER_SHARE)))
+      : 0;
     const plunderLabel = status.overdue
-      ? t("tavern.divide_plunder_overdue", { days: status.daysOverdue })
-      : t("tavern.divide_plunder", { days: status.daysUntilDue });
+      ? t("tavern.divide_plunder_overdue", { days: status.daysOverdue, leave: plunderLeaving })
+      : t("tavern.divide_plunder", { days: status.daysUntilDue, leave: plunderLeaving });
 
     // One map on offer per port per day; a wealthier port deals in better charts.
     const port = this.worldState.ports[this.currentPortId as string];
@@ -921,7 +938,7 @@ export class PortScene extends Phaser.Scene {
         case "rumors": this.handleRumors(); break;
         case "drinks": this.handleDrinks(); break;
         case "buy_map": this.handleBuyTreasureMap(); break;
-        case "divide": this.handleDividePlunder(); break;
+        case "divide": this.switchView("divide_confirm"); break;
         case "raid_take": this.handleTakeRaid(); break;
         case "raid_status": this.tavernMessage = t("informer.status_hint"); this.switchView("tavern"); break;
         case "relief_take": this.handleTakeRelief(); break;
@@ -1215,6 +1232,62 @@ export class PortScene extends Phaser.Scene {
    * go ashore to spend it — and resets the clock the crew grumbles against.
    * The scene is restarted so every view redraws against the new world.
    */
+  /**
+   * The one irreversible thing in the tavern, asked out loud (v0.53.0.2).
+   *
+   * Dividing pays the crew and **two thirds of them go ashore with the money**
+   * — including anybody signed on at the recruiter two rows above. Reported
+   * from play as eight hands hired and four aboard, which is what
+   * `CREW_REMAINING_AFTER_SHARE` does to ten men and exactly what nothing on
+   * the screen had said.
+   */
+  private renderDivideConfirm(): void {
+    let y = this.contentStartY;
+
+    const title = this.add.text(this.cx, y, t("tavern.divide_confirm_title"), txt(16, { bold: true }));
+    title.setOrigin(0.5, 0);
+    this.contentContainer.add(title);
+    y += 30;
+
+    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
+    const crew = ship?.crew.current ?? 0;
+    const stays = Math.max(1, Math.round(crew * CREW_REMAINING_AFTER_SHARE));
+    const leaving = Math.max(0, crew - stays);
+    const gold = this.worldState.player.gold;
+    const share = captainShare(this.worldState);
+    const kept = Math.floor(gold * share);
+
+    const body = this.add.text(
+      this.infoX, y,
+      t("tavern.divide_confirm_body", {
+        crew, leaving, stays, pay: gold - kept, kept,
+      }),
+      { ...txt(14), wordWrap: { width: DLG_W - PAD * 2 } },
+    );
+    this.contentContainer.add(body);
+    y += body.height + 16;
+
+    const warn = this.add.text(
+      this.infoX, y, t("tavern.divide_confirm_warning", { leaving }),
+      { ...txt(15, { bold: true, color: "#8a3a3a" }), wordWrap: { width: DLG_W - PAD * 2 } },
+    );
+    this.contentContainer.add(warn);
+    y += warn.height + 18;
+
+    this.setupActionList(
+      [
+        { label: t("tavern.divide_confirm_no"), key: "no" },
+        { label: t("tavern.divide_confirm_yes", { leaving }), key: "yes" },
+      ],
+      y,
+      (key) => {
+        if (key === "yes") this.handleDividePlunder();
+        else this.switchView("tavern");
+      },
+    );
+    this.bindKey("keydown-ESC", () => this.switchView("tavern"));
+  }
+
   private handleDividePlunder(): void {
     const result = dividePlunder(this.worldState);
     if (result.error) {
@@ -1228,6 +1301,11 @@ export class PortScene extends Phaser.Scene {
       worldState: this.worldState,
       portId: this.currentPortId,
       returnToView: "tavern" as PortView,
+      tavernMessage: t("tavern.divide_done", {
+        crew: result.crewPaid,
+        kept: result.captainKept,
+        left: result.crewLeft,
+      }),
     });
   }
 
@@ -2437,13 +2515,34 @@ export class PortScene extends Phaser.Scene {
         entities: updatedEntities,
       };
     } else {
-      // From ship: spawn in water south of port
-      const offset = portDef ? portDef.dockRadius + 50 : 100;
+      // From ship: put her back where the harbour water actually is.
+      //
+      // She used to be spawned a flat `dockRadius + 50` **due south of the
+      // town**, whichever way the sea lay. Port Royal's approach is 40 units
+      // NORTH of the town, so a captain who stood in from the north was handed
+      // back 105 units away on the far side of it, still heading north — which
+      // reads exactly like a teleport, and was reported as one. `getPortWaterPos`
+      // has known where every harbour's water is since v0.19.0; the exit is the
+      // one door that never asked.
       const portPos = this.worldState.player.location.pos;
-      const seaPos = { x: portPos.x, y: portPos.y + offset };
+      const water = portDef ? getPortWaterPos(this.currentPortId as string) : portPos;
+      const townPos = portDef?.pos ?? portPos;
+      const dx = water.x - townPos.x;
+      const dy = water.y - townPos.y;
+      const len = Math.hypot(dx, dy);
+      // Far enough off the quay that she is not inside the dock radius again,
+      // along the line the harbour itself lies on.
+      const clear = (portDef?.dockRadius ?? 15) + 20;
+      const seaPos = len > 1
+        ? { x: water.x + (dx / len) * clear, y: water.y + (dy / len) * clear }
+        // No usable water position (a debug world with no landmasses loaded):
+        // the old behaviour, so this can never be worse than it was.
+        : { x: portPos.x, y: portPos.y + (portDef ? portDef.dockRadius + 50 : 100) };
+      // Bow to the open sea, not back at the town she has just left.
+      const outward = len > 1 ? Math.atan2(dx, -dy) : Math.PI;
 
       const updatedEntities = entity
-        ? { ...this.worldState.entities, [shipId]: { ...entity, pos: seaPos, vel: { x: 0, y: 0 }, sailLevel: 0, mode: "sailing" as const } }
+        ? { ...this.worldState.entities, [shipId]: { ...entity, pos: seaPos, heading: outward, vel: { x: 0, y: 0 }, sailLevel: 0, mode: "sailing" as const } }
         : this.worldState.entities;
 
       this.worldState = {

@@ -55,7 +55,7 @@ import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { rngNext, rngNextInt, rngNextFloat } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 import { tradeRoutes } from "./TradeRouteSystem.ts";
-import { windSpeedModifier } from "./WeatherSystem.ts";
+import { windSpeedModifier, isInIrons } from "./WeatherSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { boltFor, namedShipById, hullOf, harryCount, boundFor, type NamedShip } from "./NamedShipSystem.ts";
 import { PREY_REACH, fightingWeight, defenceWeight } from "./PredationSystem.ts";
@@ -220,7 +220,7 @@ function updateSingleNpc(
     case "pirate_hunter":
       return updatePirateHunter(entity, player, distToPlayer, world, rng);
     default:
-      return updatePortToPort(entity, rng);
+      return updatePortToPort(entity, rng, world);
   }
 }
 
@@ -230,8 +230,24 @@ function updateSingleNpc(
 function updatePortToPort(
   entity: EntityState,
   rng: typeof entity.heading extends number ? any : never,
+  world?: WorldState,
 ): { entity: EntityState; rng: any } {
   const ai = entity.ai!;
+
+  /**
+   * The bearing she will actually steer. Identical to the bearing itself for
+   * everything she can lay — which is most of the map — and a tack for what
+   * she cannot. `world` is optional only so that the handful of callers that
+   * have no world to hand keep their old behaviour rather than crashing.
+   */
+  const steer = (wanted: number): number => {
+    if (!world) return wanted;
+    const here = weatherAt(world, entity.pos);
+    return layOrTack(
+      entity.heading, wanted, here.windDirRad, here.windStrength,
+      SHIP_CLASSES[entity.ship?.classId as string]?.minWindAngle ?? 30,
+    );
+  };
 
   if (!ai.targetPortId) {
     // Pick any port as destination
@@ -266,7 +282,7 @@ function updatePortToPort(
       let wp = ai.lane.wp;
       while (wp < route.path.length - 1 && vec2Dist(entity.pos, route.path[wp]) < WAYPOINT_RADIUS) wp++;
       const mark = route.path[Math.min(wp, route.path.length - 1)];
-      const heading = headingToward(entity.pos, mark);
+      const heading = steer(headingToward(entity.pos, mark));
       const lane = wp === ai.lane.wp ? ai.lane : { ...ai.lane, wp };
       return { entity: { ...entity, heading, ai: { ...ai, lane } }, rng };
     }
@@ -274,7 +290,7 @@ function updatePortToPort(
 
   // Navigate toward water position near target port (not the land position!)
   const waterPos = getPortWaterPos(targetPortKey);
-  const heading = headingToward(entity.pos, waterPos);
+  const heading = steer(headingToward(entity.pos, waterPos));
   return { entity: { ...entity, heading }, rng };
 }
 
@@ -301,7 +317,7 @@ function updateTrader(
   const threatened = distToPlayer < awarenessIn(world, entity) && looksDangerous(world, player, crown);
 
   if (!threatened) {
-    if (ai.state !== "flee") return updatePortToPort(entity, rng);
+    if (ai.state !== "flee") return updatePortToPort(entity, rng, world);
     // He has fallen astern. Her destination was never changed, so picking the
     // voyage up is the whole of it — including the lane corner she was steering
     // for and the warehouse her hold is owed to.
@@ -309,7 +325,7 @@ function updateTrader(
       ...entity,
       sailLevel: TRADER_CRUISE_SAIL,
       ai: { ...ai, state: "travel" },
-    }, rng);
+    }, rng, world);
   }
 
   const cls = SHIP_CLASSES[entity.ship?.classId as string];
@@ -317,7 +333,8 @@ function updateTrader(
   // hurricane sails the same circling wind he does, or she would outrun him on
   // a trade wind that is not blowing over either of them.
   const here = weatherAt(world, entity.pos);
-  const heading = bestVmgHeading(
+  const heading = layOrTack(
+    entity.heading,
     // Away from him, which for a ship with nowhere in particular to be is the
     // only sensible bearing there is.
     headingToward(player.pos, entity.pos),
@@ -333,6 +350,53 @@ function updateTrader(
 }
 
 // ===== NAMED MERCHANTMEN (v0.35.0) =====
+
+/**
+ * She holds the tack she is on while it still makes this share of the ground
+ * the better tack would.
+ *
+ * Without it she goes about **every tick**: the two tacks either side of a
+ * bearing dead to windward score within a hair of each other, the wind drifts a
+ * little every tick, and `bestVmgHeading` re-decides from scratch. Measured on
+ * a 600-unit leg dead upwind: 4000 changes of heading in 4000 ticks, which on
+ * the water is a ship walking a few lengths one way and a few lengths back for
+ * ever. A real ship stands on until the mark's bearing has moved.
+ */
+export const TACK_HOLD_SHARE = 0.9;
+
+/**
+ * Lay the mark if she can; otherwise work up to it on a tack (v0.53.0.2).
+ *
+ * **Everything a ship can steer at, she still steers straight at.** This only
+ * fires for a bearing inside her own dead zone — which before v0.53.0 was a
+ * bearing she sailed at 0.48 of base speed, and since v0.53.0 is one she cannot
+ * sail at all. That is the whole bug: `updatePortToPort` pointed the bow at the
+ * next mark and had never needed to know about the wind, so when the dead zone
+ * started to cost something, the traffic in it stopped.
+ *
+ * Measured, fluyt, mark 600 units dead upwind, 4000 ticks, cross-current 0.06:
+ * she closed 117 units under the old polar, **minus 28** under the new one —
+ * she ended further from the mark than she began, because her thrust in irons
+ * (0.0046) is a **thirteenth of the current she floats in** (0.06). Working to
+ * windward she closes 55.
+ */
+export function layOrTack(
+  currentHeading: number,
+  wanted: number,
+  windDirRad: number,
+  windStrength: number,
+  minWindAngle: number,
+): number {
+  if (!isInIrons(wanted, windDirRad, minWindAngle)) return wanted;
+
+  const best = bestVmgHeading(wanted, windDirRad, windStrength, minWindAngle);
+  const madeGood = (h: number) =>
+    windSpeedModifier(h, windDirRad, windStrength, minWindAngle) * Math.cos(h - wanted);
+
+  const bestScore = madeGood(best);
+  if (bestScore <= 0) return best;
+  return madeGood(currentHeading) >= bestScore * TACK_HOLD_SHARE ? currentHeading : best;
+}
 
 /**
  * The heading with the best speed *made good* toward a bearing.
@@ -397,7 +461,7 @@ function updateNamedTrader(
 ): { entity: EntityState; rng: typeof world.rng } {
   const ai = entity.ai!;
   const ship = namedShipById(world, ai.namedShipId as string);
-  if (!ship) return updatePortToPort(entity, rng);
+  if (!ship) return updatePortToPort(entity, rng, world);
 
   const threatened = distToPlayer < awarenessIn(world, entity) && fleesFrom(world, player, ship);
 
@@ -405,7 +469,7 @@ function updateNamedTrader(
     // He has fallen astern, or was never anything to her. She picks her passage
     // up where she left it — her *record* still knows where that is, so nothing
     // has to be remembered on the hull.
-    if (ai.state !== "flee") return updatePortToPort(entity, rng);
+    if (ai.state !== "flee") return updatePortToPort(entity, rng, world);
     return updatePortToPort({
       ...entity,
       sailLevel: 0.75,
@@ -423,12 +487,13 @@ function updateNamedTrader(
         const pick = boltFor(ship, entity.pos, player.pos);
         return pick === "to" ? ship.to : pick === "from" ? ship.from : undefined;
       })();
-  if (!end) return updatePortToPort(entity, rng);
+  if (!end) return updatePortToPort(entity, rng, world);
 
   const haven = getPortWaterPos(end);
   const cls = SHIP_CLASSES[entity.ship?.classId as string];
   const here = weatherAt(world, entity.pos);
-  const heading = bestVmgHeading(
+  const heading = layOrTack(
+    entity.heading,
     headingToward(entity.pos, haven),
     here.windDirRad,
     here.windStrength,
@@ -531,7 +596,7 @@ function updateNavy(
     }
   }
 
-  return updatePortToPort(entity, rng);
+  return updatePortToPort(entity, rng, world);
 }
 
 // ===== PIRATES =====
@@ -623,7 +688,7 @@ function updatePirateHunter(
   }
 
   // Patrol between ports (like navy, but cross-faction)
-  return updatePortToPort(entity, rng);
+  return updatePortToPort(entity, rng, world);
 }
 
 // ===== Helpers =====
@@ -668,7 +733,8 @@ function fleeFrom(
   const ai = entity.ai!;
   const cls = SHIP_CLASSES[entity.ship?.classId as string];
   const here = weatherAt(world, entity.pos);
-  const heading = bestVmgHeading(
+  const heading = layOrTack(
+    entity.heading,
     headingToward(from, entity.pos),
     here.windDirRad, here.windStrength, cls?.minWindAngle ?? 30,
   );
