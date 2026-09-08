@@ -46,7 +46,7 @@ import { changeReputation } from "./ReputationSystem.ts";
 import { areFactionsAtWar } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { FACTIONS } from "../data/factions.ts";
-import { rippleReputation, ACT_TRADER, ACT_NAVY } from "./DiplomacySystem.ts";
+import { rippleReputation, areAllied, CROWNS, ACT_TRADER, ACT_NAVY } from "./DiplomacySystem.ts";
 
 /**
  * A crown's name for a line the Journal will print.
@@ -80,6 +80,29 @@ export function coveringPatrons(world: WorldState, victim: string): string[] {
 /** Patrons with no quarrel with this crown — the ones the act embarrasses. */
 export function embarrassedPatrons(world: WorldState, victim: string): string[] {
   return letterCrowns(world).filter(c => c !== victim && !areFactionsAtWar(world, c, victim));
+}
+
+/**
+ * Crowns standing with the crown that commissioned him (v0.56.0).
+ *
+ * A friend of a friend is not a stranger. The alliance itself has been a thing
+ * in the world since v0.55.0 — stamped, on the news boards, repeated in the
+ * taverns — and it decided nothing the captain could touch: the ally's colony
+ * read his paper as somebody else's business and his standing as its own.
+ *
+ * This is the one honest reading of the letter that follows from an alliance,
+ * and it is deliberately the **only** one. `coveringPatrons` is untouched: a
+ * prize taken from a crown the *ally* is fighting is still uncovered, because
+ * "which crown do I serve" is the question the commission exists to ask, and an
+ * alliance is not a second commission.
+ */
+export function patronBehind(world: WorldState, crown: string): string | undefined {
+  return letterCrowns(world).find(p => p !== crown && areAllied(world, p, crown));
+}
+
+/** Every crown reached that way, in table order so the answer is stable. */
+export function alliesOfPatrons(world: WorldState): string[] {
+  return CROWNS.filter(c => patronBehind(world, c) !== undefined);
 }
 
 /** True when the captain is carrying the victim's own commission. */

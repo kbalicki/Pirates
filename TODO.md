@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-08 · **Wersja:** v0.55.0.0 · **Branch:** `main`
-**Kod:** 221 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1888 przechodzi, 0 failuje, 0 `todo`** w 53 plikach
+**Stan na:** 2026-09-08 · **Wersja:** v0.56.0.0 · **Branch:** `main`
+**Kod:** 221 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1902 przechodzi, 0 failuje, 0 `todo`** w 53 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.55.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1888/1888 zielone; **sojusz jest bytem świata**. Współwalczenie istnieje od v0.51.0 i przesuwało wyłącznie relację — `areAllied` było wyeksportowane i przez cztery wydania **nie miało ani jednego czytelnika**, żadna tablica newsów go nie nosiła, żaden NPC nie powtarzał, a tawerna, która powie ci cenę chleba w sąsiedniej zatoce, nie miała o tym nic do powiedzenia. Powód jest ogólniejszy niż ta jedna funkcja: **fakt tylko wyliczany nie ma dnia, w którym się zaczął**. Zmierzone na 150 latach gry: dwie korony mają wspólnego wroga przez **28,8% dni**, w epizodach po średnio 16 miesięcy — ćwierć kalendarza była faktem, którego gra nie umiała wymienić. Stan **zostaje wyliczany**, stemplowany jest wyłącznie początek (zdarzenie `alliance`, `ports: []`, `vars.againstId` stemplowane, restempel gdy wojnę robiącą sojusz zastąpi inna wspólna). Na wodzie: **wspólna wyprawa** — 42% dni wojny ma trzecią koronę bijącą się z tym samym defenderem, 54% wypraw w stuleciu ma sojusznika, jego kontyngent skalowany tym, co jeszcze trzyma (56 ludzi → 101, szansa upadku miasta 75% → 91%), a **ostatni kadłub linii nosi jego banderę**. `factions` zostaje dwuelementowe i jest na to test — trzeci wpis zostałby przez `resolveRelief` wzięty za właściciela miasta. Bez nowego pola, migracje na v12 osiemnaste wydanie. Odrzucony po drodze pomiar: stulecie wojen koronnych z licznikiem flag, bo bez `EconomyTickSystem` mapa kotłuje się niezależnie od zmiany — **symulacja z wyłączoną połową świata nie jest kontrolą**. Lista kandydatów na v0.56.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.56.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1902/1902 zielone; **przyjaciel przyjaciela**. v0.55.0 zrobiła z sojuszu byt świata — stemplowany, na tablicach newsów, powtarzany w tawernach — i nie decydował o **niczym, czego gracz może dotknąć**: kolonia sojusznika czytała jego komisję jako cudzą sprawę, a jego standing jako własny. Teraz papier podróżuje. Kapitan z komisją jednej korony, w porcie korony bijącej się w **tej samej wojnie**, jest obsłużony **stopień wyżej** i nagłówek mówi dlaczego (round trip 24% → 16%, ława w tawernie o ćwierć głębsza, stocznia o dziesiątą taniej). A `alliedWith` — predykat za **płatnym zleceniem obrony** i **rozgrywalną bitwą obronną**, z dwoma wejściami od v0.17.0 — dostaje trzecie: **mury sojusznika patrona**. Zmierzone: kapitan z komisją ma sojusznika przez **18,8% dni**, a póki trwa, sięga **14,5 z 45 miast**. **Warunek `neutral` jest całym projektem**: awans idzie wyłącznie od `neutral` w górę, bo sojusz ministrów nie jest amnestią — kapitan, który palił żeglugę tego miasta, jest tu `unfriendly` na własny rachunek. **Komisja została nietknięta celowo i jest na to test**: pryz wzięty koronie, z którą wojuje sojusznik a nie patron, dalej jest niepokryty. Po drodze sweep za martwymi eksportami dał **dwa fałszywe tropy** (duplikat `giveNpcPortNews`/`npcPickupNews` — NPC i tak znikają w porcie docelowym; `getPortNews` gubi własny news miasta w **0,7%** przypadków, nie na nagłówek): „eksport bez czytelnika" jest **hipotezą**, nie odkryciem. Lista kandydatów na v0.57.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.55.0.0):** v0.55.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1888/1888 zielone; **sojusz jest bytem świata**. Współwalczenie istnieje od v0.51.0 i przesuwało wyłącznie relację — `areAllied` było wyeksportowane i przez cztery wydania **nie miało ani jednego czytelnika**, żadna tablica newsów go nie nosiła, żaden NPC nie powtarzał, a tawerna, która powie ci cenę chleba w sąsiedniej zatoce, nie miała o tym nic do powiedzenia. Powód jest ogólniejszy niż ta jedna funkcja: **fakt tylko wyliczany nie ma dnia, w którym się zaczął**. Zmierzone na 150 latach gry: dwie korony mają wspólnego wroga przez **28,8% dni**, w epizodach po średnio 16 miesięcy — ćwierć kalendarza była faktem, którego gra nie umiała wymienić. Stan **zostaje wyliczany**, stemplowany jest wyłącznie początek (zdarzenie `alliance`, `ports: []`, `vars.againstId` stemplowane, restempel gdy wojnę robiącą sojusz zastąpi inna wspólna). Na wodzie: **wspólna wyprawa** — 42% dni wojny ma trzecią koronę bijącą się z tym samym defenderem, 54% wypraw w stuleciu ma sojusznika, jego kontyngent skalowany tym, co jeszcze trzyma (56 ludzi → 101, szansa upadku miasta 75% → 91%), a **ostatni kadłub linii nosi jego banderę**. `factions` zostaje dwuelementowe i jest na to test — trzeci wpis zostałby przez `resolveRelief` wzięty za właściciela miasta. Bez nowego pola, migracje na v12 osiemnaste wydanie. Odrzucony po drodze pomiar: stulecie wojen koronnych z licznikiem flag, bo bez `EconomyTickSystem` mapa kotłuje się niezależnie od zmiany — **symulacja z wyłączoną połową świata nie jest kontrolą**. Lista kandydatów na v0.56.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.53.0.0):** v0.53.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1851/1851 zielone; **martwa strefa nie była martwa**. Halsowanie było **ściśle gorsze** od płynięcia prosto pod wiatr — i to nie w przypadku brzegowym, tylko przy zwykłym pasacie i dla **wszystkich dziewięciu klas**: 0,480 drogi na wiatr z dziobem w wietrze przeciwko 0,344 najlepszego halsu pinasy, `hals/dziób = 1.00` w całej tabeli. Diagram polarny, dziewięć kątów martwych na ekranie pomocy i ostrzeżenie na mapie nie zmieniały **żadnej** decyzji gracza. Przyczyna to jedna linijka: `1 + (factor − 1) × windStrength` miesza polarę z płaską prędkością bazową, a płaska połowa — dodatek na słaby wiatr — była wypłacana **w całości w martwej strefie**, gdzie nie ciągnie ani metr płótna. Teraz idzie proporcjonalnie do tego, ile płótna ciągnie. Dwa kandydaty **zmierzone i wyrzucone** (pasmo proporcjonalne psuło galeonowi półwiatr o 65%; liniowe stawiało jego hals na 75°, gdzie kosinus nie ma czego oddać). Wydany kształt: hals 51° dla pinasy, 70° dla galeona, zysk 6,9× / 2,7× nad dziobem w wietrze. **Nic powyżej pułapu halsu się nie ruszyło i to jest asercja** — sześć z dziesięciu prawdziwych przepraw bez zmiany o cyfrę, a koszt pozostałych stopniowany ożaglowaniem. Przy okazji: **nawigator umiał płynąć pod wiatr** (premia to udział w niedoborze, a strefa to sam niedobór) i **ruch handlowy naprawił się sam**, bo NPC czyta tę samą krzywą. Zamknięte też dwie sprawy użytkownika: reguła `taskkill` (nigdy po nazwie obrazu, **przeglądarki nie ubijamy w ogóle**) i jedenaście nieaktualnych `documentation/*.txt`. Zostaje **przegranie tego** — to zmiana odczucia. Lista kandydatów na v0.54.0 jest niżej.
 
@@ -103,6 +105,7 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Notoriety widać na wodzie | ✅ | `looksDangerous`: **każdy** kupiec ucieka przed czarną banderą, znienawidzonym nazwiskiem albo notoriety > 50 — a przed uczciwym kapitanem żaden |
 | List kaperski coś znaczy | ✅ | `PrivateerSystem`: pryz pokryty / niepokryty / zdrada patrona; komisja wyłączna, egzekwowana przy ladzie |
 | Szkwał jest zdarzeniem | ✅ | `StormSystem`: płótno powyżej refów jest darte (konsorty tak samo), luneta cięta do 55%, zasłona na mapie i dwustanowy komunikat na HUD |
+| Przyjaciel przyjaciela | ✅ | `patronBehind` + `alliedWith`: papier patrona czytany przy ladzie sojusznika (stopień wyżej, powód w nagłówku) i wpuszczający na jego mury — płatne zlecenie obrony i rozgrywalna bitwa |
 | Sojusz jest bytem świata | ✅ | `DiplomacySystem.stampAlliances` + `CrownCampaignSystem.jointPartner`: stan wyliczany, początek stemplowany; news, plotka, data w zakładce Kapitan, a na wodzie wspólna wyprawa z obcą banderą w linii |
 | Wróg mojego wroga | ✅ | `DiplomacySystem.rippleReputation`: co zrobisz jednej koronie, czytają wszystkie pozostałe przez własne zatargi; nazwane progi zamiast proporcji, list kaperski zostaje 2,5-5x lepszy |
 | Korony kłócą się same | ✅ | `DiplomacySystem.ts`: domyślna era startowała w dziewięcioletnim pokoju, przez co list kaperski nie krył nigdy niczego; wojny biorą się teraz z martwej macierzy relacji, a sojusz to wspólny wróg |
@@ -2125,7 +2128,36 @@ blokuje ani brak assetów, ani playtest użytkownika.
   pełnej sile 1,1, czyli zawsze sufit — pasmo nie robiło nic. Poprawione na
   `0,15 + siła × 0,65`
 
-### v0.56.0 — co dalej
+### ~~v0.56.0 — Przyjaciel przyjaciela~~ ✅ (v0.56.0.0)
+
+Domknięcie tego, co v0.55.0 zostawiła otwarte.
+
+- **Defekt**: sojusz był faktem, ale nie decyzją. `PortAccessSystem` czytał
+  wyłącznie reputację z koroną trzymającą miasto, a `alliedWith` miało dwa
+  wejścia od v0.17.0 (list **tej** korony albo reputacja `allied`)
+- **Papier podróżuje**: `patronBehind(świat, korona)` — pierwszy patron z listu,
+  który stoi z tą koroną. Lada: awans o jeden stopień. Mury: trzecie wejście do
+  `alliedWith`, czyli płatne zlecenie obrony **i** rozgrywalna bitwa
+- **Warunek `neutral` jest całym projektem** — awans wyłącznie od `neutral`
+  w górę. Sojusz ministrów nie jest amnestią; uraza miasta jest urazą miasta
+- **Zmierzone**: sojusznik przez **18,8% dni**, **14,5 z 45 miast**, przy ladzie
+  round trip 24% → 16%, ława ×1,25, stocznia ×0,9. Z −40 u Francji: lada
+  `unfriendly`, mury zamknięte
+- **`coveringPatrons` nietknięty celowo, z testem** — pryz wzięty koronie,
+  z którą wojuje sojusznik a nie patron, dalej niepokryty
+- **`PortAccess.viaAlly`** niesie powód na ekran; nagłówek portu drukuje
+  `port.standing_via_ally`. Rabat bez powodu czyta się jak błąd
+- Zweryfikowane w pakiecie przez `?patron=tortuga`: „on your patron's account —
+  Netherlands stands with France" pod standingiem, a francuski gubernator ma dla
+  holenderskiego korsarza obronę Martyniki. Testy sprawdzone **przez cofnięcie
+  poprawki** — trzy asercje na czerwono
+- **Dwa fałszywe tropy ze sweepu**, obie sprawdzone przed pisaniem:
+  `giveNpcPortNews`/`npcPickupNews` to duplikat po starszym projekcie (NPC
+  znikają w porcie docelowym i rodzą się z nowymi wieściami), a `getPortNews`
+  gubi własny news miasta w **0,7%** miasto-dni — prawdziwe, marginalne, nie na
+  nagłówek. **„Eksport bez czytelnika" jest hipotezą, nie odkryciem**
+
+### v0.57.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2144,15 +2176,10 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    (`awarenessRadius` z szablonu kupca) to liczby wybrane z namysłem, nie
    zmierzone przy graniu. Jeśli pościgi okażą się nużące albo przeciwnie —
    niezauważalne — to są dwa pokrętła. Wymaga użytkownika, nie agenta
-4. ~~**Przymierze dwóch koron dalej nie istnieje.**~~ ✅ v0.55.0.0 — sojusz ma
-   własne zdarzenie, wpis w newsach, plotkę w tawernie i wspólną wyprawę na
-   wodzie. Zostaje **jedna rzecz z tej pozycji nietknięta**: sojusz nie zmienia
-   niczego przy ladzie. Kolonia sojusznika dalej patrzy na kapitana wyłącznie
-   przez własną reputację (`PortAccessSystem`), choć jego patron i ten port biją
-   się z tym samym wrogiem. Naturalne miejsce: `noticedBy` / `PortAccessSystem`,
-   jeden stopień standingu w górę w portach korony sojuszniczej **patrona**, na
-   czas trwania sojuszu i ani dnia dłużej. Do zmierzenia, czy to nie unieważnia
-   listu kaperskiego — dokładnie ten sam zarzut zabił pierwsze strojenie v0.52.0
+4. ~~**Przymierze dwóch koron dalej nie istnieje.**~~ ✅ v0.55.0.0 + v0.56.0.0 —
+   sojusz ma własne zdarzenie, newsy, plotkę, wspólną wyprawę (v0.55.0), a od
+   v0.56.0 **decyduje o czymś, czego gracz może dotknąć**: papier patrona jest
+   czytany przy ladzie sojusznika i wpuszcza na jego mury. Pozycja zamknięta
 5. **Moduł G zamknięty.** Szkwał (v0.38.0), huragan (v0.39.0), mgła (v0.40.0),
    prądy (v0.41.0), a prądu nauczyły się szlaki (v0.42.0), wyprawy koronne
    (v0.43.0) i nazwane statki (v0.44.0). Wędrujące oko zrobione w v0.45.0.
@@ -2178,6 +2205,8 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
 - ~~**Niedobór nie ma twarzy w mieście.**~~ ✅ v0.27.0.0 — `PortRuntimeState.hunger` stemplowane przez dzienny tick: linia w menu portu i na ladzie kupca, ubytek ludności (71% ludzi przy pełnym głodzie), pełniejsza ława w tawernie i spichlerz u gubernatora. Zostały **newsy i plotki**, które dalej nie wiedzą, że miasto przymiera.
 - ~~**Głód nie ma jeszcze głosu.**~~ ✅ v0.28.0.0 — `RumorSystem`: tawerna mówi o głodzie, blokadzie, przeciętym szlaku, czarnej banderze i najruchliwszym nabrzeżu w promieniu 1300. Przy okazji odkryte i naprawione: **zdarzenia świata nigdy nie trafiały w żaden port**.
+- **Tablica newsów portu jest stosem, nie tablicą** (znalezione i **zmierzone** w v0.56.0, nienaprawione). `getPortNews` bierze `active.slice(-5)`, czyli pięć **ostatnio dodanych** zdarzeń. Zmierzone na 3 ziarnach × 10 lat, co siódmy dzień, wszystkie 45 miast: **11,1%** miasto-dni ma więcej niż 5 aktywnych zdarzeń, ale własne zdarzenie miasta wypada z tablicy tylko w **0,7%**. Poprawka: sortować przed cięciem — najpierw zdarzenia z `ports` zawierającym to miasto, potem te w skali korony (`WorldEventSystem.ts:336`). Marginalne, ale darmowe
+- **Martwy duplikat po starszym projekcie**: `WorldEventSystem.giveNpcPortNews` i `NpcNewsSystem.npcPickupNews` to **dwie identyczne funkcje bez wywołania**, obie z komentarzem „Called from NpcSpawnSystem". Nie są potrzebne — NPC znikają w porcie docelowym (`DOCK_RADIUS`) i rodzą się z portu wyjścia z aktualnymi wieściami — więc do skasowania, nie do podpięcia
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
 - **LoRA `amigapxl_pirates`** — v2 wytrenowana i oceniona (v0.12.1), zbiór v3 zbudowany i **czeka na trening**: `python ai-assets/scripts/build_lora_v3_dataset.py`, potem `C:/AI/kohya_ss/dataset/pirates_v3/train.bat` (~1 h na GTX 1060). **Nie trenuj v3, dopóki nie ma nowego materiału** — patrz sekcja 6. Ocena: [documentation/09-ASSETS.md](documentation/09-ASSETS.md)

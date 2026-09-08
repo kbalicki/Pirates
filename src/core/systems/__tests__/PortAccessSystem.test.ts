@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { portAccess, buyPrice, sellPrice } from "../PortAccessSystem.ts";
+import { marqueFlag, patronBehind, alliesOfPatrons, coveringPatrons } from "../PrivateerSystem.ts";
 import { generateAvailableCrew, recruitCrew, repairRate, buyShip, buyShipToFleet } from "../PortInteractionSystem.ts";
 import { cargoOffers } from "../CargoContractSystem.ts";
 import { executeBuy, executeSell, playerBuyPrice, playerSellPrice } from "../EconomySystem.ts";
@@ -293,5 +294,112 @@ describe("the shipyard", () => {
 
   it("leaves callers that name no port alone", () => {
     expect(buyShip(makeWorld(HOSTILE), shipClassId("frigate")).bought).toBe(true);
+  });
+});
+
+// ===========================================================================
+// The friend of a friend (v0.56.0)
+// ===========================================================================
+
+/**
+ * v0.55.0 made an alliance a thing in the world — stamped, on the news boards,
+ * repeated in the taverns — and it decided nothing the captain could touch.
+ * This is the counter finally reading it: a commissioned captain in the
+ * harbour of a crown fighting the same war stops being served as a stranger.
+ *
+ * Measured: a commissioned captain has an ally on **18.8% of days**, and while
+ * it holds it reaches **14.5 of the 45 towns** on the chart.
+ *
+ * The guard is the whole design and most of these tests are about it.
+ */
+describe("a commission read by the crown next to the one that issued it", () => {
+  const FRENCH = Object.keys(CITIES).find(
+    k => (CITIES[k].factionId as unknown as string) === "france",
+  ) as string;
+
+  function war(a: string, b: string) {
+    return {
+      id: `war_${a}_${b}`, type: "war_start" as const, startDay: 1, endDay: 9999,
+      ports: [], factions: [a, b], severity: 3 as const,
+      headline: "news.war_start", vars: {},
+    };
+  }
+
+  /** England and France both at war with Spain; the captain carries English paper. */
+  function commissioned(over: { rep?: number; letter?: string; wars?: unknown[] } = {}): WorldState {
+    const base = makeWorld();
+    return {
+      ...base,
+      player: {
+        ...base.player,
+        reputation: { ...base.player.reputation, france: over.rep ?? 0 },
+      },
+      worldFlags: over.letter === "none" ? {} : { [marqueFlag(over.letter ?? "england")]: true },
+      worldEvents: (over.wars ?? [war("spain", "england"), war("spain", "france")]) as never,
+    } as WorldState;
+  }
+
+  it("names the patron standing with this crown, and nobody else", () => {
+    const w = commissioned();
+    expect(patronBehind(w, "france")).toBe("england");
+    // Not his own patron: the paper is already English in an English port.
+    expect(patronBehind(w, "england")).toBeUndefined();
+    // Not the crown they are both fighting.
+    expect(patronBehind(w, "spain")).toBeUndefined();
+    expect(alliesOfPatrons(w)).toEqual(["france"]);
+  });
+
+  it("lifts the counter one tier, and says why", () => {
+    const access = portAccess(commissioned(), FRENCH);
+    expect(access.level).toBe("friendly");
+    expect(access.viaAlly).toBe(true);
+    // The table is what moved, not a special case beside it.
+    expect(access.spread).toBe(0.08);
+    expect(access.crewMul).toBe(1.25);
+    expect(access.serviceMul).toBe(0.9);
+  });
+
+  it("does nothing for a captain carrying no paper at all", () => {
+    const access = portAccess(commissioned({ letter: "none" }), FRENCH);
+    expect(access.level).toBe("neutral");
+    expect(access.viaAlly).toBe(false);
+  });
+
+  it("does nothing once the shared war is over", () => {
+    const access = portAccess(commissioned({ wars: [war("spain", "england")] }), FRENCH);
+    expect(access.level).toBe("neutral");
+    expect(access.viaAlly).toBe(false);
+  });
+
+  it("is no amnesty: a town with its own grievance is unmoved", () => {
+    // The guard. An alliance between ministers does not settle what this
+    // colony has against this captain — he burnt its shipping himself.
+    for (const rep of [UNFRIENDLY, HOSTILE]) {
+      const access = portAccess(commissioned({ rep }), FRENCH);
+      expect(access.viaAlly, `rep ${rep}`).toBe(false);
+      expect(access.level).toBe(rep === HOSTILE ? "hostile" : "unfriendly");
+    }
+  });
+
+  it("cannot lift a captain past the top of the ladder", () => {
+    const access = portAccess(commissioned({ rep: ALLIED }), FRENCH);
+    expect(access.level).toBe("allied");
+    expect(access.spread).toBe(0.05);
+  });
+
+  it("lifts a friendly captain to allied, and that is the last rung", () => {
+    const access = portAccess(commissioned({ rep: FRIENDLY }), FRENCH);
+    expect(access.level).toBe("allied");
+    expect(access.viaAlly).toBe(true);
+  });
+
+  it("leaves the commission itself alone — an alliance is not a second letter", () => {
+    // The deliberate non-change, pinned. A prize taken from a crown the ALLY is
+    // fighting but the patron is not stays uncovered: "which crown do I serve"
+    // is the question the letter exists to ask.
+    const w = commissioned({ wars: [war("netherlands", "france"), war("spain", "england"), war("spain", "france")] });
+    expect(patronBehind(w, "france")).toBe("england");
+    expect(coveringPatrons(w, "netherlands")).toEqual([]);
+    expect(coveringPatrons(w, "spain")).toEqual(["england"]);
   });
 });

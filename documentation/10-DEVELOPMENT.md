@@ -299,6 +299,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 | `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
 | `?blockade=havana` | Fregata na stanowisku pod tym portem, kordon dzień przed zaciśnięciem |
+| `?patron=tortuga` | Kapitan stoi przy tej ladzie **na cudzy papier** (v0.56.0): niesie komisję korony bijącej się w tej samej wojnie co ta korona, więc nagłówek mówi, skąd wąski spread, a gubernator ma dla niego obronę do wynajęcia. W zwykłej grze 18,8% dni i nigdy pierwszego |
 | `?alliance=cartagena` | Dwie korony robiące wspólną sprawę i wspólna wyprawa, którą to wystawia (v0.55.0): kapitan leży pół przeprawy od tej kolonii, angielski desant idzie na nią, a jeden kadłub linii ma banderę francuską. W zwykłej grze sojusz wymaga, żeby dwie korony wypowiedziały wojnę tej samej trzeciej — to 28,8% dni, ale nigdy pierwszy |
 | `?famine=tortuga` | Kapitan stoi w mieście, którego dostawca jest pod czarną banderą; miasto od dwóch tygodni głoduje |
 | `&stand=cover` | Stoi zamiast tego w porcie, który przejął cudze kursy — razem z `?famine=` |

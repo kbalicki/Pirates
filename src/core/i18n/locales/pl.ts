@@ -655,6 +655,7 @@ export const PL: LocaleData = {
   "news.harvest": "Rekordowe zbiory pod {{port}}. Spichlerze pełne.",
   "news.royal_decree": "Dekret królewski {{faction}} zmienia taryfy w koloniach.",
   // ── Dwie korony robią wspólną sprawę (v0.55.0) ───────
+  "port.standing_via_ally": "na papiery patrona — {{patron}} trzyma z {{crown}}",
   "news.alliance": "{{faction1}} i {{faction2}} stały ramię w ramię przeciwko {{against}}.",
   "news.alliance_end": "Porozumienie {{faction1}} i {{faction2}} przeciwko {{against}} wygasło.",
   "tavern.rumor_alliance": "Mówią, że {{faction1}} i {{faction2}} trzymają się teraz razem, a zapłaci za to {{against}}.",

@@ -60,6 +60,7 @@ import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
 import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
+import { patronBehind } from "./PrivateerSystem.ts";
 import {
   portFaction,
   portChangedHands,
@@ -831,11 +832,25 @@ export type PendingDefense = {
  * their colony is your business. Standing as "allied" on the reputation scale
  * is the earned version. Anything less and the militia would as soon shoot at
  * the boats as the ones coming ashore.
+ *
+ * The third way in is v0.56.0's, and it is the alliance finally deciding
+ * something the player can stand in: **his patron's ally counts him as one of
+ * theirs**, for exactly as long as the two crowns are fighting the same war.
+ * A commissioned English captain lying off a French colony while both are at
+ * war with Spain is not a bystander, and the militia would know it.
+ *
+ * The guard on it is the same one the counter uses: `neutral` or better with
+ * the town's own crown. An alliance between ministers is not an amnesty, and a
+ * man this colony has a grievance against does not get onto its walls because
+ * of somebody else's diplomacy.
  */
 export function alliedWith(world: WorldState, faction: string): boolean {
   if (faction === "pirates") return false;
   if (world.worldFlags[`letter_of_marque_${faction}`] === true) return true;
-  return getReputationLevel(world.player.reputation[faction] ?? 0) === "allied";
+  const level = getReputationLevel(world.player.reputation[faction] ?? 0);
+  if (level === "allied") return true;
+  if (level === "hostile" || level === "unfriendly") return false;
+  return patronBehind(world, faction) !== undefined;
 }
 
 /**

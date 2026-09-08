@@ -829,6 +829,59 @@ describe("who counts the player a friend", () => {
     const loved = { ...world, player: { ...world.player, reputation: { pirates: 100 } } };
     expect(alliedWith(loved, "pirates")).toBe(false);
   });
+
+  // ── The patron's ally (v0.56.0) ─────────────────────────
+
+  /**
+   * The third way onto a crown's walls, and the one an alliance finally
+   * decides. A commissioned English captain lying off a French colony while
+   * both are at war with Spain is not a bystander, and the militia would know
+   * it. Measured: a commissioned captain has an ally on 18.8% of days, and it
+   * reaches 14.5 of the 45 towns while it holds.
+   */
+  function warEvent(a: string, b: string): WorldEventState {
+    return {
+      id: `war_${a}_${b}`, type: "war_start", startDay: 1, endDay: 9999,
+      ports: [], factions: [a, b], severity: 3, headline: "news.war_start", vars: {},
+    };
+  }
+
+  function coFighting(rep?: number): WorldState {
+    const world = makeWorld({
+      worldEvents: [warEvent("spain", "england"), warEvent("spain", "france")],
+    });
+    return {
+      ...world,
+      worldFlags: { ...world.worldFlags, letter_of_marque_england: true },
+      player: rep === undefined
+        ? world.player
+        : { ...world.player, reputation: { ...world.player.reputation, france: rep } },
+    };
+  }
+
+  it("counts a crown standing with the one that commissioned him", () => {
+    expect(alliedWith(coFighting(), "france")).toBe(true);
+  });
+
+  it("stops counting it the day the shared war does", () => {
+    const world = makeWorld({ worldEvents: [warEvent("spain", "england")] });
+    const commissioned = { ...world, worldFlags: { letter_of_marque_england: true } };
+    expect(alliedWith(commissioned, "france")).toBe(false);
+  });
+
+  it("does not put him on the walls of a colony that has a grievance", () => {
+    // The same guard the counter uses: somebody else's diplomacy is no answer
+    // to what this town has against this captain.
+    expect(alliedWith(coFighting(-40), "france")).toBe(false);
+    expect(alliedWith(coFighting(-80), "france")).toBe(false);
+  });
+
+  it("still needs the paper — a shared war on its own is not a welcome", () => {
+    const world = makeWorld({
+      worldEvents: [warEvent("spain", "england"), warEvent("spain", "france")],
+    });
+    expect(alliedWith(world, "france")).toBe(false);
+  });
 });
 
 describe("which landings the player gets to fight", () => {
@@ -865,6 +918,34 @@ describe("which landings the player gets to fight", () => {
     expect(pending).toBeDefined();
     expect(pending!.allied).toBe(true);
     expect(pending!.claimant).toBe("spain");
+  });
+
+  it("offers an ally-of-his-patron's colony, which is v0.56.0's whole point", () => {
+    // No paper from THIS crown and no standing with it — only a commission
+    // from a crown fighting the same war. Before v0.56.0 he watched it burn.
+    const owner = CITIES[OUTPOST].factionId as string;
+    const patron = owner === "england" ? "france" : "england";
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[OUTPOST].pos },
+      ports: { [OUTPOST]: makePort(OUTPOST) },
+      worldEvents: [
+        { id: "w1", type: "war_start", startDay: 1, endDay: 9999, ports: [],
+          factions: ["spain", owner], severity: 3, headline: "news.war_start", vars: {} },
+        { id: "w2", type: "war_start", startDay: 1, endDay: 9999, ports: [],
+          factions: ["spain", patron], severity: 3, headline: "news.war_start", vars: {} },
+      ],
+    });
+    const commissioned = {
+      ...world,
+      worldFlags: { ["letter_of_marque_" + patron]: true },
+    };
+    const event = inFlight(OUTPOST, { endDay: 130, factions: ["spain", owner] });
+    const pending = pendingDefenseFor(commissioned, event);
+    expect(pending).toBeDefined();
+    expect(pending!.allied).toBe(true);
+    // And without the shared war it is not offered at all.
+    expect(pendingDefenseFor({ ...commissioned, worldEvents: [] }, event)).toBeUndefined();
   });
 
   it("offers nothing for a colony he has no standing with, however close he is", () => {

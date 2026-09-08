@@ -158,6 +158,27 @@ describe("offerFor — what the governor has to ask", () => {
     expect(offerFor(makeWorld({ flags: {} }), HOME)).toBeUndefined();
   });
 
+  it("does ask a captain commissioned by the crown standing beside it (v0.56.0)", () => {
+    // No English paper and no English standing — a French commission, and
+    // France and England both at war with Spain. The alliance is what makes
+    // this governor willing to pay him, and it is checked the day he asks.
+    const shared: WorldEventState[] = [
+      { id: "w_sp_en", type: "war_start", startDay: 1, endDay: 9999, ports: [],
+        factions: ["spain", "england"], severity: 3, headline: "news.war_start", vars: {} },
+      { id: "w_sp_fr", type: "war_start", startDay: 1, endDay: 9999, ports: [],
+        factions: ["spain", "france"], severity: 3, headline: "news.war_start", vars: {} },
+    ];
+    const base = makeWorld();
+    const w = { ...base, worldFlags: { letter_of_marque_france: true },
+                worldEvents: [...base.worldEvents, ...shared] };
+    expect(offerFor(w, HOME)).toBeDefined();
+
+    // And the moment the two crowns are not fighting the same war, he is a
+    // stranger with a foreign paper again.
+    const apart = { ...w, worldEvents: base.worldEvents };
+    expect(offerFor(apart, HOME)).toBeUndefined();
+  });
+
   it("does ask a captain who earned the standing without a letter", () => {
     const w = makeWorld({ flags: {}, reputation: { england: 90 } });
     expect(offerFor(w, HOME)).toBeDefined();

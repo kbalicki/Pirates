@@ -42,11 +42,26 @@
  *
  * Everything is read against the flag flying over the town **today**
  * (`portFaction`), never `CityDef.factionId`, which is a map from 1680.
+ *
+ * ## The friend of a friend (v0.56.0)
+ *
+ * One thing the table did not know: a captain can be carrying a crown's
+ * commission and standing in the harbour of a crown that is **fighting the same
+ * war**. Until v0.55.0 the game had no way to say that two crowns were doing
+ * that; now it does, and the counter is where it costs something.
+ *
+ * The lift is **one tier and only upwards from `neutral`**. That guard is the
+ * whole of the design: an alliance between ministers is not an amnesty. A
+ * captain who has been burning this town's shipping is `unfriendly` here on his
+ * own account, and his patron's diplomacy is no answer to that. What the paper
+ * buys him is that he stops being treated as a **stranger** — which is exactly
+ * what a friend of a friend is not.
  */
 
 import type { WorldState } from "../model/WorldState.ts";
 import { getReputationLevel, type ReputationLevel } from "./ReputationSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
+import { alliesOfPatrons } from "./PrivateerSystem.ts";
 
 export type PortAccess = {
   /** The crown whose flag flies here today. */
@@ -83,9 +98,25 @@ export type PortAccess = {
    * standing rate. The yard's bill and a warehouse lease both read this.
    */
   serviceMul: number;
+  /**
+   * True when this town is treating him a tier better than his own standing
+   * here, because it is standing with the crown that commissioned him.
+   *
+   * Carried so the screen can say *why* the counter is friendlier than the
+   * number beside it — a discount with no reason on it reads as a bug.
+   */
+  viaAlly: boolean;
 };
 
-type Tier = Omit<PortAccess, "faction" | "reputation" | "level">;
+type Tier = Omit<PortAccess, "faction" | "reputation" | "level" | "viaAlly">;
+
+/** The table's own order, low to high. `nextTier` walks it. */
+const LADDER: ReputationLevel[] = ["hostile", "unfriendly", "neutral", "friendly", "allied"];
+
+/** The tier above this one, or this one at the top of the ladder. */
+function nextTier(level: ReputationLevel): ReputationLevel {
+  return LADDER[Math.min(LADDER.length - 1, LADDER.indexOf(level) + 1)];
+}
 
 /**
  * The table. Deliberately one table and not five functions: the whole value of
@@ -104,8 +135,13 @@ const TIERS: Record<ReputationLevel, Tier> = {
 export function portAccess(world: WorldState, portKey: string): PortAccess {
   const faction = portFaction(world, portKey) as string;
   const reputation = world.player.reputation[faction] ?? 0;
-  const level = getReputationLevel(reputation);
-  return { faction, reputation, level, ...TIERS[level] };
+  const own = getReputationLevel(reputation);
+  // Never out of `hostile` or `unfriendly`: see the module header. The town's
+  // own grievance is the town's own, and no ministry settles it.
+  const lifted = own !== "hostile" && own !== "unfriendly"
+    && alliesOfPatrons(world).includes(faction);
+  const level = lifted ? nextTier(own) : own;
+  return { faction, reputation, level, viaAlly: lifted, ...TIERS[level] };
 }
 
 /** What the counter asks for one unit of a good. */

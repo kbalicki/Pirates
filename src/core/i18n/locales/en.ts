@@ -655,6 +655,7 @@ export const EN: LocaleData = {
   "news.harvest": "Bumper harvest near {{port}}. Markets overflow.",
   "news.royal_decree": "Royal decree from {{faction}} reshapes tariffs across its colonies.",
   // ── Two crowns make common cause (v0.55.0) ───────────
+  "port.standing_via_ally": "on your patron's account — {{patron}} stands with {{crown}}",
   "news.alliance": "{{faction1}} and {{faction2}} have made common cause against {{against}}.",
   "news.alliance_end": "The understanding between {{faction1}} and {{faction2}} against {{against}} has lapsed.",
   "tavern.rumor_alliance": "They say {{faction1}} and {{faction2}} are in it together now, and it is {{against}} who will pay for it.",

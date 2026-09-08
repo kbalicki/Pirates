@@ -94,7 +94,7 @@ import {
 import { disruptions } from "../../core/systems/TradeRouteSystem.ts";
 import { blockadeEffective } from "../../core/systems/BlockadeSystem.ts";
 import { tavernRumor } from "../../core/systems/RumorSystem.ts";
-import { letterCrowns } from "../../core/systems/PrivateerSystem.ts";
+import { letterCrowns, patronBehind } from "../../core/systems/PrivateerSystem.ts";
 import { reroutedOnto, townHunger, townIsHungry } from "../../core/systems/EconomyTickSystem.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
@@ -304,6 +304,22 @@ export class PortScene extends Phaser.Scene {
       txt(11, { color: repHex, bold: access.level === "hostile" }),
     ).setOrigin(0.5, 0);
     y += 18;
+
+    // Why the counter is friendlier than the number beside it (v0.56.0). A
+    // discount with no reason printed on it reads as a bug, and this one is
+    // somebody else's diplomacy — the least guessable reason in the game.
+    const behind = patronBehind(this.worldState, access.faction);
+    if (access.viaAlly && behind) {
+      this.add.text(
+        this.cx, y,
+        t("port.standing_via_ally", {
+          patron: t("faction." + behind + ".name"),
+          crown: t("faction." + factionKey + ".name"),
+        }),
+        txt(10, { color: "#227722" }),
+      ).setOrigin(0.5, 0);
+      y += 15;
+    }
 
     // Player info bar
     const player = this.worldState.player;

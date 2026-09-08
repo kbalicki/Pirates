@@ -60,7 +60,7 @@
 | CargoContract | `CargoContractSystem.ts` | Fracht: gracz jako przewoźnik na szlakach |
 | Pricing | `PricingSystem.ts` | Jedna wycena, wołana wszędzie tam, gdzie rusza się towar |
 | TradeLedger | `TradeLedgerSystem.ts` | Pieniądz idący za towarem; bogactwo portu z handlu |
-| PortAccess | `PortAccessSystem.ts` | Co miasto zrobi dla gracza: reputacja przy ladzie |
+| PortAccess | `PortAccessSystem.ts` | Co miasto zrobi dla gracza: reputacja przy ladzie, **plus papier patrona u jego sojusznika** |
 | Storehouse | `StorehouseSystem.ts` | Wynajęty magazyn w dowolnym mieście |
 
 Wszystkie systemy znajdują się w `src/core/systems/`.
@@ -658,6 +658,25 @@ teraz; stempluj to, co się wydarzyło.
 
 Bez nowego pola w `WorldState` i bez migracji: zdarzenie świata to coś, co zapis
 i tak trzyma. Migracje stoją na v12 osiemnaste wydanie.
+
+### Na czyich murach można stanąć (`alliedWith`, v0.56.0)
+
+`alliedWith(świat, korona)` stoi za dwiema rzeczami: płatnym zleceniem obrony
+u gubernatora (`DefenseContractSystem.offerFor`) i rozgrywalną bitwą obronną
+(`pendingDefenseFor`). Od v0.17.0 miało **dwa** wejścia — list kaperski **tej**
+korony albo reputacja `allied`. Trzecie to sojusz patrona:
+
+```ts
+if (worldFlags[`letter_of_marque_${faction}`]) return true;   // ich papier
+if (level === "allied") return true;                          // zasłużone
+if (level === "hostile" || level === "unfriendly") return false;  // ich uraza
+return patronBehind(world, faction) !== undefined;            // sojusz patrona
+```
+
+Angielski korsarz leżący pod francuską kolonią, gdy obie korony biją się
+z Hiszpanią, nie jest gapiem — i milicja by o tym wiedziała. Ten sam warunek
+`neutral` co przy ladzie: cudza dyplomacja nie wpuszcza na mury człowieka,
+z którym to miasto ma własny rachunek.
 
 ### Cudze pościgi (`PredationSystem.ts`, v0.50.0)
 
@@ -3225,6 +3244,43 @@ Test przechodzi wszystkie ceny 1..400 na wszystkich pięciu poziomach.
 
 `reputationPriceModifier` — martwy od jedenastu wydań — został usunięty; jego
 rola jest teraz kolumną `spread` w tej tabeli.
+
+### Przyjaciel przyjaciela (v0.56.0)
+
+Tabela nie wiedziała jednej rzeczy: kapitan może nieść komisję jednej korony
+i stać w porcie korony, która **bije się w tej samej wojnie**. Do v0.55.0 gra
+nie umiała powiedzieć, że dwie korony to robią; teraz umie, i lada jest
+miejscem, w którym to kosztuje.
+
+```
+patronBehind(świat, korona) =
+  pierwszy patron z listu kaperskiego, który ≠ korona i areAllied(patron, korona)
+```
+
+Awans jest **o jeden stopień i wyłącznie w górę od `neutral`**. Ten warunek jest
+całym projektem: sojusz ministrów **nie jest amnestią**. Kapitan, który palił
+żeglugę tego miasta, jest tu `unfriendly` na własny rachunek i dyplomacja jego
+patrona nie jest na to odpowiedzią. Papier kupuje mu tylko tyle, że przestaje
+być traktowany jak **obcy** — a przyjaciel przyjaciela dokładnie nim nie jest.
+
+| Stan | Lada | Mury (`alliedWith`) |
+|---|---|---|
+| `hostile` / `unfriendly` u tej korony | bez zmian | zamknięte |
+| `neutral` + papier sojusznika | `friendly` (spread 0,12→0,08) | **otwarte** |
+| `friendly` + papier | `allied` (0,08→0,05) | otwarte |
+| `allied` | bez zmian (szczyt drabiny) | otwarte |
+
+`PortAccess.viaAlly` niesie powód na ekran — rabat bez wypisanego powodu czyta
+się jak błąd, a ten powód jest cudzą dyplomacją, czyli najmniej odgadywalnym
+w grze. Nagłówek portu drukuje `port.standing_via_ally`.
+
+Zmierzone: kapitan z komisją ma sojusznika przez **18,8% dni**, a póki sojusz
+trwa, sięga **14,5 z 45 miast** — mniej więcej trzecia część mapy, otwierająca
+się i zamykająca cudzą wojną.
+
+**Komisja została nietknięta i jest na to test.** Pryz wzięty koronie, z którą
+wojuje *sojusznik*, a nie patron, dalej jest **niepokryty**: „której koronie
+służę" to pytanie, po to jest list kaperski, a sojusz nie jest drugim listem.
 
 ---
 

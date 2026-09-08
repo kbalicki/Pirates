@@ -36,6 +36,7 @@ import { CURRENTS } from "../../core/data/currents.ts";
 import { expeditionDeparture } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { launchCampaign } from "../../core/systems/CrownCampaignSystem.ts";
 import { stampAlliances } from "../../core/systems/DiplomacySystem.ts";
+import { marqueFlag } from "../../core/systems/PrivateerSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -225,6 +226,12 @@ export class PreloadScene extends Phaser.Scene {
     //                  game is manned at 2-3x her working minimum, so
     //                  short-handedness cannot be reached from a normal start;
     //                  ?ship=galleon&crew=16 is the headline case
+    //   ?patron=tortuga — standing at that counter on somebody else's paper
+    //                    (v0.56.0): the captain carries a commission from a
+    //                    crown fighting the same war as this town's, so the
+    //                    header says why the spread is narrow, and the governor
+    //                    has a defence to offer him. 18.8% of days in an
+    //                    ordinary game, and never the first one
     //   ?alliance=cartagena — two crowns making common cause, and the joint
     //                    landing it puts to sea: the captain is lying half a
     //                    passage off that Spanish colony with an English
@@ -443,6 +450,13 @@ export class PreloadScene extends Phaser.Scene {
     if (params.has("marque")) {
       const portKey = params.get("marque") || "petit_goave";
       const world = this.createMarqueWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("patron")) {
+      const portKey = params.get("patron") || "tortuga";
+      const world = this.createPatronAllyWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("PortScene", { worldState: world, portId: portKey });
       return;
@@ -808,6 +822,82 @@ export class PreloadScene extends Phaser.Scene {
       entities: entity
         ? { ...staged.entities, [shipId]: { ...entity, pos: { ...pos } } }
         : staged.entities,
+    };
+  }
+
+  /**
+   * A counter that reads somebody else's paper, for `?patron=` (v0.56.0).
+   *
+   * The captain is standing in a town of crown H holding a commission from
+   * crown P, with H and P at war with the same third crown — so the header
+   * shows the lift and its reason, and the governor has a landing to hire him
+   * for. Reaching this by playing means waiting for two crowns to declare war
+   * on the same third one and then earning a letter, which is 18.8% of days and
+   * never the first.
+   */
+  private createPatronAllyWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const holder = def.factionId as unknown as string;
+    const enemy = holder === "spain" ? "england" : "spain";
+    const patron = [holder === "france" ? "netherlands" : "france", "england", "netherlands"]
+      .find(c => c !== holder && c !== enemy) as string;
+    const day = base.time.day;
+
+    const wars = [holder, patron].map(crown => ({
+      id: `war_dyn_${[crown, enemy].sort().join("_")}`,
+      type: "war_start" as const,
+      startDay: day - 120,
+      endDay: day + 500,
+      ports: [],
+      factions: [crown, enemy],
+      severity: 3 as const,
+      headline: "news.war_start",
+      vars: { faction1: FACTIONS[crown]?.name ?? crown, faction2: FACTIONS[enemy]?.name ?? enemy },
+    }));
+
+    // Stamped by the production function, so the tavern and the news boards
+    // carry the same alliance the counter is reading.
+    let world = stampAlliances({
+      ...base,
+      worldFlags: { ...base.worldFlags, [marqueFlag(patron)]: true },
+      worldEvents: [...base.worldEvents, ...wars],
+    });
+
+    // A colony of this crown under a landing, so the governor has something to
+    // hire him for — `offerFor` needs an expedition in flight, not a mood.
+    const threatened = Object.keys(CITIES).find(
+      k => k !== portKey && (CITIES[k].factionId as unknown as string) === holder,
+    );
+    if (threatened) {
+      world = {
+        ...world,
+        worldEvents: [...world.worldEvents, {
+          id: `campaign_${threatened}_patron_debug`,
+          type: "campaign" as const,
+          startDay: day,
+          endDay: day + 14,
+          ports: [threatened],
+          factions: [enemy, holder],
+          severity: 3 as const,
+          headline: "news.campaign",
+          vars: {
+            port: CITIES[threatened].name,
+            faction: FACTIONS[enemy]?.name ?? enemy,
+            holder: FACTIONS[holder]?.name ?? holder,
+            soldiers: 160, guns: 40, days: 14,
+          },
+        }],
+      };
+    }
+
+    return {
+      ...world,
+      player: {
+        ...world.player,
+        location: { type: "port", portId: def.id, pos: { ...def.pos } },
+      },
     };
   }
 
