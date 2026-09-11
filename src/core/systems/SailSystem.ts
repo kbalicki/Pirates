@@ -24,16 +24,25 @@
 export interface SailLevelDef {
   index: number;
   value: number;
-  nameKey: string;  // i18n key
-  namePl: string;   // Polish fallback
-  nameEn: string;   // English fallback
+  /**
+   * The locale key, and the only name this level has (v0.60.0).
+   *
+   * There used to be `namePl` and `nameEn` beside it, called "fallbacks". They
+   * were read by nothing: the HUD has gone through `t(nameKey)` since the
+   * locale tables existed, so all the two fields ever did was keep a second,
+   * unmaintained copy of the same four words — and the Polish copy had already
+   * drifted ("Zwinięte" here against "Żagle zwinięte" in `pl.ts`). A second
+   * reader of a table is a second set of rules; a second *table* with no
+   * reader is just a lie waiting to be believed.
+   */
+  nameKey: string;
 }
 
 export const SAIL_LEVELS: SailLevelDef[] = [
-  { index: 0, value: 0.00, nameKey: "sail.furled",    namePl: "Zwinięte",      nameEn: "Furled" },
-  { index: 1, value: 0.33, nameKey: "sail.reefed",    namePl: "Zrefowane",     nameEn: "Reefed" },
-  { index: 2, value: 0.50, nameKey: "sail.half",      namePl: "Połowa żagli",  nameEn: "Half Sail" },
-  { index: 3, value: 1.00, nameKey: "sail.full",       namePl: "Pełne żagle",  nameEn: "Full Sail" },
+  { index: 0, value: 0.00, nameKey: "sail.furled" },
+  { index: 1, value: 0.33, nameKey: "sail.reefed" },
+  { index: 2, value: 0.50, nameKey: "sail.half" },
+  { index: 3, value: 1.00, nameKey: "sail.full" },
 ];
 
 /** Time in milliseconds to transition between adjacent sail levels. */

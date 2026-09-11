@@ -164,7 +164,7 @@ export class PortApproachScene extends Phaser.Scene {
       this.actions.push({ label: t("approach.assault"), action: "attack" });
     }
     this.actions.push({
-      label: this.isOnFoot ? t("approach.leave_on_foot") ?? "Odejdź" : t("approach.leave"),
+      label: this.isOnFoot ? t("approach.leave_on_foot") : t("approach.leave"),
       action: "leave",
     });
 

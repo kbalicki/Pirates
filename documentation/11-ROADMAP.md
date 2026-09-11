@@ -217,6 +217,7 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - **Specjalizacje statków** — ulepszenia żagli, kadłuba i uzbrojenia, galion (bonus morale), balast (stabilność vs prędkość)
 - **Pathfinding A\*** — prawdziwe szlaki handlowe zamiast reaktywnego sterowania NPC
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden; brakuje ścieżek dla żeglugi, portu, tawerny i bitwy
+- ✅ **Gra po angielsku naprawdę po angielsku** (v0.60.0) — podręcznik pod H był w całości twardo wpisanym polskim (147 napisów, **zero** wywołań `t()`) w buildzie, którego domyślnym językiem jest angielski; doszło 129 kluczy w każdym języku, wykrywanie języka przeglądarki i test czytający **źródło** scen, bo tabela locale nie widzi ekranu, który jej nie pyta
 
 ---
 

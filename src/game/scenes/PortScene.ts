@@ -533,7 +533,7 @@ export class PortScene extends Phaser.Scene {
     }
 
     actions.push({
-      label: this.isOnFoot ? t("port.leave_on_foot") ?? "ODEJDŹ" : t("port.set_sail"),
+      label: this.isOnFoot ? t("port.leave_on_foot") : t("port.set_sail"),
       key: "sail",
     });
 

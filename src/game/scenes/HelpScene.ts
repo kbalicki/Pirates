@@ -1,14 +1,63 @@
 /**
- * Help overlay — game manual with sections.
- * Accessible via H key from MainMapScene.
+ * Help overlay — the game's manual. H from the map, ESC or H to close.
+ *
+ * ## Why every string here goes through `t()` (v0.60.0)
+ *
+ * It did not until v0.60.0. This file put **147 strings** on the screen and
+ * called `t()` **zero** times — the whole manual was hardcoded Polish, in a
+ * build whose default language is English (`I18n.ts` opens on `"en"` and
+ * nothing ever read the browser's). Its sibling `BattleHelpScene` was written
+ * the other way round, every line a `battle.help_*` key, which is why the fight
+ * had a manual in both languages and the world did not.
+ *
+ * The reason it survived fourteen releases is worth keeping: the author reads
+ * Polish, so the one screen that was *not* translated looked right to him and
+ * every screen that *was* looked like the odd one out. A locale table cannot
+ * catch this — `keys.test.ts` checks that the two tables match each other, and
+ * two matching tables say nothing about a scene that asks neither of them. The
+ * test that catches it reads **this source file** and fails on a Polish letter
+ * inside a string literal.
+ *
+ * So: no literal prose below. Key labels (`W / ↑`, `SPACE`) and numbers pulled
+ * from the ship table are not prose and stay as they are.
  */
 import Phaser from "phaser";
 import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
 import { visionRangeForMast } from "../render/WorldRenderer.ts";
 import { bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
+import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import {
+  HELP_SAILING_TOPICS, HELP_WORLD_TOPICS, HELP_EVENT_ROWS, HELP_SEVERITY_COLOUR,
+} from "../../core/data/helpTopics.ts";
 
 type HelpSection = "controls" | "ships" | "sailing" | "world" | "economy";
+
+/** One row of the controls list: the key itself, and what it does. */
+const CONTROLS: Array<[string, string]> = [
+  ["W / ↑", "help.ctrl_sails_up"],
+  ["S / ↓", "help.ctrl_sails_down"],
+  ["A / ←", "help.ctrl_turn_left"],
+  ["D / →", "help.ctrl_turn_right"],
+  ["E", "help.ctrl_enter_port"],
+  ["L", "help.ctrl_land"],
+  ["X", "help.ctrl_dig"],
+  ["SPACE", "help.ctrl_options"],
+  ["H", "help.ctrl_help"],
+  ["T", "help.ctrl_lanes"],
+  ["C", "help.ctrl_currents"],
+  ["G", "help.ctrl_grid"],
+  ["V", "help.ctrl_vision"],
+  ["Scroll", "help.ctrl_zoom"],
+];
+
+/** The ship table's column heads, in the order the columns are drawn. */
+const SHIP_COLUMNS = [
+  "help.ships_col_name", "help.ships_col_knots", "help.ships_col_turn",
+  "help.ships_col_hull", "help.ships_col_sails", "help.ships_col_guns",
+  "help.ships_col_cargo", "help.ships_col_crew", "help.ships_col_deadbeat",
+  "help.ships_col_glass", "help.ships_col_tons", "help.ships_col_rig",
+];
 
 export class HelpScene extends Phaser.Scene {
   private currentSection: HelpSection = "controls";
@@ -36,17 +85,17 @@ export class HelpScene extends Phaser.Scene {
     border.strokeRect(cx - pw / 2, cy - ph / 2, pw, ph);
 
     // Title
-    this.add.text(cx, cy - ph / 2 + 14, "POMOC", {
+    this.add.text(cx, cy - ph / 2 + 14, t("help.title"), {
       ...txt(20, { bold: true, color: "#c8a84e" }),
     }).setOrigin(0.5, 0).setDepth(5);
 
     // Tab buttons
     const tabs: { label: string; key: HelpSection }[] = [
-      { label: "Sterowanie", key: "controls" },
-      { label: "Statki", key: "ships" },
-      { label: "Żeglowanie", key: "sailing" },
-      { label: "Świat", key: "world" },
-      { label: "Ekonomia", key: "economy" },
+      { label: t("help.tab_controls"), key: "controls" },
+      { label: t("help.tab_ships"), key: "ships" },
+      { label: t("help.tab_sailing"), key: "sailing" },
+      { label: t("help.tab_world"), key: "world" },
+      { label: t("help.tab_economy"), key: "economy" },
     ];
     const tabY = cy - ph / 2 + 50;
     const tabW = (pw - 60) / tabs.length;
@@ -80,7 +129,7 @@ export class HelpScene extends Phaser.Scene {
     }
 
     // Close hint
-    this.add.text(cx, cy + ph / 2 - 14, "H lub ESC aby zamknąć", {
+    this.add.text(cx, cy + ph / 2 - 14, t("help.close_hint"), {
       ...txt(10, { color: "#555555" }),
     }).setOrigin(0.5, 1).setDepth(5);
 
@@ -95,26 +144,14 @@ export class HelpScene extends Phaser.Scene {
 
   private renderControls(left: number, y: number, _right: number): void {
     y += 10;
-    const lines = [
-      ["W / ↑", "Podnieś żagle (następny poziom)"],
-      ["S / ↓", "Zwiń żagle (poprzedni poziom)"],
-      ["A / ←", "Skręć w lewo (przytrzymaj)"],
-      ["D / →", "Skręć w prawo (przytrzymaj)"],
-      ["E", "Wejdź do portu / Wsiądź na statek"],
-      ["L", "Zejdź na ląd / wróć na statek"],
-      ["X", "Kop w poszukiwaniu skarbu (na lądzie)"],
-      ["SPACE", "Menu opcji"],
-      ["H", "Pomoc (ten ekran)"],
-      ["T", "Pokaż/ukryj szlaki handlowe"],
-      ["C", "Pokaż/ukryj prądy morskie"],
-      ["G", "Pokaż/ukryj siatkę"],
-      ["V", "Pokaż/ukryj strefę widzenia"],
-      ["Scroll", "Zmień zoom (1×–12×)"],
-      ["Klik na miasto", "Informacje o mieście"],
+    const lines: Array<[string, string]> = [
+      ...CONTROLS,
+      // The one row whose "key" is a sentence rather than a keycap.
+      [t("help.ctrl_click_key"), "help.ctrl_click_city"],
     ];
-    for (const [key, desc] of lines) {
+    for (const [key, descKey] of lines) {
       this.add.text(left, y, key, { ...txt(15, { bold: true, color: "#ffdd88" }) }).setDepth(5);
-      this.add.text(left + 140, y, desc, { ...txt(14, { color: "#cccccc" }) }).setDepth(5);
+      this.add.text(left + 140, y, t(descKey), { ...txt(14, { color: "#cccccc" }) }).setDepth(5);
       y += 26;
     }
   }
@@ -123,9 +160,8 @@ export class HelpScene extends Phaser.Scene {
     y += 8;
     // Header — max knots = speedBase × peakWindMod(1.5) × displayMultiplier(32)
     const cols = [0, 105, 160, 215, 265, 310, 365, 425, 500, 565, 630, 710];
-    const headers = ["Statek", "Max kn", "Skręt", "Kadłub", "Żagle", "Armaty", "Ładunek", "Załoga", "Mart/Hals", "Luneta", "Tonaż", "Ożaglow."];
-    headers.forEach((h, i) => {
-      this.add.text(left + cols[i], y, h, { ...txt(10, { bold: true, color: "#888888" }) }).setDepth(5);
+    SHIP_COLUMNS.forEach((key, i) => {
+      this.add.text(left + cols[i], y, t(key), { ...txt(10, { bold: true, color: "#888888" }) }).setDepth(5);
     });
     y += 20;
 
@@ -140,7 +176,9 @@ export class HelpScene extends Phaser.Scene {
       if (y > contentH + 80) break;
       const maxKnots = (ship.speedBase * 1.5 * 32).toFixed(0);
       const vision = Math.round(visionRangeForMast(ship.mastHeight));
-      this.add.text(left + cols[0], y, ship.name, { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      // The class's own name comes from the locale like everywhere else — the
+      // shipyard and the fleet tab have read `ship.<id>.name` since v0.31.0.
+      this.add.text(left + cols[0], y, t(`ship.${ship.id}.name`), { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
       this.add.text(left + cols[1], y, `${maxKnots}`, { ...txt(11, { color: "#88cc88" }) }).setDepth(5);
       this.add.text(left + cols[2], y, `${(ship.turnRate * 100).toFixed(0)}°`, { ...txt(11, { color: "#88bbee" }) }).setDepth(5);
       this.add.text(left + cols[3], y, `${ship.hullMax}`, { ...txt(11, { color: "#cccccc" }) }).setDepth(5);
@@ -152,58 +190,73 @@ export class HelpScene extends Phaser.Scene {
       this.add.text(left + cols[8], y, `${ship.minWindAngle}/${bestBeatAngle(ship.minWindAngle)}°`, { ...txt(11, { color: "#ee8844" }) }).setDepth(5);
       this.add.text(left + cols[9], y, `${vision}`, { ...txt(11, { color: "#66ccff" }) }).setDepth(5);
       this.add.text(left + cols[10], y, `${ship.tonnage}t`, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
-      this.add.text(left + cols[11], y, ship.rigType, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
+      // "Fore-and-aft" / "Mixed" / "Square" are the table's own words; slugged
+      // so the locale key is stable if somebody retypes the hyphen.
+      const rig = ship.rigType.toLowerCase().replace(/[^a-z]+/g, "_");
+      this.add.text(left + cols[11], y, t(`help.rig_${rig}`), { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
       y += 22;
     }
   }
 
-  private renderSailing(left: number, y: number, _right: number): void {
-    y += 10;
-    const lines = [
-      { title: "Kierunek wiatru", desc: "Kompas pokazuje skąd wieje wiatr. Strzałka = kierunek." },
-      { title: "Martwa strefa", desc: "Dziobem w wiatr statek staje — zostaje mu tyle ruchu, żeby słuchał steru, i nic więcej. Kąt zależy od ożaglowania (30°–60°), kolumna „Mart/Hals” obok." },
-      { title: "Hals (close hauled)", desc: "Tuż za martwą strefą. Wolniej niż w baksztag, ale to JEDYNY sposób, żeby posuwać się pod wiatr: druga liczba w kolumnie „Mart/Hals” to kurs, na którym ten sam statek zyskuje na wiatr najwięcej. Slup robi tak 6-7 razy więcej drogi niż z dziobem w wiatr, galeon 3 razy — i dlatego ciężki żaglowiec rejowy chodzi z wiatrem, a nie pod niego." },
-      { title: "Baksztag (beam reach)", desc: "~90° do wiatru. NAJSZYBSZY punkt żeglowania (150% prędkości bazowej)." },
-      { title: "Z wiatrem (running)", desc: "Wiatr w rufę. ~90-110% prędkości, ale nie najszybciej." },
-      { title: "Poziomy żagli", desc: "W/S zmienia: Zwinięte → Zrefowane → Połowa → Pełne. Zmiana trwa 2s przy pełnej obsadzie — przy szczątkowej nawet trzy razy dłużej." },
-      { title: "Obsada statku", desc: "Kolumna „Załoga” w tabeli obok to minimum i komplet. Minimum to tylu ludzi, ilu trzeba, żeby statek w ogóle pracował — poniżej niego wolniej się skręca, wolniej stawia i refuje żagle, a prędkość spada. Braki widać na HUD („Za mało rąk”) i w Kabinie (SPACE)." },
-      { title: "Załoga pryzowa", desc: "Zdobyty statek nie płynie sam: ludzi na niego bierzesz z własnego pokładu, a braki uzupełniasz przymuszonymi z jego pobitej załogi (zgadza się na to połowa ocalałych). Slup potrafi obsadzić brygantynę, ale nie galeon — taki pryz pełznie i ciągnie za sobą całą eskadrę, bo flota płynie tempem najwolniejszego. Czasem lepiej go zatopić." },
-      { title: "Typ ożaglowania", desc: "Fore-and-aft (slup): bliżej pod wiatr (30-40°), najlepszy hals około 50°. Square (galeon): martwa strefa 55-60°, najlepszy hals dopiero koło 70° — a tam cosinus daje już niewiele, więc na wschód, pod pasat, ciężki żaglowiec płynie po prostu długo." },
-      { title: "Luneta", desc: "Zasięg widzenia zależy od wysokości masztów statku. Wyższy maszt = dalej widzisz." },
-    ];
-    for (const { title, desc } of lines) {
-      this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
-      y += 18;
-      this.add.text(left + 12, y, desc, { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
-      y += 22;
+  /**
+   * A list of headed paragraphs, in two columns — the shape the sailing and
+   * world tabs use.
+   *
+   * The advance is the paragraph's **measured** height, not a flat 22 px
+   * (v0.60.0). The flat number was right only for a body that fitted on one
+   * line, and several of them never did: the currents paragraph runs to three,
+   * so for as long as this screen has existed it has been printing the next
+   * heading on top of its own last line, and the World tab ran off the bottom
+   * of the panel entirely. Nothing but looking at it could catch that — which
+   * is the same lesson as the battle banner in v0.59.0.
+   *
+   * Two columns because fifteen topics do not fit in one at any line height.
+   * A topic that would run past the foot of the panel starts the second
+   * column; if both fill, the overflow is visible rather than silently clipped,
+   * and that is the signal to split the tab rather than to shrink the type.
+   */
+  private renderTopics(left: number, right: number, top: number, stems: readonly string[]): void {
+    const colGap = 24;
+    const colW = (right - left - colGap) / 2;
+
+    // Measure first, then place. Phaser only knows how tall a wrapped
+    // paragraph is once it exists, and where the second column should start
+    // depends on the total — so everything is drawn in the left column, added
+    // up, and the back half is moved across. Balancing rather than filling:
+    // filling put seven topics in the first column and eight in the second,
+    // and the second ran off the foot of the panel.
+    const blocks = stems.map(stem => {
+      const head = this.add.text(left, 0, t(`help.${stem}_h`),
+        { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      const body = this.add.text(left + 12, 0, t(`help.${stem}_b`),
+        { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: colW - 12 } }).setDepth(5);
+      return { head, body, h: 18 + body.height + 10 };
+    });
+
+    const total = blocks.reduce((n, b) => n + b.h, 0);
+    let running = 0;
+    let split = blocks.length;
+    for (let i = 0; i < blocks.length; i++) {
+      running += blocks[i].h;
+      if (running >= total / 2) { split = i + 1; break; }
     }
+
+    let y = top + 10;
+    blocks.forEach((b, i) => {
+      if (i === split) y = top + 10;
+      const x = i < split ? left : left + colW + colGap;
+      b.head.setPosition(x, y);
+      b.body.setPosition(x + 12, y + 18);
+      y += b.h;
+    });
   }
 
-  private renderWorld(left: number, y: number, _right: number): void {
-    y += 10;
-    const lines = [
-      { title: "Karaiby, XVII wiek", desc: "45 portów, 5 frakcji: Hiszpania, Anglia, Francja, Holandia, Piraci. 9 klas statków." },
-      { title: "Ery gry", desc: "1560–1700. Każda era ma inny układ sił i wydarzenia historyczne." },
-      { title: "Porty", desc: "Kliknij miasto na mapie aby zobaczyć informacje. Podejdź blisko aby wejść." },
-      { title: "Handel", desc: "Kupuj tanio towary eksportowe, sprzedawaj drogo w portach z popytem." },
-      { title: "Reputacja", desc: "Każda frakcja pamięta twoje czyny. Wrogość = trudniejszy dostęp do portów." },
-      { title: "Ekonomia (zakładka obok)", desc: "Miasta żyją: rosną, biednieją, są napadane. Każde wydarzenie zmienia stan portu." },
-      { title: "Wyszkolenie załogi", desc: "Pasek w Kabinie (SPACE). Rośnie na morzu i po wygranych. Nowi rekruci obniżają średnią. Wpływa na szybkość reloadu armat w bitwie. Pełny opis: H w czasie bitwy." },
-      { title: "Wyprawy koron", desc: "Kiedy korona szykuje desant na miasto, tawerny mówią o tym na wiele dni wcześniej. Ta eskadra płynie po mapie naprawdę: transportowce wiozą żołnierzy, eskorty działa. Zatop transportowce, a desantu nie będzie wcale." },
-      { title: "Prądy morskie", desc: "Morze płynie zawsze w tę samą stronę: od Małych Antyli na zachód wzdłuż Hiszpańskiego Lądu, przez Cieśninę Jukatańską na północ, pętlą przez Zatokę i między Florydą a Kubą — cztery węzły. Prąd nie skręca statku, tylko go **znosi**: rejs na zachód wzdłuż Lądu jest szybki, ten sam rejs na wschód to mordęga. Prędkość na HUD to prędkość **nad dnem**, więc widać różnicę. Klawisz C rysuje prądy na mapie." },
-      { title: "Szlaki handlowe", desc: "Każde miasto ma nazwanego dostawcę tego, czego samo nie produkuje — kupcy płyną tą trasą naprawdę, omijając ląd. Klawisz T rysuje szlaki na mapie. Statek handlowy wieziesz to, co niesie jego szlak: zdobyty ładunek trafia do twojej ładowni, ile się zmieści." },
-      { title: "Blokada portu", desc: "Krąż w pobliżu obcego portu z dość dużą liczbą dział, a po dwóch dniach zamkniesz mu dostawy: bogactwo spada, garnizon topnieje, korona traci do ciebie cierpliwość. Odpłyń — pierścień rozluźnia się dzień po dniu, nie pęka od razu. Zagłodzone miasto łatwiej zdobyć." },
-      { title: "Bandery i proporce", desc: "Mała bandera przy kadłubie mówi, czyj to statek. Czerwony proporzec nad nią — że ten będzie się bił. Złoty proporczyk pod banderą mówi, jak głęboko siedzi w wodzie: krótki — część ładunku, długi — pełna ładownia. Widać go dopiero z połowy zasięgu lunety, więc po to trzeba podejść." },
-      { title: "Informator w tawernie", desc: "Kompania kupiecka płaci za to, żeby szlak konkurencji przestał się opłacać. Bierz kupców na wskazanej trasie — trzy kadłuby w dwa tygodnie wystarczą, bo strach żeglarzy mija dzień po dniu. Płacą złotem i sławą, a poszkodowana korona to pamięta." },
-      { title: "Miasto pod czarną banderą", desc: "Zdobyte miasto nie ma za sobą żadnej korony: żaden licencjonowany kupiec u niego nie załaduje, więc kolonie, które z niego brały towar, szukają innego dostawcy albo biedą. Twoja własna przystań żyje z przemytu, a przemytnicy płyną tam, gdzie kapitan ma nazwisko — im większa sława, tym lepiej zaopatrzone miasto." },
-      { title: "Zlecenie obrony", desc: "Gubernator korony, która liczy cię za swojego (list kaperski albo standing „sojusznik”), zapłaci za utrzymanie zagrożonej kolonii. Dotrzyj tam przed desantem. Termin jest w Dzienniku (SPACE)." },
-    ];
-    for (const { title, desc } of lines) {
-      this.add.text(left, y, title, { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
-      y += 18;
-      this.add.text(left + 12, y, desc, { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: 750 } }).setDepth(5);
-      y += 22;
-    }
+  private renderSailing(left: number, y: number, right: number): void {
+    this.renderTopics(left, right, y, HELP_SAILING_TOPICS.map(s => `sail_${s}`));
+  }
+
+  private renderWorld(left: number, y: number, right: number): void {
+    this.renderTopics(left, right, y, HELP_WORLD_TOPICS.map(s => `world_${s}`));
   }
 
   private renderEconomy(left: number, y: number, right: number): void {
@@ -213,8 +266,7 @@ export class HelpScene extends Phaser.Scene {
     y += 8;
 
     // ── Header ─────────────────────────────────────────────
-    this.add.text((left + right) / 2, y,
-      "Karaiby żyją własnym życiem — miasta rosną, biednieją, walczą.",
+    this.add.text((left + right) / 2, y, t("help.econ_intro"),
       { ...txt(12, { color: "#cccccc" }) }).setOrigin(0.5, 0).setDepth(5);
     y += 22;
 
@@ -222,11 +274,12 @@ export class HelpScene extends Phaser.Scene {
     let yA = y;
     let yB = y;
 
-    const heading = (col: number, yPos: number, text: string): number => {
-      this.add.text(col, yPos, text, { ...txt(13, { bold: true, color: "#c8a84e" }) }).setDepth(5);
+    const heading = (col: number, yPos: number, key: string): number => {
+      this.add.text(col, yPos, t(key), { ...txt(13, { bold: true, color: "#c8a84e" }) }).setDepth(5);
       return yPos + 20;
     };
-    const para = (col: number, yPos: number, text: string, color = "#aaaaaa"): number => {
+    const para = (col: number, yPos: number, key: string, color = "#aaaaaa"): number => {
+      const text = t(key);
       this.add.text(col, yPos, text, {
         ...txt(11, { color }),
         wordWrap: { width: colW },
@@ -235,81 +288,40 @@ export class HelpScene extends Phaser.Scene {
       const lines = text.split("\n").reduce((n, ln) => n + Math.max(1, Math.ceil(ln.length / 70)), 0);
       return yPos + 14 * lines + 4;
     };
-    const eventRow = (col: number, yPos: number, name: string, effect: string, sevColor: string): number => {
+    const eventRow = (col: number, yPos: number, stem: string, sevColor: string): number => {
       this.add.text(col, yPos, "•", { ...txt(11, { color: sevColor }) }).setDepth(5);
-      this.add.text(col + 10, yPos, name, { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
-      this.add.text(col + 110, yPos, effect, { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
+      this.add.text(col + 10, yPos, t(`help.event_${stem}`), { ...txt(11, { bold: true, color: "#ffdd88" }) }).setDepth(5);
+      this.add.text(col + 110, yPos, t(`help.event_${stem}_fx`), { ...txt(11, { color: "#aaaaaa" }) }).setDepth(5);
       return yPos + 16;
     };
 
     // ─── COLUMN A — state model ────────────────────────────
-    yA = heading(colA, yA, "JAK ŻYJE MIASTO");
-    yA = para(colA, yA,
-      "Każdy port ma 3 liczby: populacja, bogactwo (0–1000), obrona (0–100). " +
-      "Co dnia powoli wracają do bazowej wartości — chyba że wydarzenie je zaburza."
-    );
-    yA = para(colA, yA,
-      "Kliknij miasto na mapie aby zobaczyć aktualne wartości i aktywne wydarzenia. " +
-      "Strzałki ↑↓ pokazują czy port jest powyżej/poniżej baseline."
-    );
+    yA = heading(colA, yA, "help.econ_city_h");
+    yA = para(colA, yA, "help.econ_city_b1");
+    yA = para(colA, yA, "help.econ_city_b2");
 
     yA += 6;
-    yA = heading(colA, yA, "CENY I MAGAZYN");
-    yA = para(colA, yA,
-      "Cena = bazowa × stosunek popytu do podaży × modyfikator wydarzeń.\n" +
-      "Pusty magazyn → cena rośnie (do ×3).\n" +
-      "Pełny magazyn → cena spada (do ×0.4)."
-    );
-    yA = para(colA, yA,
-      "Każdy port produkuje swoje towary eksportowe (×2–12 j./dzień zależnie od marketLevel) " +
-      "i konsumuje importowe (skala z populacją). Magazyn ma limit marketLevel × 50."
-    );
+    yA = heading(colA, yA, "help.econ_prices_h");
+    yA = para(colA, yA, "help.econ_prices_b1");
+    yA = para(colA, yA, "help.econ_prices_b2");
 
     yA += 6;
-    yA = heading(colA, yA, "BOGACTWO I OBRONA");
-    yA = para(colA, yA,
-      "Sprzedaż towarów z popytem podnosi bogactwo. Niedobór importu obniża je o 1/dzień.\n" +
-      "Obrona spada po napadach piratów/Indian. Słaba obrona = łatwiejszy port do rabunku."
-    );
+    yA = heading(colA, yA, "help.econ_wealth_h");
+    yA = para(colA, yA, "help.econ_wealth_b");
 
     yA += 6;
-    yA = heading(colA, yA, "WOJNA NA MORZU");
-    yA = para(colA, yA,
-      "Aktywna wojna → walczące frakcje wypuszczają ×2 więcej statków, " +
-      "a udział okrętów wojennych rośnie z 45% do 70%."
-    );
-    yA = para(colA, yA,
-      "Historyczne wojny mają stałe daty (np. 1689–1697 Wojna 9-letnia: Francja vs Anglia + Niderlandy + Hiszpania). " +
-      "Lista wojen w karczmie i u napotkanych NPC."
-    );
+    yA = heading(colA, yA, "help.econ_war_h");
+    yA = para(colA, yA, "help.econ_war_b1");
+    yA = para(colA, yA, "help.econ_war_b2");
 
     // ─── COLUMN B — events table ───────────────────────────
-    yB = heading(colB, yB, "WYDARZENIA ŚWIATA");
-    const RED = "#cc4444", AMBER = "#cc8844", YELLOW = "#cccc88";
-    yB = eventRow(colB, yB, "Odkrycie złota", "+pop, +bogactwo, nowy towar gold", AMBER);
-    yB = eventRow(colB, yB, "Najazd Indian", "−15% pop, −150 bog., −40 obrony", AMBER);
-    yB = eventRow(colB, yB, "Epidemia", "−pop, −rekrutacja, ↑ ceny żywności", AMBER);
-    yB = eventRow(colB, yB, "Najazd piratów", "−80 bog., −30% magaz., obrona spada", YELLOW);
-    yB = eventRow(colB, yB, "Huragan", "port zamknięty, statki uszkodzone", RED);
-    yB = eventRow(colB, yB, "Boom handlowy", "produkcja ×1.5, ceny ×0.8", YELLOW);
-    yB = eventRow(colB, yB, "Bunt niewolników", "produkcja ×0.3, bogactwo spada", AMBER);
-    yB = eventRow(colB, yB, "Głód", "żywność ×2, woda ×2, populacja maleje", AMBER);
-    yB = eventRow(colB, yB, "Żniwa (jesień)", "ceny ×0.6, +zapasy żywności i cukru", YELLOW);
-    yB = eventRow(colB, yB, "Dekret królewski", "taryfy zmieniają ceny w całej frakcji", YELLOW);
-    yB = eventRow(colB, yB, "Nowy gubernator", "+50 bogactwa, możliwy reset reputacji", YELLOW);
-    yB = eventRow(colB, yB, "Flota skarbowa", "hiszp. eskorta Vera Cruz → Hawana", AMBER);
-    yB = eventRow(colB, yB, "Wojna", "−15% produkcji, +10% ceny, ×2 okrętów", RED);
+    yB = heading(colB, yB, "help.econ_events_h");
+    for (const [stem, severity] of HELP_EVENT_ROWS) {
+      yB = eventRow(colB, yB, stem, HELP_SEVERITY_COLOUR[severity]);
+    }
 
     yB += 6;
-    yB = heading(colB, yB, "CO MOŻESZ ZROBIĆ");
-    yB = para(colB, yB,
-      "• Boom: kup tanio, sprzedaj drogo w sąsiednim porcie.\n" +
-      "• Głód: dowieź żywność za 2–4× cenę.\n" +
-      "• Złoto: nowy szlak skarbowy, ale więcej eskort.\n" +
-      "• Najazd Indian: hiszp. fort osłabiony — okazja dla pirata.\n" +
-      "• ...i możesz o niego poprosić: w wiosce Indian (E z pokładu, płytkie\n" +
-      "  zanurzenie) 6 ton rumu kupuje złoto i zaufanie, a zaufanie — wyprawę.\n" +
-      "• Wojna: weź list kaperski, polowanie na wroga legalne."
-    );
+    yB = heading(colB, yB, "help.econ_can_h");
+    yB = para(colB, yB, "help.econ_can_b");
   }
 }

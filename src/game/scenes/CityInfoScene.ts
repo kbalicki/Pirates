@@ -117,7 +117,7 @@ export class CityInfoScene extends Phaser.Scene {
       defVal >= 70 ? "#88bb88" :
       defVal >= 40 ? "#aaaaaa" :
       defVal >= 20 ? "#cc8866" : "#cc4444";
-    addRow(t("cityinfo.defense") ?? "Obrona",
+    addRow(t("cityinfo.defense"),
       `${defVal}/100${trendArrow(defVal, baseline.defense)}`, defColor);
 
     // A cordon is the loudest thing about a town, so it goes with the numbers
@@ -125,7 +125,7 @@ export class CityInfoScene extends Phaser.Scene {
     const cordonDays = blockadeDays(this.worldState, this.portKey);
     if (cordonDays > 0) {
       addRow(
-        t("cityinfo.blockade") ?? "Blokada",
+        t("cityinfo.blockade"),
         blockadeEffective(this.worldState, this.portKey)
           ? t("blockade.status", { days: cordonDays })
           : t("blockade.tightening_short", { days: cordonDays, onset: BLOCKADE_ONSET_DAYS }),
@@ -135,18 +135,18 @@ export class CityInfoScene extends Phaser.Scene {
 
     // Fort info
     if (this.portDef.type === "fort") {
-      addRow(t("cityinfo.type") ?? "Typ", t("cityinfo.fort") ?? "Fort obronny", "#cc8844");
+      addRow(t("cityinfo.type"), t("cityinfo.fort"), "#cc8844");
     }
 
     // Shipyard — what can be built
     const shipyardLabels = [
-      t("cityinfo.shipyard_1") ?? "Slupy",
-      t("cityinfo.shipyard_2") ?? "Brygantyny",
-      t("cityinfo.shipyard_3") ?? "Fregaty",
-      t("cityinfo.shipyard_4") ?? "Galeony",
+      t("cityinfo.shipyard_1"),
+      t("cityinfo.shipyard_2"),
+      t("cityinfo.shipyard_3"),
+      t("cityinfo.shipyard_4"),
     ];
     const slIdx = Math.min(this.portDef.shipyardLevel, 4) - 1;
-    addRow(t("cityinfo.shipyard") ?? "Stocznia",
+    addRow(t("cityinfo.shipyard"),
       shipyardLabels[slIdx] ?? "—", "#6688cc");
 
     y += 4;
@@ -155,7 +155,7 @@ export class CityInfoScene extends Phaser.Scene {
     // ── Trade ──
     if (this.portDef.produces.length > 0) {
       const items = this.portDef.produces.map(id => t("item." + id + ".name")).join(", ");
-      this.add.text(left, y, t("cityinfo.exports") ?? "Eksport", {
+      this.add.text(left, y, t("cityinfo.exports"), {
         ...txt(13, { color: "#888888" }),
       }).setDepth(5);
       y += 20;
@@ -164,7 +164,7 @@ export class CityInfoScene extends Phaser.Scene {
     }
 
     if (this.portDef.demands.length > 0) {
-      this.add.text(left, y, t("cityinfo.imports") ?? "Import", {
+      this.add.text(left, y, t("cityinfo.imports"), {
         ...txt(13, { color: "#888888" }),
       }).setDepth(5);
       y += 20;
@@ -200,7 +200,7 @@ export class CityInfoScene extends Phaser.Scene {
       return ev.ports.length === 0 || ev.ports.includes(this.portKey);
     });
     if (activeEvents.length > 0) {
-      this.add.text(left, y, t("cityinfo.active_events") ?? "Aktualne wydarzenia", {
+      this.add.text(left, y, t("cityinfo.active_events"), {
         ...txt(13, { color: "#888888" }),
       }).setDepth(5);
       y += 20;
@@ -219,14 +219,14 @@ export class CityInfoScene extends Phaser.Scene {
     const rep = this.worldState.player.reputation?.[factionId] ?? 0;
     const repLevel = rep > 50 ? "allied" : rep > 20 ? "friendly" : rep > -20 ? "neutral" : rep > -50 ? "unfriendly" : "hostile";
     const repColor = rep > 50 ? "#44cc44" : rep > 20 ? "#88cc88" : rep > -20 ? "#cccccc" : rep > -50 ? "#cc8844" : "#cc4444";
-    addRow(t("cityinfo.reputation") ?? "Reputacja",
+    addRow(t("cityinfo.reputation"),
       `${t("rep." + repLevel)} (${rep})`, repColor);
 
     // ── Last visit ──
     const lastVisit = (this.worldState as Record<string, unknown>).portVisits as Record<string, number> | undefined;
     const visitDay = lastVisit?.[this.portKey];
-    const visitText = visitDay ? `${t("cityinfo.day") ?? "Dzień"} ${visitDay}` : t("cityinfo.never_visited") ?? "Nigdy";
-    addRow(t("cityinfo.last_visit") ?? "Ostatnia wizyta", visitText, "#888888");
+    const visitText = visitDay ? `${t("cityinfo.day")} ${visitDay}` : t("cityinfo.never_visited");
+    addRow(t("cityinfo.last_visit"), visitText, "#888888");
 
     // ── Close hint ──
     this.add.text(cx, cy + panelH / 2 - 16, "ESC", {

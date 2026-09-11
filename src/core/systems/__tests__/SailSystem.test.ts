@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SailSystem, SAIL_LEVELS } from "../SailSystem.ts";
+import { EN } from "../../i18n/locales/en.ts";
+import { PL } from "../../i18n/locales/pl.ts";
 
 // ===========================================================================
 // SailSystem — four named sail levels with timed transitions
@@ -33,11 +35,17 @@ describe("sail level table", () => {
     }
   });
 
-  it("carries both a translation key and a fallback name in each language", () => {
+  /**
+   * This test used to assert that `namePl` and `nameEn` were non-empty — two
+   * fields nothing read, so the only thing it protected was the dead weight
+   * itself (and the Polish copy had already drifted from `pl.ts`). What the
+   * HUD actually needs is that the key resolves, in both languages (v0.60.0).
+   */
+  it("names every level in both locales, which is the only name it has", () => {
     for (const lvl of SAIL_LEVELS) {
       expect(lvl.nameKey).toMatch(/^sail\./);
-      expect(lvl.namePl.length).toBeGreaterThan(0);
-      expect(lvl.nameEn.length).toBeGreaterThan(0);
+      expect(EN[lvl.nameKey], `${lvl.nameKey} missing from en.ts`).toBeTruthy();
+      expect(PL[lvl.nameKey], `${lvl.nameKey} missing from pl.ts`).toBeTruthy();
     }
   });
 });

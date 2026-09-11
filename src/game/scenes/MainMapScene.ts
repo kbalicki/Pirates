@@ -1301,7 +1301,7 @@ export class MainMapScene extends Phaser.Scene {
         ? t("sail.shoaling")
         : shortHanded
           ? t(manning!.nameKey)
-          : inIrons ? t("sail.in_irons") ?? "Pod wiatr!" : t(this.sailSystem.getTargetDef().nameKey);
+          : inIrons ? t("sail.in_irons") : t(this.sailSystem.getTargetDef().nameKey);
 
     this.uiOverlay?.updateSail(
       sailLabel,

@@ -4920,3 +4920,106 @@ nigdy nie jest asercją regresji, pytanie „ile" prawie zawsze jest.**
 przegra: galeon z sześcioma punktami kadłuba naprzeciw hiszpańskiej fregaty,
 z pełną kiesą i pełną ładownią. Przegrana to jedyny stan w tej grze, do którego
 **nikt nie zmierza celowo**, więc musi mieć własne drzwi — jak głód i sojusz.
+
+---
+
+## Podręcznik mówi językiem gracza (v0.60.0)
+
+`HelpScene` to ekran, który pod klawiszem H tłumaczy całą grę: sterowanie,
+tabelę dziewięciu klas, żeglowanie, świat i ekonomię. Stawiał na ekranie
+**147 napisów** i wołał `t()` **zero razy**.
+
+Cały podręcznik był twardo wpisanym polskim — w buildzie, którego **domyślnym
+językiem jest angielski**: `I18n.ts` startuje na `"en"` i nigdy nie pytał
+przeglądarki. Jego bliźniak `BattleHelpScene` jest napisany odwrotnie, każda
+linijka to klucz `battle.help_*`, więc **bitwa miała podręcznik w dwóch
+językach, a świat nie**.
+
+### Dlaczego to przeżyło czternaście wydań
+
+Dwa powody i oba warto zapamiętać.
+
+**Testy locale nie mogły tego zobaczyć.** `keys.test.ts` sprawdza, czy `en.ts`
+i `pl.ts` **zgadzają się ze sobą** — i to jest prawdziwa kontrola dla kluczy
+budowanych z danych. Ale dwie zgodne tabele nie mówią **nic** o ekranie, który
+nie pyta żadnej z nich. Napis, który nigdy nie dociera do warstwy tłumaczeń,
+jest dla tej warstwy niewidzialny.
+
+**Autor czyta po polsku.** Domyślny `"en"` znaczy, że przy pierwszym
+uruchomieniu cała gra jest po angielsku **oprócz** tego jednego ekranu. Więc
+jedyny ekran, który **nie był** przetłumaczony, był jedynym, który wyglądał
+znajomo — a wszystkie przetłumaczone wyglądały jak wyjątek.
+
+### Pomiar
+
+Skan literałów w całej warstwie gry (`src/game`, bez testów i i18n):
+
+| plik | polskie literały |
+|---|---|
+| `HelpScene.ts` | **92** |
+| `PortScene.ts` · `PortApproachScene.ts` · `CityInfoScene.ts` | po 1 |
+| razem | **102** w 7 plikach, 6985 znaków |
+
+Samych napisów rysowanych przez `HelpScene` (razem z tymi bez polskich znaków —
+„Statek", „Max kn", „Fort") jest **147**, 7576 znaków. Doszło **129 kluczy
+w każdym języku**.
+
+### Co weszło
+
+| plik | rzecz |
+|---|---|
+| `src/core/data/helpTopics.ts` | **nowy**: spis treści podręcznika jako lista rdzeni kluczy — w rdzeniu, żeby test mógł go zaimportować **bez Phasera** |
+| `src/game/scenes/HelpScene.ts` | wszystko przez `t()`; nazwa klasy statku czytana z `ship.<id>.name` jak w stoczni |
+| `src/core/i18n/I18n.ts` | `initLang` pyta przeglądarkę |
+| `src/core/i18n/__tests__/no_hardcoded_text.test.ts` | **nowy**: czyta **źródło** każdej sceny |
+| `src/core/systems/SailSystem.ts` | skasowane `namePl`/`nameEn` |
+
+**Gra pyta wreszcie, kto ją czyta.** `initLang` **decyduje**, a nie podbija:
+zwraca język dla każdego wejścia, więc dwa wywołania z tą samą przeglądarką dają
+ten sam wynik. Kolejność: zapisany wybór → `navigator.languages` → angielski.
+Pierwsza wersja tylko *awansowała* do polskiego i zostawiała resztę bez zmian,
+co było nietestowalne.
+
+**Dziewiętnaście nieosiągalnych zapasów.** `t("klucz") ?? "polski"` było
+zabezpieczeniem przed kontraktem, którego `t()` **nie ma**: brakujący klucz
+wraca jako **sam klucz**, nigdy jako `null`. Prawa strona każdego z tych `??`
+była martwa — szesnaście w samym `CityInfoScene` — i każda trzymała drugą,
+nieutrzymywaną kopię napisu. To samo `SailLevelDef.namePl`/`.nameEn`: dwa pola
+bez czytelnika, a polska kopia **już się rozjechała** („Zwinięte" w kodzie
+kontra „Żagle zwinięte" w `pl.ts`).
+
+**Pułapka przy kasowaniu**: skrypt zamieniający `t\("..."\) ?? "..."` złapał też
+`params.get("era") ?? ""` — bo `get` kończy się na `t`. Cztery poprawne linijki
+poszły i build stanął. Test ma na to lookbehind i komentarz.
+
+### Podręcznik nigdy nie mieścił się na ekranie
+
+Widać to dopiero wtedy, kiedy się na to patrzy — tak samo jak baner wyniku
+bitwy w v0.59.0. `renderTopics` przesuwał kursor o **płaskie 22 piksele** na
+akapit, niezależnie od tego, czy zawinął się w jedną linijkę czy w trzy.
+Akapit o prądach morskich ma 401 znaków. Efekt: nagłówek drukowany **na własnej
+ostatniej linijce** poprzednika, a zakładka „Świat" (15 tematów) uciekająca pod
+dolną krawędź panelu.
+
+Teraz: **mierzy, potem stawia**. Phaser zna wysokość zawiniętego akapitu dopiero
+gdy ten istnieje, więc wszystko rysuje się w lewej kolumnie, sumuje, a tylna
+połowa przenosi w prawą. **Równoważenie, nie wypełnianie** — wypełnianie dało
+7 tematów w pierwszej kolumnie i 8 w drugiej, i druga uciekała pod krawędź.
+
+### Test, który to widzi
+
+`no_hardcoded_text.test.ts` nie czyta tabel locale. Czyta **źródło** każdego
+pliku w `src/game` (przez `import.meta.glob` z `?raw`) i wywala się na polskiej
+literze w literale — komentarze pomija, bo połowa dokumentacji tego projektu
+jest po polsku. Drugi test pilnuje, żeby nie wrócił żaden `t(...) ?? …`.
+Sprawdzone cofnięciem: stary `HelpScene` wrzucony z powrotem do `src/game`
+zapala pierwszy test natychmiast.
+
+Do tego `helpTopics.ts` jest w **rdzeniu**, nie w scenie, właśnie po to, żeby
+test mógł zapytać o spis treści bez importowania Phasera (import sceny wywala
+się na `window is not defined`).
+
+### Świat debugowy
+
+`?lang=en|pl` — ustawiany w `BootScene`, **zanim padnie pierwsze słowo tekstu**,
+bo `initLang` woła się linijkę niżej i wszystko po nim czyta jego decyzję.
