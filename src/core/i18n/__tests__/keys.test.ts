@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EN } from "../locales/en.ts";
 import { PL } from "../locales/pl.ts";
 import { CITIES } from "../../data/cities.ts";
+import { VILLAGES } from "../../data/villages.ts";
 import { ITEMS } from "../../data/items.ts";
 import { FACTIONS } from "../../data/factions.ts";
 import { ERAS } from "../../data/eras.ts";
@@ -77,6 +78,18 @@ describe("keys the game builds from its own data", () => {
   it("names every zoom level and asset pack in the options menu", () => {
     bothHave(Array.from({ length: 14 }, (_, i) => `settings.zoom.z${i + 1}`), "settings.zoom.<level>");
     bothHave(["basic", "buccaneer", "corsair"].map(p => `settings.pack.${p}`), "settings.pack.<pack>");
+  });
+
+  it("names every native village and the people who live there (v0.58.0)", () => {
+    bothHave(Object.keys(VILLAGES).map(k => `village.${k}.name`), "village.<key>.name");
+    bothHave(Object.keys(VILLAGES).map(k => `village.${k}.people`), "village.<key>.people");
+    bothHave(["wary", "civil", "friendly", "kin"].map(t => `village.tier_${t}`), "village.tier_<tier>");
+    // And the other way round: a village that was cut leaves a name nothing
+    // can ever print, which is the same dead weight as a missing one.
+    const named = Object.keys(EN)
+      .filter(k => /^village\.[a-z_]+\.name$/.test(k))
+      .map(k => k.split(".")[1]);
+    expect(named.filter(k => !(k in VILLAGES)), "named in en.ts, not on the chart").toEqual([]);
   });
 
   it("names every reputation level", () => {

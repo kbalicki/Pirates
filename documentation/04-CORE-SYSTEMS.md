@@ -4657,3 +4657,162 @@ test halsowania NPC z v0.53.0 — zielony przez jedenaście wydań, bo asercja s
 jedynym punkcie, w którym błędu nie widać. Mierzy teraz **rozkład**: średnia z dwunastu
 lat w granicach 5% (tabela oddaje mniej więcej tyle, ile bierze) i żaden rok nie ucieka
 poza 25%.
+
+
+---
+
+## Wioski Indian (v0.58.0)
+
+`native_raid` jest kompletnym zdarzeniem świata od v0.9.7: nagłówek („Indianie napadli
+na {{port}}"), jednorazowy efekt zabierający miastu **40 punktów obrony**, 15% ludności
+i 150 bogactwa, dzienna dokładka do tego, oraz ręcznie wypisana biała lista jedenastu
+miast pogranicza, na które wolno mu spaść. Wszystko to działało. Czego mapa nigdy nie
+miała, to **kogokolwiek, kto to robi** — ten sam kształt co bukanierzy z v0.50.0 i flota
+skarbowa z v0.46.0: skutek bez przyczyny gdziekolwiek w świecie. Ekran pomocy mówi
+graczowi od dwudziestu wydań, że najazd Indian to *okazja dla pirata*, a gracz nie miał
+jak o niego poprosić.
+
+### Dwa projekty zabite pomiarem, zanim powstała pierwsza linijka
+
+| projekt | pomiar | wynik |
+|---|---|---|
+| **woda i prowiant w wiosce** | mediana komórki mapy jest **283 jednostki** od najbliższego portu (p90 = 694, max = 1413), przy ~300 jednostkach przepływanych dziennie | odrzucony — kapitan nigdy nie jest dalej niż dzień od nabrzeża, które sprzedaje wodę; startowy slup wozi 5 dni wody i to nie jest ograniczenie, tylko arytmetyka |
+| **wyprawa wojenna jako dźwignia ogólna** | **7 z 11** miast z listy `native_raid` to placówki przy **15 punktach obrony**; −40 daje tam 1 działo i zero murów zamiast 2 dział i 15 murów | przeprojektowany — wioski postawione tak, żeby **6 z 8** sąsiadowało z prawdziwym miastem (Panama 60→20 obrony, Kampesze/Villa Hermosa/Granada/Martynika 45→5, Trynidad 35→0) |
+
+### Gdzie stoją i dlaczego to są piksele, a nie `geoToMap`
+
+Osiem wybrzeży, każde prawdziwym miejscem, w którym lud utrzymał się przez cały okres
+gry: Chontalowie z Tabasco, Majowie z Champotón, Miskito z Wybrzeża Moskitów, Guna
+z Darién, Wayúu z Guajiry, Warao z delty Orinoko, Kalinago z Dominiki i Calusa
+z południowo-zachodniej Florydy.
+
+Pozycje są wpisane wprost w pikselach, bo muszą spełniać trzy warunki **zmierzone na
+prawdziwej linii brzegowej** — i każdy z nich był sposobem, w jaki pierwsza wersja była zła:
+
+1. **Wewnątrz wielokąta lądu.** `snapToCoast` (ta sama funkcja, która stawia 45 miast)
+   zwraca pozycję nietkniętą, gdy jest już na lądzie — więc wioska na lądzie rysuje się
+   **dokładnie** tam, gdzie mówi tabela, i sąsiad zmierzony w testach jest sąsiadem,
+   na którego naprawdę pójdą wojownicy. Cztery z pierwszych dziewięciu punktów wypadły
+   w wodzie i zostałyby przesunięte przez siatkę gdzieś, gdzie nikt nie sprawdzał.
+2. **Nie dalej niż 6 jednostek w głąb lądu.** Pierwsza lokalizacja Warao leżała w samej
+   delcie, **33 jednostki od żeglownej wody** — dalej, niż sięga zawołanie z pokładu,
+   więc wioska istniała i była nieosiągalna.
+3. **Co najmniej 65 jednostek od najbliższego miasta.** Zasięg zawołania to 50, a portu 6,
+   więc kapitan stojący pod kolonią nigdy nie jest jednocześnie w zasięgu wioski.
+   Najciaśniej jest na Dominice (66 od Martyniki) i nie da się tego poprawić — wyspa
+   siedzi między Martyniką a Gwadelupą. Lokalizacja Tairona pod Sierra Nevada miała
+   **26** jednostek od Santa Marty i musiała zostać wycięta: na tym odcinku dwa miasta
+   dzieli 95 jednostek i nie ma między nimi miejsca.
+
+### Zasięg 50 i cztery metry wody — i dlaczego to nie są liczby z powietrza
+
+Wioska nie ma pogłębionego portu. Każde podejście do miasta w grze jest z urzędu głęboką
+wodą (`buildDepthField` pogłębia okrąg 90 jednostek wokół każdego), a wioska to plaża.
+Zmierzone przy zasięgu 50 i **bez** żadnego pogłębienia, jako udział wody (nie lądu)
+w dysku zawołania, która sadza slup na dnie:
+
+| Darién | Calos | Guayo | Cabo de la Vela | Cimatan | Kaurkira | Champotón | Waitukubuli |
+|---|---|---|---|---|---|---|---|
+| **71%** | **70%** | **60%** | 19% | 10% | 3% | 0% | 0% |
+
+Przyczyną jest to, że siatka lądu, z której liczone jest pole głębokości, powstaje przez
+podpróbkowanie 4×4 — komórka jest lądem, gdy **którakolwiek** z szesnastu próbek trafi
+w ląd — więc jej brzeg jest grubszy niż narysowany, a komórka „lądowa" ma zero metrów.
+To ten sam przypadek, który pogłębianie portów już obsługuje („komórki, które siatka
+nazywa lądem, też są pogłębiane, i to nie jest błąd"), piętro niżej.
+
+Stąd `VILLAGE_ANCHORAGE_DEPTH = 4` w promieniu 60 — i **cztery metry, nie otwarte morze**,
+bo to właśnie ta liczba jest mechaniką:
+
+| wchodzą (prześwit ≥ 0) | zostają na kotwicy |
+|---|---|
+| pinasa 1,0 · slup 1,5 · barka 2,0 · brygantyna 2,5 | fluyt / fregata 4,0 · szybki galeon 4,5 · merchantman 5,0 · galeon 5,5 |
+
+Cztery małe kadłuby handlują z wioskami, pięć dużych staje dalej i schodzi szalupą.
+Po pogłębieniu udział mielizny w dysku zawołania spada do **0–1%** we wszystkich ośmiu,
+i to jest asercja w `SeaDepth.test.ts` — pierwsza wersja tego testu pytała tylko, czy
+*gdziekolwiek* w dysku jest głęboka woda, i przechodziła także **bez** poprawki: w
+promieniu pięćdziesięciu jednostek od brzegu zawsze gdzieś jest. Ten sam wzorzec co test
+halsowania NPC z v0.53.0.
+
+Z tego samego powodu wioskę wchodzi się **klawiszem E**, a nie przez dopłynięcie. Port
+otwiera się sam, bo sześć jednostek znaczy „kapitan w niego wycelował"; pięćdziesiąt
+znaczy „przepływa obok", a ekran otwierający się sam za każdym razem, gdy ktoś idzie
+wzdłuż brzegu Jukatanu, byłby przerywnikiem, a nie miejscem.
+
+### Stosunek ma dwie połowy i tylko jedna jest zapisywana
+
+`villageStanding` = to, co zrobili dla ciebie twoi wrogowie + to, co zrobiłeś ty.
+
+- **Połowa wyprowadzana.** Ci ludzie mieszkają obok kolonii. To, co korona tej kolonii
+  o tobie myśli, czytane jest **na świeżo** i **na opak**: kapitan, za którego Hiszpania
+  wyznaczyła nagrodę, zaczyna u Guna z Darién jako gość, a kapitan w dobrych stosunkach
+  z Hiszpanią — jako obcy. To lustrzane odbicie `PortAccessSystem`, który jest jedną
+  tabelą o tym, co opinia korony kupuje przy ladzie; tutaj ta sama liczba kupuje coś
+  odwrotnego dzień żeglugi dalej. Zakres 0–45, **celowo poniżej progu wyprawy wojennej**:
+  mieć wrogów Hiszpanii za przyjaciół to przedstawienie, nigdy wyprawa.
+- **Połowa zarobiona.** To, co kapitan osobiście wniósł na plażę. To zdarzenie, więc jest
+  **stemplowane** (`player.villages[key].standing`) i nigdy nie wyprowadzane na nowo.
+
+`player.villages` jest polem **opcjonalnym**, czytanym przez `?? {}`, więc migracje stoją
+na v12 dwudzieste wydanie z rzędu: zapis sprzed tego wydania nie zrobił z nikim niczego,
+i to jest o nim prawda.
+
+### Rum za złoto — bo nowych towarów nie ma i nie trzeba
+
+`gold` jest jedynym `rare` towarem w grze od v0.29.0: **żaden port nie startuje z ani
+jedną tonę** i pojawia się na ladzie tylko tam, gdzie coś go postawiło (`gold_discovery`).
+Wioska jest więc jedynym stałym źródłem jedynej rzeczy, której kolonia nie sprzeda.
+A `PricingSystem` już psuje ten interes każdemu, kto chciałby go uprzemysłowić — flota
+skarbowa zmierzyła spadek z 77 za tonę do 31 przy opróżnianiu ładowni w jednym mieście
+(v0.46.0).
+
+| stopień | próg | oferta za 6 ton rumu |
+|---|---|---|
+| obcy (`wary`) | 0 | 2 tony złota |
+| gość (`civil`) | 25 | 3 tony |
+| przyjaciel (`friendly`) | 50 | 4 tony |
+| swój (`kin`) | 75 | 5 ton |
+
+Cena bycia obcym jest całą tabelą: przy `wary` sześć ton rumu za dwie tony złota ledwie
+zwraca przeprawę. **Nie ma sprawdzania miejsca w ładowni i nie może go być** — oddają
+zawsze mniej, niż biorą (6 kontra najwyżej 5), więc barter zawsze zostawia ładownię
+lżejszą. Strażnik, który nie może zadziałać, to ten sam martwy ciężar co pole, którego
+nikt nie czyta; zamiast niego stoi asercja w testach.
+
+Jedna wymiana na wioskę co **10 dni**, +15 stosunku za każdą.
+
+### Wyprawa wojenna
+
+Przy stosunku ≥ **60** i sześciu tonach rumu wioska wyrusza na sąsiednią kolonię. Kosztuje
+rum i **30 punktów** stosunku — to jest cały cooldown i nie potrzebuje do tego pola z datą:
+dwie kolejne przeprawy z pełną ładownią, zanim zrobią to znowu. Drugiej wyprawy nie będzie,
+dopóki pierwsza jest w polu.
+
+Zdarzenie budowane jest **dokładnie w kształcie, w jakim buduje je `rollOneEvent`** — ten
+sam schemat id, te same `vars` (`mainPort`, czyli **klucz** miasta, po którym każdy
+czytelnik je odnajduje, i `port`, czyli napis, który drukuje nagłówek) — więc
+`applyOneShotEffects` odpala je o najbliższej północy, a każda tablica ogłoszeń, plotka
+i znak na czarcie niosą je, nie wiedząc, skąd się wzięło. Id zdarzenia trafia do
+`knownEventIds`, bo kapitan stał na plaży, gdy się umawiano. **Nikt inny nigdy się nie
+dowie, że to on** — i ta możliwość wyparcia się jest właśnie tym, za co się płaci.
+
+### Parametr debugowania
+
+`?village=darien` — kapitan **na wodzie, w zasięgu zawołania**, dokładnie tak, jak się
+przypływa; wchodzi się **E**. W ładowni 20 ton rumu, w `player.villages` stosunek jeden
+stopień powyżej progu, więc obie połowy wydania są na ekranie naraz: wymiana i oferta
+uderzenia na kolonię obok. Dojście do tego graniem to trzy przeprawy z sześcioma tonami
+rumu, co dziesięć dni. Kotwicowisko wybiera `villageAnchorage` — najdalszy punkt czystej
+wody wewnątrz zasięgu, tym samym testem prześwitu co `findWaterApproach` dla portu.
+
+### Co zostało świadomie niezrobione
+
+- **Misje jezuickie** — druga połowa modułu G. `SurgeonSystem` jest gotowym zaczepem
+  (`ship.wounded`), ale różnica między lazaretem a misją to przy `medicine` 5 około
+  jednego człowieka na walkę; wymaga własnego pomiaru, zanim się to napisze.
+- **Napad na wioskę** — wioski nie da się splądrować. Byłaby to trzecia bitwa lądowa
+  i `CityAssaultScene` jest zbudowana wokół `PortRuntimeState`, którego wioska nie ma.
+- **Wskazówki do skarbów i rodziny** — `TreasureSystem` sprzedaje mapy w tawernie za
+  300–2000, a `FamilyQuestSystem` sam nazywa trzy miasta; darmowa wskazówka z wioski
+  nie różniłaby się od tego dostatecznie, żeby zapłacić za kolejną pozycję w menu.

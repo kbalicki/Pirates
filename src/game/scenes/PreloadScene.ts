@@ -23,6 +23,8 @@ import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
+import { VILLAGES } from "../../core/data/villages.ts";
+import { WAR_PARTY_STANDING, VILLAGE_RANGE } from "../../core/systems/VillageSystem.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
 import { seedNamedShips, namedShips, namedShipById, livingNamedShips, namedShipPos, escortCount, reportNamedShip, namedReports, reckonedPos } from "../../core/systems/NamedShipSystem.ts";
 
@@ -226,6 +228,13 @@ export class PreloadScene extends Phaser.Scene {
     //                  game is manned at 2-3x her working minimum, so
     //                  short-handedness cannot be reached from a normal start;
     //                  ?ship=galleon&crew=16 is the headline case
+    //   ?village=darien — ashore at that native village with their trust already
+    //                    earned (v0.58.0). The captain is standing in the
+    //                    compound with rum in the hold and enough goodwill for
+    //                    a war party, so both halves of the screen are visible
+    //                    at once: the barter, and the offer to fall on the
+    //                    colony next door. Reached by playing it means three
+    //                    crossings with six tons of rum, ten days apart
     //   ?patron=tortuga — standing at that counter on somebody else's paper
     //                    (v0.56.0): the captain carries a commission from a
     //                    crown fighting the same war as this town's, so the
@@ -452,6 +461,12 @@ export class PreloadScene extends Phaser.Scene {
       const world = this.createMarqueWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("village")) {
+      const world = this.createVillageWorld(params.get("village") || "darien");
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
       return;
     }
     if (params.has("patron")) {
@@ -1401,6 +1416,98 @@ export class PreloadScene extends Phaser.Scene {
         location: { type: "port", portId: makePortId(portKey), pos: { ...def.pos } },
       },
     }, makePortId(portKey));
+  }
+
+  /**
+   * Lying off a native village, for `?village=` (v0.58.0).
+   *
+   * **Afloat, inside hailing range, exactly as a captain arrives** — the
+   * screen is entered with E from there, which is the thing the release is
+   * about. Built by the production functions: the standing goes into
+   * `player.villages` where `villageStanding` reads it, and the rum into the
+   * hold where `barter` looks for it — nothing here is a mock-up of the screen.
+   *
+   * The goodwill is set one notch past `WAR_PARTY_STANDING` so that both
+   * halves of the release are on screen together. Earning it by playing is
+   * three crossings with a full hold, ten days apart.
+   */
+  private createVillageWorld(key: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const village = VILLAGES[key] ?? VILLAGES.darien;
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity?.ship) return base;
+
+    // Any debug world asking about water has to load the coastline itself —
+    // `MainMapScene.create()` does it in the normal flow, and this runs first.
+    loadLandmassesFromCache(this);
+    const station = this.villageAnchorage(village.pos) ?? village.pos;
+
+    // A sloop, and no frigate consort. `createSiegeWorld` hands out a frigate,
+    // which draws four metres and is **aground** in a village's four — that is
+    // not a bug in the debug world, it is the mechanic: bring a small hull or
+    // anchor off and walk. Reaching a village in a frigate is the thing this
+    // release deliberately does not let you do.
+    const sloop = SHIP_CLASSES.sloop;
+
+    return {
+      ...base,
+      player: {
+        ...base.player,
+        fleet: [],
+        location: { type: "sea", pos: { ...station } },
+        // Enough that the war party is on the menu, not so much that the
+        // barter above it has nothing left to buy.
+        villages: { [village.id]: { standing: WAR_PARTY_STANDING - 15 } },
+      },
+      entities: {
+        ...base.entities,
+        [shipId]: {
+          ...entity,
+          mode: "sailing" as const,
+          pos: { ...station },
+          vel: { x: 0, y: 0 },
+          sailLevel: 0,
+          ship: {
+            ...entity.ship,
+            classId: "sloop" as typeof entity.ship.classId,
+            hullHp: sloop.hullMax, hullMax: sloop.hullMax,
+            sailsHp: sloop.sailsMax, sailsMax: sloop.sailsMax,
+            cannons: sloop.cannons,
+            cargoCap: sloop.cargoCap,
+            crew: { current: 20, max: sloop.crewMax, morale: 0.8 },
+            cargo: { ...entity.ship.cargo, rum: 20 },
+          },
+        },
+      },
+    };
+  }
+
+  /**
+   * Water a ship can lie in and still be heard from the beach.
+   *
+   * Works outward-in from the edge of hailing range, and wants clear water
+   * twenty units either side of the candidate — the same clearance test
+   * `PortWaterPositions.findWaterApproach` uses for a harbour, and for the
+   * same reason: the point furthest off the sand inside the range is the one
+   * with water enough under a keel.
+   */
+  private villageAnchorage(pos: { x: number; y: number }): { x: number; y: number } | undefined {
+    const RING = [[28, 0], [-28, 0], [0, 28], [0, -28], [20, 20], [-20, 20], [20, -20], [-20, -20]];
+    const clear = (p: { x: number; y: number }) =>
+      nearestWater(p) === p
+      && RING.every(([dx, dy]) => {
+        const q = { x: p.x + dx, y: p.y + dy };
+        return nearestWater(q) === q;
+      });
+    for (let r = VILLAGE_RANGE - 6; r >= 16; r -= 4) {
+      for (let a = 0; a < 24; a++) {
+        const angle = (a / 24) * Math.PI * 2;
+        const at = { x: pos.x + Math.cos(angle) * r, y: pos.y + Math.sin(angle) * r };
+        if (clear(at)) return at;
+      }
+    }
+    return nearestWater(pos);
   }
 
   /** A world already inside a squall, for `?storm=1` (v0.38.0). */

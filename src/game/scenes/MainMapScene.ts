@@ -17,6 +17,9 @@ import type { UIOverlayScene } from "./UIOverlayScene.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
 import { PortMarkerRenderer, refreshPortFlags, type PortMarkerResult } from "../render/PortMarkerRenderer.ts";
+import { renderVillageMarkers, type VillageMarkerResult } from "../render/VillageMarkerRenderer.ts";
+import { villageNear, VILLAGE_RANGE } from "../../core/systems/VillageSystem.ts";
+import { villageList, type VillageDef } from "../../core/data/villages.ts";
 import {
   drawExpeditionCourses,
   coursesStale,
@@ -170,6 +173,9 @@ export class MainMapScene extends Phaser.Scene {
   private cityGraphics: Phaser.GameObjects.Graphics | null = null;
   private flagImages: Phaser.GameObjects.Image[] = [];
   private portMarkers: PortMarkerResult | null = null;
+  /** The eight villages, their coast-snapped positions and their labels (v0.58.0). */
+  private villageMarkers: VillageMarkerResult | null = null;
+  private villageDialogOpen = false;
   /** Day the flags on the map were last painted. */
   private ownersDrawnDay = -1;
   /** The invasion courses pencilled on the chart, redrawn when they go stale. */
@@ -289,7 +295,16 @@ export class MainMapScene extends Phaser.Scene {
           const nearPort = this.findNearPort();
           if (nearPort) {
             this.openPortDialog(nearPort);
+            return;
           }
+        }
+        // ...or with a village. Last of the three, and the prompt below is
+        // ordered the same way, so the line on screen always names what E is
+        // about to do. No village is within 46 units of a town, so the port
+        // branch above and this one are never both live.
+        if (!this.villageDialogOpen) {
+          const nearVillage = this.findNearVillage();
+          if (nearVillage) this.openVillageDialog(nearVillage);
         }
       });
 
@@ -455,6 +470,10 @@ export class MainMapScene extends Phaser.Scene {
     this.ownersDrawnDay = this.worldState.time.day;
     this.portSafePositions = portMarkers.portSafePositions;
     this.cityLabels = portMarkers.cityLabels;
+    // Villages go through the same coast snapping as the towns and their
+    // labels join the one loop that scales labels by 1 / zoom (v0.58.0).
+    this.villageMarkers = renderVillageMarkers(this, this.landGrid);
+    this.cityLabels = [...this.cityLabels, ...this.villageMarkers.labels];
     this.coordLabels = portMarkers.coordLabels;
     this.cityGraphics = portMarkers.cityGraphics;
     this.flagImages = portMarkers.flagImages;
@@ -739,7 +758,13 @@ export class MainMapScene extends Phaser.Scene {
     // distance 0-2, so without this a frigate could not enter a single port.
     this.coastDist = coastDistanceField(this.landGrid);
     const harbours = Object.keys(PORTS).map(k => getPortWaterPos(k));
-    setDepthField(buildDepthField(this.coastDist, harbours, CELL), CELL);
+    // Villages get four metres over their landing, not a dredged harbour
+    // (v0.58.0) — see `VILLAGE_ANCHORAGE_DEPTH`. Their positions never move:
+    // every one is inside a landmass polygon, so `snapToCoast` is a no-op.
+    setDepthField(
+      buildDepthField(this.coastDist, harbours, CELL, villageList().map(v => v.pos)),
+      CELL,
+    );
   }
 
   /** Short on-screen note through the renderer's toast channel. */
@@ -944,6 +969,46 @@ export class MainMapScene extends Phaser.Scene {
       }
     }
     return null;
+  }
+
+  /**
+   * The village within hailing distance, if any (v0.58.0).
+   *
+   * Measured against the **coast-snapped** position, exactly as a port is, so
+   * the place the ship is closing on is the place drawn on the chart.
+   */
+  private findNearVillage(): VillageDef | null {
+    const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
+    if (!playerEntity) return null;
+    const radius = playerEntity.mode === "landed" ? VILLAGE_RANGE + 4 : VILLAGE_RANGE;
+    return villageNear(playerEntity.pos, radius, this.villageMarkers?.villageSafePositions);
+  }
+
+  private openVillageDialog(village: VillageDef): void {
+    this.villageDialogOpen = true;
+    const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
+    if (playerEntity && playerEntity.mode !== "landed") {
+      const shipId = this.worldState.player.shipId as string;
+      this.worldState = {
+        ...this.worldState,
+        entities: {
+          ...this.worldState.entities,
+          [shipId]: { ...playerEntity, vel: { x: 0, y: 0 }, sailLevel: 0 },
+        },
+      };
+      this.registry.set("worldState", this.worldState);
+    }
+    this.scene.launch("VillageScene", {
+      worldState: this.worldState,
+      villageKey: village.id,
+    });
+    this.scene.get("VillageScene").events.once("shutdown", () => {
+      this.villageDialogOpen = false;
+      this.worldState = this.registry.get("worldState") as WorldState;
+    });
+    this.time.delayedCall(0, () => {
+      this.scene.pause();
+    });
   }
 
   private openPortDialog(port: PortDef): void {
@@ -1371,7 +1436,7 @@ export class MainMapScene extends Phaser.Scene {
 
   /** Check if player is close to a friendly NPC — trigger encounter dialog. */
   private checkNpcEncounter(): void {
-    if (this.shipEncounterOpen || this.portDialogOpen) return;
+    if (this.shipEncounterOpen || this.portDialogOpen || this.villageDialogOpen) return;
 
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (!playerEntity || playerEntity.mode !== "sailing") return;
@@ -1439,7 +1504,9 @@ export class MainMapScene extends Phaser.Scene {
 
     this.wasNearPort = false;
 
-    // Landed mode: show ship boarding prompt when near anchor
+    // Landed mode: show ship boarding prompt when near anchor. Ahead of the
+    // village line because the E key resolves in that order, and a prompt
+    // that names the wrong action is worse than none.
     if (playerEntity?.mode === "landed" && playerEntity.anchorPos) {
       const distToShip = vec2Dist(playerEntity.pos, playerEntity.anchorPos);
       if (distToShip < 50) {
@@ -1447,7 +1514,26 @@ export class MainMapScene extends Phaser.Scene {
         this.portPromptText!.setVisible(true);
         return;
       }
-      // Far from ship: show general embark hint
+    }
+
+    // A village hails at forty units, not a town's six — there is no harbour
+    // to steer into, only a beach to anchor off — and it is entered on **E**
+    // rather than by arriving. A town opens itself because six units means the
+    // captain steered at it; forty means he is merely passing, and a screen
+    // that opened itself every time he worked along the Yucatan shore would be
+    // an interruption rather than a place (v0.58.0).
+    const nearVillage = this.findNearVillage();
+    if (nearVillage) {
+      this.portPromptText!.setText(t("village.prompt", {
+        name: t(`village.${nearVillage.id}.name`),
+        people: t(`village.${nearVillage.id}.people`),
+      }));
+      this.portPromptText!.setVisible(!this.villageDialogOpen);
+      return;
+    }
+
+    // Far from ship: show general embark hint
+    if (playerEntity?.mode === "landed") {
       this.portPromptText!.setText(t("hud.embark_prompt"));
       this.portPromptText!.setVisible(true);
       return;

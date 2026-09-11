@@ -53,6 +53,27 @@ export const OPEN_SEA_DEPTH = 99;
 /** Water this close to a port's approach is dredged and always deep. */
 export const HARBOUR_RADIUS = 90;
 
+/**
+ * How much water a native village's own landing has, and how far it reaches
+ * (v0.58.0).
+ *
+ * A colony's approach is dredged to `OPEN_SEA_DEPTH` by fiat — a harbour is
+ * a harbour. A village is a beach with canoes on it, and the shore bands say
+ * 3.5 m in the first cell and **nothing** in the cell touching the sand, which
+ * measured out as four of the eight anchorages putting a sloop aground before
+ * she was close enough to be heard. So a village gets water too, and it is
+ * deliberately four metres rather than open sea:
+ *
+ *   pinnace 1.0 · sloop 1.5 · barque 2.0 · brigantine 2.5  — in, with clearance
+ *   fluyt / frigate 4.0 · fast galleon 4.5 · merchantman 5.0 · galleon 5.5 — aground
+ *
+ * Four hulls trade with the villages and five anchor off and send a boat, and
+ * that split is a use of `draft` rather than a new rule: the same field that
+ * shut the deep hulls out of 6.2% of the sea in v0.48.0.
+ */
+export const VILLAGE_ANCHORAGE_DEPTH = 4;
+export const VILLAGE_ANCHORAGE_RADIUS = 60;
+
 /** Below this much water under the keel she is feeling the bottom. */
 export const SHOAL_CLEARANCE = 1.5;
 
@@ -126,6 +147,8 @@ export function buildDepthField(
   coastDist: number[][],
   harbours: Vec2[],
   cell = DEPTH_CELL,
+  /** Native village landings — four metres, never open sea (v0.58.0). */
+  anchorages: Vec2[] = [],
 ): number[][] {
   const rows = coastDist.length;
   const cols = coastDist[0]?.length ?? 0;
@@ -154,6 +177,24 @@ export function buildDepthField(
         const dx = (c + 0.5) * cell - h.x;
         const dy = (r + 0.5) * cell - h.y;
         if (dx * dx + dy * dy <= r2) field[r][c] = OPEN_SEA_DEPTH;
+      }
+    }
+  }
+
+  // Village landings. `Math.max`, never assignment: a village on a deep bay
+  // keeps the bay.
+  const vr2 = VILLAGE_ANCHORAGE_RADIUS * VILLAGE_ANCHORAGE_RADIUS;
+  for (const a of anchorages) {
+    const span = Math.ceil(VILLAGE_ANCHORAGE_RADIUS / cell);
+    const ar = Math.floor(a.y / cell);
+    const ac = Math.floor(a.x / cell);
+    for (let r = ar - span; r <= ar + span; r++) {
+      if (r < 0 || r >= rows) continue;
+      for (let c = ac - span; c <= ac + span; c++) {
+        if (c < 0 || c >= cols) continue;
+        const dx = (c + 0.5) * cell - a.x;
+        const dy = (r + 0.5) * cell - a.y;
+        if (dx * dx + dy * dy <= vr2) field[r][c] = Math.max(field[r][c], VILLAGE_ANCHORAGE_DEPTH);
       }
     }
   }

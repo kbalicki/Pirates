@@ -307,6 +307,8 @@ export class HelpScene extends Phaser.Scene {
       "• Głód: dowieź żywność za 2–4× cenę.\n" +
       "• Złoto: nowy szlak skarbowy, ale więcej eskort.\n" +
       "• Najazd Indian: hiszp. fort osłabiony — okazja dla pirata.\n" +
+      "• ...i możesz o niego poprosić: w wiosce Indian (E z pokładu, płytkie\n" +
+      "  zanurzenie) 6 ton rumu kupuje złoto i zaufanie, a zaufanie — wyprawę.\n" +
       "• Wojna: weź list kaperski, polowanie na wroga legalne."
     );
   }

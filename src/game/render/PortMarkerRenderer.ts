@@ -186,13 +186,29 @@ export class PortMarkerRenderer {
     return { portSafePositions, cityLabels, coordLabels, cityGraphics: g, flagImages, flagByPort };
   }
 
-  /**
-   * Snap a port position to the nearest coastal land cell.
-   * A coastal cell is a land cell in landGrid that has at least one water neighbor.
-   * This guarantees: (1) the port is on land, (2) ships can reach it from water.
-   */
+  /** @deprecated use the free `snapToCoast` below; kept as the renderer's own handle. */
   private snapToCoast(pos: { x: number; y: number }): { x: number; y: number } {
-    // If port is already inside a landmass polygon, keep it there
+    return snapToCoast(this.landGrid, pos);
+  }
+}
+
+/**
+ * Snap a settlement position to the nearest coastal land cell.
+ *
+ * A coastal cell is a land cell in `landGrid` with at least one water
+ * neighbour, which guarantees the two things a marker needs: it is drawn on
+ * land, and a ship can get within hailing distance of it from the water.
+ *
+ * Lifted out of the class in v0.58.0 so the native villages are placed by the
+ * **same** rule as the forty-five towns. A second copy of this search would be
+ * a second set of rules for where a settlement sits, and it would be the one
+ * nobody maintains.
+ */
+export function snapToCoast(
+  landGrid: boolean[][],
+  pos: { x: number; y: number },
+): { x: number; y: number } {
+    // If the place is already inside a landmass polygon, keep it there
     // (small islands may not survive grid pipeline but are valid land)
     const pt = { x: pos.x, y: pos.y };
     for (const lm of LANDMASSES) {
@@ -200,16 +216,16 @@ export class PortMarkerRenderer {
     }
 
     const CELL = 32;
-    const rows = this.landGrid.length;
-    const cols = this.landGrid[0]?.length ?? 0;
+    const rows = landGrid.length;
+    const cols = landGrid[0]?.length ?? 0;
 
     const isCoastal = (r: number, c: number): boolean => {
-      if (!this.landGrid[r][c]) return false; // must be land
+      if (!landGrid[r][c]) return false; // must be land
       // Check 4-neighbors for water
       for (const [dr, dc] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) {
         const nr = r + dr, nc = c + dc;
         if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return true; // map edge = water
-        if (!this.landGrid[nr][nc]) return true;
+        if (!landGrid[nr][nc]) return true;
       }
       return false;
     };
@@ -270,5 +286,4 @@ export class PortMarkerRenderer {
       return { x: bestC * CELL + CELL / 2, y: bestR * CELL + CELL / 2 };
     }
     return pos; // fallback
-  }
 }

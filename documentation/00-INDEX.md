@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.57.0.0 | **Ostatnia aktualizacja:** 2026-09-11
+**Wersja:** 0.58.0.0 | **Ostatnia aktualizacja:** 2026-09-11
 
 ---
 
@@ -69,6 +69,7 @@
 - [SESSION-2026-09-07D.md](SESSION-2026-09-07D.md) — v0.49.0.0 → v0.50.0.0: Karaiby mają w sobie piratów — korsarzy nie było **wcale**, `aggression` i `targetEntityId` nie czytał nikt, a pomiar zabił po drodze cały jeden projekt (monopol koronny)
 - [SESSION-2026-09-07E.md](SESSION-2026-09-07E.md) — v0.50.0.0 → v0.51.0.0: korony kłócą się same — **sześciu konsumentów bez producenta**; domyślna era startowała w dziewięcioletnim pokoju, więc list kaperski nie krył nigdy niczego
 - [SESSION-2026-09-07F.md](SESSION-2026-09-07F.md) — v0.51.0.0 → v0.52.0.0: wróg mojego wroga — reputacja była czterema niezależnymi liczbami; dlaczego progi wygrały z proporcją, i zegar, który mówił `08:5.993680000000001`
+- [SESSION-2026-09-11B.md](SESSION-2026-09-11B.md) — v0.57.0.0 → v0.58.0.0: wioska, która nie nosi żadnej bandery — `native_raid` był skutkiem bez przyczyny od v0.9.7; rum kupuje złoto, złoto zaufanie, zaufanie wyprawę wojenną; dwa projekty zabite pomiarem; pierwsze wydanie prowadzone przez subagenta
 - [SESSION-2026-09-11.md](SESSION-2026-09-11.md) — v0.56.0.0 → v0.57.0.0: dzień pierwszy świata — drugie czytanie tabeli zdarzeń rozjechane na pięć sposobów, trzy z sześciu er otwierały się puste; tablica ogłoszeń sortowana po zasięgu; trzy fałszywe tropy odrzucone pomiarem; test zielony i nieprawdziwy przepisany na rozkład
 - [SESSION-2026-09-08C.md](SESSION-2026-09-08C.md) — v0.55.0.0 → v0.56.0.0: przyjaciel przyjaciela — sojusz wreszcie decyduje o czymś, czego gracz może dotknąć; papier patrona przy cudzej ladzie i na cudzych murach; warunek `neutral` jako cały projekt; komisja nietknięta celowo
 - [SESSION-2026-09-08B.md](SESSION-2026-09-08B.md) — v0.54.0.0 → v0.55.0.0: sojusz jest bytem świata — fakt tylko wyliczany nie ma dnia, w którym się zaczął; 28,8% dni gry było faktem, którego gra nie umiała wymienić; wspólna wyprawa, obca bandera w linii, i symulacja z wyłączoną połową świata odrzucona jako kontrola

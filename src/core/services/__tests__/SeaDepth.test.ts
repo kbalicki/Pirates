@@ -17,7 +17,10 @@ import {
   SHOAL_CLEARANCE,
   AGROUND_SPEED_MUL,
   SHOAL_SPEED_MUL,
+  VILLAGE_ANCHORAGE_DEPTH,
 } from "../SeaDepth.ts";
+import { villageList } from "../../data/villages.ts";
+import { VILLAGE_RANGE } from "../../systems/VillageSystem.ts";
 import { setLandmasses, LANDMASSES, type LandmassDef } from "../../data/geography.ts";
 import { pointInLandmass } from "../Geometry.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
@@ -167,7 +170,7 @@ describe("the real Caribbean", () => {
    * distance 0-2 (median 1). Without dredged harbours a frigate could not enter
    * a single town on the map — so this test is the mechanic's licence to exist.
    */
-  function realDepthField(): { field: number[][]; water: number; closed: Map<string, number> } {
+  function realDepthField(anchorages: Array<{ x: number; y: number }> = []): { field: number[][]; water: number; closed: Map<string, number> } {
     const raw = JSON.parse(geoRaw) as {
       landmasses: Array<{ id: string; polygon: number[][]; bbox: number[] }>;
     };
@@ -192,7 +195,7 @@ describe("the real Caribbean", () => {
 
     const coast = coastDistanceField(land);
     const harbours = Object.keys(PORTS).map(k => getPortWaterPos(k));
-    const field = buildDepthField(coast, harbours, DEPTH_CELL);
+    const field = buildDepthField(coast, harbours, DEPTH_CELL, anchorages);
 
     let water = 0;
     const closed = new Map<string, number>();
@@ -229,6 +232,71 @@ describe("the real Caribbean", () => {
     expect(galleon).toBeLessThan(0.12);
     expect(closed.get("pinnace")).toBe(0);
     expect(closed.get("sloop")).toBe(0);
+    setLandmasses([]);
+  });
+
+  /**
+   * The one measurement that decides whether the villages of v0.58.0 are
+   * places or decoration: can a ship get close enough to be heard from one?
+   *
+   * Without `VILLAGE_ANCHORAGE_DEPTH` this failed for four of the eight — the
+   * 4x4 subsampler flags the cell a village stands in as land, so the depth
+   * field said nought metres and a sloop ran aground before she was inside
+   * hailing range. It is the same case the harbour dredging already handles
+   * ("cells the land grid calls land are dredged too, and that is not a bug"),
+   * one step down in size.
+   */
+  it("gives every native village water enough for a small hull to lie in", () => {
+    const { field } = realDepthField(villageList().map(v => v.pos));
+    const at = (x: number, y: number) => field[Math.floor(y / DEPTH_CELL)]?.[Math.floor(x / DEPTH_CELL)] ?? OPEN_SEA_DEPTH;
+
+    // The share of the hailing disc — sea by the coastline, so the question is
+    // only about depth — that would put a sloop on the bottom.
+    //
+    // The first draft asked whether *somewhere* in the disc floats her, and
+    // passed with the dredging removed: there is always some deep water within
+    // fifty units of a coast. That is the v0.53.0 trap, an assertion pinned to
+    // the one input where the bug is absent. Measured properly, without
+    // `VILLAGE_ANCHORAGE_DEPTH`: Darien 71%, Calos 70%, Guayo 60%, Cimatan 10%
+    // of the water a captain might lie in is sand. With it, nought or one.
+    const bad: string[] = [];
+    for (const v of villageList()) {
+      let total = 0, aground = 0;
+      for (let r = 8; r <= VILLAGE_RANGE; r += 4) {
+        for (let a = 0; a < 48; a++) {
+          const ang = (a / 48) * Math.PI * 2;
+          const p = { x: v.pos.x + Math.cos(ang) * r, y: v.pos.y + Math.sin(ang) * r };
+          if (LANDMASSES.some(lm => pointInLandmass(p, lm))) continue;
+          total++;
+          if (soundings(at(p.x, p.y), SHIP_CLASSES.sloop.draft).aground) aground++;
+        }
+      }
+      const share = aground / Math.max(1, total);
+      if (share > 0.05) bad.push(`${v.id}=${Math.round(share * 100)}%`);
+    }
+    expect(bad, "villages whose approach is mostly sand").toEqual([]);
+    setLandmasses([]);
+  });
+
+  /**
+   * And only four metres. The split is the mechanic: a village trades with the
+   * hulls that can get in over its bar, and the flagship that takes Panama is
+   * not one of them.
+   */
+  it("keeps the deep hulls out of a village landing", () => {
+    const { field } = realDepthField(villageList().map(v => v.pos));
+    const at = (x: number, y: number) => field[Math.floor(y / DEPTH_CELL)]?.[Math.floor(x / DEPTH_CELL)] ?? OPEN_SEA_DEPTH;
+
+    const v = villageList()[0];
+    expect(at(v.pos.x, v.pos.y)).toBeGreaterThanOrEqual(VILLAGE_ANCHORAGE_DEPTH);
+
+    const floats = (id: string) => !soundings(VILLAGE_ANCHORAGE_DEPTH, SHIP_CLASSES[id].draft).aground;
+    for (const id of ["pinnace", "sloop", "barque", "brigantine"]) {
+      expect(floats(id), `${id} should trade with a village`).toBe(true);
+    }
+    for (const id of ["fluyt", "frigate", "fast_galleon", "merchantman", "galleon"]) {
+      expect(floats(id), `${id} should have to anchor off`).toBe(false);
+    }
     setLandmasses([]);
   });
 

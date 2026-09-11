@@ -126,6 +126,20 @@ export type PlayerState = {
   homeCrown?: string;
   /** Final score, written once the captain retires. Absent while still at sea. */
   retirementScore?: number;
+  /**
+   * What the native villages have of this captain, keyed by village (v0.58.0).
+   *
+   * Only the **earned** half lives here: goodwill he carried up a beach in
+   * person, and the day of his last barter. The other half of a village's
+   * opinion is read fresh off his reputation with the crown next door, because
+   * that is a live fact about the world and not something he did once
+   * (`VillageSystem.villageStanding`).
+   *
+   * Optional and read through `?? {}`, so a save from before this release has
+   * done nothing with anybody — which is the truth about it, and why
+   * migrations stay at v12.
+   */
+  villages?: Record<string, { standing: number; traded?: number }>;
 };
 
 export type WeatherState = {

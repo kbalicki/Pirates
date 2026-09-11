@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-11 · **Wersja:** v0.57.0.0 · **Branch:** `main`
-**Kod:** 221 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1915 przechodzi, 0 failuje, 0 `todo`** w 53 plikach
+**Stan na:** 2026-09-11 · **Wersja:** v0.58.0.0 · **Branch:** `main`
+**Kod:** 226 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1943 przechodzi, 0 failuje, 0 `todo`** w 54 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.57.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1915/1915 zielone; **dzień pierwszy świata**. `seedInitialEvents` zapełnia świat zdarzeniami na start, żeby pierwsza tawerna miała co powiedzieć — i było **drugim czytaniem** tabeli `RANDOM_EVENTS`, którą czyta codzienne losowanie, napisanym zanim to losowanie doszło do większości swoich reguł. Pięć rozjazdów, każdy zmierzony na 4000 światów przed napisaniem linijki kodu. **Najdroższy nie jest błędem w tej funkcji, tylko w zdaniu `worldEvents.length > 0`**, które znaczy „jest już zasiane” wyłącznie dopóki nic innego nie wkłada zdarzenia do listy przed nim: v0.31.0 postawiło przed nim `seedHistoricalWars`, więc **trzy z sześciu er — 1600, 1620, 1640 — otwierały się bez żadnych żywych zdarzeń**, przez dwadzieścia pięć wydań. Do tego: **16,5%** zasianych zdarzeń to huragan albo żniwa w **styczniu** (brak filtra `seasonal`), szablony losowane **równomiernie** zamiast po `weight` (najazd piratów 0,47× swojego udziału, bunt niewolników 2,41× za często — dzień pierwszy był jedynym dniem w grze, w którym rzadkie rzeczy były tymi prawdopodobnymi), **44,7%** dekretów królewskich obciążało 24 kolonie **Hiszpanii** pod nazwiskiem innej korony, a huragan nad trzema przystańmi był huraganem nad jedną w **3300 na 3300** przypadków. Poprawką nie jest łatanie pięciu miejsc: oba wejścia idą przez **jedną** funkcję `rollOneEvent`, a zasiew dokłada po jednym, bo każda bariera pyta o to, co już stoi. **Drugi czytelnik tabeli to drugi zestaw reguł, i zawsze będzie tym, którego nikt nie utrzymuje.** Przy okazji tablica ogłoszeń przestała być stosem (`slice(-5)` — kolejność przybycia, fakt o tablicy a nie o mieście; sortowana po **zasięgu**, więc najazd na tę przystań stoi nad dekretem korony, a tawerna pokazuje z tego trzy pierwsze) i skasowany został martwy duplikat `giveNpcPortNews`/`npcPickupNews`. **Trzy fałszywe tropy odrzucone pomiarem przed pierwszą linijką** (`eventLog` — ma czytelnika w zakładce Kalendarz, moje `head -30` ucięło wynik; `manningHandlingMultiplier` — mechanika żyje przez `manningTier`; karta postaci kontra `effectiveSkill` — prawda, ale krzywa starzenia zaczyna się 45-91 godzin żeglowania od startu). **Test, który był zielony i nieprawdziwy**: bilans tabeli sprawdzał trzy nazwane ziarna, a na czterdziestu **stary kod też** łamał swoje pasmo (3/40) — ten sam wzór co test halsowania NPC z v0.53.0; mierzy teraz rozkład. Lista kandydatów na v0.58.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.58.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1943/1943 zielone; **wioska, która nie nosi żadnej bandery**. `native_raid` jest kompletnym zdarzeniem świata od v0.9.7 — nagłówek, biała lista jedenastu miast pogranicza, jednorazowy efekt zabierający **czterdzieści punktów obrony**, piętnaście procent ludzi i sto pięćdziesiąt bogactwa — i **nikt nigdy nie mógł go wywołać**, a ekran pomocy od dwudziestu wydań obiecywał, że osłabiony hiszpański fort to *okazja dla pirata*. Ten sam kształt co bukanierzy (v0.50.0) i flota skarbowa (v0.46.0). Osiem wiosek Indian na czarcie, żadna pod koroną: **sześć ton rumu kupuje złoto** — jedyne dobro `rare` w grze, którego żaden port nie trzyma na ladzie — i kupuje zaufanie, a zaufanie przy 60 kupuje **wyprawę wojenną**, czyli ten sam najazd na sąsiednią kolonię. Nikt się nigdy nie dowiaduje, że to byłeś ty. **Stosunek ma dwie połowy i tylko jedna jest zapisana**: co myśli o tobie korona obok, czytane na świeżo i **na opak** (kapitan ścigany przez Hiszpanię zaczyna u Guna z Darien jako swojak), plus to, co sam wniósłeś na plażę — stemplowane w polu **opcjonalnym** przez `?? {}`, więc **migracje stoją na v12 dwudzieste wydanie**. **Cztery metry wody nad lądowiskiem**: pinasa, slup, barka i brygantyna wchodzą, fluyt, fregata i trzy galeony zostają na mieliźnie — pierwszy nowy czytelnik `draft` od v0.48.0. **Dwa projekty zabite pomiarem przed pisaniem**: woda i prowiant w wiosce (mediana komórki mapy to **283 jednostki** od portu, a slup robi 300 dziennie — sklep w ulicy pełnej sklepów) i wyprawa jako dźwignia ogólna (**7 z 11** miast z listy najazdu stoi przy obronie 15, gdzie −40 nie kupuje nic — więc wioski postawiono przy **prawdziwych miastach**, gdzie te same 40 ścina mury Panamy z 60 na 20). Trzeci pomiar zmienił kod: bez pogłębienia kotwicowiska **4 z 8** podejść sadzało slup na dnie, zanim był dość blisko, żeby go usłyszano — `landGrid` powstaje przez podpróbkowanie 4×4, więc jego brzeg jest grubszy niż narysowany. **Misje jezuickie świadomie odłożone**: zaczep jest żywy, ale przy `medicine` 5 lazaret oddaje już 68% rannych, więc misja lecząca wszystkich warta jest **około jednego człowieka na walkę** — musi sprzedawać coś innego niż leczenie i to wymaga własnego pomiaru. Lista kandydatów na v0.59.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.57.0.0):** v0.57.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1915/1915 zielone; **dzień pierwszy świata**. `seedInitialEvents` zapełnia świat zdarzeniami na start, żeby pierwsza tawerna miała co powiedzieć — i było **drugim czytaniem** tabeli `RANDOM_EVENTS`, którą czyta codzienne losowanie, napisanym zanim to losowanie doszło do większości swoich reguł. Pięć rozjazdów, każdy zmierzony na 4000 światów przed napisaniem linijki kodu. **Najdroższy nie jest błędem w tej funkcji, tylko w zdaniu `worldEvents.length > 0`**, które znaczy „jest już zasiane” wyłącznie dopóki nic innego nie wkłada zdarzenia do listy przed nim: v0.31.0 postawiło przed nim `seedHistoricalWars`, więc **trzy z sześciu er — 1600, 1620, 1640 — otwierały się bez żadnych żywych zdarzeń**, przez dwadzieścia pięć wydań. Do tego: **16,5%** zasianych zdarzeń to huragan albo żniwa w **styczniu** (brak filtra `seasonal`), szablony losowane **równomiernie** zamiast po `weight` (najazd piratów 0,47× swojego udziału, bunt niewolników 2,41× za często — dzień pierwszy był jedynym dniem w grze, w którym rzadkie rzeczy były tymi prawdopodobnymi), **44,7%** dekretów królewskich obciążało 24 kolonie **Hiszpanii** pod nazwiskiem innej korony, a huragan nad trzema przystańmi był huraganem nad jedną w **3300 na 3300** przypadków. Poprawką nie jest łatanie pięciu miejsc: oba wejścia idą przez **jedną** funkcję `rollOneEvent`, a zasiew dokłada po jednym, bo każda bariera pyta o to, co już stoi. **Drugi czytelnik tabeli to drugi zestaw reguł, i zawsze będzie tym, którego nikt nie utrzymuje.** Przy okazji tablica ogłoszeń przestała być stosem (`slice(-5)` — kolejność przybycia, fakt o tablicy a nie o mieście; sortowana po **zasięgu**, więc najazd na tę przystań stoi nad dekretem korony, a tawerna pokazuje z tego trzy pierwsze) i skasowany został martwy duplikat `giveNpcPortNews`/`npcPickupNews`. **Trzy fałszywe tropy odrzucone pomiarem przed pierwszą linijką** (`eventLog` — ma czytelnika w zakładce Kalendarz, moje `head -30` ucięło wynik; `manningHandlingMultiplier` — mechanika żyje przez `manningTier`; karta postaci kontra `effectiveSkill` — prawda, ale krzywa starzenia zaczyna się 45-91 godzin żeglowania od startu). **Test, który był zielony i nieprawdziwy**: bilans tabeli sprawdzał trzy nazwane ziarna, a na czterdziestu **stary kod też** łamał swoje pasmo (3/40) — ten sam wzór co test halsowania NPC z v0.53.0; mierzy teraz rozkład. Lista kandydatów na v0.58.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.56.0.0):** v0.56.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1902/1902 zielone; **przyjaciel przyjaciela**. v0.55.0 zrobiła z sojuszu byt świata — stemplowany, na tablicach newsów, powtarzany w tawernach — i nie decydował o **niczym, czego gracz może dotknąć**: kolonia sojusznika czytała jego komisję jako cudzą sprawę, a jego standing jako własny. Teraz papier podróżuje. Kapitan z komisją jednej korony, w porcie korony bijącej się w **tej samej wojnie**, jest obsłużony **stopień wyżej** i nagłówek mówi dlaczego (round trip 24% → 16%, ława w tawernie o ćwierć głębsza, stocznia o dziesiątą taniej). A `alliedWith` — predykat za **płatnym zleceniem obrony** i **rozgrywalną bitwą obronną**, z dwoma wejściami od v0.17.0 — dostaje trzecie: **mury sojusznika patrona**. Zmierzone: kapitan z komisją ma sojusznika przez **18,8% dni**, a póki trwa, sięga **14,5 z 45 miast**. **Warunek `neutral` jest całym projektem**: awans idzie wyłącznie od `neutral` w górę, bo sojusz ministrów nie jest amnestią — kapitan, który palił żeglugę tego miasta, jest tu `unfriendly` na własny rachunek. **Komisja została nietknięta celowo i jest na to test**: pryz wzięty koronie, z którą wojuje sojusznik a nie patron, dalej jest niepokryty. Po drodze sweep za martwymi eksportami dał **dwa fałszywe tropy** (duplikat `giveNpcPortNews`/`npcPickupNews` — NPC i tak znikają w porcie docelowym; `getPortNews` gubi własny news miasta w **0,7%** przypadków, nie na nagłówek): „eksport bez czytelnika" jest **hipotezą**, nie odkryciem. Lista kandydatów na v0.57.0 jest niżej.
 
@@ -127,10 +129,13 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Prądy morskie | ✅ | `CurrentSystem` + `CURRENTS`: sześć pasm z miękkim brzegiem, **znoszą** statek (nigdy nie ruszają steru), mapa dostaje kierunek; prędkość na HUD to prędkość nad dnem, `C` rysuje je na czarcie |
 | Mgła po obu stronach | ✅ | `FogSystem`: nie zabiera statkowi nic, tnie lunetę gracza **i** `awarenessRadius` NPC; wyprowadzona z ciszy + godziny + pola szumu, zero nowych pól |
 | Pogoda ma miejsce na mapie | ✅ | `WeatherFieldSystem`: `weatherAt(world, pos)` — strefy wiatru mapy wreszcie ciągną pasat, a huragan ze zdarzenia świata jest prawdziwym sztormem z krążącym wiatrem, kadłubem i podłogami na progach, które HUD już nazywa |
+| Wioski Indian | ✅ | `VillageSystem` + `VillageScene` + `VillageMarkerRenderer`: osiem wiosek na czarcie, które nie noszą żadnej bandery; rum za złoto, stosunek z dwiema połowami (wyprowadzaną z reputacji u sąsiedniej korony i stemplowaną), a przy zaufaniu 60 — **wyprawa wojenna, która łamie mury sąsiedniej kolonii** |
 
 ### Nietknięte
 
-Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · wioski Indian · misje jezuickie · muzyka poza menu · sprite'y statków per klasa
+Mini-gra taneczna · ciotka i wujek jako czwarty i piąty krewny · misje jezuickie · muzyka poza menu · sprite'y statków per klasa
+
+(Wioski Indian zeszły z tej listy w v0.58.0 — osiem wiosek na czarcie, barter i wyprawa wojenna. Misje jezuickie zostają.)
 
 (Pathfinding A\* zszedł z tej listy w v0.22.0 — `Pathfinding.ts` jest prawdziwy.)
 
@@ -2181,7 +2186,7 @@ Przy okazji zamknięte dwie pozycje z sekcji 4: tablica ogłoszeń (sortowana po
 **zasięgu**) i martwy duplikat `giveNpcPortNews`/`npcPickupNews`.
 Testy 1902 → 1915, sprawdzone cofnięciem poprawki (sześć na czerwono).
 
-### v0.58.0 — co dalej
+### v0.59.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2209,7 +2214,12 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
    (v0.43.0) i nazwane statki (v0.44.0). Wędrujące oko zrobione w v0.45.0.
    Zostały **deszcz i pioruny** z roadmapy — czysta warstwa wizualna, nic nie
    zmieniają w decyzjach, więc to zadanie na artystę, nie na projektanta
-6. **Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe
+6. ~~**Wioski Indian i misje jezuickie** (moduł G) — nowe lokacje nie-portowe~~
+   ✅ **połowa** — v0.58.0.0: osiem wiosek Indian. `native_raid` był skutkiem bez
+   przyczyny od v0.9.7 (kompletne zdarzenie — nagłówek, −40 obrony, biała lista
+   jedenastu miast pogranicza — którego **nikt nie wywoływał**), a ekran pomocy
+   od dwudziestu wydań obiecywał, że to *okazja dla pirata*. Teraz gracz może
+   o niego poprosić. **Misje jezuickie zostały** — patrz niżej, z powodem
 7. ~~**Zasiew dnia pierwszego ignoruje `weight`.**~~ ✅ v0.57.0.0 — zmierzone
    i poprawione, razem z czterema innymi rozjazdami tej samej funkcji. Patrz
    wyżej; najważniejszy okazał się nie ten
@@ -2231,6 +2241,33 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - ~~**Martwy duplikat po starszym projekcie**~~ ✅ v0.57.0.0 — skasowane. Oryginalny opis: `WorldEventSystem.giveNpcPortNews` i `NpcNewsSystem.npcPickupNews` to **dwie identyczne funkcje bez wywołania**, obie z komentarzem „Called from NpcSpawnSystem". Nie są potrzebne — NPC znikają w porcie docelowym (`DOCK_RADIUS`) i rodzą się z portu wyjścia z aktualnymi wieściami — więc do skasowania, nie do podpięcia
 - **`npc_news` to wariant unii `WorldEvent` bez `case` w `applyEvents`** (znalezione w v0.57.0, nienaprawione). `WorldEngine.ts:431` produkuje `{ type: "npc_news", news }`, `Events.ts:19` deklaruje go, a `WorldRenderer.applyEvents` obsługuje wyłącznie `Toast` i `SpawnFx`. Skutek: mijając przyjazny statek w promieniu `NEWS_RANGE = 30` (a `ENCOUNTER_RANGE` to 18, więc dzieje się to **przed** ekranem spotkania) gracz **milcząco** dostaje do trzech newsów — rosną `knownEventIds`, więc na mapie pojawiają się znaczniki, kursy wypraw i droga huraganu, o których nikt mu nie powiedział. Poprawka to `case "npc_news"` → toast, ale **to zmiana odczucia** (wyskakujące komunikaty na morzu) — do playtestu użytkownika, nie w biegu
 - **Karta postaci pokazuje, czego świat nie używa** (znalezione i **zmierzone** w v0.57.0, świadomie nienaprawione). `effectiveSkill` ma **jedenaście** czytelników — pojedynek, bitwa morska, oblężenie, chirurg, romans, nawigacja — a `effectiveSkills()`, helper napisany w komentarzu *„for the cabin sheet”*, nie ma **żadnego**; zakładka Kapitan rysuje surowe `captain.skills[id]`. Przy 55 latach i szermierce 8 arkusz mówi 8, a pojedynek liczy 5,9. **Ale zasięg jest zerowy**: `startAge` to zawsze 20 (`CaptainState.ts:42`, w `CharacterCreationScene` nie ma wyboru wieku), krzywa startuje w 35, a doba gry to 60 sekund realnych — **45-91 godzin samego żeglowania** do pierwszego progu. `ageStage` też nie ma czytelnika. To jedno pytanie do użytkownika, nie dwa zadania: czy krzywa starzenia ma być w zasięgu kariery (np. **wybór wieku startowego** przy tworzeniu postaci — starszy kapitan traci szermierkę i punkty za lata na morzu, zyskuje nawigację/urok/medycynę od pierwszego dnia), czy zostać tam, gdzie jest
+- **Misje jezuickie — druga połowa modułu G, świadomie odlożona** (v0.58.0). Zaczep
+  jest gotowy i żywy: `SurgeonSystem` trzyma `ship.wounded` i `FleetShip.wounded`,
+  a `tendWounded` odpala się co dobę. **Ale różnica, którą misja miałaby
+  sprzedawać, jest mała**: przy `medicine` 5 lazaret oddaje 68% rannych, więc
+  misja lecząca wszystkich to przy typowej walce ok. **jednego człowieka**.
+  Zanim to napiszesz, zmierz rozkład `woundedFrom(fallen)` w prawdziwej karierze
+  — jeśli wyjdzie tyle, co powyżej, misja musi sprzedawać coś innego niż
+  leczenie (roadmapa wymienia jeszcze *informacje o regionie* i *konwersję
+  piratów*, i to pierwsze nakłada się na `RumorSystem`)
+- **`HelpScene` jest w połowie nieprzetłumaczony** (znalezione w v0.58.0,
+  nienaprawione). Plik używa `t()` 37 razy, ale cała kolumna B — tabela
+  wydarzeń świata i sekcja „CO MOŻESZ ZROBIĆ” — to **twardo wpisany polski**
+  (`HelpScene.ts:265-312`), tak samo jak sekcje o ekonomii i wojnie. Angielski
+  gracz widzi tam polszczyznę. Poprawka to ~30 nowych kluczów w obu locale'ach;
+  nowa linijka o wioskach została dopisana **w tej samej konwencji**, żeby nie
+  robić połowicznego tłumaczenia
+- **`PortMarkerRenderer.snapToCoast` nie rusza pozycji, która jest już na lądzie**
+  (`PortMarkerRenderer.ts:194`, wyeksportowany w v0.58.0). To jest poprawne dla
+  45 miast, ale znaczy, że **osada wpisana głęboko w ląd zostaje głęboko w lądzie**
+  — pierwsza lokalizacja wioski Warao leżała 33 jednostki od żeglownej wody
+  i była nieosiągalna. Jeśli kiedyś dojdą kolejne lokacje nie-portowe, ich
+  pozycje trzeba zmierzyć względem `caribbean_geo.json`, nie wpisać na oko
+- **`ExpeditionFleetSystem.nearestWater` skacze pierścieniami co 20 jednostek**
+  (`ExpeditionFleetSystem.ts:155`), więc nigdy nie zwraca wody bliższej niż 20
+  od lądu — i nie mówi nic o **głębokości**. Każdy świat debugowy, który
+  stawia na niej statek przy brzegu, może go postawić na mieliźnie; `?village=`
+  robi własne szukanie z testem prześwitu (`villageAnchorage`)
 - **`player.retirementScore` zapisywane i nieczytane** (`RetirementSystem.ts:147`). `RetirementScene` liczy wynik od nowa z `computeScore`. Martwe pole w modelu — do skasowania przy okazji, migracji nie potrzebuje (opcjonalne)
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
@@ -2348,8 +2385,22 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - **Fizyczne prawo, które gracz może odczytać przyrządem, jest lepsze od komunikatu.** Wiatr krążący wokół oka huraganu (Buys Ballot) czyni z kompasu — widżetu obecnego od pierwszego wydania — namiar na środek sztormu. Zero nowego UI, a decyzja „którym halsem wychodzić" jest podejmowalna (v0.39.0).
 - **Podłogi obrażeń bierz z progów, które HUD już nazywa.** Huragan schodzi dokładnie do `FOUNDERING_THRESHOLD` i do progu „torn" z `RIG_TIERS`, nie do wymyślonych 0,3/0,45. Gracz widzi *crippled* i *torn* na ekranie uszkodzeń i rozumie, gdzie się zatrzymał (v0.39.0).
 - **Zanim dodasz pole do save'a, sprawdź, czy nie da się go wyprowadzić.** Cała miejscowa pogoda v0.39.0 to funkcja `(zapisany wiatr, pozycja, lista zdarzeń)` — zero nowych pól, migracje dalej na v12, a save z v0.38.0 wchodzi w huragan tak samo jak nowy (v0.39.0).
+- **Poglądowy test zasięgu przechodzi także bez poprawki.** Asercja „czy *gdziekolwiek*
+  w promieniu pięćdziesięciu jednostek od wioski jest woda dość głęboka” była zielona
+  również **bez** `VILLAGE_ANCHORAGE_DEPTH` — przy każdym brzegu gdzieś tam jest.
+  Zmierzony **udział** mielizny w dysku zawołania rozróżnia obie wersje natychmiast:
+  71% / 70% / 60% bez poprawki, 0-1% z nią. Ten sam wzór co test halsowania NPC
+  z v0.53.0 — **pytanie „czy istnieje” prawie nigdy nie jest asercją regresji,
+  pytaniem „ile” prawie zawsze** (v0.58.0).
+- **Siatka lądu jest grubsza niż narysowany brzeg.** `landGrid` powstaje przez
+  podpróbkowanie 4×4 — komórka jest lądem, gdy **którakolwiek** z 16 próbek trafi
+  w ląd — a komórka lądowa ma w polu głębokości **zero metrów**. Punkt, który
+  wielokąty linii brzegowej uważają za czystą wodę 30 jednostek od plaży, potrafi
+  więc sadzać statek na dnie. `buildDepthField` pogłębia z tego powodu porty
+  (od v0.48.0) i wioski (od v0.58.0) — pamiętaj o tym, stawiając cokolwiek przy
+  brzegu: **test na wielokątach nie odpowiada na pytanie o głębokość** (v0.58.0).
 - Deploy: pirates.k4.pl — najpierw czyszczenie starych bundli.
-- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?storm=1|N`, `?hurricane=<port>`, `?fog=1`, `?current=1`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
+- Parametry debugowania: `?skip`, `?zoom=`, `?debug=`, `?battle=1|trader|navy|pirate|hunter`, `?siege=<port>`, `?relief=<port>`, `?defend=<port>`, `?intercept=<port>`, `?commission=<port>`, `?home=<port>`, `?blockade=<port>`, `?famine=<port>` (+ `&stand=cover`), `?hunt=<port>` (+ `&meet=1`, `&harried=N`, `&chase=1`), `?marque=<port>`, `?storm=1|N`, `?hurricane=<port>`, `?fog=1`, `?current=1`, `?skip&notoriety=N`, `?event=<typ>&port=<klucz>` (+ `&garrison=N`, `&soldiers=N`, `&ally=1`), `?village=<klucz>` (v0.58.0 — slup na wodzie w zasięgu zawołania wioski, 20 ton rumu w ładowni, zaufanie stopień nad progiem wyprawy wojennej; wchodzi się **E**). Kantor frachtowy: `?skip` + wejście do dowolnego portu, czwarta pozycja w menu. Wynajem magazynu (v0.24.0): tam samo, pozycja „Wynajmij magazyn". Reputację najszybciej sprawdzić przez `?blockade=<port>` (spadnie sama) albo edytując `player.reputation` w konsoli.
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
