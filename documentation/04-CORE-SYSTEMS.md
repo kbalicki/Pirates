@@ -1121,7 +1121,7 @@ Odpalany raz na dobę gry. Dwa źródła zdarzeń:
 
 Każde zdarzenie ma `severity` 1-3, listę dotkniętych portów i frakcji, okno `startDay`-`endDay` oraz nagłówek jako klucz i18n.
 
-`seedInitialEvents()` odpala się raz przy tworzeniu świata, żeby NPC już pierwszego dnia mieli 1-5 newsów do przekazania.
+`seedInitialEvents()` odpala się raz przy tworzeniu świata, żeby NPC już pierwszego dnia mieli newsy do przekazania. Od v0.57.0 wybiera zdarzenia **tą samą funkcją**, co codzienne losowanie (`rollOneEvent`) — patrz „Dzień pierwszy świata” niżej.
 
 ---
 
@@ -4594,3 +4594,66 @@ wraca do `travel`, do `TRADER_CRUISE_SAIL = 0.7` i do tego samego portu.
 
 Kurs liczy `bestVmgHeading` po namiarze **od gracza** — ta sama krzywa polarna, więc
 załadowany fluyt dalej jest załadowanym fluytem: kto pracuje wiatrem, ten go ma.
+
+
+---
+
+## Dzień pierwszy świata (v0.57.0)
+
+`seedInitialEvents` zapenia świat zdarzeniami na dzień pierwszy, żeby pierwsza tawerna,
+do której kapitan wejdzie, miała mu co powiedzieć. Było to **drugie czytanie tej samej
+tabeli** `RANDOM_EVENTS`, którą czyta codzienne losowanie — napisane, zanim to losowanie
+dorosło do większości swoich reguł, i nigdy z nim nie zrównane. Rozjechały się na pięć
+sposobów, każdy zmierzony na czterech tysiącach światów:
+
+| rozjazd | zmierzone |
+|---------|-----------|
+| **trzy z sześciu er otwierały się pusto** | 0 z 5 zdarzeń w erach 1600, 1620, 1640 |
+| dzień pierwszy ignorował `seasonal` | 16,5% zasianych zdarzeń to huragan albo żniwa w **styczniu** |
+| szablony losowane **równomiernie**, nie po `weight` | najazd piratów (waga 5) — 0,47× swojego udziału; bunt niewolników (waga 1) — 2,41× za często |
+| `affectsPorts: 0` zawsze na **Hiszpanię** | 44,7% zasianych dekretów obciążało 24 kolonie hiszpańskie pod nazwiskiem innej korony |
+| `affectsPorts > 1` spłaszczone do jednego portu | 3300 z 3300 — huragan nad trzema przystaniami był huraganem nad jedną |
+
+Najdroższy jest pierwszy i **nie jest błędem w `seedInitialEvents`** — jest błędem w zdaniu
+`worldEvents.length > 0`. To zdanie znaczy „jest już zasiane” tylko dopóki nic innego nie
+wkłada zdarzenia do listy przed nim. v0.31.0 postawiło przed nim `seedHistoricalWars`, więc
+w trzech erach otwierających się **wewnątrz wojny** lista nigdy nie była pusta, funkcja
+kończyła na pierwszej linijce i świat startował bez żadnych żywych zdarzeń. Dwadzieścia
+pięć wydań, połowa er w grze.
+
+Poprawka nie jest łataniem pięciu miejsc. Oba wejścia idą teraz przez **jedną** funkcję
+`rollOneEvent(world, month, rng)`, która trzyma całą wiedzę o tym, *co* jest zdarzeniem
+i *gdzie* spada: sezon, wagi, pula portów, sąsiedzi, obie bariery przed stakowaniem.
+Zasiew woła ją `SEED_COUNT` razy i **dokłada po jednym**, bo każda bariera w środku pyta
+o to, co już stoi — pięć wyborów policzonych naraz to pięć wyborów, które się nawzajem
+nie widzą, i dokładnie tak stary zasiew otwierał 6,4% światów trzema tymi samymi rzeczami.
+
+**Reguła, która z tego zostaje:** drugi czytelnik tabeli to drugi zestaw reguł, i zawsze
+będzie tym, którego nikt nie utrzymuje.
+
+### Tablica ogłoszeń jest tablicą, nie stosem
+
+`getPortNews` brało `active.slice(-5)` — pięć zdarzeń **dodanych do `worldEvents`
+najpóźniej**. To kolejność przybycia: fakt o tablicy w pamięci, nie o mieście. A tawerna
+pokazuje z tego **trzy pierwsze**, więc decydowała o tym, co kapitan naprawdę przeczyta.
+
+Kluczem jest **zasięg**: im mniej miast zdarzenie dotyczy, tym wyżej stoi. Najazd na tę
+przystań (1 port) nad dekretem królewskim (24 porty, i to miasto jest wśród nich) nad
+wojną dwóch koron (`ports: []` — konwencja skali frakcji, dotyczy każdej tablicy).
+Wewnątrz grupy — najnowsze pierwsze, bo tablicę czyta się od góry. „Zawiera to miasto"
+nie rozróżniłoby dwóch pierwszych, bo dekret **zawiera** to miasto; dlatego porównanie
+liczy porty zamiast zadawać pytanie tak/nie.
+
+Zmierzone na 3 ziarnach × 10 lat, co siódmy dzień, wszystkie 45 miast: **11,1%**
+miasto-dni ma więcej niż pięć żywych zdarzeń, a własny news miasta wypadał z tablicy
+w **0,7%**. Marginalne — i darmowe.
+
+### Test przypięty do wejść, w których błędu nie ma
+
+Asercja pilnująca bilansu tabeli zdarzeń sprawdzała **trzy nazwane ziarna** (1, 3, 11)
+i żądała od każdego ±10% względem cichego świata. Zmierzone na czterdziestu: kod, który
+ona pilnowała, **już** wystawiał trzy poza to pasmo i dwa poza ±15%. To ten sam błąd co
+test halsowania NPC z v0.53.0 — zielony przez jedenaście wydań, bo asercja stała w
+jedynym punkcie, w którym błędu nie widać. Mierzy teraz **rozkład**: średnia z dwunastu
+lat w granicach 5% (tabela oddaje mniej więcej tyle, ile bierze) i żaden rok nie ucieka
+poza 25%.

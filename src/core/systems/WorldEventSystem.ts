@@ -171,75 +171,51 @@ function factionName(id: string): string {
 
 // ── Main update function ─────────────────────────────────
 
+/** How many random events the world tries to open with. */
+export const SEED_COUNT = 5;
+
 /**
- * Seed an initial pool of world events at game start so NPCs always have
- * something to talk about on day 1. Picks 4-6 random event templates and
- * scatters them across random ports with a positive remaining duration.
+ * Stock the world with events on day one, so the first tavern a captain walks
+ * into and the first ship he speaks have something to tell him.
+ *
+ * This used to be its own reading of `RANDOM_EVENTS` and had drifted a long
+ * way from the one the world actually runs on — see `rollOneEvent`, which both
+ * now call. What is left here is the two things that are genuinely different
+ * about day one:
+ *
+ * **It happens once.** The guard used to be `worldEvents.length > 0`, which
+ * meant "already seeded" only for as long as nothing else put an event in the
+ * list first. v0.31.0 put `seedHistoricalWars` in front of it and the sentence
+ * quietly changed meaning: in the three eras that open *inside* a war — 1600,
+ * 1620 and 1640 — the list was never empty, the seed returned immediately, and
+ * the world began with **no living events at all**. Half the eras in the game,
+ * for twenty-five releases, opened with silent noticeboards. The guard now asks
+ * the question it meant to ask: is there already an event of a kind this
+ * function produces?
+ *
+ * **Nothing is stamped in the past.** Events get today's `startDay`, unlike the
+ * wars beside them, which reach back real years. A famine the captain sails
+ * into on his first morning is a famine that began this morning; giving it a
+ * history would mean giving it the economic bite of that history too, and
+ * `warBite` is the only thing in the game entitled to do that.
  */
 export function seedInitialEvents(world: WorldState): WorldState {
-  if (world.worldEvents.length > 0) return world;
+  const randomTypes = new Set<WorldEventType>(RANDOM_EVENTS.map(t => t.type));
+  if (world.worldEvents.some(ev => randomTypes.has(ev.type))) return world;
+
+  const month = dayToCalendar(world.time.day, world.startYear).month;
   let w = world;
   let rng = w.rng;
-  const allPorts = Object.keys(PORTS);
-  const seedCount = 5;
 
-  for (let i = 0; i < seedCount; i++) {
-    const tmplR = rngNextFloat(rng, 0, 1);
-    rng = tmplR.state;
-    const tmpl = RANDOM_EVENTS[Math.floor(tmplR.value * RANDOM_EVENTS.length)];
-    if (!tmpl) continue;
-
-    const portR = rngNext(rng);
-    rng = portR.state;
-    // The template's own rules about where it can land, which this ignored
-    // entirely until v0.46.0 — the same bug as `pickNeighbours` in v0.45.0, one
-    // layer up. A seeded harvest could bless a town that grew nothing, and a
-    // seeded plate fleet could muster in **Bermuda**: English, and eighteen
-    // hundred units from any silver.
-    let pool = allPorts;
-    if (tmpl.portWhitelist) pool = pool.filter(k => tmpl.portWhitelist!.includes(k));
-    if (tmpl.factionWhitelist) pool = pool.filter(k => tmpl.factionWhitelist!.includes(PORTS[k].factionId as string));
-    if (tmpl.filter) pool = pool.filter(tmpl.filter);
-    if (pool.length === 0) continue;
-    // `rngNext` returns a float in [0,1). Taking it modulo the array length —
-    // which this did until v0.28.0 — returns the float back, so every seeded
-    // event indexed `allPorts[0.37]` and got `undefined`: no port name in the
-    // headline, no port in `ports`, and therefore no effect on anything and no
-    // news anywhere. Five events at the start of every game, all of them dead.
-    const port = pool[Math.floor(portR.value * pool.length)];
-    const portDef = PORTS[port];
-    const portName = portDef?.name ?? port;
-    const factionId = portDef?.factionId as string ?? "pirates";
-
-    const durR = rngNextFloat(rng, 0, 1);
-    rng = durR.state;
-    const duration = Math.round(
-      tmpl.durationDays[0] + durR.value * (tmpl.durationDays[1] - tmpl.durationDays[0]),
-    );
-
-    const eventId = `seed_${tmpl.type}_${i}_${port}`;
-    const newEvent: WorldEventState = {
-      id: eventId,
-      type: tmpl.type,
-      startDay: w.time.day,
-      endDay: w.time.day + duration,
-      ports: tmpl.affectsPorts === 0
-        ? allPorts.filter(k => PORTS[k].factionId === "spain")
-        : [port],
-      factions: [factionId],
-      severity: tmpl.severity,
-      headline: tmpl.headline,
-      vars: {
-        port: portName,
-        mainPort: port,
-        faction: factionName(factionId),
-        duration,
-        // A plate fleet seeded on day one has to know where she is loading, or
-        // the first one a captain ever hears of is the one that never sails.
-        ...(tmpl.type === "treasure_fleet" ? { muster: port } : {}),
-      },
-    };
-    w = { ...w, worldEvents: [...w.worldEvents, newEvent] };
+  // Appended one at a time on purpose: every guard inside `rollOneEvent` asks
+  // what is already standing, so five picks collected and added at the end
+  // would be five picks that cannot see each other — which is exactly how the
+  // old seed managed to open 6.4% of worlds with three of the same thing.
+  for (let i = 0; i < SEED_COUNT; i++) {
+    const rolled = rollOneEvent(w, month, rng);
+    rng = rolled.rng;
+    if (!rolled.event) continue;
+    w = { ...w, worldEvents: [...w.worldEvents, rolled.event] };
   }
 
   return { ...w, rng };
@@ -332,42 +308,47 @@ export function updateWorldEvents(world: WorldState): WorldState {
   return w;
 }
 
-/** Get active news for a specific port (for tavern). */
+/** How many items a noticeboard holds, and how many an NPC carries away. */
+export const NEWS_ON_A_BOARD = 5;
+
+/**
+ * What this town has to say today — the tavern board, and what a ship sailing
+ * from here carries with her.
+ *
+ * A board, not a stack. This used to be `active.slice(-5)`: the five events
+ * added to `worldEvents` most recently, which is an arrival order and has
+ * nothing to do with what the town cares about. Measured over three seeds, ten
+ * years, every seventh day, all forty-five towns: **11.1%** of town-days carry
+ * more than five live events, and on **0.7%** of them the board was full enough
+ * to push out the town's *own* news — a siege on the harbour losing its place
+ * to a royal decree issued a thousand miles away. Small, and free to fix, which
+ * is the only reason it waited this long.
+ *
+ * The order is the whole fix, and the key is **reach**: the fewer towns an
+ * event concerns, the higher it stands. A raid on this harbour is about here; a
+ * royal decree names two dozen ports and this one happens to be among them; a
+ * war between crowns carries `ports: []`, the faction-scale convention, and
+ * concerns every board in the Caribbean equally. "Contains this town" would not
+ * have separated the first two — the decree does contain it — which is why the
+ * comparison counts towns instead of asking a yes-or-no question. Inside a
+ * group the newest thing is first, because a noticeboard is read from the top.
+ */
 export function getPortNews(world: WorldState, portId: string): NewsItem[] {
   const active = world.worldEvents.filter(
     ev => ev.endDay >= world.time.day && (ev.ports.length === 0 || ev.ports.includes(portId)),
   );
-  return active.slice(-5).map(ev => ({
+  const reach = (ev: WorldEventState) =>
+    (ev.ports.length === 0 ? Number.MAX_SAFE_INTEGER : ev.ports.length);
+  const ranked = [...active].sort(
+    (a, b) => reach(a) - reach(b) || b.startDay - a.startDay,
+  );
+  return ranked.slice(0, NEWS_ON_A_BOARD).map(ev => ({
     eventId: ev.id,
     headline: ev.headline,
     vars: ev.vars,
     dayHeard: world.time.day,
     sourcePort: portId,
   }));
-}
-
-/** Give NPC fresh news from a port they're visiting. */
-export function giveNpcPortNews(world: WorldState, entityId: string, portId: string): WorldState {
-  const entity = world.entities[entityId];
-  if (!entity?.ai) return world;
-
-  const news = getPortNews(world, portId);
-  if (news.length === 0) return world;
-
-  return {
-    ...world,
-    entities: {
-      ...world.entities,
-      [entityId]: {
-        ...entity,
-        ai: {
-          ...entity.ai,
-          news: news.slice(0, 5),
-          lastPortVisited: portId,
-        },
-      },
-    },
-  };
 }
 
 // ── Internal helpers ─────────────────────────────────────
@@ -515,18 +496,38 @@ function expireEvents(world: WorldState): WorldState {
   return { ...world, worldEvents: active };
 }
 
-function rollRandomEvents(world: WorldState, cal: { year: number; month: number }): WorldState {
-  let w = world;
-  let rng = w.rng;
-
-  // ~50% chance of an event per day (3-4 per week)
-  let r = rngNextFloat(rng, 0, 1);
-  rng = r.state;
-  if (r.value > 0.5) return { ...w, rng };
+/**
+ * Choose one random event from the table and build it, or answer `null` when
+ * nothing the table offers may land in this world today.
+ *
+ * Everything that decides *what* an event is and *where* it falls lives here
+ * and nowhere else, and that is the whole point of the function. Until v0.57.0
+ * the daily roll and the day-one seed were two separate readings of the same
+ * table, and the second had drifted from the first in five ways: it picked
+ * templates **uniformly** instead of by `weight`, ignored `seasonal`,
+ * collapsed every multi-port event onto a single town, laid every
+ * faction-wide event on **Spain** whichever crown issued it, and had neither
+ * of the guards against stacking. A second reader of a table is a second set
+ * of rules, and it will always be the one nobody maintains.
+ *
+ * The world is passed in rather than the event list because every guard below
+ * asks a question about what is already standing — which is also why the seed
+ * has to append as it goes rather than collect five picks and add them at the
+ * end.
+ */
+function rollOneEvent(
+  world: WorldState,
+  month: number,
+  rngIn: RngState,
+): { event: WorldEventState | null; rng: RngState } {
+  const w = world;
+  let rng = rngIn;
+  let r: { value: number; state: RngState };
+  const nothing = (state: RngState) => ({ event: null, rng: state });
 
   // Weighted selection
   const eligible = RANDOM_EVENTS.filter(
-    tmpl => !tmpl.seasonal || tmpl.seasonal.includes(cal.month),
+    tmpl => !tmpl.seasonal || tmpl.seasonal.includes(month),
   );
   const totalWeight = eligible.reduce((sum, tmpl) => sum + tmpl.weight, 0);
   r = rngNextFloat(rng, 0, 1);
@@ -539,11 +540,11 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
     cumulative += tmpl.weight / totalWeight;
     if (pick <= cumulative) { chosen = tmpl; break; }
   }
-  if (!chosen) return { ...w, rng };
+  if (!chosen) return nothing(rng);
 
   // Don't stack too many of the same type
   const sameTypeCount = w.worldEvents.filter(ev => ev.type === chosen!.type).length;
-  if (sameTypeCount >= 3) return { ...w, rng };
+  if (sameTypeCount >= 3) return nothing(rng);
 
   // Build candidate-port pool honoring whitelist + filter
   const allPorts = Object.keys(PORTS);
@@ -555,7 +556,7 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
   if (chosen.type === "gold_discovery") {
     pool = pool.filter(k => !w.ports[k]?.bonusProduces?.includes("gold"));
   }
-  if (pool.length === 0) return { ...w, rng };
+  if (pool.length === 0) return nothing(rng);
 
   // Pick a port from the eligible pool
   const portRng = rngNext(rng);
@@ -593,7 +594,7 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
       && ev.endDay >= w.time.day
       && ev.ports.some(port => affectedPorts.includes(port)),
   );
-  if (alreadyHere) return { ...w, rng };
+  if (alreadyHere) return nothing(rng);
 
   const durR = rngNextFloat(rng, 0, 1);
   rng = durR.state;
@@ -630,16 +631,27 @@ function rollRandomEvents(world: WorldState, cal: { year: number; month: number 
     vars,
   };
 
-  w = {
+  return { event: newEvent, rng };
+}
+
+function rollRandomEvents(world: WorldState, cal: { year: number; month: number }): WorldState {
+  const w = world;
+
+  // ~50% chance of an event per day (3-4 per week)
+  const gate = rngNextFloat(w.rng, 0, 1);
+  if (gate.value > 0.5) return { ...w, rng: gate.state };
+
+  const rolled = rollOneEvent(w, cal.month, gate.state);
+  if (!rolled.event) return { ...w, rng: rolled.rng };
+
+  const next: WorldState = {
     ...w,
-    rng,
-    worldEvents: [...w.worldEvents, newEvent],
+    rng: rolled.rng,
+    worldEvents: [...w.worldEvents, rolled.event],
   };
 
   // Log the event
-  w = addLogEntry(w, chosen.headline, vars);
-
-  return w;
+  return addLogEntry(next, rolled.event.headline, rolled.event.vars);
 }
 
 /** Check if two factions are at war. */

@@ -531,7 +531,10 @@ export function updateNpcSpawns(world: WorldState, dtTicks: number): WorldState 
           targetPortId: destPortKey as unknown as PortId,
           aggression,
           awarenessRadius: template.awarenessRadius,
-          news: getPortNews(world, portKey).slice(0, 5),
+          // `getPortNews` already cuts the board to `NEWS_ON_A_BOARD` and puts
+          // this town's own news at the top of it (v0.57.0), so there is
+          // nothing left here to trim.
+          news: getPortNews(world, portKey),
           lane: lane ? { routeId: lane.id, wp: 1 } : undefined,
           lastPortVisited: portKey,
         },

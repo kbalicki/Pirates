@@ -1,7 +1,8 @@
 /**
  * NPC News System — handles news exchange between NPC ships and the player.
  *
- * - NPC picks up news when near a port (within DOCK_RADIUS)
+ * - An NPC is born from a departure port carrying that town's board
+ *   (`NpcSpawnSystem`), and vanishes again at its destination
  * - Player receives news when near a friendly/neutral NPC (within NEWS_RANGE)
  * - Hostile NPC (pirates, enemies) don't share news
  * - Same NPC won't share the same news twice until they visit a new port
@@ -10,7 +11,6 @@
 import type { WorldState } from "../model/WorldState.ts";
 import type { NewsItem } from "../model/EntityState.ts";
 import { vec2Dist } from "../services/Geometry.ts";
-import { getPortNews } from "./WorldEventSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 
 /** Distance at which player auto-receives news from NPC */
@@ -87,31 +87,4 @@ export function checkNpcNewsExchange(world: WorldState): NewsExchangeResult {
   }
 
   return { world: w, newNews: allNewNews };
-}
-
-/**
- * When NPC docks at a port, give them fresh news.
- * Called from NpcSpawnSystem when NPC reaches dock radius.
- */
-export function npcPickupNews(world: WorldState, entityId: string, portId: string): WorldState {
-  const entity = world.entities[entityId];
-  if (!entity?.ai) return world;
-
-  const news = getPortNews(world, portId);
-  if (news.length === 0 && !entity.ai.news?.length) return world;
-
-  return {
-    ...world,
-    entities: {
-      ...world.entities,
-      [entityId]: {
-        ...entity,
-        ai: {
-          ...entity.ai,
-          news: news.slice(0, 5),
-          lastPortVisited: portId,
-        },
-      },
-    },
-  };
 }
