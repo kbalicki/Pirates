@@ -103,6 +103,7 @@ Kolejność wynika z zasady: **najpierw domykamy pętle, które już istnieją**
 
 - ✅ **Kadłub:** ≥75% sprawny, ≥50% przeciek, ≥25% ciężko uszkodzony, poniżej — tonie
 - ✅ **Ożaglowanie:** podarte → w strzępach → zerwany maszt (dryf w bitwie, pełzanie ×0.15 na mapie)
+- ✅ **Kadłub też ma podłogę na mapie** (v0.59.0) — `MIN_AFLOAT_HULL = 1`. Pełzanie ×0.15 chroniło omasztowanie od v0.9.9, a kadłub nie: w zerze `hullTier` daje `speedMul: 0`, więc mielizna (6,23% morza, 2,4 punktu na sekundę) i działa fortu robiły z zapisu **ślepą uliczkę** — brak ciągu, `repairAtSea` odmawia pierwszą linijką, stocznia nieosiągalna
 - ✅ **Wizualne:** dym, ogień przy tonięciu, animacja zatonięcia, utrata ładunku, przestrzeliny i wyrwy w żaglach (`ShipDamageOverlay`, v0.12.1)
 - ✅ **Naprawa prowizoryczna na morzu** — dzienna, sufit 50% kadłuba / 60% takielunku
 - ✅ **Ratowanie załogi** — 40% żywej załogi zatopionego wroga, w miarę wolnych koi
@@ -117,7 +118,8 @@ Szczegóły w [04-CORE-SYSTEMS.md](04-CORE-SYSTEMS.md), sekcje „Stopnie uszkod
 - ✅ Wejście przez abordaż — pojedynek zastąpił rzut kośćmi w `resolveBoarding()`
 - ✅ Efekt: przejęcie statku albo przegrany abordaż ze stratami w załodze
 - ⬜ Wyzwanie w porcie i wątek fabularny jako kolejne konteksty wejścia
-- ⬜ Awans / rana kapitana / więzienie jako dodatkowe wyjścia
+- ⬜ Awans / rana kapitana jako dodatkowe wyjścia
+- ✅ **Niewola** (v0.59.0) — nie z pojedynku, tylko z przegranej bitwy morskiej: królewski okręt wysadza pokonanego kapitana w najbliższej kolonii **swojej** korony, połowa kiesy idzie na okup, a z reszty stocznia bierze cenę pinasy. `DefeatSystem`
 - ✅ **System dialogów** — `DialogueSystem.ts` + `data/dialogues.ts`, pierwszy konsument: gubernator (v0.11.0)
 
 ### Moduł C — Cele i konsekwencje *(v0.11.0)* — ✅

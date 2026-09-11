@@ -252,7 +252,10 @@ export const PL: LocaleData = {
   "battle.log_won": "Zwycięstwo na morzu! +{{gold}} Złoto.",
   "battle.log_captured": "Przejęto statek i dołączono do floty! +{{gold}} Złoto.",
   "battle.log_prize_crew": "Załoga pryzowa: {{men}} naszych i {{pressed}} przymuszonych — potrzebuje {{need}}.",
-  "battle.log_lost": "Bitwa przegrana — statek poważnie uszkodzony.",
+  "battle.log_lost": "Bitwa przegrana — statek poszedł na dno.",
+  "defeat.log_flag_shifted": "Okręt flagowy stracony. Bandera przechodzi na {{ship}}; {{count}} ludzi przeszło na jej pokład.",
+  "defeat.log_ransomed": "Wzięty do niewoli i wysadzony w {{port}}. {{gold}} złota poszło na okup i rachunek stoczni; zostało przy tobie {{count}} ludzi.",
+  "defeat.log_castaway": "Łodzie dobiły do {{port}}. {{gold}} złota przepadło; zostało przy tobie {{count}} ludzi.",
   "battle.log_fled": "Wycofano się z bitwy.",
   "battle.continue_hint": "ENTER / SPACJA / ESC / kliknij aby kontynuować",
   "battle.timeout_countdown": "Wycofanie za {{sec}}s — zbliż się aby walczyć",
@@ -339,6 +342,9 @@ export const PL: LocaleData = {
   "battle.cannot_board": "Podpłyń bliżej (≤30 px), aby abordażować.",
   "battle.enemy_too_strong": "Wróg zbyt silny — osłab go (kadłub lub załoga).",
   "battle.capture_note": "statek dołącza do floty (jeśli wolny slot)",
+  "battle.defeat_flag_shifted": "Bandera przechodzi na {{ship}}. {{count}} ludzi przeszło łodziami na jej pokład.",
+  "battle.defeat_ransomed": "Królewski okręt wysadza cię w {{port}}. Okup i stocznia biorą {{gold}} złota; zostaje ci pinasa i {{count}} ludzi.",
+  "battle.defeat_castaway": "Łodzie dobijają do {{port}}. {{gold}} złota poszło na pinasę z resztek wraku; zostaje ci {{count}} ludzi.",
   "battle.hold_full": "Brak miejsca w ładowni — zostawiono: {{cargo}}",
 
   // -- Blokada (v0.22.0) --

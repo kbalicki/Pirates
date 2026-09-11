@@ -3,7 +3,7 @@ import type { WeatherState, Vec2 } from "../model/WorldState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "./WeatherSystem.ts";
-import { mapDamageSpeedMultiplier } from "./DamageSystem.ts";
+import { mapDamageSpeedMultiplier, MIN_AFLOAT_HULL } from "./DamageSystem.ts";
 import { depthAt, soundings, AGROUND_HULL_PER_TICK } from "../services/SeaDepth.ts";
 import { manningSpeedMultiplier, manningTurnMultiplier } from "./CrewSystem.ts";
 
@@ -145,6 +145,12 @@ export function updateNavigation(
     // She keeps steerage way — barely — so the player can back out of it. A
     // true zero would strand a deep hull the first time she wandered inshore,
     // which is the same reason a dismasted ship still crawls on the map.
+    //
+    // And for twelve releases the line three below this one took that promise
+    // away again: the bottom ground the hull to zero, `hullTier` answers zero
+    // speed at zero hull, and the steerage way this comment guarantees was
+    // exactly nothing. A sandbank wrecks a ship; it does not sink her, so the
+    // grinding stops at `MIN_AFLOAT_HULL` (v0.59.0).
     return {
       ...entity,
       pos: finalPos,
@@ -155,7 +161,10 @@ export function updateNavigation(
       shoaling: undefined,
       ship: {
         ...entity.ship,
-        hullHp: Math.max(0, entity.ship.hullHp - AGROUND_HULL_PER_TICK * dtTicks),
+        hullHp: Math.max(
+          Math.min(MIN_AFLOAT_HULL, entity.ship.hullHp),
+          entity.ship.hullHp - AGROUND_HULL_PER_TICK * dtTicks,
+        ),
       },
     };
   }

@@ -33,6 +33,8 @@ import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
 import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { settlePlatePrize } from "../../core/systems/TreasureFleetSystem.ts";
 import { settleHostileAct } from "../../core/systems/PrivateerSystem.ts";
+import { settleDefeat, type DefeatFate } from "../../core/systems/DefeatSystem.ts";
+import { PORTS } from "../../core/data/ports.ts";
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
@@ -45,7 +47,6 @@ import {
   hullTier,
   rigTier,
   damageSpeedMultiplier,
-  cargoSurvivingSinking,
 } from "../../core/systems/DamageSystem.ts";
 
 const TICK_RATE = 20;
@@ -1158,7 +1159,20 @@ export class SeaBattleScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * What became of a captain who lost his ship (v0.59.0).
+   *
+   * Written by `applyBattleOutcomeToWorld` and read by the result screen, in
+   * that order: the screen has to name the town he was landed at, and that is
+   * not known until the defeat has actually been settled. So the world is
+   * settled once, held, and handed to `MainMapScene` when he acknowledges it.
+   */
+  private defeatFate: DefeatFate | null = null;
+
   private showBattleResult(outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"): void {
+    // Settled here rather than in `finish`, because the lines below have to
+    // describe what happened, and for a defeat that is a decision, not a tally.
+    const settled = this.applyBattleOutcomeToWorld(outcome);
     const messages: Record<string, string> = {
       win: t("battle.victory"),
       lose: t("battle.defeat"),
@@ -1175,6 +1189,14 @@ export class SeaBattleScene extends Phaser.Scene {
     );
     text.setOrigin(0.5);
     text.setDepth(10000);
+    // Screen space, not world space (v0.59.0). Every line on this banner was
+    // placed at `cameras.main.width / 2` — a *screen* coordinate — and left at
+    // the default scroll factor of 1, so it was drawn at world (640, 360) while
+    // the camera sat wherever the fight had drifted to. A battle that ended
+    // anywhere but the arena's origin printed its result off the edge of the
+    // screen: the prize, the cargo taken, "click to continue", all of it. The
+    // HUD around it has had `setScrollFactor(0)` since the scene was written.
+    text.setScrollFactor(0);
 
     // What she was carrying (v0.22.0). The purse is her tonnage broken up; the
     // cargo is whatever the lane she was sailing had her load, as much of it as
@@ -1192,7 +1214,7 @@ export class SeaBattleScene extends Phaser.Scene {
         this.cameras.main.width / 2, resultLine,
         `+ ${prize.gold} ${t("hud.gold")}${note}`,
         { ...txt(16, { color: "#ffee88" }) },
-      ).setOrigin(0.5).setDepth(10000);
+      ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
       resultLine += 24;
 
       const taken = this.describeCargo(prize.taken);
@@ -1200,7 +1222,7 @@ export class SeaBattleScene extends Phaser.Scene {
         this.add.text(
           this.cameras.main.width / 2, resultLine, taken,
           { ...txt(14, { color: "#cceeaa" }) },
-        ).setOrigin(0.5).setDepth(10000);
+        ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
         resultLine += 22;
       }
       const spilled = this.describeCargo(prize.spilled);
@@ -1209,9 +1231,37 @@ export class SeaBattleScene extends Phaser.Scene {
           this.cameras.main.width / 2, resultLine,
           t("battle.hold_full", { cargo: spilled }),
           { ...txt(13, { color: "#cc8866" }) },
-        ).setOrigin(0.5).setDepth(10000);
+        ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
         resultLine += 22;
       }
+    }
+
+    if (outcome === "lose" && this.defeatFate) {
+      // Clear of the title's own box: it is centred on `height / 2` with 12px
+      // of padding, so `resultLine` starts exactly on its lower edge.
+      resultLine += 16;
+      const fate = this.defeatFate;
+      const line = fate.kind === "flag_shifted"
+        ? t("battle.defeat_flag_shifted", {
+            ship: t(`ship.${fate.classId}.name`),
+            count: fate.survivors,
+          })
+        : t(fate.prisoner ? "battle.defeat_ransomed" : "battle.defeat_castaway", {
+            port: PORTS[fate.portKey]?.name ?? fate.portKey,
+            gold: fate.ransom,
+            count: fate.survivors,
+          });
+      this.add.text(
+        this.cameras.main.width / 2, resultLine, line,
+        {
+          ...txt(14, { color: "#ddbb88" }),
+          backgroundColor: "#000000cc",
+          padding: { x: 14, y: 8 },
+          wordWrap: { width: 440 },
+          align: "center",
+        },
+      ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
+      resultLine += 46;
     }
 
     const continueText = this.add.text(
@@ -1222,11 +1272,11 @@ export class SeaBattleScene extends Phaser.Scene {
     );
     continueText.setOrigin(0.5);
     continueText.setDepth(10000);
+    continueText.setScrollFactor(0);
 
     const finish = () => {
-      const updatedWorld = this.applyBattleOutcomeToWorld(outcome);
-      this.registry.set("worldState", updatedWorld);
-      this.scene.start("MainMapScene", { worldState: updatedWorld });
+      this.registry.set("worldState", settled);
+      this.scene.start("MainMapScene", { worldState: settled });
     };
 
     this.input.once("pointerdown", finish);
@@ -1448,27 +1498,16 @@ export class SeaBattleScene extends Phaser.Scene {
         w = addLogEntry({ ...w, entities: remaining, player }, "battle.log_won", { gold: prize.prize.gold });
       }
     } else if (outcome === "lose") {
-      // The hold goes down with the ship (v0.9.9). A crew that still has hands
-      // to work the boats saves a little more than one that has been shot to
-      // pieces — see `cargoSurvivingSinking`.
-      const sunkShip = w.entities[playerId]?.ship;
-      if (sunkShip) {
-        const crewFrac = sunkShip.crew.max > 0 ? sunkShip.crew.current / sunkShip.crew.max : 0;
-        const kept = cargoSurvivingSinking(crewFrac);
-        const salvaged: Record<string, number> = {};
-        for (const [item, qty] of Object.entries(sunkShip.cargo ?? {})) {
-          const left = Math.floor(qty * kept);
-          if (left > 0) salvaged[item] = left;
-        }
-        w = {
-          ...w,
-          entities: {
-            ...w.entities,
-            [playerId]: { ...w.entities[playerId], ship: { ...sunkShip, cargo: salvaged } },
-          },
-        };
-      }
+      // She went down — and until v0.59.0 the map was handed her anyway: a hull
+      // at zero, which `hullTier` prices at zero speed, with no jury repair
+      // possible and no yard reachable. The hold used to be salvaged into that
+      // wreck, `cargoSurvivingSinking` computing a share for a hold on the
+      // bottom. `settleDefeat` shifts the flag to a consort, or lands him at a
+      // town, and the same share goes into whatever hull he actually has.
       w = addLogEntry(w, "battle.log_lost", {});
+      const beaten = settleDefeat(w, enemyFaction, enemyBehavior);
+      w = beaten.world;
+      this.defeatFate = beaten.fate;
     } else {
       w = addLogEntry(w, "battle.log_fled", {});
     }

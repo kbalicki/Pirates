@@ -29,6 +29,7 @@ import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
 import { CITIES } from "../../data/cities.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
+import { MIN_AFLOAT_HULL, mapDamageSpeedMultiplier } from "../DamageSystem.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
 
 // ===========================================================================
@@ -578,13 +579,26 @@ describe("writeBackForce", () => {
     expect(out.entities.player_ship.ship!.crew.current).toBe(SHIP_CLASSES.frigate.crewMax - 20);
   });
 
-  it("never drives a hull or a crew below zero", () => {
+  /**
+   * The crew may reach zero; the hull may not (v0.59.0).
+   *
+   * This used to assert a flat 0 on both. It was the wrong half of a right
+   * idea: a hull at exactly zero is `sunk`, `hullTier` prices that at zero
+   * speed, and the player was handed back a chart he could not move on, with
+   * `repairAtSea` refusing him and every yard out of reach. Being shot to
+   * pieces under a wall wrecks a ship; it does not put her under.
+   */
+  it("leaves a shot-out flagship afloat, if barely, and her crew at nothing", () => {
     const w = makeWorld();
     const before = attackForceFor(w);
     const after = { ...before, hullHp: 0, crew: 0 };
     const out = writeBackForce(w, before, after, 9999);
-    expect(out.entities.player_ship.ship!.hullHp).toBe(0);
+    expect(out.entities.player_ship.ship!.hullHp).toBe(MIN_AFLOAT_HULL);
     expect(out.entities.player_ship.ship!.crew.current).toBe(0);
+    // The point of the floor: she still answers the helm on the world map.
+    const ship = out.entities.player_ship.ship!;
+    expect(mapDamageSpeedMultiplier(ship.hullHp, ship.hullMax, 0, ship.sailsMax))
+      .toBeGreaterThan(0);
   });
 
   it("does not mutate the world it was handed", () => {

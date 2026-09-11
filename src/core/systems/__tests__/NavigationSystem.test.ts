@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from "vitest";
 import { updateNavigation, applyTurn, type TerrainQuery } from "../NavigationSystem.ts";
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
 import { setDepthField, AGROUND_SPEED_MUL, SHOAL_SPEED_MUL } from "../../services/SeaDepth.ts";
+import { mapDamageSpeedMultiplier, MIN_AFLOAT_HULL } from "../DamageSystem.ts";
 import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
 import {
   windSpeedModifier, windPolar, navigatedWindModifier,
@@ -403,6 +404,40 @@ describe("updateNavigation — sailing mechanics", () => {
   // or "sea", so both branches — and both of these tests — exercised code that
   // could not run. Depth is a comparison between the water and the hull now,
   // and it comes from `SeaDepth`.
+
+  /**
+   * The sandbank is not the seabed (v0.59.0).
+   *
+   * The branch above promises in its own comment that she "keeps steerage way
+   * — barely — so the player can back out of it". The line three below that
+   * comment took the promise away: at 0.12 hull a tick the bottom ground her
+   * to **zero**, `hullTier` prices a hull of zero at zero speed, and the
+   * steerage way was exactly nothing — with `repairAtSea` refusing her and
+   * every yard out of reach. A sloop crossed that line in 25 seconds.
+   *
+   * So this drives the real branch until it cannot grind any further, and asks
+   * the question that separates the two versions: not "is she still there" but
+   * **how fast can she leave**.
+   */
+  it("aground: the grinding stops one point short of stranding her", () => {
+    setDepthField([[1]], 4000);
+    let ship = makeShip({ pos: { x: 100, y: 100 }, heading: 0 });
+    const hullMax = ship.ship!.hullMax;
+    // Long enough to grind a sloop's whole hull away twice over.
+    for (let i = 0; i < 1200; i++) {
+      ship = updateNavigation({ ...ship, pos: { x: 100, y: 100 } }, TAILWIND, () => "sea", 1);
+    }
+    setDepthField(null);
+
+    expect(ship.aground).toBe(true);
+    expect(ship.ship!.hullHp).toBe(MIN_AFLOAT_HULL);
+    expect(mapDamageSpeedMultiplier(ship.ship!.hullHp, hullMax, ship.ship!.sailsHp, ship.ship!.sailsMax))
+      .toBeGreaterThan(0);
+
+    // And she can actually leave: put her back in deep water and she moves.
+    const off = updateNavigation({ ...ship, pos: { x: 100, y: 100 } }, TAILWIND, () => "sea", 1);
+    expect(ptDist(off.pos, { x: 100, y: 100 })).toBeGreaterThan(0);
+  });
 
   it("aground: she drags, and the hull grinds away", () => {
     // The fixture is a sloop: she draws 1.5 m, and one metre of water is not

@@ -48,6 +48,7 @@ import { rippleReputation, ACT_CITY, ACT_SERVICE } from "./DiplomacySystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { effectiveSkill } from "./AgingSystem.ts";
 import { woundedFrom } from "./SurgeonSystem.ts";
+import { MIN_AFLOAT_HULL } from "./DamageSystem.ts";
 import { consortCrew, consortCrewMax, fleetMorale, fleetTraining, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
 // ── Who owns a port right now ─────────────────────────────
@@ -494,7 +495,14 @@ export function writeBackForce(
   const flagHullShare = initial.hullMax > 0 ? entity.ship.hullMax / initial.hullMax : 1;
   const flagCrewShare = initial.crew > 0 ? entity.ship.crew.current / initial.crew : 1;
 
-  const hullHp = Math.max(0, Math.round((entity.ship.hullHp - hullLost * flagHullShare) * 10) / 10);
+  // Floored, not zeroed (v0.59.0). A flagship shot to pieces under a wall is
+  // still the hull the player sails away in — a true zero here put him on the
+  // chart with no thrust, no repair at sea and no way to a yard. `MIN_AFLOAT_HULL`
+  // is the same floor the sandbank now stops at, and for the same reason.
+  const hullHp = Math.max(
+    Math.min(MIN_AFLOAT_HULL, entity.ship.hullHp),
+    Math.round((entity.ship.hullHp - hullLost * flagHullShare) * 10) / 10,
+  );
   const crew = Math.max(0, Math.round(entity.ship.crew.current - crewLost * flagCrewShare));
   // Men carried back to the boats rather than left on the sand (v0.47.0). The
   // roll below is already right without them; the surgeon decides the rest.
@@ -509,7 +517,10 @@ export function writeBackForce(
     const left = Math.max(0, Math.round(consortCrew(consort) - crewLost * crewShare));
     return {
       ...consort,
-      hullHp: Math.max(0, Math.round((consort.hullHp - hullLost * hullShare) * 10) / 10),
+      hullHp: Math.max(
+        Math.min(MIN_AFLOAT_HULL, consort.hullHp),
+        Math.round((consort.hullHp - hullLost * hullShare) * 10) / 10,
+      ),
       crew: left,
       wounded: (consort.wounded ?? 0) + woundedFrom(consortCrew(consort) - left),
     };

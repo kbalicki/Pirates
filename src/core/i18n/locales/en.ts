@@ -252,7 +252,10 @@ export const EN: LocaleData = {
   "battle.log_won": "Victory at sea! +{{gold}} gold.",
   "battle.log_captured": "Ship captured and added to fleet! +{{gold}} gold.",
   "battle.log_prize_crew": "Prize crew: {{men}} of our own and {{pressed}} pressed — she wants {{need}}.",
-  "battle.log_lost": "Battle lost — your ship was crippled.",
+  "battle.log_lost": "Battle lost — your ship went down under you.",
+  "defeat.log_flag_shifted": "Flagship lost. The flag shifts to the {{ship}}; {{count}} men came across.",
+  "defeat.log_ransomed": "Taken prisoner and landed at {{port}}. {{gold}} gold gone in ransom and a yard's bill; {{count}} men still with you.",
+  "defeat.log_castaway": "The boats made {{port}}. {{gold}} gold gone; {{count}} men still with you.",
   "battle.log_fled": "Disengaged from battle.",
   "battle.continue_hint": "ENTER / SPACE / ESC / click to continue",
   "battle.timeout_countdown": "Disengaging in {{sec}}s — close to engage",
@@ -339,6 +342,9 @@ export const EN: LocaleData = {
   "battle.cannot_board": "Get closer to board (≤30 px).",
   "battle.enemy_too_strong": "Enemy too strong — soften first (hull or crew).",
   "battle.capture_note": "ship added to fleet (if slot available)",
+  "battle.defeat_flag_shifted": "Your flag shifts to the {{ship}}. {{count}} men came across in the boats.",
+  "battle.defeat_ransomed": "A king's ship lands you at {{port}}. Ransom and the yard take {{gold}} gold; you have a pinnace and {{count}} men.",
+  "battle.defeat_castaway": "The boats make {{port}}. {{gold}} gold gone on a pinnace out of the wreck; {{count}} men are left to you.",
   "battle.hold_full": "No room in the hold — left behind: {{cargo}}",
 
   // -- Blockade (v0.22.0) --

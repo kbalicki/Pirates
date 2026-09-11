@@ -131,6 +131,27 @@ export function damageSpeedMultiplier(
  */
 export const MAP_DISMASTED_CRAWL = 0.15;
 
+/**
+ * The least hull a ship the world map still carries may have (v0.59.0).
+ *
+ * The rig above has had this guarantee since v0.9.9 and the hull never did,
+ * which made the docstring above only half true. `hullTier` answers
+ * `speedMul: 0` at a hull of zero, so `mapDamageSpeedMultiplier` returned a
+ * true zero: no thrust in any wind at any sail, `repairAtSea` refusing by its
+ * first line, and the shipyard in a port the ship could no longer reach.
+ *
+ * Measured: the whole difference is **one hull point**. At 1 she is foundering
+ * and makes 0.45x; at 0 she makes nothing. And the sandbank closes that gap in
+ * 25 seconds for a sloop (0.12 hull a tick at 20 ticks a second), over 6.23%
+ * of the Caribbean, 61.6% of which has no current to drift her off.
+ *
+ * So the two grinders that are **not** a sinking — the bottom and a fort's
+ * guns — stop here. Being driven ashore or shot up under a wall wrecks a ship;
+ * it does not put her under. A hull that genuinely goes down does reach zero,
+ * and `DefeatSystem` makes sure that hull never comes back to the map.
+ */
+export const MIN_AFLOAT_HULL = 1;
+
 export function mapDamageSpeedMultiplier(
   hullHp: number, hullMax: number,
   sailsHp: number, sailsMax: number,

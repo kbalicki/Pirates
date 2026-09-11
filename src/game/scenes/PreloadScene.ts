@@ -249,6 +249,14 @@ export class PreloadScene extends Phaser.Scene {
     //                    ordinary game means waiting for two crowns to declare
     //                    war on the same third one, which is 28.8% of days but
     //                    never the first one
+    //   ?defeat=alone|consort — the last minute of a battle he is going to lose
+    //                    (v0.59.0). His galleon is down to a few points of
+    //                    hull against a Spanish man-of-war, so the sinking
+    //                    comes in seconds; `alone` lands him a prisoner in a
+    //                    Spanish town with a pinnace, `consort` shifts his
+    //                    flag to the frigate sailing with him. Reached by
+    //                    playing it means actually losing, which is the one
+    //                    state in the game nobody sets out to reach
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
     //                    (&stand=cover — standing instead in the port covering its runs)
     //                    the town is already a fortnight hungry and the hold is full
@@ -263,6 +271,12 @@ export class PreloadScene extends Phaser.Scene {
     }
     if (params.has("debug")) {
       localStorage.setItem("pc_debug", params.get("debug")!);
+    }
+    if (params.has("defeat")) {
+      const world = this.createDefeatWorld(params.get("defeat") ?? "alone");
+      this.registry.set("worldState", world);
+      this.scene.start("SeaBattleScene", { worldState: world, enemyId: "test_enemy", testMode: true });
+      return;
     }
     if (params.has("battle")) {
       const world = this.applyDebugCrewState(
@@ -1792,6 +1806,91 @@ export class PreloadScene extends Phaser.Scene {
             cargo: { sugar_cane: 20, rum: 15, tobacco: 5 },
           },
         },
+      },
+    };
+  }
+
+  /**
+   * The last minute of a battle the captain loses (v0.59.0).
+   *
+   * A defeat is the one state in the game that cannot be reached on purpose —
+   * a player who is losing breaks off — so it needs a door of its own, exactly
+   * like the famine and the alliance. His galleon is at a few points of hull
+   * against a Spanish frigate, which puts the sinking a broadside away, and
+   * the purse and the hold are full so the price of losing is visible.
+   *
+   * `consort` is the same fight with two more hulls in company, which is the
+   * other half of `settleDefeat`: the flag shifts instead of the captain being
+   * landed.
+   */
+  private createDefeatWorld(kind: string): import("../../core/model/WorldState.ts").WorldState {
+    type WS = import("../../core/model/WorldState.ts").WorldState;
+    type ES = import("../../core/model/EntityState.ts").EntityState;
+    type SCI = import("../../core/model/ids.ts").ShipClassId;
+    type FI = import("../../core/model/ids.ts").FactionId;
+    const world = createNewWorldState(Date.now()) as WS;
+    const playerEntity = world.entities[world.player.shipId as string];
+    if (!playerEntity) return world;
+
+    const galleon = SHIP_CLASSES["galleon"];
+    const frigate = SHIP_CLASSES["frigate"];
+    const sloop = SHIP_CLASSES["sloop"];
+
+    const enemy: ES = {
+      id: "test_enemy" as import("../../core/model/ids.ts").EntityId,
+      kind: "ship",
+      pos: { x: playerEntity.pos.x + 50, y: playerEntity.pos.y },
+      vel: { x: 0, y: 0 },
+      heading: Math.PI,
+      sailLevel: 0.5,
+      mode: "sailing",
+      depthOffset: 0,
+      ship: {
+        classId: "frigate" as SCI,
+        factionId: "spain" as FI,
+        hullHp: frigate.hullMax, hullMax: frigate.hullMax,
+        sailsHp: frigate.sailsMax, sailsMax: frigate.sailsMax,
+        cannons: frigate.cannons,
+        cargoCap: frigate.cargoCap,
+        cargo: {},
+        crew: { current: frigate.crewMax, max: frigate.crewMax, morale: 0.9 },
+      },
+      ai: { behavior: "navy", state: "chase", aggression: 1, awarenessRadius: 400 },
+    };
+
+    return {
+      ...world,
+      player: {
+        ...world.player,
+        gold: 4000,
+        fleet: kind === "consort"
+          ? [
+              { classId: "sloop", hullHp: sloop.hullMax, hullMax: sloop.hullMax,
+                sailsHp: sloop.sailsMax, sailsMax: sloop.sailsMax, cannons: sloop.cannons,
+                crew: 20, morale: 0.8 },
+              { classId: "frigate", hullHp: frigate.hullMax, hullMax: frigate.hullMax,
+                sailsHp: frigate.sailsMax, sailsMax: frigate.sailsMax, cannons: frigate.cannons,
+                crew: 60, morale: 0.8 },
+            ]
+          : [],
+      },
+      entities: {
+        ...world.entities,
+        [world.player.shipId as string]: {
+          ...playerEntity,
+          ship: {
+            ...playerEntity.ship!,
+            classId: "galleon" as SCI,
+            hullHp: 6, hullMax: galleon.hullMax,
+            sailsHp: galleon.sailsMax * 0.4, sailsMax: galleon.sailsMax,
+            cannons: galleon.cannons,
+            cargoCap: galleon.cargoCap,
+            cargo: { sugar_cane: 200, rum: 40 },
+            crew: { current: 80, max: galleon.crewMax, morale: 0.6 },
+            wounded: 12,
+          },
+        },
+        [enemy.id as string]: enemy,
       },
     };
   }

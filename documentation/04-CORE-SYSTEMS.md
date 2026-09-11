@@ -4816,3 +4816,107 @@ wody wewnątrz zasięgu, tym samym testem prześwitu co `findWaterApproach` dla 
 - **Wskazówki do skarbów i rodziny** — `TreasureSystem` sprzedaje mapy w tawernie za
   300–2000, a `FamilyQuestSystem` sam nazywa trzy miasta; darmowa wskazówka z wioski
   nie różniłaby się od tego dostatecznie, żeby zapłacić za kolejną pozycję w menu.
+
+---
+
+## Kapitan, który stracił statek (v0.59.0)
+
+`SeaBattleScene` wypisuje „PORAŻKA" odkąd istnieje bitwa morska, a potem oddawała
+mapie świata **ten sam kadłub, który przed chwilą poszedł na dno** — z `hullHp`
+równym zeru. Nic poza tym się nie działo: przegrana kosztowała ładunek i jedną
+linijkę w dzienniku.
+
+### To nie było darmowe, to była ślepa uliczka
+
+`hullTier` odpowiada `speedMul: 0` dla kadłuba w zerze, więc
+`mapDamageSpeedMultiplier` zwracał **dokładnie zero** — żadnego ciągu, przy każdym
+wietrze i każdym ożaglowaniu. `ShipRepairSystem.repairAtSea` odmawia kadłubowi
+w zerze **pierwszą linijką**, a stocznia stoi w porcie, do którego statek nie ma
+już jak dopłynąć. Zapis był skończony, a gra nigdy tego nie powiedziała.
+
+Wejścia do tego stanu są **trzy**, i trzecie jest najgorsze:
+
+| jak kadłub dochodzi do zera | jak łatwo |
+|---|---|
+| przegrana bitwa morska | każdy, kto strzeli do okrętu liniowego |
+| **wejście na mieliznę** | 6,23% Karaibów, 0,12 punktu kadłuba na tick |
+| działa fortu podczas ostrzału miasta | każde oblężenie pociągnięte za daleko |
+
+Mielizna jest okrutna, bo nie wymaga żadnej decyzji. Przy 20 tickach na sekundę
+dno ściera **2,4 punktu kadłuba na sekundę**: slup, który dotknął piachu
+i został sam, jest kamieniem po **25 sekundach**, galeon po 75. A z 333 komórek
+wody, które potrafią osadzić głęboki kadłub, **61,6% nie ma nad sobą żadnego
+prądu** — nie ma co go z niej znieść. Na dwóch trzecich wody, która potrafi go
+uwięzić, kadłub starty do zera **nie rusza się już nigdy**.
+
+I cała różnica między statkiem, który jeszcze dokuśtyka do portu, a zapisem,
+którego nie da się kontynuować, to **jeden punkt kadłuba**: przy 1 statek tonie
+i robi 0,45×, przy 0 nie robi nic.
+
+Najgorsze jest to, że komentarz nad gałęzią mielizny **sam obiecuje**, że tak nie
+będzie: *„She keeps steerage way — barely — so the player can back out of it.
+A true zero would strand a deep hull the first time she wandered inshore"*.
+Trzy linijki niżej stało `Math.max(0, hullHp − …)`, które tę obietnicę kasowało.
+Ta sama para — obietnica i jej zaprzeczenie w tej samej funkcji — co
+`worldEvents.length > 0` w v0.57.0.
+
+### Dwie reguły, żadna nie jest przypadkiem szczególnym
+
+**1. Nic, co mapa jeszcze niesie, nie stoi w zerze.** `MIN_AFLOAT_HULL = 1`
+(`DamageSystem`) zatrzymuje **oba ścierania, które nie są zatonięciem** — dno
+(`NavigationSystem`) i działa fortu (`SiegeSystem.writeBackForce`, jedyny
+księgowy dla oblężenia, odbicia i obrony miasta). Wejście na mieliznę **rozbija**
+statek, nie zatapia go. To dokładnie ta sama reguła, którą `MAP_DISMASTED_CRAWL`
+utrzymuje dla omasztowania od v0.9.9 — zastosowana wreszcie do drugiej połowy
+tego samego iloczynu.
+
+**2. Kadłub, który naprawdę poszedł na dno, przepada** — i `DefeatSystem` mówi,
+co kapitan ma zamiast niego. Po tej zmianie to jedyna droga do zera i **nigdy nie
+dociera do mapy**.
+
+### `DefeatSystem` — dwie odpowiedzi, a którą dostanie, zdecydował wcześniej
+
+`settleDefeat(world, victorFaction?, victorBehavior?)` woła się **raz**, ze sceny,
+która przegrała, **po** zapisaniu uszkodzeń — bo czyta końcową załogę flagowca,
+żeby policzyć, ilu zeszło do łodzi (`DEFEAT_SURVIVOR_SHARE = 0.5`; lazaret nie
+liczy się wcale, bo kto nie stoi, ten nie wsiada do łodzi).
+
+| ma konsortę | nie ma |
+|---|---|
+| **bandera przechodzi** na największy kadłub jeszcze na wodzie (tonaż, kadłub tylko rozstrzyga remis), ludzie z łodzi wchodzą na jej koje, eskadra płynie dalej o statek lżejsza | **zostaje wysadzony na ląd**: królewski okręt wiezie go do najbliższej kolonii **swojej** korony jako jeńca, każdy inny zostawia łodziom znalezienie plaży |
+| kiesa nietknięta — nikt nie wykupuje kapitana, który odpłynął | `RANSOM_SHARE = 0.5` kiesy, a z reszty stocznia bierze cenę **pinasy** |
+
+Niczego nie ma znikąd: ludzie to ocalali z jego własnej załogi, pinasa jest
+kupiona za jego własne złoto (a gdy złota nie starczy, resztę pokrywa wrak
+i kiesa schodzi do zera), a ładunek to ten udział, który `cargoSurvivingSinking`
+liczył **już wcześniej** — i wsypywał do ładowni leżącej na dnie.
+
+**Pinasa, nie slup.** Kariera zaczyna się slupem; dno drabiny jest o klasę niżej.
+
+**`nearestPort` czyta `portFaction`, nie `PortDef.factionId`** — okręt korony nie
+wysadza jeńca w mieście, które ta korona straciła. Reguła z sekcji 5 TODO, ta
+sama, którą v0.50.0 znalazło złamaną w spawnerze.
+
+**Nazwa, nie klucz.** `defeat.log_flag_shifted` dostaje `t("ship.<klasa>.name")`,
+bo `vars` idzie do zapisu i jest renderowane wszędzie, gdzie czyta się dziennik —
+pułapka z v0.37.0, ta sama, którą przegląd wyłapał w v0.58.0.
+
+**Encja zostaje pod tym samym id.** Wszystko, co wskazuje na statek gracza
+(questy, blokada, renderer), wskazuje na `player.shipId`; przegrana nie jest
+momentem na zmianę klucza.
+
+### Asercja, która rozróżnia obie wersje
+
+Nie „czy on dalej ma statek" — statek ma zawsze. Rozróżnia **jak szybko ten
+statek płynie**, w którym mieście stoi i ile zostało w kiesie. Test mielizny
+prowadzi **prawdziwą gałąź** `updateNavigation` przez 1200 ticków i pyta
+o `mapDamageSpeedMultiplier` po tym wszystkim. To trzecia z rzędu lekcja tego
+samego kształtu (v0.53.0, v0.57.0, v0.58.0): **pytanie „czy istnieje" prawie
+nigdy nie jest asercją regresji, pytanie „ile" prawie zawsze jest.**
+
+### Świat debugowy
+
+`?defeat=alone` i `?defeat=consort` — ostatnia minuta bitwy, którą kapitan
+przegra: galeon z sześcioma punktami kadłuba naprzeciw hiszpańskiej fregaty,
+z pełną kiesą i pełną ładownią. Przegrana to jedyny stan w tej grze, do którego
+**nikt nie zmierza celowo**, więc musi mieć własne drzwi — jak głód i sojusz.
