@@ -224,6 +224,36 @@ export type PortRuntimeState = {
    * release says "nobody went hungry", which is what it knows.
    */
   hunger?: number;
+  // ── What a new governor was willing to forget (v0.61.0) ───
+  /**
+   * The pardon written in this residence, if one was (`PardonSystem`).
+   *
+   * A town's opinion is the town's own, so it is stored on the town and not on
+   * the captain: a new governor at Cartagena forgiving him says nothing about
+   * Havana, and that is the whole shape of the mechanic.
+   *
+   * Optional and read through `pardonStands()`, so a save from before this
+   * release has been forgiven nothing — which is the truth about it, and why
+   * migrations stay at v12.
+   */
+  pardon?: PortPardon;
+};
+
+/**
+ * A pardon, stamped where and when it was given (v0.61.0).
+ *
+ * Two numbers rather than a flag, because a pardon covers what the captain had
+ * already done and nothing he does next. `rep` is his standing with the crown
+ * on the day it was written; if it ever falls below that again he has given the
+ * new governor fresh cause, and the paper is worth nothing at this counter.
+ */
+export type PortPardon = {
+  /** The crown whose flag flew over the residence that day. */
+  crown: string;
+  /** His standing with that crown when it was written. */
+  rep: number;
+  /** The day it was written. */
+  day: number;
 };
 
 export type GameEventEntry = {

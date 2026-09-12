@@ -5023,3 +5023,139 @@ się na `window is not defined`).
 
 `?lang=en|pl` — ustawiany w `BootScene`, **zanim padnie pierwsze słowo tekstu**,
 bo `initLang` woła się linijkę niżej i wszystko po nim czyta jego decyzję.
+
+
+---
+
+## Nowy gubernator nie zna twojego nazwiska (v0.61.0)
+
+`PardonSystem.ts` · `PortAccessSystem.ts` · `PortRuntimeState.pardon`
+
+### Obietnica
+
+Ekran pomocy, tabela zdarzeń świata, wiersz *Nowy gubernator*:
+
+```
++50 bogactwa, możliwy reset reputacji
+```
+
+Na ekranie od **v0.9.7.1 (2026-05-19)** — pięćdziesiąt jeden wydań. Zdarzenie
+jest prawdziwe: losuje się jak każde inne, nazywa miasto i koronę, idzie do
+dziennika. I robiło dokładnie jedną rzecz — dopisywało miastu pięćdziesiąt
+złotych. **Nic w całym kodzie nie dotykało reputacji, kiedy zmieniał się
+gubernator.** Ten sam kształt co `native_raid` w v0.58.0 i flota skarbowa
+w v0.46.0: skutek, który podręcznik opisuje, a którego nikt nie produkuje.
+
+**Metoda, która to znalazła, jest do powtórzenia.** Od v0.60.0 cały podręcznik
+to 129 kluczy jawnej prozy — czyli **maszynowo czytelna lista obietnic**. Przejście
+po niej wiersz po wierszu i skonfrontowanie z kodem kosztuje pół godziny.
+
+### Co to kosztowało gracza
+
+Standing poniżej `neutral` jest niemal **ulicą jednokierunkową**. Każda droga
+w górę jest zamknięta dokładnie tam, gdzie byłaby potrzebna:
+
+| droga w górę | brąma |
+|---|---|
+| list kaperski (i całe korsarstwo za nim) | `friendly`, czyli +20 |
+| zlecenie obrony | list kaperski albo `allied` |
+| córka gubernatora | +20 |
+| kantor frachtowy (płaci standingiem za dowieziony fracht) | **nic poniżej `neutral`** |
+| spichlerz miejski (v0.27.0) | **otwarty** — ale max **+8**, i tylko gdy to miasto głoduje, a kapitan wiezie 4 tony tego, czego mu brak |
+
+Kapitan na –80 u Hiszpanii potrzebuje **dziesięciu** idealnych kursów na cudzym
+głodzie. Obietnica z podręcznika nie opisywała ozdoby — opisywała **jedyne
+drzwi z powrotem**, i te drzwi nigdy nie zostały wycięte.
+
+### Dlaczego nie tak, jak podręcznik mówi dosłownie
+
+„Możliwy reset reputacji” czytane wprost znaczy: przy zmianie gubernatora
+losuj kasowanie standingu tej korony. Pomiar na **20 ziarnach × 50 lat**
+prawdziwej maszyny zdarzeń (365 000 dni, 132 700 zdarzeń):
+
+| | |
+|---|---|
+| `new_governor` | **7975** razy — **6,0%** wszystkich zdarzeń świata |
+| rocznie | **ok. 8** |
+| mediana odstępu — Hiszpania | **65 dni** (średnia 91) |
+| — Anglia | 147 dni (203) |
+| — Francja | 164 dni (238) |
+| — Holandia (3 miasta) | 360 dni (514) |
+| miast dotkniętych choć raz | **45 z 45** |
+
+Kasowanie całej korony co dwa miesiące to nie mechanika, to **wyłącznik
+reputacji**. Ale ta sama liczba mówi coś użytecznego: zdarzenie jest **do
+znalezienia** — gdzieś na Hiszpańskim Lądzie co dwa miesiące ktoś nowy obejmuje
+rezydencję.
+
+### Wydany kształt
+
+**Lokalne.** Ułaskawienie jest zapisane **na mieście** (`PortRuntimeState.pardon`,
+pole opcjonalne → migracje dalej **v12**, dwudzieste czwarte wydanie z rzędu).
+Gubernator Kartageny mówi w imieniu Kartageny. Reszta Hiszpanii dalej chce cię
+powiesić — i to jest cały kształt tej mechaniki.
+
+**Do wzięcia, nie do dostania.** Kapitan musi usłyszeć o nominacji, dopłynąć
+(mediana przeprawy między dwoma miastami dla slupa: **5,1 dnia**, p90 9,0, max
+13,8), przejść obok fortu — wrogiemu zostaje łódź — i zapłacić. Prezent, który
+przyszedłby sam, byłby niewidoczny.
+
+**Okno to samo zdarzenie.** `durationDays` było `[1, 1]`, czyli miasto miało
+nominację z tablicy ogłoszeń zdjętą, zanim jakikolwiek statek zdążył ponieść
+wieść dalej. Teraz `GOVERNOR_NEW_DAYS = 30`. Razem z tym **skasowany został
+dzienny wiersz bogactwa** dla tego zdarzenia: `+MAX_WEALTH_DELTA` przez
+trzydzieści dni zrobiłoby z nowego gubernatora trzydziestokrotność tego, czym
+miał być. Pięćdziesiąt złotych dalej wchodzi — raz, jako jednorazowy skutek,
+którym zawsze było (kod sam to pisał w komentarzu: *„a one-shot dressed as a
+daily”*).
+
+**Cena.** Droga powrotna do neutralnego × 25 zł za punkt × (1 + sława/100).
+Kapitan na –80 przy sławie 60 płaci **3200 zł** — między fluytą (1500)
+a fregatą (3000). Gubernator nie wycenia kartoteki, tylko **własne ryzyko**,
+a jak głośno Karaiby wymawiają to nazwisko, gra już liczy.
+
+**Do `neutral` i ani stopnia wyżej.** Obcy — bo tym jest człowiek, którego
+kartotekę odłożono. Wszystko powyżej trzeba zarobić, a drogi do zarabiania
+otwierają się dokładnie w chwili, w której przestaje się być zawracanym od
+drzwi (kantor, ludzie w tawernie, magazyn, rachunek w stoczni).
+
+**Nowy powód kasuje papier.** Stemplowane są dwie liczby: korona i **standing
+z dnia podpisu**. Odczyt to jedno porównanie — dopóki standing nie spadł
+poniżej tamtego, papier stoi. Bez żadnego ticku i bez kasowania pola: funkcja
+jest czysta, a naprawienie świeżej szkody przywraca ułaskawienie, co jest tym
+samym zdaniem przeczytanym w drugą stronę. Korona jest w stemplu, bo miasta
+zmieniają właściciela: papier podpisany przez hiszpańskiego gubernatora
+Kartageny jest nic niewart nad angielską ladą w tym samym budynku.
+
+### Trzy rzeczy znalezione po drodze
+
+1. **Powitanie gubernatora czytało surową reputację**, więc człowiek, który
+   przed chwilą odłożył twoją kartę, wołał *„Straże! Wyprowadzić tego łotra!”*.
+   Powitanie jest miastem mówiącym, więc czyta teraz `portAccess` — to samo, co
+   czytają lady. `levelName`/`reputation` **zostają surowe**, bo to one są
+   odpowiedzią na pytanie „jak stoję u korony”. A człowiek, który jeszcze nie
+   przeczytał papierów poprzednika, ma własną linijkę (`governor.dialogue_newcomer`).
+2. **Nagłówek portu jest rysowany raz w `create()`** — dokładnie ta pułapka, którą
+   kiesa zaliczyła w v0.27.0. Miasto, które właśnie wybaczyło, dalej pisało
+   „WROGI”, dopóki kapitan nie wyszedł z portu. Linia standingu i notka pod nią
+   są teraz trzymane i odświeżane, a wiersz na notkę jest **rezerwowany**, gdy
+   ułaskawienie stoi **albo leży na stole** — inaczej kupione w środku widoku
+   ląduje na pasku kiesy.
+3. **Kolumny podręcznika nigdy nie były mierzone względem panelu.** v0.60.0
+   wyważyło je (połowa wysokości na kolumnę), ale nikt nie zapytał, czy wyższa
+   się mieści. Jeden dłuższy akapit — ten o reputacji — wypychał ostatnią
+   linijkę zakładki „Świat” przez dolną krawędź, a po polsku ocierała się o nią
+   **już w v0.60.0**. Dwie poprawki: cięcie wybiera **lepszą stronę** miejsca
+   połowy (stare zawsze dokładało blok przekraczający połowę do **lewej**, więc
+   lewa systematycznie była wyższa), a odstęp między tematami ściska się
+   10 → 8 → 6 → 4 → 2 px, dopóki wyższa kolumna nie zmieści się w panelu.
+   **Ściskanie odstępu to zapas, nie miejsce** — nowy temat trzeba zobaczyć na
+   ekranie w obu językach, bo polski jest dłuższy i pęka pierwszy.
+
+### Świat debugowy
+
+`?pardon=cartagena` — kapitan na –80 u Hiszpanii, sława 60, 6000 zł w kiesie,
+stoi w mieście, którego gubernator objął rezydencję wczoraj. Ze zwykłej gry
+nie da się tu trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu
+rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu
+żaglowania.

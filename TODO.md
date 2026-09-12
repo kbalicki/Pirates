@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-11 · **Wersja:** v0.60.0.0 · **Branch:** `main`
-**Kod:** 231 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **1981 przechodzi, 0 failuje, 0 `todo`** w 57 plikach
+**Stan na:** 2026-09-12 · **Wersja:** v0.61.0.0 · **Branch:** `main`
+**Kod:** 233 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2006 przechodzi, 0 failuje, 0 `todo`** w 58 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.60.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1981/1981 zielone; **podręcznik mówi językiem gracza**. `HelpScene` — ekran, który pod H tłumaczy całą grę — stawiał na ekranie **147 napisów** i wołał `t()` **zero razy**: cały podręcznik był twardo wpisanym polskim, w buildzie, którego **domyślnym językiem jest angielski** (`I18n.ts` startuje na `"en"` i nigdy nie pytał przeglądarki). Jego bliźniak `BattleHelpScene` jest napisany odwrotnie — każda linijka to klucz `battle.help_*` — więc **bitwa miała podręcznik w dwóch językach, a świat nie**. Przeżyło to czternaście wydań przy zielonych testach locale, bo testy locale sprawdzają, czy **obie tabele zgadzają się ze sobą**, a dwie zgodne tabele nie mówią nic o ekranie, który nie pyta żadnej z nich. I przeżyło, bo autor czyta po polsku: jedyny ekran, który **nie był** przetłumaczony, wyglądał dla niego poprawnie. Zmierzone w całej warstwie gry: **102 twardo wpisane polskie napisy, 92 z nich w tym jednym pliku**; doszło **129 kluczy w każdym języku**. Przy okazji **gra pyta wreszcie, kto ją czyta** — zapisany wybór dalej wygrywa, pierwsze uruchomienie decyduje przeglądarka, angielski zostaje na końcu. Skasowane **dziewiętnaście nieosiągalnych zapasów** `t("klucz") ?? "polski"`: `t()` **nigdy** nie zwraca `null`, tylko sam klucz, więc prawa strona każdego z tych `??` była martwa i trzymała drugą, nieutrzymywaną kopię napisu (szesnaście w jednej scenie). Tak samo `SailLevelDef.namePl`/`.nameEn` — dwa pola bez czytelnika, a polska kopia **już się rozjechała** z `pl.ts`. I rzecz, którą widać dopiero jak się patrzy: **podręcznik nigdy nie mieścił się na ekranie** — każdy akapit przesuwał kursor o płaskie 22 piksele niezależnie od tego, czy zawinął się w jedną linijkę czy w trzy, więc nagłówki drukowały się **na własnej ostatniej linijce**, a zakładka „Świat" uciekała pod dolną krawędź panelu; teraz mierzy każdy akapit i **równoważy tematy na dwie kolumny**. Nowy test czyta **źródło każdej sceny** i wywala się na polskiej literze w literale — jedyna kontrola w projekcie, która widzi napis nigdy niedocierający do warstwy tłumaczeń. Lista kandydatów na v0.61.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.61.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2006/2006 zielone; **nowy gubernator nie zna twojego nazwiska**. Ekran pomocy mówi to od **v0.9.7.1** — w tabeli zdarzeń świata, przy pozycji *Nowy gubernator*: „+50 bogactwa, możliwy reset reputacji” — i przez **pięćdziesiąt jeden wydań** to zdarzenie robiło dokładnie jedną rzecz: dopisywało miastu pięćdziesiąt złotych. Nic w całym kodzie nie dotykało reputacji, kiedy zmieniał się gubernator. To nie była ozdoba: standing poniżej `neutral` jest **ulicą jednokierunkową** — list kaperski wymaga `friendly`, zlecenie obrony wymaga listu kaperskiego, córka gubernatora wymaga `friendly`, a kantor frachtowy, który płaci standingiem, **nie ma pracy poniżej neutralnego w ogóle**. Zostaje jedne drzwi: miejski spichlerz, warty **+8**, i tylko wtedy, gdy to miasto przymiera głodem, a kapitan akurat wiezie cztery tony tego, czego mu brakuje. Kapitan na –80 u Hiszpanii potrzebuje **dziesięciu** takich kursów na cudzym głodzie. **Dosłowne czytanie tej obietnicy zabił pomiar**: na 20 ziarnach × 50 lat prawdziwej maszyny zdarzeń (365 000 dni, 132 700 zdarzeń) nowy gubernator jest mianowany **7975 razy** — 6% wszystkich zdarzeń, około **ośmiu rocznie**, a mediana odstępu między dwiema nominacjami u Hiszpanii to **65 dni**. Automatyczny reset całej korony co dwa miesiące to nie mechanika, tylko wyłącznik reputacji. Za to ta częstotliwość znaczy, że zdarzenie **da się znaleźć**. Więc ułaskawienie jest **lokalne** i trzeba po nie przyjść: gubernator Kartageny mówi w imieniu Kartageny — odłoży twoją kartę u swojej korony **przy swojej ladzie**, za odpowiednią sumę, a reszta Hiszpanii dalej chce cię powiesić. Podnosi do `neutral` i **ani stopnia wyżej** — do obcego, bo tym właśnie jest człowiek, którego kartę odłożono. Obejmuje to, co zrobiłeś **przedtem**, i nic, co zrobisz potem: daj nowy powód, a karta wraca na miejsce. Samo zdarzenie **przestało być chwilą**: trwało jeden dzień, więc miasto miało je z tablicy ogłoszeń zdjęte, zanim jakikolwiek statek zdążył ponieść wieść dalej — teraz trzydzieści dni, przy medianie przeprawy między dwoma miastami wynoszącej pięć dni. Dzienny wiersz bogactwa poszedł razem z tą zmianą: pięćdziesiąt złotych zawsze było jednorazowe i kod sam to pisał w komentarzu. Cena to droga powrotna do neutralnego po 25 zł za punkt, podwojona przy pełnej sławie — gubernator nie wycenia twojej kartoteki, tylko **własne ryzyko**. Przy okazji **podręcznik znowu się mieści**: kolumny tematyczne z v0.60.0 były wyważone, ale **nigdy nie mierzone względem panelu**, więc jeden dłuższy akapit wypychał ostatnią linijkę zakładki „Świat” przez dolną krawędź — po polsku ocierała się o nią już wcześniej. I podręcznik wreszcie wymienia **N**, klawisz rysujący to, co dzieje się na czarcie — nieopisany od v0.30.0, a to właśnie nim kapitan znajduje miasto z nowym gubernatorem na czas. Lista kandydatów na v0.62.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.60.0.0):** v0.60.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1981/1981 zielone; **podręcznik mówi językiem gracza**. `HelpScene` — ekran, który pod H tłumaczy całą grę — stawiał na ekranie **147 napisów** i wołał `t()` **zero razy**: cały podręcznik był twardo wpisanym polskim, w buildzie, którego **domyślnym językiem jest angielski** (`I18n.ts` startuje na `"en"` i nigdy nie pytał przeglądarki). Jego bliźniak `BattleHelpScene` jest napisany odwrotnie — każda linijka to klucz `battle.help_*` — więc **bitwa miała podręcznik w dwóch językach, a świat nie**. Przeżyło to czternaście wydań przy zielonych testach locale, bo testy locale sprawdzają, czy **obie tabele zgadzają się ze sobą**, a dwie zgodne tabele nie mówią nic o ekranie, który nie pyta żadnej z nich. I przeżyło, bo autor czyta po polsku: jedyny ekran, który **nie był** przetłumaczony, wyglądał dla niego poprawnie. Zmierzone w całej warstwie gry: **102 twardo wpisane polskie napisy, 92 z nich w tym jednym pliku**; doszło **129 kluczy w każdym języku**. Przy okazji **gra pyta wreszcie, kto ją czyta** — zapisany wybór dalej wygrywa, pierwsze uruchomienie decyduje przeglądarka, angielski zostaje na końcu. Skasowane **dziewiętnaście nieosiągalnych zapasów** `t("klucz") ?? "polski"`: `t()` **nigdy** nie zwraca `null`, tylko sam klucz, więc prawa strona każdego z tych `??` była martwa i trzymała drugą, nieutrzymywaną kopię napisu (szesnaście w jednej scenie). Tak samo `SailLevelDef.namePl`/`.nameEn` — dwa pola bez czytelnika, a polska kopia **już się rozjechała** z `pl.ts`. I rzecz, którą widać dopiero jak się patrzy: **podręcznik nigdy nie mieścił się na ekranie** — każdy akapit przesuwał kursor o płaskie 22 piksele niezależnie od tego, czy zawinął się w jedną linijkę czy w trzy, więc nagłówki drukowały się **na własnej ostatniej linijce**, a zakładka „Świat" uciekała pod dolną krawędź panelu; teraz mierzy każdy akapit i **równoważy tematy na dwie kolumny**. Nowy test czyta **źródło każdej sceny** i wywala się na polskiej literze w literale — jedyna kontrola w projekcie, która widzi napis nigdy niedocierający do warstwy tłumaczeń. Lista kandydatów na v0.61.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.59.0.0):** v0.59.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1967/1967 zielone; **kapitan, który stracił statek**. Ekran bitwy wypisuje „PORAŻKA" odkąd istnieje bitwa morska, a potem oddawał mapie **ten sam kadłub, który przed chwilą poszedł na dno** — z `hullHp` równym zeru. To nie było darmowe, to była **ślepa uliczka**: `hullTier` wycenia kadłub w zerze na `speedMul: 0`, więc nie było żadnego ciągu przy żadnym wietrze i żadnym ożaglowaniu, `repairAtSea` odmawia kadłubowi w zerze **pierwszą linijką**, a stocznia stoi w porcie, do którego nie ma już jak dopłynąć. Zapis był skończony, a gra nigdy tego nie powiedziała. **Wejścia są trzy**: przegrana bitwa, działa fortu podczas ostrzału miasta i — najgorsze, bo nie wymaga żadnej decyzji — **wejście na mieliznę**, które ściera **2,4 punktu kadłuba na sekundę** na **6,23%** Karaibów. Slup, który dotknął piachu i został sam, jest kamieniem po **25 sekundach**, galeon po 75; a z 333 komórek wody, które potrafią osadzić głęboki kadłub, **61,6% nie ma nad sobą żadnego prądu**, więc nie ma go co znieść. Komentarz nad tą gałęzią sam obiecuje, że statek *„keeps steerage way — barely — so the player can back out of it"*; linijka trzy niżej tę obietnicę kasowała — ta sama para co `worldEvents.length > 0` w v0.57.0. **Cała różnica między statkiem, który dokuśtyka do portu, a zapisem nie do kontynuowania, to jeden punkt kadłuba** (przy 1 tonie i robi 0,45×, przy 0 nie robi nic), więc `MIN_AFLOAT_HULL = 1` zatrzymuje oba ścierania, które **nie są zatonięciem**. A kadłub, który naprawdę poszedł na dno, przepada: `DefeatSystem` **przenosi banderę** na największą konsortę jeszcze na wodzie (pierwszy raz, kiedy pływanie w zespole jest coś warte w momencie, w którym to naprawdę boli), albo **wysadza kapitana na ląd** — królewski okręt wiezie go do najbliższej kolonii **swojej** korony jako jeńca, każdy inny zostawia łodziom znalezienie plaży; połowa kiesy na okup, a z reszty stocznia bierze cenę **pinasy**, o klasę niżej niż slup, którym zaczyna się kariera. Niczego nie ma znikąd: ludzie to ocalali z jego załogi, pinasa jest kupiona za jego złoto, a ładunek to udział, który `cargoSurvivingSinking` liczył już wcześniej i wsypywał do ładowni **leżącej na dnie**. Po drodze znalezione i naprawione: **cały baner wyniku bitwy był rysowany w przestrzeni świata** (pozycja ekranowa przy `scrollFactor` 1), więc bitwa zakończona gdziekolwiek poza środkiem areny drukowała swój wynik **poza ekranem** — pryz, wzięty ładunek, wszystko. Wyszło, bo nowa linijka też była niewidoczna. Lista kandydatów na v0.60.0 jest niżej.
 
@@ -2215,7 +2217,52 @@ Trzy wejścia (bitwa, mielizna, działa fortu), jedna poprawka klasy:
 cofnięciem poprawki (4 na czerwono dla podłogi, 13 dla `settleDefeat`).
 Przy okazji: **cały baner wyniku bitwy był rysowany w przestrzeni świata**.
 
-### v0.61.0 — co dalej
+### ~~v0.60.0 — Podręcznik mówi językiem gracza~~ ✅ (v0.60.0.0)
+
+`HelpScene` stawiał **147 napisów** i wołał `t()` **zero razy** w buildzie,
+którego domyślnym językiem jest angielski. Szczegóły w zdaniu startowym wyżej
+i w `documentation/SESSION-2026-09-11D.md`.
+
+### ~~v0.61.0 — Nowy gubernator nie zna twojego nazwiska~~ ✅ (v0.61.0.0)
+
+Lista kandydatów v0.61.0 znowu nie miała nic dla agenta (sprite'y, muzyka,
+playtesty), sweep za martwymi eksportami w rdzeniu: **zero**. Więc to samo
+pytanie co w v0.58.0–v0.60.0 — **co ta gra obiecuje i czego nie dotrzymuje** —
+tym razem zadane **samemu podręcznikowi**, który od v0.60.0 jest 129 kluczami
+jawnej prozy: **list obietnic, który da się sprawdzić wiersz po wierszu**.
+Pierwszy wiersz, który nie miał pokrycia, to *„Nowy gubernator: +50 bogactwa,
+możliwy reset reputacji”* — na ekranie od **v0.9.7.1 (2026-05-19)**, czyli
+pięćdziesiąt jeden wydań.
+
+| co zmierzone | liczba |
+|---|---|
+| `new_governor` na 20 ziarnach × 50 lat (365 000 dni) | **7975** — 6,0% wszystkich zdarzeń |
+| nominacji rocznie | **ok. 8** |
+| mediana odstępu między nominacjami u Hiszpanii | **65 dni** (średnia 91) |
+| to samo u Holandii (3 miasta) | **360 dni** (średnia 514) |
+| miasta dotknięte przynajmniej raz | **45 z 45** |
+| mediana przeprawy między dwoma miastami (slup) | **5,1 dnia** (p90 9,0, max 13,8) |
+| jedyna droga w górę ze standingu poniżej `neutral` | spichlerz, **+8**, i tylko w głodującym mieście |
+
+Wydane: `PardonSystem` — ułaskawienie **lokalne** (pole `PortRuntimeState.pardon`,
+opcjonalne, migracje dalej **v12**), kupowane u gubernatora w ciągu
+`GOVERNOR_NEW_DAYS = 30` od nominacji, za drogę powrotną do neutralnego po 25 zł
+za punkt × (1 + sława/100). Podnosi **do `neutral` i nie wyżej**, obejmuje stan
+kartoteki z dnia podpisu i **przestaje działać**, gdy standing spadnie poniżej
+tamtego. Zdarzenie przestało być jednodniowe, a jego dzienny wiersz bogactwa
+został skasowany (pięćdziesiąt złotych zawsze było jednorazowe — kod sam to
+pisał w komentarzu). Testy 1981 → 2006, sprawdzone cofnięciem poprawki (4 na
+czerwono za samą amnestię, 1 za okno zdarzenia).
+
+Przy okazji naprawione: **powitanie gubernatora czytało surową reputację**, więc
+człowiek, który przed chwilą odłożył twoją kartę, wołał straż; **nagłówek portu
+rysowany raz w `create()`** (ta sama pułapka co kiesa w v0.27.0) dalej pisał
+„WROGI” w mieście, które właśnie wybaczyło; i **kolumny podręcznika nigdy nie
+były mierzone względem panelu** — wyważone owszem, ale bez pytania, czy wyższa
+kolumna się mieści, więc jeden dłuższy akapit wypychał ostatnią linijkę przez
+dolną krawędź (po polsku ocierała się o nią już w v0.60.0).
+
+### v0.62.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2286,6 +2333,20 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
   okazji: gra nie pytała przeglądarki o język, 19 nieosiągalnych zapasów
   `t(...) ?? "polski"`, martwe `namePl`/`nameEn` w `SailLevelDef` i podręcznik,
   który **nigdy nie mieścił się na ekranie** (płaskie 22 px na akapit)
+- **Podręcznik jest listą obietnic, którą da się sprawdzić** (metoda z v0.61.0).
+  Od v0.60.0 cały ekran pomocy to 129 kluczy jawnej prozy, czyli spis tego, co
+  gra **mówi**, że robi. Przejście po nim wiersz po wierszu i skonfrontowanie
+  z kodem jest tanie i dało od razu `new_governor`. **Przegląd nie był
+  wyczerpujący** — sprawdzony został ten jeden wiersz. Konkretne liczby, które
+  podręcznik podaje i których **nikt nie porównał z kodem**: `help.econ_war_b1`
+  („podwójna liczba statków, udział okrętów 45% → 70%”), `help.econ_prices_b1`
+  („do ×3 / do ×0,4”), `help.world_blockade_b` („po dwóch dniach”),
+  `help.econ_city_b2` („strzałki pokazują odchylenie od baseline’u”).
+- **Zakładka „Świat” podręcznika jest na granicy budżetu** (v0.61.0). Kolumny
+  same ściskają odstęp między tematami (10 → 8 → 6 → 4 → 2 px), dopóki wyższa
+  się nie zmieści, ale to jest **zapas, nie miejsce**: nowy temat albo dłuższy
+  akapit trzeba **zobaczyć na ekranie w obu językach**, bo polski jest dłuższy
+  i to on pęka pierwszy.
 - **`PortMarkerRenderer.snapToCoast` nie rusza pozycji, która jest już na lądzie**
   (`PortMarkerRenderer.ts:194`, wyeksportowany w v0.58.0). To jest poprawne dla
   45 miast, ale znaczy, że **osada wpisana głęboko w ląd zostaje głęboko w lądzie**

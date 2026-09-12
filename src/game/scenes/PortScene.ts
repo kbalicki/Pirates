@@ -33,7 +33,6 @@ import {
 } from "../../core/systems/PortInteractionSystem.ts";
 import { canAddToFleet, fleetSize } from "../../core/systems/FleetSystem.ts";
 import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
-import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { portAccess } from "../../core/systems/PortAccessSystem.ts";
 import { playerBuyPrice, playerSellPrice } from "../../core/systems/EconomySystem.ts";
 import {
@@ -57,7 +56,9 @@ import {
   EFFECT_VISIT_DAUGHTER,
   EFFECT_ACCEPT_DEFENSE,
   EFFECT_SELL_GRAIN,
+  EFFECT_ACCEPT_PARDON,
 } from "../../core/data/dialogues.ts";
+import { pardonOffer, grantPardon, type PardonOffer } from "../../core/systems/PardonSystem.ts";
 import { offerFor, acceptDefenseContract, type DefenseContract } from "../../core/systems/DefenseContractSystem.ts";
 import {
   daughterFor,
@@ -179,12 +180,22 @@ export class PortScene extends Phaser.Scene {
 
   /** What the governor would buy out of the hold, held across the conversation. */
   private pendingGrainOffer: GrainOffer | null = null;
+  /** Held for the length of the conversation, like the other two. */
+  private pendingPardonOffer: PardonOffer | null = null;
 
   /** The sale that has just gone through, so the reply can describe it. */
   private lastGrainSale: GrainOffer | null = null;
 
   /** The header's purse, kept so a sale inside a conversation can update it. */
   private goldText: Phaser.GameObjects.Text | null = null;
+  /**
+   * The standing line and the note under it, held for the same reason as the
+   * purse: a pardon is bought without leaving the view, and a header drawn once
+   * in `create` went on calling him hostile in a town that had just forgiven
+   * him (v0.61.0).
+   */
+  private standingText: Phaser.GameObjects.Text | null = null;
+  private pardonNote: Phaser.GameObjects.Text | null = null;
 
   /** The informer's relief order as drawn this pass, for the same reason. */
   private reliefOnOffer: ReliefCommission | null = null;
@@ -298,7 +309,7 @@ export class PortScene extends Phaser.Scene {
       txt(12, { color: factionHex }),
     ).setOrigin(0.5, 0);
     y += 16;
-    this.add.text(
+    this.standingText = this.add.text(
       this.cx, y,
       t("port.standing", { level: t("rep." + access.level), value: access.reputation }),
       txt(11, { color: repHex, bold: access.level === "hostile" }),
@@ -319,6 +330,19 @@ export class PortScene extends Phaser.Scene {
         txt(10, { color: "#227722" }),
       ).setOrigin(0.5, 0);
       y += 15;
+    }
+
+    // And why it is friendlier than the number for the other reason (v0.61.0):
+    // the man in the residence put his record aside. Same argument as the line
+    // above — the counter is behaving better than the standing beside it says,
+    // and an unexplained lift reads as a bug.
+    // The row is reserved whenever a pardon is in play — standing already, or
+    // on the table this afternoon — so that buying one inside the view has
+    // somewhere to print its reason instead of landing on the purse.
+    if (access.viaPardon || pardonOffer(this.worldState, portKey)) {
+      this.pardonNote = this.add.text(this.cx, y, "", txt(10, { color: "#227722" })).setOrigin(0.5, 0);
+      y += 15;
+      this.refreshStanding();
     }
 
     // Player info bar
@@ -618,7 +642,11 @@ export class PortScene extends Phaser.Scene {
   private renderGovernor(): void {
     const factionKey = portFaction(this.worldState, this.currentPortId as string) as string;
     const rep = this.worldState.player.reputation[factionKey] ?? 0;
-    const level = getReputationLevel(rep);
+    // The greeting is the town speaking, so it reads what the town reads
+    // (v0.61.0) — a governor who pardoned him this morning cannot call the
+    // guards this afternoon. The crown's own number is still `rep`, and that is
+    // what he quotes when asked how the captain stands with the ministry.
+    const level = portAccess(this.worldState, this.currentPortId as string).level;
     const rankIndex = this.worldState.player.ranks?.[factionKey] ?? 0;
 
     // Held for the length of the conversation: the tree only carries what the
@@ -630,6 +658,11 @@ export class PortScene extends Phaser.Scene {
     // *says*, and the effect that lands the cargo needs the offer itself.
     const grain = grainOffer(this.worldState, this.currentPortId as string);
     this.pendingGrainOffer = grain;
+
+    // And the same for the pardon: the tree carries the price, the effect that
+    // writes the paper needs the offer (v0.61.0).
+    const pardon = pardonOffer(this.worldState, this.currentPortId as string);
+    this.pendingPardonOffer = pardon;
 
     // The governor repeats what the town is repeating (v0.28.0).
     const rumor = tavernRumor(this.worldState, this.currentPortId as string);
@@ -665,6 +698,7 @@ export class PortScene extends Phaser.Scene {
         gold: grain.gold,
         reputation: grain.reputation,
       } : undefined,
+      pardonOffer: pardon ? { points: pardon.points, gold: pardon.gold } : undefined,
       defenseOffer: offer && {
         portName: t("port." + offer.portKey + ".name"),
         enemyName: t("faction." + offer.claimant + ".name"),
@@ -683,6 +717,34 @@ export class PortScene extends Phaser.Scene {
     }
 
     this.drawGovernorNode();
+  }
+
+  /**
+   * Repaint the one line in the header that a conversation can change.
+   *
+   * `create` draws the header once, which was right while nothing inside a view
+   * could move it. The granary broke that for the purse in v0.27.0 and a pardon
+   * breaks it for the standing: the counters start behaving differently the
+   * moment the paper is written, and a header still saying "hostile" would be
+   * reporting yesterday.
+   */
+  private refreshStanding(): void {
+    if (!this.currentPortId) return;
+    const portKey = this.currentPortId as string;
+    const access = portAccess(this.worldState, portKey);
+    const factionKey = access.faction;
+    const factionColor = FACTIONS[factionKey]?.color ?? 0xaaaaaa;
+    const repHex = access.level === "hostile" ? "#aa2222"
+      : access.level === "unfriendly" ? "#996633"
+      : access.level === "allied" ? "#227722"
+      : `#${factionColor.toString(16).padStart(6, "0")}`;
+    this.standingText?.setText(
+      t("port.standing", { level: t("rep." + access.level), value: access.reputation }),
+    );
+    this.standingText?.setColor(repHex);
+    this.pardonNote?.setText(access.viaPardon
+      ? t("port.standing_via_pardon", { crown: t("faction." + factionKey + ".name") })
+      : "");
   }
 
   private drawGovernorNode(): void {
@@ -754,6 +816,10 @@ export class PortScene extends Phaser.Scene {
           this.lastGrainSale = this.pendingGrainOffer;
           return sellGrain(world, this.pendingGrainOffer).world;
         }
+        if (id === EFFECT_ACCEPT_PARDON) {
+          if (!this.pendingPardonOffer) return world;
+          return grantPardon(world, this.pendingPardonOffer).world;
+        }
         if (id === EFFECT_ACCEPT_DEFENSE) {
           return this.pendingDefenseOffer
             ? acceptDefenseContract(world, { ...this.pendingDefenseOffer, acceptedDay: world.time.day })
@@ -767,6 +833,7 @@ export class PortScene extends Phaser.Scene {
     this.worldState = step.world;
     this.registry.set("worldState", this.worldState);
     this.goldText?.setText(`${t("hud.gold")}: ${this.worldState.player.gold}`);
+    this.refreshStanding();
     this.governorDialogue = { tree: dialogue.tree, runtime: step.runtime };
 
     // Retiring ends the game rather than the conversation.

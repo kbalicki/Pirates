@@ -19,7 +19,16 @@ import type { ReputationLevel } from "../systems/DialogueSystem.ts";
 export type GovernorTreeContext = {
   /** Faction key of the port, e.g. "england". */
   factionKey: string;
-  /** Current standing, decides the greeting line. */
+  /**
+   * How this **town** reads him, which is what decides the greeting line.
+   *
+   * Not the same thing as `reputation` / `levelName` below, and since v0.61.0
+   * they can disagree: those two are the crown's own number, which is what the
+   * governor quotes when he is asked how the captain stands with the ministry,
+   * while this is `portAccess` — the same reading the counters use, pardon and
+   * allied lift included. A man who has just written off the captain's record
+   * must not open with "Guards!".
+   */
   level: ReputationLevel;
   playerName: string;
   /** Already-localised faction name, for lines that quote it. */
@@ -89,6 +98,22 @@ export type GovernorTreeContext = {
     gold: number;
   };
   /**
+   * What the new governor would write off, when one has just taken the
+   * residence and the captain's standing with this crown is below `neutral`
+   * (v0.61.0).
+   *
+   * Absent means the reply is not on the screen at all — the same discipline as
+   * the granary and the defence commission, and for the same reason: an option
+   * that greyed out would advertise a mechanic the captain cannot reach. Here
+   * it would be worse than that, because the thing being advertised is a door
+   * that is open for thirty days and then is not.
+   */
+  pardonOffer?: {
+    /** Points of standing being put aside. */
+    points: number;
+    gold: number;
+  };
+  /**
    * The crown whose commission he is already carrying (v0.37.0).
    *
    * A letter is exclusive now, so the offer has to say what accepting costs
@@ -132,6 +157,15 @@ export const EFFECT_ACCEPT_DEFENSE = "accept_defense_contract";
  * `DialogueEffect` cannot move cargo and the port scene is what holds the offer.
  */
 export const EFFECT_SELL_GRAIN = "sell_grain_to_granary";
+/**
+ * Effect id the caller must handle: the new governor writes off the record.
+ *
+ * Over before the captain leaves the room, like the granary sale, and a custom
+ * effect for the same reason: `DialogueEffect` is a closed vocabulary of
+ * deterministic changes on the *player*, and what this writes is a fact about
+ * the **town** (`PortRuntimeState.pardon`).
+ */
+export const EFFECT_ACCEPT_PARDON = "accept_governor_pardon";
 
 export function governorTree(ctx: GovernorTreeContext): DialogueTree {
   const letterFlag = `letter_of_marque_${ctx.factionKey}`;
@@ -142,7 +176,9 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
     nodes: {
       greeting: {
         id: "greeting",
-        textKey: `governor.dialogue_${ctx.level}`,
+        // The man who has not yet read his predecessor's papers has his own
+        // line: a greeting off the record is exactly what he does not have.
+        textKey: ctx.pardonOffer ? "governor.dialogue_newcomer" : `governor.dialogue_${ctx.level}`,
         vars: { name: ctx.playerName },
         options: [
           {
@@ -209,6 +245,17 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
             // both questions the port scene can answer and a condition cannot.
             when: ctx.grainOffer ? undefined : { type: "flag", key: "__never__" },
             next: "grain_offer",
+          },
+          {
+            id: "ask_pardon",
+            textKey: "governor.opt_ask_pardon",
+            vars: { gold: ctx.pardonOffer?.gold ?? 0 },
+            // Built by the caller or not at all, like the granary and the
+            // commission: whether a governor is new here, and whether there is
+            // anything of the captain's for him to forget, are both questions
+            // the port scene can answer and a condition cannot.
+            when: ctx.pardonOffer ? undefined : { type: "flag", key: "__never__" },
+            next: "pardon_offer",
           },
           { id: "ask_rumor", textKey: "governor.opt_ask_news", next: "rumor" },
           {
@@ -304,6 +351,32 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
           qty: ctx.grainSold?.qty ?? ctx.grainOffer?.qty ?? 0,
           gold: ctx.grainSold?.gold ?? ctx.grainOffer?.gold ?? 0,
         },
+        options: [{ id: "back", textKey: "governor.opt_back", next: "greeting" }],
+      },
+
+      pardon_offer: {
+        id: "pardon_offer",
+        textKey: "governor.pardon_offer",
+        vars: {
+          faction: ctx.factionName,
+          points: ctx.pardonOffer?.points ?? 0,
+          gold: ctx.pardonOffer?.gold ?? 0,
+        },
+        options: [
+          {
+            id: "pardon_accept",
+            textKey: "governor.opt_pardon_accept",
+            vars: { gold: ctx.pardonOffer?.gold ?? 0 },
+            effects: [{ type: "custom", id: EFFECT_ACCEPT_PARDON }],
+            next: "pardon_granted",
+          },
+          { id: "pardon_decline", textKey: "governor.opt_decline", next: "greeting" },
+        ],
+      },
+
+      pardon_granted: {
+        id: "pardon_granted",
+        textKey: "governor.pardon_granted",
         options: [{ id: "back", textKey: "governor.opt_back", next: "greeting" }],
       },
 

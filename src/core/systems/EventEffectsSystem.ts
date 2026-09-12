@@ -134,11 +134,14 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
         wealthDelta: +0.5,
       };
     case "new_governor":
-      // One day long: this is a one-shot dressed as a daily, and at a day's
-      // length it is worth about five points however it is written.
-      return { ...NEUTRAL,
-        wealthDelta: +MAX_WEALTH_DELTA,
-      };
+      // Nothing daily (v0.61.0). It used to pay `+MAX_WEALTH_DELTA` a day with
+      // the note "this is a one-shot dressed as a daily", which was true and
+      // harmless while the event lasted one day. The appointment is a thirty-day
+      // window now — the captain has to be able to sail into it — so the daily
+      // row had to go or a new governor would have been worth thirty times what
+      // he was ever meant to be. The fifty gold is still paid, once, as the
+      // one-shot it always was.
+      return NEUTRAL;
     case "war_start":
       return { ...NEUTRAL,
         productionMul: 0.85,

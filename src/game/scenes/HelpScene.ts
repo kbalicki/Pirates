@@ -46,6 +46,10 @@ const CONTROLS: Array<[string, string]> = [
   ["H", "help.ctrl_help"],
   ["T", "help.ctrl_lanes"],
   ["C", "help.ctrl_currents"],
+  // The chart marks have been toggled with N since v0.30.0 and the manual has
+  // never said so. It matters more since v0.61.0: a new governor's appointment
+  // is a mark on the chart, and it is how a captain finds the town in time.
+  ["N", "help.ctrl_marks"],
   ["G", "help.ctrl_grid"],
   ["V", "help.ctrl_vision"],
   ["Scroll", "help.ctrl_zoom"],
@@ -119,12 +123,15 @@ export class HelpScene extends Phaser.Scene {
     const contentH = ph - 100;
     const left = cx - pw / 2 + 24;
     const right = cx + pw / 2 - 24;
+    // The last line a column may occupy: the panel's foot, less the room the
+    // close hint sits in. The topic lists are measured against it (v0.61.0).
+    const contentBottom = cy + ph / 2 - 26;
 
     switch (this.currentSection) {
       case "controls": this.renderControls(left, contentY, right); break;
       case "ships": this.renderShips(left, contentY, right, contentH); break;
-      case "sailing": this.renderSailing(left, contentY, right); break;
-      case "world": this.renderWorld(left, contentY, right); break;
+      case "sailing": this.renderSailing(left, contentY, right, contentBottom); break;
+      case "world": this.renderWorld(left, contentY, right, contentBottom); break;
       case "economy": this.renderEconomy(left, contentY, right); break;
     }
 
@@ -215,7 +222,9 @@ export class HelpScene extends Phaser.Scene {
    * column; if both fill, the overflow is visible rather than silently clipped,
    * and that is the signal to split the tab rather than to shrink the type.
    */
-  private renderTopics(left: number, right: number, top: number, stems: readonly string[]): void {
+  private renderTopics(
+    left: number, right: number, top: number, bottom: number, stems: readonly string[],
+  ): void {
     const colGap = 24;
     const colW = (right - left - colGap) / 2;
 
@@ -230,16 +239,49 @@ export class HelpScene extends Phaser.Scene {
         { ...txt(13, { bold: true, color: "#ffdd88" }) }).setDepth(5);
       const body = this.add.text(left + 12, 0, t(`help.${stem}_b`),
         { ...txt(11, { color: "#aaaaaa" }), wordWrap: { width: colW - 12 } }).setDepth(5);
-      return { head, body, h: 18 + body.height + 10 };
+      return { head, body, h: 0 };
     });
 
-    const total = blocks.reduce((n, b) => n + b.h, 0);
-    let running = 0;
-    let split = blocks.length;
-    for (let i = 0; i < blocks.length; i++) {
-      running += blocks[i].h;
-      if (running >= total / 2) { split = i + 1; break; }
+    /**
+     * Where to cut, measured rather than guessed.
+     *
+     * The first version stopped at the block that crossed the halfway mark and
+     * put it in the **left** column, which systematically overloads the left:
+     * one long paragraph added to a topic there pushed the last block off the
+     * foot of the panel while the right column still had eighty pixels of air.
+     * So try both sides of the crossing and keep the shorter tall column.
+     */
+    const cut = (heights: number[]): { split: number; tallest: number } => {
+      const total = heights.reduce((n, h) => n + h, 0);
+      let running = 0;
+      for (let i = 0; i < heights.length; i++) {
+        running += heights[i];
+        if (running >= total / 2) {
+          const withIt = Math.max(running, total - running);
+          const withoutIt = Math.max(running - heights[i], total - running + heights[i]);
+          return withoutIt < withIt
+            ? { split: i, tallest: withoutIt }
+            : { split: i + 1, tallest: withIt };
+        }
+      }
+      return { split: heights.length, tallest: total };
+    };
+
+    // And how much air between topics. Ten pixels is what it should be; the
+    // World tab in Polish is over its budget at ten and used to run its last
+    // line through the panel border, because a manual that never fitted was
+    // v0.60.0's whole complaint and the fix only balanced, it never *measured*
+    // against the panel. Tighten the gap rather than drop a paragraph.
+    const avail = bottom - (top + 10);
+    let gap = 10;
+    let plan = cut(blocks.map(b => 18 + b.body.height + gap));
+    for (const candidate of [8, 6, 4, 2]) {
+      if (plan.tallest <= avail) break;
+      gap = candidate;
+      plan = cut(blocks.map(b => 18 + b.body.height + gap));
     }
+    blocks.forEach(b => { b.h = 18 + b.body.height + gap; });
+    const split = plan.split;
 
     let y = top + 10;
     blocks.forEach((b, i) => {
@@ -251,12 +293,12 @@ export class HelpScene extends Phaser.Scene {
     });
   }
 
-  private renderSailing(left: number, y: number, right: number): void {
-    this.renderTopics(left, right, y, HELP_SAILING_TOPICS.map(s => `sail_${s}`));
+  private renderSailing(left: number, y: number, right: number, bottom: number): void {
+    this.renderTopics(left, right, y, bottom, HELP_SAILING_TOPICS.map(s => `sail_${s}`));
   }
 
-  private renderWorld(left: number, y: number, right: number): void {
-    this.renderTopics(left, right, y, HELP_WORLD_TOPICS.map(s => `world_${s}`));
+  private renderWorld(left: number, y: number, right: number, bottom: number): void {
+    this.renderTopics(left, right, y, bottom, HELP_WORLD_TOPICS.map(s => `world_${s}`));
   }
 
   private renderEconomy(left: number, y: number, right: number): void {

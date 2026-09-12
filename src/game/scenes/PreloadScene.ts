@@ -39,6 +39,7 @@ import { expeditionDeparture } from "../../core/systems/ExpeditionFleetSystem.ts
 import { launchCampaign } from "../../core/systems/CrownCampaignSystem.ts";
 import { stampAlliances } from "../../core/systems/DiplomacySystem.ts";
 import { marqueFlag } from "../../core/systems/PrivateerSystem.ts";
+import { GOVERNOR_NEW_DAYS } from "../../core/systems/PardonSystem.ts";
 
 export class PreloadScene extends Phaser.Scene {
   constructor() {
@@ -490,6 +491,13 @@ export class PreloadScene extends Phaser.Scene {
       this.scene.start("PortScene", { worldState: world, portId: portKey });
       return;
     }
+    if (params.has("pardon")) {
+      const portKey = params.get("pardon") || "cartagena";
+      const world = this.createPardonWorld(portKey);
+      this.registry.set("worldState", world);
+      this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
     if (params.has("famine")) {
       const portKey = params.get("famine") || "tortuga";
       const world = this.createFamineWorld(portKey, params.get("stand") === "cover");
@@ -927,6 +935,46 @@ export class PreloadScene extends Phaser.Scene {
         ...world.player,
         location: { type: "port", portId: def.id, pos: { ...def.pos } },
       },
+    };
+  }
+
+  /**
+   * A captain this crown wants hanged, standing in a town whose governor took
+   * office yesterday — `?pardon=` (v0.61.0).
+   *
+   * Nobody reaches this state on purpose either: it needs a career's worth of
+   * burnt shipping *and* one of the eight-a-year appointments to land on a town
+   * of that same crown while he is near enough to sail to it.
+   */
+  private createPardonWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const def = CITIES[portKey];
+    if (!def) return base;
+    const crown = def.factionId as unknown as string;
+    const day = base.time.day;
+
+    return {
+      ...base,
+      player: {
+        ...base.player,
+        // Deep enough that the fort will not open the gate: the only way in is
+        // the boat, which is the point — a pardon is worth having.
+        reputation: { ...base.player.reputation, [crown]: -80 },
+        notoriety: 60,
+        gold: 6000,
+        location: { type: "port", portId: def.id, pos: { ...def.pos } },
+      },
+      worldEvents: [...base.worldEvents, {
+        id: `new_governor_${day}_${portKey}`,
+        type: "new_governor" as const,
+        startDay: day,
+        endDay: day + GOVERNOR_NEW_DAYS,
+        ports: [portKey],
+        factions: [crown],
+        severity: 1 as const,
+        headline: "news.new_governor",
+        vars: { mainPort: portKey, port: def.name, faction: FACTIONS[crown]?.name ?? crown, duration: GOVERNOR_NEW_DAYS },
+      }],
     };
   }
 

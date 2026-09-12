@@ -15,6 +15,7 @@ import { MUSTER_PORTS } from "./TreasureFleetSystem.ts";
 import { PORTS } from "../data/ports.ts";
 import { HISTORICAL_WARS } from "../data/wars.ts";
 import { updateDiplomacy, TREATY_DAYS } from "./DiplomacySystem.ts";
+import { GOVERNOR_NEW_DAYS } from "./PardonSystem.ts";
 
 // ── Random Event Templates ───────────────────────────────
 
@@ -100,7 +101,13 @@ const RANDOM_EVENTS: RandomEventTemplate[] = [
     type: "new_governor",
     headline: "news.new_governor",
     weight: 1,
-    durationDays: [1, 1], // instant event
+    // Not an instant any more (v0.61.0). It was `[1, 1]`, which meant the one
+    // town it named had it off its noticeboard before any ship could carry the
+    // news anywhere — and since v0.61.0 the appointment is a window the captain
+    // can sail into (`PardonSystem.GOVERNOR_NEW_DAYS`), so the event has to be
+    // live for as long as the new man is new. The daily wealth row went with
+    // it: the fifty gold is a one-shot and was always applied as one.
+    durationDays: [GOVERNOR_NEW_DAYS, GOVERNOR_NEW_DAYS],
     severity: 1,
     affectsPorts: 1,
   },

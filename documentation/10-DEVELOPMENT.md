@@ -307,6 +307,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?ship=galleon` | Start w tym kadłubie (v0.48.0). Jedyny sposób, żeby poczuć sondowania: startowy slup zanurza 1,5 m i przechodzi wszędzie |
 | `?crew=16` | Tylu ludzi na flagowcu (v0.49.0). Każdy kadłub w grze jest obsadzony na 2-3× swojego minimum, więc braku rąk nie da się dosięgnąć ze zwykłego startu. `?skip&ship=galleon&crew=16` to przypadek podręcznikowy |
 | `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |
+| `?pardon=cartagena` | Kapitan, którego ta korona chce powiesić (–80 u Hiszpanii, sława 60), stoi w mieście, którego gubernator objął rezydencję wczoraj (v0.61.0). Ze zwykłej gry nie da się tam trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu żaglowania |
 | `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie |
 
 ## Deploy produkcyjny

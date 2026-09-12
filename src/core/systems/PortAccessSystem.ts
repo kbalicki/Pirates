@@ -56,12 +56,24 @@
  * own account, and his patron's diplomacy is no answer to that. What the paper
  * buys him is that he stops being treated as a **stranger** — which is exactly
  * what a friend of a friend is not.
+ *
+ * ## A new governor's pardon (v0.61.0)
+ *
+ * The one thing that *does* settle a town's own grievance is the town itself.
+ * A man who has just taken the residence has no quarrel with the captain, and
+ * for a consideration he will write his predecessor's off — see `PardonSystem`
+ * for why this is local, why it is asked for rather than given, and what the
+ * measurement said about doing it the way the manual described. Here it is one
+ * line: the pardon changes what this counter believes his record to be, so it
+ * is read **before** the tier is worked out and everything downstream follows
+ * from it, the allied lift included.
  */
 
 import type { WorldState } from "../model/WorldState.ts";
 import { getReputationLevel, type ReputationLevel } from "./ReputationSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { alliesOfPatrons } from "./PrivateerSystem.ts";
+import { pardonStands, PARDON_FLOOR } from "./PardonSystem.ts";
 
 export type PortAccess = {
   /** The crown whose flag flies here today. */
@@ -106,9 +118,17 @@ export type PortAccess = {
    * number beside it — a discount with no reason on it reads as a bug.
    */
   viaAlly: boolean;
+  /**
+   * True when this town is reading him at `neutral` because a new governor put
+   * his record aside, and not because the number beside it says so (v0.61.0).
+   *
+   * Carried for the same reason as `viaAlly`: the header has to be able to say
+   * *why* the counter is friendlier than the standing next to it.
+   */
+  viaPardon: boolean;
 };
 
-type Tier = Omit<PortAccess, "faction" | "reputation" | "level" | "viaAlly">;
+type Tier = Omit<PortAccess, "faction" | "reputation" | "level" | "viaAlly" | "viaPardon">;
 
 /** The table's own order, low to high. `nextTier` walks it. */
 const LADDER: ReputationLevel[] = ["hostile", "unfriendly", "neutral", "friendly", "allied"];
@@ -135,13 +155,21 @@ const TIERS: Record<ReputationLevel, Tier> = {
 export function portAccess(world: WorldState, portKey: string): PortAccess {
   const faction = portFaction(world, portKey) as string;
   const reputation = world.player.reputation[faction] ?? 0;
-  const own = getReputationLevel(reputation);
+  // A pardon is the town's own grievance being put aside by the man who now
+  // holds the residence, so it is read before anything the ministries do: it
+  // changes what this counter thinks his record *is* (v0.61.0).
+  const pardoned = pardonStands(world.ports[portKey]?.pardon, faction, reputation);
+  const own = getReputationLevel(pardoned ? Math.max(reputation, PARDON_FLOOR) : reputation);
   // Never out of `hostile` or `unfriendly`: see the module header. The town's
   // own grievance is the town's own, and no ministry settles it.
+  //
+  // A pardoned captain does clear that guard, and on purpose: he is not being
+  // let off by his patron's diplomacy, he is `neutral` here on his own paper,
+  // and the friend of a friend is a lift on top of what a town already thinks.
   const lifted = own !== "hostile" && own !== "unfriendly"
     && alliesOfPatrons(world).includes(faction);
   const level = lifted ? nextTier(own) : own;
-  return { faction, reputation, level, viaAlly: lifted, ...TIERS[level] };
+  return { faction, reputation, level, viaAlly: lifted, viaPardon: pardoned, ...TIERS[level] };
 }
 
 /** What the counter asks for one unit of a good. */
