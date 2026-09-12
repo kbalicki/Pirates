@@ -6,7 +6,7 @@ import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
-import { pickNeighbours } from "../../core/systems/WorldEventSystem.ts";
+import { pickNeighbours, getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import {
   platePos,
   PLATE_MUSTER_SHARE,
@@ -489,6 +489,12 @@ export class PreloadScene extends Phaser.Scene {
       const world = this.createPatronAllyWorld(portKey);
       this.registry.set("worldState", world);
       this.scene.start("PortScene", { worldState: world, portId: portKey });
+      return;
+    }
+    if (params.has("hail")) {
+      const world = this.createHailWorld(params.get("hail") || "havana");
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
       return;
     }
     if (params.has("pardon")) {
@@ -1940,6 +1946,79 @@ export class PreloadScene extends Phaser.Scene {
         },
         [enemy.id as string]: enemy,
       },
+    };
+  }
+
+  /**
+   * A trader within hailing distance, carrying a town's noticeboard — `?hail=`
+   * (v0.62.0).
+   *
+   * Not reachable on demand otherwise: the carrier has to be friendly, has to
+   * still be holding news the captain has not heard, and has to be inside
+   * `HAIL_RANGE` at the moment the check runs. She is put just inside it and
+   * left there, so the toast fires on the first pass of the news step and the
+   * encounter screen is one keypress away with the rest of her board still on it.
+   */
+  private createHailWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const world = createNewWorldState(Date.now());
+    const playerEntity = world.entities[world.player.shipId as string];
+    const def = CITIES[portKey];
+    if (!playerEntity || !def) return world;
+
+    // Left where a new captain starts, which is open water clear of any port:
+    // putting the pair on the town's own anchorage opened `PortApproachScene`
+    // over the top of the whole thing before the news step had run once.
+    const water = playerEntity.pos;
+
+    // Her board starts as the named town's, and is topped up from other towns
+    // until there is something left over for the encounter screen. A fresh
+    // world often gives one town a single live event, and a one-item board
+    // cannot show the thing this world exists to show: one item on the hail,
+    // the rest for closing with her.
+    const seen = new Set<string>();
+    const news: import("../../core/model/EntityState.ts").NewsItem[] = [];
+    for (const key of [portKey, ...Object.keys(CITIES)]) {
+      for (const item of getPortNews(world, key)) {
+        if (seen.has(item.eventId)) continue;
+        seen.add(item.eventId);
+        news.push(item);
+      }
+      if (news.length >= 3) break;
+    }
+    const brig = SHIP_CLASSES["brigantine"];
+    const trader: import("../../core/model/EntityState.ts").EntityState = {
+      id: "hail_trader" as import("../../core/model/ids.ts").EntityId,
+      kind: "ship",
+      pos: { x: water.x + 24, y: water.y },
+      vel: { x: 0, y: 0 },
+      heading: Math.PI,
+      sailLevel: 0.4,
+      mode: "sailing",
+      depthOffset: 0,
+      ship: {
+        classId: "brigantine" as import("../../core/model/ids.ts").ShipClassId,
+        factionId: def.factionId,
+        hullHp: brig.hullMax, hullMax: brig.hullMax,
+        sailsHp: brig.sailsMax, sailsMax: brig.sailsMax,
+        cannons: brig.cannons,
+        cargoCap: brig.cargoCap,
+        cargo: {},
+        crew: { current: 30, max: brig.crewMax, morale: 0.7 },
+      },
+      ai: {
+        behavior: "trader",
+        state: "travel",
+        aggression: 0.2,
+        awarenessRadius: 200,
+        news,
+      },
+    };
+
+    return {
+      ...world,
+      // Nothing known yet: the point is to watch it arrive.
+      knownEventIds: [],
+      entities: { ...world.entities, [trader.id as string]: trader },
     };
   }
 

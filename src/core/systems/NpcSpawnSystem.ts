@@ -216,7 +216,11 @@ function loadHold(
  * Pirates faction produces pirates. 10% chance of pirate_hunter from European factions.
  *
  * When `atWar` is true (faction is involved in an active war), navy frequency
- * jumps from ~45% to ~70% at the expense of traders.
+ * jumps from 45% to 70% at the expense of traders. Those are the figures for an
+ * ordinary port, where `roverShare` is 0: the pirate-hunter slice is taken
+ * *before* the trader cutoff rather than added to it, so peace splits 10 / 45 /
+ * 45 and war splits 10 / 20 / 70. An outpost shifts all of it (v0.62.0: checked
+ * against the manual, which quotes the same pair and is right).
  */
 /**
  * Share of a harbour's traffic that is a rover fitting out quietly (v0.50.0).

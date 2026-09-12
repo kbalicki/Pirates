@@ -5159,3 +5159,123 @@ stoi w mieście, którego gubernator objął rezydencję wczoraj. Ze zwykłej gr
 nie da się tu trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu
 rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu
 żaglowania.
+
+
+---
+
+## Co mówi mijający statek, a po co trzeba do niego podejść (v0.62.0)
+
+`NpcNewsSystem.ts` · `AiData.hailed` · `ShipEncounterScene` · `WorldRenderer.applyEvents`
+
+### Warstwa, o której to jest
+
+v0.28.0–v0.30.0 zbudowały obieg informacji: **zdarzenia → tablice ogłoszeń
+portów → nośniki → gracz**. Nośnikiem jest statek: kupiec rodzi się z portu
+wyjścia, niosąc tablicę tego miasta (`NpcSpawnSystem`), i znika w porcie
+docelowym. Trzeci krok miał **dwa** kanały i pierwszy chodził ten zły.
+
+### Znalezisko
+
+Wyszło z przemiatania unii `WorldEvent` za wariantami bez odbiorcy:
+
+| wariant | produkowany | odbierany |
+|---|---|---|
+| `Toast` | 24× | 1 |
+| `Sound` | 8× | **0** |
+| `SpawnFx` | **0** | 1 |
+| `Encounter` / `PortEntered` / `BattleStarted` / `Trade` | 1–2× | **0** |
+| `npc_news` | 1× | **0** |
+
+`SpawnFx` jest dokładnie odwrotnością: puste `case` bez ani jednego producenta.
+`Sound` — osiem żądań (`cannon_fire` ×5, `cannon_hit`, `port_enter`) i zero
+odbiorców — **nie jest zadaniem programistycznym**: w `public/assets/audio`
+leżą cztery pliki i **żadnego dźwięku działa**, więc podpięcie odbiorcy nie
+zagrałoby niczego. `Encounter`/`PortEntered`/`BattleStarted`/`Trade` to martwe
+duplikaty rzeczy robionych przez `transitions` albo wprost w scenie.
+
+Został `npc_news` — i to on okazał się wierzchołkiem całego kanału.
+
+**Kanał cichy.** `checkNpcNewsExchange` chodził na **30** jednostkach i zabierał
+**trzy** pozycje z tablicy. Zdarzenie `npc_news`, które przy tym produkował,
+jest zadeklarowane w `Events.ts`, wypychane przez `WorldEngine` i **nie ma
+żadnego `case`** — ani w `WorldRenderer.applyEvents`, ani nigdzie. Pozycje
+wchodziły do dziennika i do `knownEventIds`, więc na czarcie pojawiały się
+pinezki zdarzeń, kursy wypraw koronnych i droga huraganu — **bez ani jednego
+słowa o tym, skąd się wzięły**.
+
+**Kanał wybrany.** `ShipEncounterScene`, na `ENCOUNTER_RANGE = 18`, jest
+napisany **poprawnie**: rejestrował wszystko, co pokazywał. I **nigdy nie miał
+czego zarejestrować**, bo trzydzieści jest dalej niż osiemnaście.
+
+### Pomiar
+
+| co zmierzone | liczba |
+|---|---|
+| pozycji na tablicy ogłoszeń (8 ziaren × 10 lat, co siódmy dzień) | **2,36** średnio, sufit `NEWS_ON_A_BOARD = 5` |
+| zdarzeń żywych w świecie naraz | średnio **15,8**, mediana 16, max 26 |
+| udział tych zdarzeń pokryty przez **jedną** tablicę | **15%** |
+| przez dwie / trzy tablice | 22% / **26%** |
+
+Sufit tablicy to pięć, ale `getPortNews` trzyma tylko to, co dotyczy tego
+miasta albo jego korony — dlatego średnia jest 2,36, i dlatego **trzy pozycje
+były całą tablicą**. Odpowiedź, którą gracz wybierał, nie mogła mu powiedzieć
+niczego. Nigdy.
+
+Wieści są przy tym **rzadkie** — jedna tablica to 15% żywego świata — więc
+warto je **dzielić**, a nie rozdawać.
+
+### Wydany podział
+
+- **Zawołanie przez wodę** (`HAIL_RANGE = 30`, `HAIL_ITEMS = 1`) daje **jedną**
+  pozycję — tę z **czoła** jej tablicy. Tablice są sortowane po zasięgu od
+  v0.57.0, więc czoło to rzecz najbardziej dotycząca jej własnego miasta:
+  dokładnie to, co się woła przez sto metrów wody.
+- **I mówi o tym.** `case "npc_news"` → toast `toast.hailed`. Toasty **układają
+  się w stos** — wszystkie rysowały się na `y = 80`, więc dwa zawołania w tym
+  samym ticku drukowały się jedno na drugim.
+- **Podejście kupuje resztę.** `takeNpcNews` — w rdzeniu, nie w scenie, bo oba
+  kanały muszą zgadzać się co do tego, co znaczy „już znane".
+- **`AiData.hailed`.** Bez tego reguła jednej pozycji **nie jest warta nic**:
+  kontrola chodzi raz na sekundę, więc kapitan płynący spokojnie obok zebrałby
+  pozycję drugą, trzecią i całą tablicę. Nagłówek modułu **obiecywał** tę
+  własność (*„Same NPC won't share the same news twice"*) i nie miała jej —
+  odsiewał to wyłącznie `knownEventIds`, a `updatedEntities` było przypisane raz
+  i nigdy niezmieniane. Pole opcjonalne → migracje dalej **v12**.
+- **Jej odpowiedź czyta się uczciwie.** Etykieta pytała `news.length > 0`, co
+  jest prawdą o **każdym** kupcu na morzu; teraz pyta o `freshNews`, więc
+  „nic, czego byś nie słyszał" jest prawdziwym stanem.
+
+### Podręcznik: koniec przeglądu z v0.61.0
+
+Cztery liczby, które TODO wymieniało jako niesprawdzone:
+
+| twierdzenie | wynik |
+|---|---|
+| cena do ×3 / do ×0,4 | **prawda** (`RATIO_MAX 3.0`, `RATIO_MIN 0.4`) |
+| blokada bierze po dwóch dniach | **prawda** (`BLOCKADE_ONSET_DAYS = 2`) |
+| strzałki pokazują odchylenie od baseline’u | **prawda** (`trendArrow` w `CityInfoScene`) |
+| udział okrętów 45% → 70% | **prawda** — patrz niżej |
+
+Ostatnia jest warta zapisania, bo **najpierw policzyłem ją błędnie** i byłem
+o krok od wpisania do podręcznika nieprawdy. `pickBehavior` bierze wycinek
+łowców piratów (10%) **przed** progiem kupca, a nie dodaje go do niego:
+
+```
+roll < roverShare            → korsarz     (0% w zwykłym porcie)
+roll < roverShare + 0.10     → łowca piratów (10%)
+roll < roverShare + 0.55/0.30 → kupiec      (45% / 20%)
+reszta                       → okręt       (45% / 70%)
+```
+
+Poprawiona została jedna linijka podręcznika: zmiana żagli przy **szczątkowej
+załodze** nie trwa trzy razy dłużej. Żaden próg nigdy nie był wart trzech —
+`manningTier.handlingMul` to 1,6 przy niedoborze, **2,4** przy szczątkowej
+i 3,5 przy załodze nie do obsługi.
+
+### Świat debugowy
+
+`?hail=<port>` — przyjazny kupiec 24 jednostki od gracza, na otwartej wodzie
+(nie na kotwicowisku: postawiony na nim otwierał `PortApproachScene` ponad
+całą resztą, zanim krok wieści wykonał się raz), z tablicą nazwanego miasta
+dopełnioną z innych do trzech pozycji — bo tablica jednopozycyjna nie pokazuje
+podziału, który ten świat ma pokazać.

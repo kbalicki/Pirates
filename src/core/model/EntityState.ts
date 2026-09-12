@@ -49,6 +49,18 @@ export type AiData = {
   /** News carried by this NPC (max 5). Picked up at ports. */
   news?: NewsItem[];
   /**
+   * True once she has called across to the player (v0.62.0).
+   *
+   * A hail is worth one item and happens once; without this the check, which
+   * runs once a second, handed a captain sailing quietly alongside her whole
+   * board an item at a time — and the one-item rule was worth nothing.
+   * She is never un-hailed: she vanishes at her destination.
+   *
+   * Optional, so a save from before this release has nobody hailed, which is
+   * the truth about it.
+   */
+  hailed?: boolean;
+  /**
    * The invasion this hull belongs to (v0.17.0).
    *
    * A crown's expedition is a `WorldEventState` crossing the map over one to

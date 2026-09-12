@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-12 · **Wersja:** v0.61.0.0 · **Branch:** `main`
-**Kod:** 233 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2006 przechodzi, 0 failuje, 0 `todo`** w 58 plikach
+**Stan na:** 2026-09-12 · **Wersja:** v0.62.0.0 · **Branch:** `main`
+**Kod:** 234 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2021 przechodzi, 0 failuje, 0 `todo`** w 59 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -14,7 +14,9 @@ się nie powiedzie, i o to chodzi.
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
 
-> **Start sesji w jednym zdaniu:** v0.61.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2006/2006 zielone; **nowy gubernator nie zna twojego nazwiska**. Ekran pomocy mówi to od **v0.9.7.1** — w tabeli zdarzeń świata, przy pozycji *Nowy gubernator*: „+50 bogactwa, możliwy reset reputacji” — i przez **pięćdziesiąt jeden wydań** to zdarzenie robiło dokładnie jedną rzecz: dopisywało miastu pięćdziesiąt złotych. Nic w całym kodzie nie dotykało reputacji, kiedy zmieniał się gubernator. To nie była ozdoba: standing poniżej `neutral` jest **ulicą jednokierunkową** — list kaperski wymaga `friendly`, zlecenie obrony wymaga listu kaperskiego, córka gubernatora wymaga `friendly`, a kantor frachtowy, który płaci standingiem, **nie ma pracy poniżej neutralnego w ogóle**. Zostaje jedne drzwi: miejski spichlerz, warty **+8**, i tylko wtedy, gdy to miasto przymiera głodem, a kapitan akurat wiezie cztery tony tego, czego mu brakuje. Kapitan na –80 u Hiszpanii potrzebuje **dziesięciu** takich kursów na cudzym głodzie. **Dosłowne czytanie tej obietnicy zabił pomiar**: na 20 ziarnach × 50 lat prawdziwej maszyny zdarzeń (365 000 dni, 132 700 zdarzeń) nowy gubernator jest mianowany **7975 razy** — 6% wszystkich zdarzeń, około **ośmiu rocznie**, a mediana odstępu między dwiema nominacjami u Hiszpanii to **65 dni**. Automatyczny reset całej korony co dwa miesiące to nie mechanika, tylko wyłącznik reputacji. Za to ta częstotliwość znaczy, że zdarzenie **da się znaleźć**. Więc ułaskawienie jest **lokalne** i trzeba po nie przyjść: gubernator Kartageny mówi w imieniu Kartageny — odłoży twoją kartę u swojej korony **przy swojej ladzie**, za odpowiednią sumę, a reszta Hiszpanii dalej chce cię powiesić. Podnosi do `neutral` i **ani stopnia wyżej** — do obcego, bo tym właśnie jest człowiek, którego kartę odłożono. Obejmuje to, co zrobiłeś **przedtem**, i nic, co zrobisz potem: daj nowy powód, a karta wraca na miejsce. Samo zdarzenie **przestało być chwilą**: trwało jeden dzień, więc miasto miało je z tablicy ogłoszeń zdjęte, zanim jakikolwiek statek zdążył ponieść wieść dalej — teraz trzydzieści dni, przy medianie przeprawy między dwoma miastami wynoszącej pięć dni. Dzienny wiersz bogactwa poszedł razem z tą zmianą: pięćdziesiąt złotych zawsze było jednorazowe i kod sam to pisał w komentarzu. Cena to droga powrotna do neutralnego po 25 zł za punkt, podwojona przy pełnej sławie — gubernator nie wycenia twojej kartoteki, tylko **własne ryzyko**. Przy okazji **podręcznik znowu się mieści**: kolumny tematyczne z v0.60.0 były wyważone, ale **nigdy nie mierzone względem panelu**, więc jeden dłuższy akapit wypychał ostatnią linijkę zakładki „Świat” przez dolną krawędź — po polsku ocierała się o nią już wcześniej. I podręcznik wreszcie wymienia **N**, klawisz rysujący to, co dzieje się na czarcie — nieopisany od v0.30.0, a to właśnie nim kapitan znajduje miasto z nowym gubernatorem na czas. Lista kandydatów na v0.62.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.62.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2021/2021 zielone; **co mówi mijający statek, a po co trzeba do niego podejść**. Wieści docierają do kapitana statkami — kupiec rodzi się z portu, niosąc tablicę ogłoszeń tego miasta, i znika w porcie docelowym — a kanałów odbioru były **dwa** i pierwszy chodził ten zły. Cichy działał na **trzydziestu** jednostkach i zabierał **trzy** pozycje z jej tablicy; zmierzone na 8 ziarnach × 10 lat: tablica nosi **2,36** pozycji średnio (sufit to pięć, ale tablica trzyma tylko to, co dotyczy tego miasta albo jego korony), czyli **trzy pozycje to cała jej tablica**. Ekran spotkania — statek, do którego kapitan naprawdę **podszedł** — działa na **osiemnastu**, jest napisany poprawnie i zapisuje wszystko, co pokazuje, i **nigdy nie miał czego zapisać**: szersza reguła zabrała to wcześniej. A szersza reguła **nic nie mówiła**: zdarzenie `npc_news`, które produkuje, jest zadeklarowane na liście zdarzeń silnika, wypychane przy każdej wymianie i **nie ma żadnego `case`** w rendererze. Więc wieści przychodziły, dziennik je zapisywał, a na czarcie rosły znaki — pinezki zdarzeń, kursy wypraw koronnych, droga huraganu — i nikt nie powiedział ani słowa, skąd to się wzięło. **Teraz podział**: zawołanie przez wodę jest warte **jedną** pozycję i **mówi o tym** — tę z czoła jej tablicy, sortowanej po zasięgu od v0.57.0, czyli tę, która najbardziej dotyczy jej własnego miasta; **podejście do niej kupuje resztę**. Raz zawołana nie woła drugi raz — bez tego reguła jednej pozycji nie byłaby warta nic, bo kontrola chodzi raz na sekundę i kapitan płynący spokojnie obok zebrałby pozycję drugą, trzecią i całą tablicę. Warto to dzielić, bo wieści są **rzadkie**: jedna tablica pokrywa **15%** szesnastu zdarzeń żywych w świecie naraz, trzy tablice **26%**. Jej odpowiedź czyta się wreszcie uczciwie: „Zapytaj o wieści" było oferowane, kiedy niosła **cokolwiek**, co jest prawdą o każdym kupcu na morzu — w tym o takim, którego całą tablicę gracz dostał dwanaście jednostek wcześniej. **Do zrobienia dalej** (znalezione przy weryfikacji tego wydania, opisane w sekcji 4): **tabele danych niosą angielskie nazwy i wchodzą z nimi w polski tekst** — `Dekret królewski **Spain** zmienia taryfy w koloniach`. Lista kandydatów na v0.63.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.61.0.0):** v0.61.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2006/2006 zielone; **nowy gubernator nie zna twojego nazwiska**. Ekran pomocy mówi to od **v0.9.7.1** — w tabeli zdarzeń świata, przy pozycji *Nowy gubernator*: „+50 bogactwa, możliwy reset reputacji” — i przez **pięćdziesiąt jeden wydań** to zdarzenie robiło dokładnie jedną rzecz: dopisywało miastu pięćdziesiąt złotych. Nic w całym kodzie nie dotykało reputacji, kiedy zmieniał się gubernator. To nie była ozdoba: standing poniżej `neutral` jest **ulicą jednokierunkową** — list kaperski wymaga `friendly`, zlecenie obrony wymaga listu kaperskiego, córka gubernatora wymaga `friendly`, a kantor frachtowy, który płaci standingiem, **nie ma pracy poniżej neutralnego w ogóle**. Zostaje jedne drzwi: miejski spichlerz, warty **+8**, i tylko wtedy, gdy to miasto przymiera głodem, a kapitan akurat wiezie cztery tony tego, czego mu brakuje. Kapitan na –80 u Hiszpanii potrzebuje **dziesięciu** takich kursów na cudzym głodzie. **Dosłowne czytanie tej obietnicy zabił pomiar**: na 20 ziarnach × 50 lat prawdziwej maszyny zdarzeń (365 000 dni, 132 700 zdarzeń) nowy gubernator jest mianowany **7975 razy** — 6% wszystkich zdarzeń, około **ośmiu rocznie**, a mediana odstępu między dwiema nominacjami u Hiszpanii to **65 dni**. Automatyczny reset całej korony co dwa miesiące to nie mechanika, tylko wyłącznik reputacji. Za to ta częstotliwość znaczy, że zdarzenie **da się znaleźć**. Więc ułaskawienie jest **lokalne** i trzeba po nie przyjść: gubernator Kartageny mówi w imieniu Kartageny — odłoży twoją kartę u swojej korony **przy swojej ladzie**, za odpowiednią sumę, a reszta Hiszpanii dalej chce cię powiesić. Podnosi do `neutral` i **ani stopnia wyżej** — do obcego, bo tym właśnie jest człowiek, którego kartę odłożono. Obejmuje to, co zrobiłeś **przedtem**, i nic, co zrobisz potem: daj nowy powód, a karta wraca na miejsce. Samo zdarzenie **przestało być chwilą**: trwało jeden dzień, więc miasto miało je z tablicy ogłoszeń zdjęte, zanim jakikolwiek statek zdążył ponieść wieść dalej — teraz trzydzieści dni, przy medianie przeprawy między dwoma miastami wynoszącej pięć dni. Dzienny wiersz bogactwa poszedł razem z tą zmianą: pięćdziesiąt złotych zawsze było jednorazowe i kod sam to pisał w komentarzu. Cena to droga powrotna do neutralnego po 25 zł za punkt, podwojona przy pełnej sławie — gubernator nie wycenia twojej kartoteki, tylko **własne ryzyko**. Przy okazji **podręcznik znowu się mieści**: kolumny tematyczne z v0.60.0 były wyważone, ale **nigdy nie mierzone względem panelu**, więc jeden dłuższy akapit wypychał ostatnią linijkę zakładki „Świat” przez dolną krawędź — po polsku ocierała się o nią już wcześniej. I podręcznik wreszcie wymienia **N**, klawisz rysujący to, co dzieje się na czarcie — nieopisany od v0.30.0, a to właśnie nim kapitan znajduje miasto z nowym gubernatorem na czas. Lista kandydatów na v0.62.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.60.0.0):** v0.60.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 1981/1981 zielone; **podręcznik mówi językiem gracza**. `HelpScene` — ekran, który pod H tłumaczy całą grę — stawiał na ekranie **147 napisów** i wołał `t()` **zero razy**: cały podręcznik był twardo wpisanym polskim, w buildzie, którego **domyślnym językiem jest angielski** (`I18n.ts` startuje na `"en"` i nigdy nie pytał przeglądarki). Jego bliźniak `BattleHelpScene` jest napisany odwrotnie — każda linijka to klucz `battle.help_*` — więc **bitwa miała podręcznik w dwóch językach, a świat nie**. Przeżyło to czternaście wydań przy zielonych testach locale, bo testy locale sprawdzają, czy **obie tabele zgadzają się ze sobą**, a dwie zgodne tabele nie mówią nic o ekranie, który nie pyta żadnej z nich. I przeżyło, bo autor czyta po polsku: jedyny ekran, który **nie był** przetłumaczony, wyglądał dla niego poprawnie. Zmierzone w całej warstwie gry: **102 twardo wpisane polskie napisy, 92 z nich w tym jednym pliku**; doszło **129 kluczy w każdym języku**. Przy okazji **gra pyta wreszcie, kto ją czyta** — zapisany wybór dalej wygrywa, pierwsze uruchomienie decyduje przeglądarka, angielski zostaje na końcu. Skasowane **dziewiętnaście nieosiągalnych zapasów** `t("klucz") ?? "polski"`: `t()` **nigdy** nie zwraca `null`, tylko sam klucz, więc prawa strona każdego z tych `??` była martwa i trzymała drugą, nieutrzymywaną kopię napisu (szesnaście w jednej scenie). Tak samo `SailLevelDef.namePl`/`.nameEn` — dwa pola bez czytelnika, a polska kopia **już się rozjechała** z `pl.ts`. I rzecz, którą widać dopiero jak się patrzy: **podręcznik nigdy nie mieścił się na ekranie** — każdy akapit przesuwał kursor o płaskie 22 piksele niezależnie od tego, czy zawinął się w jedną linijkę czy w trzy, więc nagłówki drukowały się **na własnej ostatniej linijce**, a zakładka „Świat" uciekała pod dolną krawędź panelu; teraz mierzy każdy akapit i **równoważy tematy na dwie kolumny**. Nowy test czyta **źródło każdej sceny** i wywala się na polskiej literze w literale — jedyna kontrola w projekcie, która widzi napis nigdy niedocierający do warstwy tłumaczeń. Lista kandydatów na v0.61.0 jest niżej.
 
@@ -2262,7 +2264,49 @@ były mierzone względem panelu** — wyważone owszem, ale bez pytania, czy wy�
 kolumna się mieści, więc jeden dłuższy akapit wypychał ostatnią linijkę przez
 dolną krawędź (po polsku ocierała się o nią już w v0.60.0).
 
-### v0.62.0 — co dalej
+### ~~v0.62.0 — Co mówi mijający statek~~ ✅ (v0.62.0.0)
+
+Lista kandydatów znowu bez pozycji dla agenta. Metoda z v0.61.0 — **podręcznik
+jako lista obietnic do sprawdzenia** — została doprowadzona do końca na
+czterech liczbach, które TODO wymieniało jako niesprawdzone: **trzy okazały się
+prawdziwe** (×3 / ×0,4 w `PricingSystem`, dwa dni blokady w `BLOCKADE_ONSET_DAYS`,
+strzałki odchylenia w `CityInfoScene`), a **45% → 70%** okazało się prawdziwe po
+pomyłce w moim własnym rachunku — wycinek łowców piratów jest brany **przed**
+progiem kupca, nie dodawany do niego, więc pokój dzieli się 10/45/45, a wojna
+10/20/70. Poprawiona została jedna: podręcznik mówił, że zmiana żagli przy
+**szczątkowej załodze** trwa trzy razy dłużej; żaden próg nigdy nie był wart
+trzech (1,6 przy niedoborze, **2,4** szczątkowa, 3,5 nie do obsługi).
+
+Wydanie wyszło z **przemiatania unii `WorldEvent` za wariantami bez odbiorcy**:
+
+| wariant | produkowany | odbierany |
+|---|---|---|
+| `Toast` | 24× | 1 |
+| `Sound` | 8× | **0** |
+| `SpawnFx` | **0** | 1 |
+| `Encounter` / `PortEntered` / `BattleStarted` / `Trade` | 1–2× | **0** |
+| `npc_news` | 1× | **0** |
+
+`Sound` **nie jest do zrobienia przez agenta**: w `public/assets/audio` są cztery
+pliki (`pirate_theme`, `pirate_adventure`, `wind_loop`, `seagull`) i **żadnego
+dźwięku działa**, więc podpięcie odbiorcy nie zagrałoby niczego — to zadanie na
+materiał, nie na kod. `Encounter`/`PortEntered`/`BattleStarted`/`Trade` są
+martwymi duplikatami rzeczy robionych przez `transitions` albo wprost w scenie.
+Został `npc_news` — i to on okazał się wierzchołkiem całego kanału wieści.
+
+| co zmierzone | liczba |
+|---|---|
+| pozycji na tablicy ogłoszeń (8 ziaren × 10 lat) | **2,36** średnio, sufit 5 |
+| zdarzeń żywych w świecie naraz | średnio **15,8**, mediana 16, max 26 |
+| udział tych zdarzeń pokryty przez **jedną** tablicę | **15%** |
+| przez dwie / trzy | 22% / **26%** |
+| stary zabiór cichej reguły | **3** pozycje — czyli cała tablica |
+
+Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
+spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
+**raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
+
+### v0.63.0 — co dalej
 
 Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 
@@ -2315,7 +2359,7 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
 - ~~**Głód nie ma jeszcze głosu.**~~ ✅ v0.28.0.0 — `RumorSystem`: tawerna mówi o głodzie, blokadzie, przeciętym szlaku, czarnej banderze i najruchliwszym nabrzeżu w promieniu 1300. Przy okazji odkryte i naprawione: **zdarzenia świata nigdy nie trafiały w żaden port**.
 - ~~**Tablica newsów portu jest stosem, nie tablicą**~~ ✅ v0.57.0.0 — sortowana po **zasięgu** (im mniej miast zdarzenie dotyczy, tym wyżej stoi), wewnątrz grupy najnowsze pierwsze. „Zawiera to miasto” nie wystarczało, bo dekret na 24 porty **zawiera** to miasto — dlatego porównanie liczy porty. Ważniejsze niż wyglądało: tawerna pokazuje **trzy pierwsze** pozycje, więc to ta kolejność decyduje, co kapitan naprawdę czyta. Oryginalny opis:  `getPortNews` bierze `active.slice(-5)`, czyli pięć **ostatnio dodanych** zdarzeń. Zmierzone na 3 ziarnach × 10 lat, co siódmy dzień, wszystkie 45 miast: **11,1%** miasto-dni ma więcej niż 5 aktywnych zdarzeń, ale własne zdarzenie miasta wypada z tablicy tylko w **0,7%**. Poprawka: sortować przed cięciem — najpierw zdarzenia z `ports` zawierającym to miasto, potem te w skali korony (`WorldEventSystem.ts:336`). Marginalne, ale darmowe
 - ~~**Martwy duplikat po starszym projekcie**~~ ✅ v0.57.0.0 — skasowane. Oryginalny opis: `WorldEventSystem.giveNpcPortNews` i `NpcNewsSystem.npcPickupNews` to **dwie identyczne funkcje bez wywołania**, obie z komentarzem „Called from NpcSpawnSystem". Nie są potrzebne — NPC znikają w porcie docelowym (`DOCK_RADIUS`) i rodzą się z portu wyjścia z aktualnymi wieściami — więc do skasowania, nie do podpięcia
-- **`npc_news` to wariant unii `WorldEvent` bez `case` w `applyEvents`** (znalezione w v0.57.0, nienaprawione). `WorldEngine.ts:431` produkuje `{ type: "npc_news", news }`, `Events.ts:19` deklaruje go, a `WorldRenderer.applyEvents` obsługuje wyłącznie `Toast` i `SpawnFx`. Skutek: mijając przyjazny statek w promieniu `NEWS_RANGE = 30` (a `ENCOUNTER_RANGE` to 18, więc dzieje się to **przed** ekranem spotkania) gracz **milcząco** dostaje do trzech newsów — rosną `knownEventIds`, więc na mapie pojawiają się znaczniki, kursy wypraw i droga huraganu, o których nikt mu nie powiedział. Poprawka to `case "npc_news"` → toast, ale **to zmiana odczucia** (wyskakujące komunikaty na morzu) — do playtestu użytkownika, nie w biegu
+- ~~**`npc_news` to wariant unii `WorldEvent` bez `case` w `applyEvents`**~~ ✅ v0.62.0.0 — i był wierzchołkiem czegoś większego: cicha reguła na trzydziestu jednostkach zabierała **trzy** pozycje z tablicy noszącej średnio **2,36**, czyli całą, **zanim** ekran spotkania na osiemnastu mógł cokolwiek dać. Teraz zawołanie jest warte jedną pozycję i mówi o tym, a reszta jest za decyzją podejścia. Obawa z tej notatki („wyskakujące komunikaty na morzu") okazała się nieuzasadniona przy jednej pozycji na statek i `AiData.hailed`
 - **Karta postaci pokazuje, czego świat nie używa** (znalezione i **zmierzone** w v0.57.0, świadomie nienaprawione). `effectiveSkill` ma **jedenaście** czytelników — pojedynek, bitwa morska, oblężenie, chirurg, romans, nawigacja — a `effectiveSkills()`, helper napisany w komentarzu *„for the cabin sheet”*, nie ma **żadnego**; zakładka Kapitan rysuje surowe `captain.skills[id]`. Przy 55 latach i szermierce 8 arkusz mówi 8, a pojedynek liczy 5,9. **Ale zasięg jest zerowy**: `startAge` to zawsze 20 (`CaptainState.ts:42`, w `CharacterCreationScene` nie ma wyboru wieku), krzywa startuje w 35, a doba gry to 60 sekund realnych — **45-91 godzin samego żeglowania** do pierwszego progu. `ageStage` też nie ma czytelnika. To jedno pytanie do użytkownika, nie dwa zadania: czy krzywa starzenia ma być w zasięgu kariery (np. **wybór wieku startowego** przy tworzeniu postaci — starszy kapitan traci szermierkę i punkty za lata na morzu, zyskuje nawigację/urok/medycynę od pierwszego dnia), czy zostać tam, gdzie jest
 - **Misje jezuickie — druga połowa modułu G, świadomie odlożona** (v0.58.0). Zaczep
   jest gotowy i żywy: `SurgeonSystem` trzyma `ship.wounded` i `FleetShip.wounded`,
@@ -2333,6 +2377,25 @@ Nic nie jest jeszcze wybrane. Kandydaci, w kolejności wartości dla gracza:
   okazji: gra nie pytała przeglądarki o język, 19 nieosiągalnych zapasów
   `t(...) ?? "polski"`, martwe `namePl`/`nameEn` w `SailLevelDef` i podręcznik,
   który **nigdy nie mieścił się na ekranie** (płaskie 22 px na akapit)
+- **NAJWAŻNIEJSZE OTWARTE: tabele danych niosą angielskie nazwy i wchodzą
+  z nimi w polski tekst** (znalezione w v0.62.0 przy weryfikacji na ekranie).
+  Dowód ze zrzutu, gra po polsku: *„Dekret królewski **Spain** zmienia taryfy
+  w koloniach"*. Przyczyna jest ogólna: `FACTIONS[x].name`, `CITIES[x].name`,
+  `ITEMS[x].name` i `PORTS[x].name` to **druga, angielska kopia** nazw, które
+  tabele locale już mają (`faction.<id>.name`, `port.<key>.name`,
+  `item.<id>.name`) — a systemy rdzenia budują z nich `vars` dla tekstu, który
+  czyta gracz: nagłówki zdarzeń, linie dziennika, cele questów, opisy zleceń.
+  **Zmierzone w `src/core` bez testów: `CITIES` 32, `FACTIONS` 17, `ITEMS` 4,
+  `PORTS` 1 — razem 54 użycia** (przelicz sam przed wpisaniem liczby do TODO,
+  patrz reguła o liczniku `t()` niżej). Do tego `WorldEventSystem.FACTION_NAMES`
+  to **trzecia** kopia, z kolumną `pl`, której `factionName()` **nigdy nie
+  czyta** — zwraca `.en` bezwarunkowo; dokładnie ten sam kształt co
+  `SailLevelDef.namePl` skasowane w v0.60.0. **Trudna część to nie zamiana
+  wywołań, a to, że `vars` są stemplowane w zdarzeniu i zapisywane** (reguła
+  z v0.43.0: fakt stempluje się przy zdarzeniu) — więc nazwa w starym zapisie
+  zostanie w języku, w którym powstała, chyba że stemplować **klucz** i
+  tłumaczyć przy rysowaniu, co dotyka każdego renderera nagłówków. Zdecyduj
+  to **przed** pisaniem.
 - **Podręcznik jest listą obietnic, którą da się sprawdzić** (metoda z v0.61.0).
   Od v0.60.0 cały ekran pomocy to 129 kluczy jawnej prozy, czyli spis tego, co
   gra **mówi**, że robi. Przejście po nim wiersz po wierszu i skonfrontowanie

@@ -25,6 +25,7 @@ import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { ladenTier } from "../../core/systems/PrizeSystem.ts";
 // FACTIONS import removed — tint disabled due to blue rect artifacts
 import { txt } from "../ui/textStyle.ts";
+import { t } from "../../core/i18n/index.ts";
 
 /** Base vision range (world units) — added to mast height bonus */
 const BASE_VISION = 25;
@@ -432,6 +433,14 @@ export class WorldRenderer {
         case "SpawnFx":
           // Placeholder for particle effects
           break;
+        // A ship calling across the water (v0.62.0). The variant has existed
+        // since the engine did and had no `case` anywhere, so news arrived, the
+        // journal recorded it and the chart grew marks, and nobody said a word.
+        case "npc_news":
+          event.news.forEach((item, row) => {
+            this.showToast(scene, t("toast.hailed", { news: t(item.headline, item.vars) }), row);
+          });
+          break;
       }
     }
   }
@@ -476,10 +485,15 @@ export class WorldRenderer {
     return sprite;
   }
 
-  private showToast(scene: Phaser.Scene, message: string): void {
+  /**
+   * `row` stacks a batch downwards. Everything used to be drawn at y = 80, so
+   * two hails in the same tick — two friendly hulls inside `HAIL_RANGE` at once
+   * — printed exactly on top of each other (v0.62.0).
+   */
+  private showToast(scene: Phaser.Scene, message: string, row = 0): void {
     const text = scene.add.text(
       scene.cameras.main.width / 2,
-      80,
+      80 + row * 34,
       message,
       { ...txt(16, { color: "#ffffff" }), backgroundColor: "#000000aa", padding: { x: 12, y: 6 } },
     );
@@ -490,7 +504,7 @@ export class WorldRenderer {
     scene.tweens.add({
       targets: text,
       alpha: 0,
-      y: 40,
+      y: 40 + row * 34,
       duration: 2000,
       delay: 1000,
       onComplete: () => text.destroy(),

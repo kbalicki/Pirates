@@ -11,7 +11,7 @@ import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { namedShipById, reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
-import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
+import { freshNews, takeNpcNews } from "../../core/systems/NpcNewsSystem.ts";
 import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
 import { ITEMS } from "../../core/data/items.ts";
 
@@ -138,11 +138,16 @@ export class ShipEncounterScene extends Phaser.Scene {
     // Actions
     this.actions = [];
     if (isFriendly) {
-      const hasNews = (this.npcEntity.ai.news?.length ?? 0) > 0;
+      // What she has that he does *not*, not what she is carrying (v0.62.0).
+      // The old test was `news.length > 0`, which was true of every trader
+      // afloat — including one whose entire board the player had been handed
+      // silently twelve units earlier, so the reply promised news it could only
+      // repeat. "She has nothing you have not heard" is a real answer now.
+      const fresh = freshNews(this.worldState, this.npcEntity.id as string).length;
       this.actions.push({
-        label: hasNews ? t("encounter.ask_news") : t("encounter.no_news"),
+        label: fresh > 0 ? t("encounter.ask_news") : t("encounter.no_news"),
         action: "news",
-        disabled: !hasNews,
+        disabled: fresh === 0,
       });
     }
     this.actions.push({
@@ -304,8 +309,13 @@ export class ShipEncounterScene extends Phaser.Scene {
   }
 
   private showNewsScreen(): void {
-    const news = this.npcEntity.ai?.news ?? [];
+    // Taken before it is drawn, and only what is new: the screen shows what
+    // going alongside actually bought him.
+    const taken = takeNpcNews(this.worldState, this.npcEntity.id as string);
+    const news = taken.newNews;
     if (news.length === 0) return;
+    this.worldState = taken.world;
+    this.registry.set("worldState", this.worldState);
 
     const cam = this.cameras.main;
     const cx = cam.width / 2;
@@ -330,7 +340,6 @@ export class ShipEncounterScene extends Phaser.Scene {
     y += 28;
 
     // News items
-    const knownIds = new Set(this.worldState.knownEventIds ?? []);
     for (const item of news.slice(0, 5)) {
       const headline = t(item.headline, item.vars as Record<string, string>);
       this.add.text(cx - DLG_W / 2 + PAD + 8, y, `• ${headline}`, {
@@ -338,17 +347,7 @@ export class ShipEncounterScene extends Phaser.Scene {
         wordWrap: { width: DLG_W - PAD * 2 - 16 },
       });
       y += 26;
-
-      // Mark as known + log
-      if (!knownIds.has(item.eventId)) {
-        knownIds.add(item.eventId);
-        this.worldState = addLogEntry(this.worldState, item.headline, item.vars);
-      }
     }
-
-    // Update known IDs
-    this.worldState = { ...this.worldState, knownEventIds: [...knownIds] };
-    this.registry.set("worldState", this.worldState);
 
     y += 10;
 
