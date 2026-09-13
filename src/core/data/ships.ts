@@ -3,8 +3,6 @@ import type { ShipClassId } from "../model/ids.ts";
 
 export type ShipClassDef = {
   id: ShipClassId;
-  name: string;
-  nameKey: string;         // i18n key for ship name
   speedBase: number;       // world units per tick at full sail, no wind modifier
   turnRate: number;        // rad per tick
   hullMax: number;
@@ -44,8 +42,6 @@ export const SHIP_MERCHANTMAN = shipClassId("merchantman");
 export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   pinnace: {
     id: SHIP_PINNACE,
-    name: "Pinnace",
-    nameKey: "ship.pinnace",
     speedBase: 0.167,      // 8 kn max
     turnRate: 0.84,
     hullMax: 30,
@@ -65,8 +61,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   sloop: {
     id: SHIP_SLOOP,
-    name: "Sloop",
-    nameKey: "ship.sloop",
     speedBase: 0.208,      // 10 kn max
     turnRate: 0.72,
     hullMax: 60,
@@ -86,8 +80,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   barque: {
     id: SHIP_BARQUE,
-    name: "Barque",
-    nameKey: "ship.barque",
     speedBase: 0.188,      // 9 kn max
     turnRate: 0.54,
     hullMax: 70,
@@ -107,8 +99,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   brigantine: {
     id: SHIP_BRIGANTINE,
-    name: "Brigantine",
-    nameKey: "ship.brigantine",
     speedBase: 0.229,      // 11 kn max
     turnRate: 0.60,
     hullMax: 80,
@@ -128,8 +118,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   fluyt: {
     id: SHIP_FLUYT,
-    name: "Fluyt",
-    nameKey: "ship.fluyt",
     speedBase: 0.125,      // 6 kn max
     turnRate: 0.42,
     hullMax: 90,
@@ -149,8 +137,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   frigate: {
     id: SHIP_FRIGATE,
-    name: "Frigate",
-    nameKey: "ship.frigate",
     speedBase: 0.250,      // 12 kn max (BENCHMARK)
     turnRate: 0.48,
     hullMax: 120,
@@ -170,8 +156,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   fast_galleon: {
     id: SHIP_FAST_GALLEON,
-    name: "Fast Galleon",
-    nameKey: "ship.fast_galleon",
     speedBase: 0.188,      // 9 kn max
     turnRate: 0.36,
     hullMax: 150,
@@ -191,8 +175,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   galleon: {
     id: SHIP_GALLEON,
-    name: "Galleon",
-    nameKey: "ship.galleon",
     speedBase: 0.167,      // 8 kn max
     turnRate: 0.30,
     hullMax: 180,
@@ -212,8 +194,6 @@ export const SHIP_CLASSES: Record<string, ShipClassDef> = {
   },
   merchantman: {
     id: SHIP_MERCHANTMAN,
-    name: "Merchantman",
-    nameKey: "ship.merchantman",
     speedBase: 0.104,      // 5 kn max
     turnRate: 0.24,
     hullMax: 100,

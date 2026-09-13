@@ -18,6 +18,7 @@ import { manningSpeedMultiplier, workingMinimum } from "./CrewSystem.ts";
 import type { FleetShip, PlayerState } from "../model/WorldState.ts";
 import type { ShipData } from "../model/EntityState.ts";
 
+import { shipNameKey } from "../i18n/names.ts";
 export const MAX_FLEET_SIZE = 3; // flagship + 2 escorts
 
 /** Get total fleet size (1 flagship + escorts). */
@@ -311,7 +312,7 @@ export function fleetSummary(
   const flagCls = SHIP_CLASSES[flagshipClassId];
   if (flagCls) {
     result.push({
-      name: flagCls.name,
+      name: shipNameKey(flagshipClassId),
       classId: flagshipClassId,
       hullPercent: 100,
       sailsPercent: 100,
@@ -320,9 +321,8 @@ export function fleetSummary(
   }
 
   for (const escort of fleet) {
-    const cls = SHIP_CLASSES[escort.classId];
     result.push({
-      name: cls?.name ?? "Unknown",
+      name: shipNameKey(escort.classId),
       classId: escort.classId,
       hullPercent: escort.hullMax > 0 ? Math.round((escort.hullHp / escort.hullMax) * 100) : 0,
       sailsPercent: escort.sailsMax > 0 ? Math.round((escort.sailsHp / escort.sailsMax) * 100) : 0,

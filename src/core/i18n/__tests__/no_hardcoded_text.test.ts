@@ -129,3 +129,38 @@ describe("the manual's own keys", () => {
     bothHave([...rigs].map(r => `help.rig_${r}`), "help.rig_<rig>");
   });
 });
+
+// ===========================================================================
+// The second reading of the calendar (v0.63.0)
+// ===========================================================================
+
+/**
+ * `dayToCalendar(day, startYear?)` falls back to `DEFAULT_START_YEAR` when the
+ * second argument is left off, and the SPACE menu's Calendar tab left it off:
+ * it printed **1690** in five of the six eras while the HUD two inches away
+ * printed the right year from the same world.
+ *
+ * The defect is not reachable from a locale table or from any unit test of the
+ * helper, because the helper is correct — the caller is not. So it is checked
+ * where it lives, in the source, next to the other check of this shape.
+ */
+describe("dayToCalendar is never asked without the world's start year", () => {
+  const CORE_SOURCES = import.meta.glob("../../**/*.ts", {
+    query: "?raw", import: "default", eager: true,
+  }) as Record<string, string>;
+  const ALL = { ...SOURCES, ...CORE_SOURCES };
+
+  it("passes startYear at every call site", () => {
+    const offenders: string[] = [];
+    for (const [path, src] of Object.entries(ALL)) {
+      if (path.includes("__tests__") || path.includes("TimeSystem.ts")) continue;
+      for (const m of src.matchAll(/dayToCalendar\(([^)]*)\)/g)) {
+        if (!m[1].includes(",")) offenders.push(`${path}: dayToCalendar(${m[1]})`);
+      }
+    }
+    // `CharacterCreationScene` reads a day out of a save *title* on the load
+    // list, where no world is open to ask. It is the one place the default is
+    // the only answer available, and it is listed here rather than excused.
+    expect(offenders.filter(o => !o.includes("CharacterCreationScene"))).toEqual([]);
+  });
+});

@@ -321,3 +321,24 @@ npm run build
 #   więc bez czyszczenia katalog puchnie i można trafić na nieaktualny index.html
 scp -r dist/* user@server:/path/to/webroot/
 ```
+
+### Nazwa w `vars` to **klucz**, nie tekst (v0.63.0)
+
+`vars` są stemplowane w zdarzeniu i **zapisywane** (reguła z v0.43.0), więc
+tekst wstawiony tam raz zostaje w tym języku na zawsze. Stempluj klucz:
+
+```ts
+import { portNameKey, factionNameKey, itemNameKey, shipNameKey } from "../i18n/names.ts";
+
+vars: { port: portNameKey(portKey), faction: factionNameKey(crown) }
+```
+
+`t()` rozwija klucz o kształcie `port|faction|item|ship.<id>.name` w chwili
+podstawiania `{{var}}`, więc każdy renderer nagłówków dostaje to za darmo,
+a zmiana języka przepisuje także stary dziennik.
+
+Tekstu gotowego (`portName`, `factionName`, `itemName`, `shipClassName`) używaj
+**tylko** tam, gdzie ekran rysuje teraz i nic nie jest zapisywane.
+
+**Tabele danych nie mają już pól `.name`.** Jedyna kopia nazwy jest w `en.ts` /
+`pl.ts`. Jeśli piszesz nową tabelę — nie dokładaj drugiej.

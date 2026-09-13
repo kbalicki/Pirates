@@ -55,6 +55,7 @@ import { expeditionsInFlight } from "../../core/systems/ReconquestSystem.ts";
 import { txt } from "../ui/textStyle.ts";
 import { t } from "../../core/i18n/index.ts";
 
+import { portNameKey } from "../../core/i18n/names.ts";
 /** Under the port markers (499-600) and well above the land fill. */
 const COURSE_DEPTH = 450;
 const LABEL_DEPTH = 601;
@@ -156,7 +157,7 @@ function chartedSquadrons(world: WorldState): ChartedSquadron[] {
       // Her own crown's colour: she is a Spanish squadron and reads as one.
       color: FACTIONS.spain?.color ?? 0xd4a017,
       label: t("plate.course_label", {
-        port: rendezvous.name,
+        port: portNameKey(PLATE_RENDEZVOUS),
         days: Math.max(0, event.endDay - world.time.day),
       }),
     });

@@ -13,8 +13,8 @@ import { txt } from "../ui/textStyle.ts";
 import { namedShipById, reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { freshNews, takeNpcNews } from "../../core/systems/NpcNewsSystem.ts";
 import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
-import { ITEMS } from "../../core/data/items.ts";
 
+import { itemName, shipClassName } from "../../core/i18n/names.ts";
 type EncounterAction = "news" | "attack" | "leave";
 
 const DLG_W = 380;
@@ -88,13 +88,13 @@ export class ShipEncounterScene extends Phaser.Scene {
     const named = this.npcEntity.ai?.namedShipId
       ? namedShipById(this.worldState, this.npcEntity.ai.namedShipId)
       : undefined;
-    const shipName = named?.name ?? shipClass?.name ?? "Unknown Ship";
+    const shipName = named?.name ?? shipClassName(shipClass?.id ?? "");
     this.add.text(cx, y, shipName, txt(20, { bold: true })).setOrigin(0.5, 0);
     y += 26;
     if (named) {
       // The class still matters — it is what he is about to fight — so it goes
       // under the name rather than being replaced by it.
-      this.add.text(cx, y, shipClass?.name ?? "", txt(12, { color: "#666666" })).setOrigin(0.5, 0);
+      this.add.text(cx, y, shipClassName(shipClass.id), txt(12, { color: "#666666" })).setOrigin(0.5, 0);
       y += 18;
     }
 
@@ -121,7 +121,7 @@ export class ShipEncounterScene extends Phaser.Scene {
     const tons = holdTons(this.npcEntity.ship);
     const goods = manifest(this.npcEntity.ship)
       .slice(0, 3)
-      .map(h => ITEMS[h.item]?.name ?? h.item)
+      .map(h => itemName(h.item))
       .join(", ");
     const holdLine = tons > 0
       ? t("encounter.laden", { tons, goods })

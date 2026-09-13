@@ -17,6 +17,7 @@ import { HISTORICAL_WARS } from "../data/wars.ts";
 import { updateDiplomacy, TREATY_DAYS } from "./DiplomacySystem.ts";
 import { GOVERNOR_NEW_DAYS } from "./PardonSystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Random Event Templates ───────────────────────────────
 
 type RandomEventTemplate = {
@@ -162,20 +163,6 @@ const RANDOM_EVENTS: RandomEventTemplate[] = [
   },
 ];
 
-// ── Faction name helpers ─────────────────────────────────
-
-const FACTION_NAMES: Record<string, { en: string; pl: string }> = {
-  spain: { en: "Spain", pl: "Hiszpania" },
-  england: { en: "England", pl: "Anglia" },
-  france: { en: "France", pl: "Francja" },
-  netherlands: { en: "Netherlands", pl: "Holandia" },
-  pirates: { en: "Pirates", pl: "Piraci" },
-};
-
-function factionName(id: string): string {
-  return FACTION_NAMES[id]?.en ?? id;
-}
-
 // ── Main update function ─────────────────────────────────
 
 /** How many random events the world tries to open with. */
@@ -281,8 +268,8 @@ export function seedHistoricalWars(world: WorldState): WorldState {
     // in 1620 was saying exactly that. Seen on a screenshot, like the last two.
     headline: "news.war_ongoing",
     vars: {
-      faction1: factionName(war.factions[0]),
-      faction2: factionName(war.factions[1]),
+      faction1: factionNameKey(war.factions[0]),
+      faction2: factionNameKey(war.factions[1]),
       since: war.startYear,
     },
   }));
@@ -386,7 +373,7 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
         factions: [...war.factions],
         severity: 3,
         headline: war.headline,
-        vars: { faction1: factionName(war.factions[0]), faction2: factionName(war.factions[1]) },
+        vars: { faction1: factionNameKey(war.factions[0]), faction2: factionNameKey(war.factions[1]) },
       };
       w = {
         ...w,
@@ -397,7 +384,7 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
 
     // War end (check if active war has ended by calendar date)
     if (alreadyActive && cal.year === war.endYear && cal.month === war.endMonth && cal.dayOfMonth === 1) {
-      const vars = { faction1: factionName(war.factions[0]), faction2: factionName(war.factions[1]) };
+      const vars = { faction1: factionNameKey(war.factions[0]), faction2: factionNameKey(war.factions[1]) };
       // The peace is an event of its own, and it has to be, for two reasons.
       // `EventEffectsSystem` has had a `treaty_signed` row since v0.9.7 that
       // nothing ever produced — the mirror of the dead fields v0.29.0 went
@@ -576,7 +563,6 @@ function rollOneEvent(
   // noticeboard in a screenshot.
   const mainPort = pool[Math.floor(portRng.value * pool.length)];
   const portDef = PORTS[mainPort];
-  const portName = portDef?.name ?? mainPort;
 
   let affectedPorts: string[];
   if (chosen.affectsPorts === 0) {
@@ -621,8 +607,8 @@ function rollOneEvent(
     // The plate fleet's first leg starts here, and a fact about an event is
     // stamped at the event (v0.43.0), never derived from today's world.
     ...(chosen.type === "treasure_fleet" ? { muster: mainPort } : {}),
-    port: portName,
-    faction: factionName(factionId),
+    port: portNameKey(mainPort),
+    faction: factionNameKey(factionId),
     duration,
   };
 

@@ -97,6 +97,7 @@ import { fogDensity } from "./FogSystem.ts";
 import { pointAlong } from "../services/Pathfinding.ts";
 import { dayFraction } from "./TimeSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /**
  * How hard a wind zone pulls the prevailing wind toward its own bias.
  *
@@ -192,7 +193,7 @@ export function hurricaneTrack(ev: { ports?: string[] }): { pos: Vec2; port: str
   const stops: { pos: Vec2; port: string }[] = [];
   for (const portKey of ev.ports ?? []) {
     const city = CITIES[portKey];
-    if (city) stops.push({ pos: city.pos, port: city.name });
+    if (city) stops.push({ pos: city.pos, port: portNameKey(portKey) });
   }
   return stops;
 }

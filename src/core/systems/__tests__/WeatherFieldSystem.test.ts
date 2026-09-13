@@ -26,6 +26,7 @@ import { entityId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
 import type { WorldState, Vec2, WorldEventState } from "../../model/WorldState.ts";
+import { portNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // WeatherFieldSystem — the weather has a place on the chart (v0.39.0)
@@ -218,7 +219,7 @@ describe("a hurricane is on the water now, not only in the news", () => {
       pos: CARTAGENA,
       events: [{ ports: ["cartagena"] }, { ports: ["santa_marta"] }],
     });
-    expect(hurricaneAt(w, CARTAGENA)!.port).toBe(CITIES.cartagena.name);
+    expect(hurricaneAt(w, CARTAGENA)!.port).toBe(portNameKey("cartagena"));
   });
 
   it("is a storm on the water, whatever the season was doing", () => {
@@ -241,7 +242,7 @@ describe("a hurricane is on the water now, not only in the news", () => {
   });
 
   it("hands the storm's town over for the line of log", () => {
-    expect(weatherAt(blowing(), CARTAGENA).eyePort).toBe(CITIES.cartagena.name);
+    expect(weatherAt(blowing(), CARTAGENA).eyePort).toBe(portNameKey("cartagena"));
     expect(weatherAt(blowing(), NOWHERE).eyePort).toBeUndefined();
   });
 });
@@ -309,8 +310,8 @@ describe("the eye walks its road", () => {
   it("says which town it has passed and which it is standing towards", () => {
     const w = walking();
     const early = at(w, 10);
-    expect(early.port).toBe(CITIES[ROAD[0]].name);
-    expect(early.bound).toBe(CITIES[ROAD[1]].name);
+    expect(early.port).toBe(portNameKey(ROAD[0]));
+    expect(early.bound).toBe(portNameKey(ROAD[1]));
   });
 
   it("a storm with nowhere to go names itself twice, and the HUD checks for it", () => {

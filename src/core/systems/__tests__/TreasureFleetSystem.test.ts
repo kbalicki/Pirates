@@ -31,6 +31,7 @@ import { entityId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
 import type { WorldState, WorldEventState, Vec2 } from "../../model/WorldState.ts";
+import { portNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // The plate fleet sails (v0.46.0)
@@ -58,7 +59,7 @@ function plateEvent(over: Partial<WorldEventState> = {}): WorldEventState {
     factions: ["spain"],
     severity: 2,
     headline: "news.treasure_fleet",
-    vars: { muster: MUSTER, port: CITIES[MUSTER].name },
+    vars: { muster: MUSTER, port: portNameKey(MUSTER) },
     ...over,
   } as WorldEventState;
 }

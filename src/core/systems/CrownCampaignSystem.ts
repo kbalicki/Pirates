@@ -57,7 +57,7 @@
 import type { WorldState, RngState, WorldEventState } from "../model/WorldState.ts";
 import type { WorldEvent } from "../model/Events.ts";
 import { CITIES } from "../data/cities.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { t } from "../i18n/index.ts";
@@ -67,6 +67,7 @@ import { crownStrength, activeExpeditionFor, SIZE_PRIORITY } from "./ReconquestS
 import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
 import { CROWNS, coBelligerentAgainst } from "./DiplomacySystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
 
 /** Daily chance a crown at war fits out an expedition, before modifiers. */
@@ -298,16 +299,16 @@ export function launchCampaign(
   );
 
   const vars: Record<string, string | number> = {
-    port: def.name,
-    faction: FACTIONS[war.attacker]?.name ?? war.attacker,
-    holder: FACTIONS[war.defender]?.name ?? war.defender,
+    port: portNameKey(portKey),
+    faction: factionNameKey(war.attacker),
+    holder: factionNameKey(war.defender),
     soldiers,
     guns: Math.max(4, Math.round(soldiers / 4)),
     days: sailDays,
   };
   if (departure?.origin) vars.origin = departure.origin;
   if (ally) {
-    vars.ally = FACTIONS[ally]?.name ?? ally;
+    vars.ally = factionNameKey(ally);
     // Read by `materialize` to put one escort under the other ensign, and by
     // nothing else: the landing arithmetic downstream stays two-sided.
     vars.allyId = ally;

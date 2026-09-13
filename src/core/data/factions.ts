@@ -3,7 +3,6 @@ import type { FactionId } from "../model/ids.ts";
 
 export type FactionDef = {
   id: FactionId;
-  name: string;
   color: number; // hex color for UI
   defaultReputation: number; // starting rep for new game
   relations: Record<string, number>; // factionId -> relation (-100..100)
@@ -18,7 +17,6 @@ export const FACTION_PIRATES = factionId("pirates");
 export const FACTIONS: Record<string, FactionDef> = {
   spain: {
     id: FACTION_SPAIN,
-    name: "Spain",
     color: 0xcc0000,
     defaultReputation: 0,
     relations: {
@@ -30,7 +28,6 @@ export const FACTIONS: Record<string, FactionDef> = {
   },
   england: {
     id: FACTION_ENGLAND,
-    name: "England",
     color: 0x0044cc,
     defaultReputation: 0,
     relations: {
@@ -42,7 +39,6 @@ export const FACTIONS: Record<string, FactionDef> = {
   },
   france: {
     id: FACTION_FRANCE,
-    name: "France",
     color: 0x2244aa,
     defaultReputation: 0,
     relations: {
@@ -54,7 +50,6 @@ export const FACTIONS: Record<string, FactionDef> = {
   },
   netherlands: {
     id: FACTION_NETHERLANDS,
-    name: "Netherlands",
     color: 0xff8800,
     defaultReputation: 0,
     relations: {
@@ -66,7 +61,6 @@ export const FACTIONS: Record<string, FactionDef> = {
   },
   pirates: {
     id: FACTION_PIRATES,
-    name: "Pirates",
     color: 0x333333,
     defaultReputation: -20,
     relations: {

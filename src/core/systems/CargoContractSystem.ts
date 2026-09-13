@@ -30,14 +30,15 @@
 import type { WorldState } from "../model/WorldState.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
-import { CITIES } from "../data/cities.ts";
+
 import { ITEMS } from "../data/items.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { routesFrom, disruptions } from "./TradeRouteSystem.ts";
 import { blockadeEffective } from "./BlockadeSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
 
+import { factionNameKey, itemNameKey, portNameKey } from "../i18n/names.ts";
 /** Quest ids for a charter all start with this. */
 export const CARGO_QUEST_PREFIX = "cargo_";
 
@@ -179,7 +180,7 @@ export function cargoOffers(world: WorldState, portKey: string): CargoContract[]
         id,
         from: lane.from,
         to: lane.to,
-        toName: CITIES[lane.to]?.name ?? lane.to,
+        toName: portNameKey(lane.to),
         item,
         qty,
         reward: freightFor(world, lane.id, lane.to, item, qty, lane.length),
@@ -213,7 +214,7 @@ function charterSize(length: number): number {
 export function cargoQuest(contract: CargoContract): QuestDef {
   const vars = {
     port: contract.toName,
-    item: ITEMS[contract.item]?.name ?? contract.item,
+    item: itemNameKey(contract.item),
     qty: contract.qty,
     gold: contract.reward,
     days: contract.days,
@@ -336,5 +337,5 @@ export function deliverCharter(world: WorldState, contract: CargoContract): Char
 
 /** Who is paying, in words the offer screen can print. */
 export function charterPayer(contract: CargoContract): string {
-  return FACTIONS[contract.crown]?.name ?? contract.crown;
+  return factionNameKey(contract.crown);
 }

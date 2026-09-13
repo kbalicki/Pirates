@@ -37,6 +37,7 @@ import { addLogEntry } from "./EventLogSystem.ts";
 import { getAggregatedEffects } from "./EventEffectsSystem.ts";
 import { t } from "../i18n/index.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /** How close the player must lie to be standing off the harbour. */
 export const BLOCKADE_RADIUS = 320;
 
@@ -162,7 +163,7 @@ export function tickBlockades(world: WorldState): { world: WorldState; events: W
     // was lifted a week after it stopped mattering is telling him nothing.
     const wasBiting = prev >= BLOCKADE_ONSET_DAYS;
     const isBiting = next >= BLOCKADE_ONSET_DAYS;
-    const name = CITIES[portKey]?.name ?? portKey;
+    const name = portNameKey(portKey);
     if (!wasBiting && isBiting) {
       events.push({ type: "Toast", message: t("blockade.established", { port: name }) });
       w = addLogEntry(w, "blockade.log_established", { port: name });

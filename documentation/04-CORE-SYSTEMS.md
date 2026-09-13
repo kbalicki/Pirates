@@ -5279,3 +5279,132 @@ i 3,5 przy załodze nie do obsługi.
 całą resztą, zanim krok wieści wykonał się raz), z tablicą nazwanego miasta
 dopełnioną z innych do trzech pozycji — bo tablica jednopozycyjna nie pokazuje
 podziału, który ten świat ma pokazać.
+
+
+---
+
+## Nazwa miasta jest faktem, jej pisownia nie (v0.63.0)
+
+Znalezione na zrzucie z polskiego builda, na tablicy ogłoszeń:
+*„Dekret królewski **Spain** zmienia taryfy w koloniach"*.
+
+### Skąd się to brało
+
+Tabele danych niosły **drugą, wyłącznie angielską kopię** nazw, które tabele
+locale już miały: `CITIES[x].name`, `FACTIONS[x].name`, `ITEMS[x].name`,
+`ShipClassDef.name` — obok `port.<klucz>.name`, `faction.<id>.name`,
+`item.<id>.name`, `ship.<klasa>.name`, kompletnych w obu językach. Systemy
+rdzenia budowały z tej kopii `vars` dla wszystkiego, co gracz czyta: nagłówków
+zdarzeń, linii dziennika, celów questów, opisów zleceń, plotek w tawernie.
+
+Do tego trzy dalsze kopie tego samego kształtu:
+
+| kopia | stan |
+|---|---|
+| `WorldEventSystem.FACTION_NAMES` | **trzecia** tabela pięciu koron, z kolumną `pl`, której `factionName()` nigdy nie czytał — zwracał `.en` bezwarunkowo |
+| `ShipClassDef.nameKey` | trzymało `"ship.pinnace"`, a klucz locale to `"ship.pinnace.name"` — **zero czytelników** |
+| `PreloadScene.capitalise()` | robiło `Spain` z `spain` na tablicę ogłoszeń |
+
+To jest ten sam kształt, co `SailLevelDef.namePl` skasowane w v0.60.0.
+
+### Decyzja, którą trzeba było podjąć przed pisaniem
+
+`vars` są **stemplowane w zdarzeniu i zapisywane** — reguła z v0.43.0: fakt
+stempluje się przy zdarzeniu, nigdy nie wyprowadza z dzisiejszego świata.
+Tłumaczenie przy stemplowaniu zamraża więc stary zapis w języku, w którym
+powstał, i żadna późniejsza zmiana języka tam nie sięgnie.
+
+Trzy warianty:
+
+| | co się stempluje | stary zapis | zmiana języka w locie | koszt |
+|---|---|---|---|---|
+| A | tekst | zostaje po angielsku | stare wpisy zostają | 1 miejsce na wywołanie |
+| B | klucz, tłumaczony w rendererze | j.w. | działa | **każdy** renderer nagłówków |
+| **C (wydane)** | klucz, `t()` rozwija klucze nazw | zostaje po angielsku (bez pogorszenia) | działa wszędzie, łącznie z dziennikiem | **jedno** miejsce |
+
+Wybrane **C**, i to jest uczciwe odczytanie reguły z v0.43.0: nazwa miasta nie
+jest faktem, który się zmienia — **faktem jest klucz**, a nazwa była zawsze
+tylko jego renderingiem. Stemplowaliśmy rendering.
+
+```ts
+const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.name$/;
+
+export function t(key: string, vars?: Record<string, string | number>): string {
+  let str = LOCALES[currentLang]?.[key] ?? LOCALES["en"]?.[key] ?? key;
+  if (vars) {
+    for (const [k, v] of Object.entries(vars)) {
+      const value = typeof v === "string" && NAME_KEY.test(v) ? t(v) : String(v);
+      str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), value);
+    }
+  }
+  return str;
+}
+```
+
+Kształt wyrażenia jest wąski celowo: cztery znane prefiksy i dosłowny ogon
+`.name`, więc imię córki gubernatora, nazwa własna statku ani żaden inny var
+nie zostanie wzięty za klucz.
+
+**Migracji nie ma i nie jest potrzebna.** Zapis sprzed v0.63.0 niesie zwykły
+angielski tekst, który nie pasuje do wzorca, przechodzi nietknięty i drukuje
+się dokładnie tak, jak drukował się wtedy.
+
+### `src/core/i18n/names.ts`
+
+```ts
+portNameKey(portKey)      // "port.havana.name", albo samo "atlantis" gdy locale go nie zna
+factionNameKey(factionKey)
+itemNameKey(itemId)
+shipNameKey(classId)
+
+portName(portKey)         // gotowy tekst — TYLKO dla ekranu, który rysuje teraz
+factionName / itemName / shipClassName
+```
+
+Zapas jest celowy: id, którego tabele nie znają, wraca jako samo id — dokładnie
+to, co robiło `TABLE[x]?.name ?? x`. Ekran nigdy nie pokaże `port.atlantis.name`.
+
+### Ile tego było
+
+**Dziewięćdziesiąt dziewięć odczytów** tego pola znikło z kodu produkcyjnego:
+**52** miasta, **32** korony, **9** klas statków, **6** towarów. Przeszukania
+znalazły **94**; pozostałe **pięć** znalazło **skasowanie pola**, w kształtach, których żaden grep
+nie objął (`exitPortDef.name`, `flagCls.name`, `city.name` w pętli po
+najbliższym mieście, `rendezvous.name` w rendererze, wiersz konsorty w zakładce
+floty). To jest argument za **usuwaniem** duplikatu zamiast omijania go:
+kompilator wylicza to, czego wyrażenie regularne się domyśla.
+
+### Dwa błędy, które przy okazji wyszły
+
+- Dziennik przy mapie skarbu czytał: *„Kop w okolicy **Havana** — mapa kupiona
+  w **port_royal**"*. Miasto, przy którym zakopano, było stemplowane jako
+  angielski tekst, a miasto, w którym kupiono mapę — jako **surowy klucz**,
+  w tym samym worku `vars`.
+- `DefenseContract.portName` to pole **zapisywane**, trzymało angielski tekst.
+  Zlecenie przeżywa język, w którym je przyjęto.
+
+### Co to daje, zmierzone
+
+Z nazw czytanych teraz z jednego miejsca **5 z 5** koron różni się między
+językami, **9 z 9** klas statków, **6 z 7** towarów — i **2 z 45** miast
+(Kartagena, Gwadelupa). Widoczna zmiana dotyczy więc głównie koron, ładunku
+i klas; dla miast zysk jest inny: wszystkie czterdzieści pięć leży teraz tam,
+gdzie sięga tłumacz. Cztery poprawione w tym wydaniu (Hawana, Trynidad,
+Martynika, Bermudy), `Nombre de Dios` traci wielkie D w obu językach. Reszta
+to przebieg tłumacza, nie programisty.
+
+### Znalezione sondą na ekranie, naprawione tu
+
+- **Nagłówki dni tygodnia w kalendarzu były zaszytym angielskim**
+  (`OptionsMenuScene.ts:671`, `["Mo","Tu","We",…]`) w ekranie, którego każda
+  inna linijka idzie przez `t()`. Przeżyło, bo `no_hardcoded_text.test.ts`
+  szuka **polskich** liter w literale: jedyny język, którego ten test nie
+  widzi, to ten, na którym build startuje.
+- **Zakładka Kalendarz pokazywała zły rok w pięciu z sześciu er.**
+  `dayToCalendar(day, startYear?)` bez drugiego argumentu wraca do
+  `DEFAULT_START_YEAR`, a zakładka go nie podawała: drukowała **1690**,
+  podczas gdy HUD dwa cale obok drukował 1600 z tego samego świata. Ten sam
+  kształt, co każde inne drugie czytanie w tym projekcie — jeden wołający
+  przekazuje argument, drugi nigdy się o nim nie dowiedział. Pilnuje tego
+  teraz kontrola źródła obok `no_hardcoded_text`, bo sam helper jest poprawny
+  i żaden test jednostkowy helpera tego nie złapie.

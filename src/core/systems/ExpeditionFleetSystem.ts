@@ -58,7 +58,7 @@ import { entityId, factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES } from "../data/cities.ts";
 import { findSeaPath, findSeaPassage, pointAlong, SEA_CELL } from "../services/Pathfinding.ts";
 import { currentAt } from "./CurrentSystem.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { LANDMASSES } from "../data/geography.ts";
 import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
@@ -74,6 +74,7 @@ import {
 } from "./ReconquestSystem.ts";
 import { CAMPAIGN_COOLDOWN_DAYS } from "./CrownCampaignSystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
 
 /** Ticks between reconciliations. Roughly two a second at 20 ticks/s. */
@@ -589,8 +590,8 @@ export function scatterExpedition(
   const portKey = event.ports[0];
   const claimant = event.factions[0];
   const vars = {
-    port: CITIES[portKey]?.name ?? portKey,
-    faction: FACTIONS[claimant]?.name ?? claimant,
+    port: portNameKey(portKey),
+    faction: factionNameKey(claimant),
   };
 
   let w: WorldState = {

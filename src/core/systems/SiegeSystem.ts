@@ -40,7 +40,7 @@ import type { WorldState, RngState, PortRuntimeState } from "../model/WorldState
 import type { FactionId } from "../model/ids.ts";
 import { factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES, type CitySize } from "../data/cities.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext } from "../services/RNG.ts";
 import { changeReputation } from "./ReputationSystem.ts";
@@ -51,6 +51,7 @@ import { woundedFrom } from "./SurgeonSystem.ts";
 import { MIN_AFLOAT_HULL } from "./DamageSystem.ts";
 import { consortCrew, consortCrewMax, fleetMorale, fleetTraining, FLEET_CREW_FRACTION } from "./FleetSystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Who owns a port right now ─────────────────────────────
 
 /**
@@ -659,9 +660,9 @@ export function capturePort(
   // Log lines interpolate their vars verbatim, so hand them the display names
   // rather than the internal keys — "Cartagena", not "cartagena".
   next = addLogEntry(next, "siege.log_captured", {
-    port: CITIES[portKey]?.name ?? portKey,
+    port: portNameKey(portKey),
     gold,
-    owner: FACTIONS[newOwnerKey]?.name ?? newOwnerKey,
+    owner: factionNameKey(newOwnerKey),
   });
 
   return { world: next, gold, newOwner: makeFactionId(newOwnerKey) };
@@ -683,7 +684,7 @@ export function repulsedAtPort(world: WorldState, portKey: string): WorldState {
       reputation: changeReputation(world.player.reputation, owner, -15),
     },
   };
-  return addLogEntry(next, "siege.log_repulsed", { port: CITIES[portKey]?.name ?? portKey });
+  return addLogEntry(next, "siege.log_repulsed", { port: portNameKey(portKey) });
 }
 
 /** Crowns the player holds a letter of marque from, and could hand a town to. */

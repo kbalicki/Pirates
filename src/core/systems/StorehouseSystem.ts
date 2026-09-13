@@ -61,6 +61,7 @@ import {
   WAREHOUSE_CAP,
 } from "./HomePortSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /** Days a term of rent buys. */
 export const LEASE_DAYS = 30;
 
@@ -196,7 +197,7 @@ export function rentStorehouse(world: WorldState, portKey: string): RentResult {
 
   return {
     world: addLogEntry(next, "storehouse.log_rented", {
-      port: CITIES[portKey]?.name ?? portKey,
+      port: portNameKey(portKey),
       gold: cost,
       days: LEASE_DAYS,
     }),
@@ -340,7 +341,7 @@ export function tickStorehouses(world: WorldState): WorldState {
       ports: settled ? { ...w.ports, [portKey]: settled } : w.ports,
     };
     w = addLogEntry(w, paidOut > 0 ? "storehouse.log_auctioned" : "storehouse.log_lapsed", {
-      port: CITIES[portKey]?.name ?? portKey,
+      port: portNameKey(portKey),
       gold: paidOut,
     });
   }

@@ -45,9 +45,10 @@ import type { WorldState } from "../model/WorldState.ts";
 import { changeReputation } from "./ReputationSystem.ts";
 import { areFactionsAtWar } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { rippleReputation, areAllied, CROWNS, ACT_TRADER, ACT_NAVY } from "./DiplomacySystem.ts";
 
+import { factionNameKey } from "../i18n/names.ts";
 /**
  * A crown's name for a line the Journal will print.
  *
@@ -56,7 +57,7 @@ import { rippleReputation, areAllied, CROWNS, ACT_TRADER, ACT_NAVY } from "./Dip
  * town names for the same reason.
  */
 function crownName(key: string): string {
-  return FACTIONS[key]?.name ?? key;
+  return factionNameKey(key);
 }
 
 export const MARQUE_PREFIX = "letter_of_marque_";

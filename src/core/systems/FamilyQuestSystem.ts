@@ -38,6 +38,7 @@ import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest, findQuest } from "./QuestSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 export const FAMILY_QUEST_ID = "family_search";
 /** Flag prefix the rescue scene sets; the quest machine watches for it. */
 export const FAMILY_STEP_FLAG = "family_step_";
@@ -127,7 +128,7 @@ export function familyQuest(chain: FamilyChain, nationality: string): QuestDef {
     stages["step" + i] = {
       id: "step" + i,
       objectiveKey: "family.objective_" + step.relative,
-      vars: { port: CITIES[step.portKey]?.name ?? step.portKey },
+      vars: { port: portNameKey(step.portKey) },
       on: [{
         trigger: { type: "flag_set", key: FAMILY_STEP_FLAG + i },
         next: last ? "done" : "step" + (i + 1),

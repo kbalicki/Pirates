@@ -9,6 +9,7 @@ import { PORTS } from "../data/ports.ts";
 import { vec2Dist } from "../services/Geometry.ts";
 import { addLogEntry } from "../systems/EventLogSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 export type ReducerResult = {
   world: WorldState;
   events: WorldEvent[];
@@ -66,7 +67,7 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
           location: { type: "port", portId: cmd.portId, pos: playerEntity.pos },
         },
       };
-      newWorld = addLogEntry(newWorld, "event.arrived", { port: portDef.name });
+      newWorld = addLogEntry(newWorld, "event.arrived", { port: portNameKey(cmd.portId) });
       events.push({ type: "PortEntered", portId: cmd.portId });
       events.push({ type: "Sound", id: "port_enter" });
       transitions.push({ type: "GoToScene", scene: "Port", payload: { portId: cmd.portId } });
@@ -92,7 +93,7 @@ export function reduceCommand(world: WorldState, cmd: WorldCommand): ReducerResu
         entities: { ...world.entities, [world.player.shipId as string]: updatedEntity },
       };
       if (exitPortDef) {
-        newWorld = addLogEntry(newWorld, "event.departed", { port: exitPortDef.name });
+        newWorld = addLogEntry(newWorld, "event.departed", { port: portNameKey(world.player.location.portId as string) });
       }
       transitions.push({ type: "GoToScene", scene: "MainMap" });
       break;

@@ -608,7 +608,12 @@ export class OptionsMenuScene extends Phaser.Scene {
     const cx = this.cameras.main.width / 2;
     let y = 0;
 
-    const cal = dayToCalendar(this.worldState.time.day);
+    // With the world's own start year, since v0.63.0. Without it the helper
+    // falls back to DEFAULT_START_YEAR, so this tab printed 1690 in FIVE of the
+    // six eras while the HUD two inches away printed the right one - the same
+    // shape as every other second reading this project has found: one caller
+    // passes the argument and the other never learned it existed.
+    const cal = dayToCalendar(this.worldState.time.day, this.worldState.startYear);
     const monthName = getMonthName(cal.month);
     const dateStr = `${cal.dayOfMonth} ${monthName} ${cal.year}`;
     const { hh, mm } = clockHHMM(this.worldState.time);
@@ -668,7 +673,11 @@ export class OptionsMenuScene extends Phaser.Scene {
     const startX = cx - (GRID_COLS * CELL) / 2;
     const dim = daysInMonth(cal.month, cal.year);
 
-    const dayNames = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+    // Hardcoded English until v0.63.0, in a screen every other line of which
+    // goes through t(). It survived because no_hardcoded_text.test.ts looks for
+    // POLISH letters in a literal: the one language it cannot see is the one
+    // the build defaults to.
+    const dayNames = ["mo", "tu", "we", "th", "fr", "sa", "su"].map(d => t("calendar.day_" + d));
     for (let c = 0; c < GRID_COLS; c++) {
       const header = this.add.text(startX + c * CELL + CELL / 2, startY,
         dayNames[c], txt(9, { bold: true, color: "#888888" }));

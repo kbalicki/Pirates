@@ -103,6 +103,7 @@ import { changeReputation, getReputationLevel, type ReputationLevel } from "./Re
 import { HISTORICAL_WARS } from "../data/wars.ts";
 import { calendarToDay } from "./TimeSystem.ts";
 
+import { factionNameKey } from "../i18n/names.ts";
 /**
  * How long the peace itself is an event (v0.30.0).
  *
@@ -211,7 +212,7 @@ export function dynamicWarId(a: string, b: string): string {
 }
 
 function crownName(key: string): string {
-  return FACTIONS[key]?.name ?? key;
+  return factionNameKey(key);
 }
 
 /** Every crown this one is fighting today. */

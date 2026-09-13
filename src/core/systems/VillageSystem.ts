@@ -65,7 +65,7 @@
 
 import type { WorldState, WorldEventState, Vec2 } from "../model/WorldState.ts";
 import { VILLAGES, villageList, type VillageDef } from "../data/villages.ts";
-import { CITIES } from "../data/cities.ts";
+
 import { portFaction } from "./SiegeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { clamp } from "../services/Geometry.ts";
@@ -74,6 +74,7 @@ import { clamp } from "../services/Geometry.ts";
 // lesson). Names are baked where the entry is made.
 import { t } from "../i18n/index.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── The numbers ───────────────────────────────────────────
 
 /**
@@ -354,7 +355,6 @@ export function sendWarParty(world: WorldState, key: string): { world: WorldStat
   const offer = warPartyOffer(world, key);
   if (!offer?.ready) return { world, ok: false };
   const target = offer.target;
-  const def = CITIES[target];
 
   const event: WorldEventState = {
     id: `native_raid_${world.time.day}_${target}`,
@@ -367,12 +367,13 @@ export function sendWarParty(world: WorldState, key: string): { world: WorldStat
     headline: "news.native_raid",
     vars: {
       mainPort: target,
-      port: def?.name ?? target,
-      // A display name, not the key. `vars.faction` is a printed string
-      // everywhere else an event is built, and a raw key stamped into a save
-      // prints as "spain" the day somebody writes a headline that uses it —
-      // the v0.37.0 lesson, one line below the comment that cites it.
-      faction: t(`faction.${portFaction(world, target)}.name`),
+      port: portNameKey(target),
+      // The key, since v0.63.0. This used to stamp the printed name, with a
+      // comment citing v0.37.0 — the release where a raw key reached the
+      // journal and printed as "spain". Both halves of that are now handled in
+      // one place: `t()` resolves a name-shaped key when it substitutes a var,
+      // so the stamp can carry the fact and still print a word.
+      faction: factionNameKey(portFaction(world, target) as string),
       duration: WAR_PARTY_DAYS,
     },
   };

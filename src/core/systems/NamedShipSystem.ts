@@ -105,6 +105,7 @@ import { t } from "../i18n/index.ts";
 import { rngNextFloat } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /** How many named hulls the Caribbean carries. */
 export const NAMED_SHIP_COUNT = 6;
 
@@ -1138,7 +1139,7 @@ export function tickNamedShips(
       if (Math.hypot(hull[1].pos.x - haven.x, hull[1].pos.y - haven.y) <= SHELTER_RANGE) {
         const got = makeShelter(w, current, bolting === current.to ? "to" : "from", w.rng);
         w = { ...got.world, rng: got.rng };
-        const where = CITIES[bolting]?.name ?? bolting;
+        const where = portNameKey(bolting);
         w = addLogEntry(w, "named.log_escaped", { ship: current.name, port: where });
         events.push({ type: "Toast", message: t("named.escaped", { ship: current.name, port: where }) });
         continue;

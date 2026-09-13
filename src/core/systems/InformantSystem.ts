@@ -38,7 +38,7 @@ import type { WorldState } from "../model/WorldState.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
 import { CITIES } from "../data/cities.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { routesNear, laneThroughput, laneSupplyShare, disruptions } from "./TradeRouteSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { portFaction } from "./SiegeSystem.ts";
@@ -58,6 +58,7 @@ import {
   escortCount,
 } from "./NamedShipSystem.ts";
 
+import { factionNameKey, itemNameKey, portNameKey } from "../i18n/names.ts";
 /** Quest ids for an informer's commission all start with this. */
 export const RAID_QUEST_PREFIX = "raid_";
 
@@ -180,8 +181,8 @@ export function raidOffer(world: WorldState, portKey: string): RaidCommission | 
       routeId: lane.id,
       from: lane.from,
       to: lane.to,
-      fromName: CITIES[lane.from]?.name ?? lane.from,
-      toName: CITIES[lane.to]?.name ?? lane.to,
+      fromName: portNameKey(lane.from),
+      toName: portNameKey(lane.to),
       crown,
       severity: RAID_SEVERITY,
       reward,
@@ -195,7 +196,7 @@ export function raidOffer(world: WorldState, portKey: string): RaidCommission | 
 
 /** Whose trade it is, in words the tavern screen can print. */
 export function raidVictim(commission: RaidCommission): string {
-  return FACTIONS[commission.crown]?.name ?? commission.crown;
+  return factionNameKey(commission.crown);
 }
 
 /**
@@ -279,7 +280,6 @@ export function tickRaidCommissions(world: WorldState): { world: WorldState; fla
   if (flags.length === 0) return { world, flags };
   return { world: { ...world, worldFlags }, flags };
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // The other kind of work: a town that cannot get what it eats (v0.26.0)
@@ -455,7 +455,7 @@ export function reliefOffer(world: WorldState, portKey: string): ReliefCommissio
       const commission: ReliefCommission = {
         id: reliefQuestId(townKey, item),
         port: townKey,
-        portName: CITIES[townKey]?.name ?? townKey,
+        portName: portNameKey(townKey),
         item,
         qty,
         reward: Math.round(perTon * qty),
@@ -479,7 +479,7 @@ export function reliefOffer(world: WorldState, portKey: string): ReliefCommissio
 export function reliefQuest(commission: ReliefCommission): QuestDef {
   const vars = {
     port: commission.portName,
-    item: ITEMS[commission.item]?.name ?? commission.item,
+    item: itemNameKey(commission.item),
     qty: commission.qty,
     gold: commission.reward,
     days: commission.days,
@@ -577,7 +577,6 @@ export function landRelief(world: WorldState, commission: ReliefCommission): Rel
   if (!repriced) return { world: landed };
   return { world: { ...landed, ports: { ...landed.ports, [commission.port]: repriced } } };
 }
-
 
 // ═══════════════════════════════════════════════════════════════════════════
 // The third kind of work: a ship with a name (v0.32.0)
@@ -725,8 +724,8 @@ export function huntOffer(world: WorldState, portKey: string): HuntCommission | 
       shipName: ship.name,
       crown: ship.crown,
       classId: ship.classId,
-      fromName: CITIES[ship.from]?.name ?? ship.from,
-      toName: CITIES[ship.to]?.name ?? ship.to,
+      fromName: portNameKey(ship.from),
+      toName: portNameKey(ship.to),
       reward: Math.round((HUNT_BASE_FEE + HUNT_TONNAGE_FEE * tonnage) * convoy),
       escorts: escortCount(ship),
       acceptedDay: world.time.day,
@@ -741,7 +740,7 @@ export function huntOffer(world: WorldState, portKey: string): HuntCommission | 
 
 /** Whose ship she is, in words the tavern screen can print. */
 export function huntVictim(commission: HuntCommission): string {
-  return FACTIONS[commission.crown]?.name ?? commission.crown;
+  return factionNameKey(commission.crown);
 }
 
 /**

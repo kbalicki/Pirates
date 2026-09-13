@@ -39,7 +39,7 @@
 
 import type { WorldState } from "../model/WorldState.ts";
 import { CITIES } from "../data/cities.ts";
-import { ITEMS } from "../data/items.ts";
+
 import { baselineConsumptionRate } from "../data/economyBaselines.ts";
 import { townHunger, townIsHungry, reroutedOnto, supplierShutIn } from "./EconomyTickSystem.ts";
 import { disruptions, tradeRoutes } from "./TradeRouteSystem.ts";
@@ -51,6 +51,7 @@ import { tradeIncome } from "./TradeLedgerSystem.ts";
 import { activeAlliances } from "./DiplomacySystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
+import { itemNameKey, portNameKey } from "../i18n/names.ts";
 /** One thing the tavern has to say, ready for `t()`. */
 export type Rumor = { key: string; vars?: Record<string, string | number> };
 
@@ -145,8 +146,8 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     out.push({
       key: "tavern.rumor_hunger",
       vars: {
-        port: CITIES[key]?.name ?? key,
-        item: ITEMS[item]?.name ?? item,
+        port: portNameKey(key),
+        item: itemNameKey(item),
         pct: Math.round(townHunger(world, key) * 100),
       },
     });
@@ -155,7 +156,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
   // 2. A cordon. The one fact here the player may well have caused himself.
   for (const key of neighbours) {
     if (!blockadeEffective(world, key)) continue;
-    out.push({ key: "tavern.rumor_blockade", vars: { port: CITIES[key]?.name ?? key } });
+    out.push({ key: "tavern.rumor_blockade", vars: { port: portNameKey(key) } });
   }
 
   // 3. A harbour nobody can enter. Since v0.29.0 a shut port really is shut to
@@ -164,7 +165,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
   //    the passage.
   for (const key of neighbours) {
     if (!isPortClosed(world, key)) continue;
-    out.push({ key: "tavern.rumor_shut", vars: { port: CITIES[key]?.name ?? key } });
+    out.push({ key: "tavern.rumor_shut", vars: { port: portNameKey(key) } });
     break;
   }
 
@@ -178,9 +179,9 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     out.push({
       key: "tavern.rumor_covering",
       vars: {
-        port: CITIES[key]?.name ?? key,
-        other: shut ? CITIES[shut.from]?.name ?? shut.from : "",
-        item: ITEMS[covering[0].item]?.name ?? covering[0].item,
+        port: portNameKey(key),
+        other: shut ? portNameKey(shut.from) : "",
+        item: itemNameKey(covering[0].item),
       },
     });
     break;                                   // one is a story, four is a ledger
@@ -195,8 +196,8 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     out.push({
       key: "tavern.rumor_lane",
       vars: {
-        from: CITIES[lane.from]?.name ?? lane.from,
-        to: CITIES[lane.to]?.name ?? lane.to,
+        from: portNameKey(lane.from),
+        to: portNameKey(lane.to),
       },
     });
     break;
@@ -205,7 +206,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
   // 6. A town flying no crown's colours.
   for (const key of neighbours) {
     if (!playerHolds(world, key)) continue;
-    out.push({ key: "tavern.rumor_black_flag", vars: { port: CITIES[key]?.name ?? key } });
+    out.push({ key: "tavern.rumor_black_flag", vars: { port: portNameKey(key) } });
     break;
   }
 
@@ -233,7 +234,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
         key: "tavern.rumor_named_held",
         vars: {
           ship: ship.name,
-          port: CITIES[alongside]?.name ?? alongside,
+          port: portNameKey(alongside),
           shipId: ship.id,
         },
       });
@@ -250,8 +251,8 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
       key: "tavern.rumor_named",
       vars: {
         ship: ship.name,
-        port: CITIES[from]?.name ?? from,
-        to: CITIES[to]?.name ?? to,
+        port: portNameKey(from),
+        to: portNameKey(to),
         // Carried so the tavern screen can write the sighting onto the chart
         // when the captain actually reads it (v0.33.0). Unused by the string.
         shipId: ship.id,
@@ -288,7 +289,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
     if (income > best) { best = income; busiest = key; }
   }
   if (busiest) {
-    out.push({ key: "tavern.rumor_busy_quay", vars: { port: CITIES[busiest]?.name ?? busiest } });
+    out.push({ key: "tavern.rumor_busy_quay", vars: { port: portNameKey(busiest) } });
   }
 
   return out;

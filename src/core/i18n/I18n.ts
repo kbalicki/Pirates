@@ -65,6 +65,30 @@ function pickLang(): Lang {
 }
 
 /**
+ * Is this string a key the locale tables actually carry?
+ *
+ * English is the canonical column: `locale_parity.test.ts` keeps the two
+ * tables holding the same key set, so asking one is asking both, and asking
+ * the English one keeps the answer independent of who is reading the game.
+ */
+export function hasKey(key: string): boolean {
+  return LOCALES["en"]?.[key] !== undefined;
+}
+
+/**
+ * A `vars` value shaped like the key a name is written under.
+ *
+ * Core stamps these into saved events instead of the name itself (v0.63.0 —
+ * see `names.ts` for why), so the substitution below has to resolve one more
+ * step. The shape is narrow on purpose: four known prefixes and the literal
+ * `.name` tail, so a captain's daughter, a ship's given name or anything else
+ * a var carries can never be mistaken for a key. A save written before that
+ * release holds plain English text, which does not match, and prints exactly
+ * as it printed then.
+ */
+const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.name$/;
+
+/**
  * Primary translation function.
  * Usage: t("hud.gold") → "Gold" or "Złoto"
  * With interpolation: t("hud.crew", { current: 20, max: 30 })
@@ -74,7 +98,8 @@ export function t(key: string, vars?: Record<string, string | number>): string {
   let str = LOCALES[currentLang]?.[key] ?? LOCALES["en"]?.[key] ?? key;
   if (vars) {
     for (const [k, v] of Object.entries(vars)) {
-      str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), String(v));
+      const value = typeof v === "string" && NAME_KEY.test(v) ? t(v) : String(v);
+      str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), value);
     }
   }
   return str;

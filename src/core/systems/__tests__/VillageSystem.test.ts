@@ -11,6 +11,7 @@ import {
   baseStanding, villageStanding, villageTier, villageNear, neighbourCrown,
   tradeOffer, tradeCooldownLeft, barter, warPartyOffer, sendWarParty, holdOf,
 } from "../VillageSystem.ts";
+import { portNameKey } from "../../i18n/names.ts";
 
 // ── Fixture ───────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ describe("the war party", () => {
     // `mainPort` is the town **key** every reader looks the place up by;
     // `port` is the display string the headline prints.
     expect(ev.vars.mainPort).toBe("panama");
-    expect(ev.vars.port).toBe(CITIES.panama.name);
+    expect(ev.vars.port).toBe(portNameKey("panama"));
     expect(ev.endDay).toBeGreaterThan(ev.startDay);
     // He was standing on the beach when it was agreed.
     expect(r.world.knownEventIds).toContain(ev.id);

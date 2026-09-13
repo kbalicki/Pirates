@@ -9,6 +9,8 @@ import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
 import { stampAlliances } from "../DiplomacySystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
+import { portNameKey, itemNameKey } from "../../i18n/names.ts";
+import { factionNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // RumorSystem — the tavern reports the world (v0.28.0)
@@ -107,8 +109,8 @@ describe("what the tavern knows", () => {
     const world = hungryAt(makeWorld(), NEAR);
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_hunger");
     expect(said).toBeDefined();
-    expect(said!.vars!.port).toBe(CITIES[NEAR].name);
-    expect(Object.values(ITEMS).map(i => i.name)).toContain(said!.vars!.item);
+    expect(said!.vars!.port).toBe(portNameKey(NEAR));
+    expect(Object.keys(ITEMS).map(itemNameKey)).toContain(said!.vars!.item);
   });
 
   it("does not gossip about the town it is standing in", () => {
@@ -125,7 +127,7 @@ describe("what the tavern knows", () => {
     expect(far).toBeGreaterThan(1300);          // the fixture's premise
     const world = hungryAt(makeWorld(), FAR);
     const said = rumorsAt(world, HERE).find(
-      r => r.key === "tavern.rumor_hunger" && r.vars?.port === CITIES[FAR].name,
+      r => r.key === "tavern.rumor_hunger" && r.vars?.port === portNameKey(FAR),
     );
     expect(said).toBeUndefined();
   });
@@ -137,7 +139,7 @@ describe("what the tavern knows", () => {
       ports: { ...base.ports, [NEAR]: { ...base.ports[NEAR], blockadeDays: 30 } },
     };
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_blockade");
-    expect(said?.vars?.port).toBe(CITIES[NEAR].name);
+    expect(said?.vars?.port).toBe(portNameKey(NEAR));
   });
 
   it("reports a harbour that has been shut", () => {
@@ -159,7 +161,7 @@ describe("what the tavern knows", () => {
       }],
     } as unknown as WorldState;
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_shut");
-    expect(said?.vars?.port).toBe(CITIES[NEAR].name);
+    expect(said?.vars?.port).toBe(portNameKey(NEAR));
   });
 
   it("reports a town flying no crown's colours", () => {
@@ -169,7 +171,7 @@ describe("what the tavern knows", () => {
       ports: { ...base.ports, [NEAR]: { ...base.ports[NEAR], factionId: factionId("pirates") } },
     };
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_black_flag");
-    expect(said?.vars?.port).toBe(CITIES[NEAR].name);
+    expect(said?.vars?.port).toBe(portNameKey(NEAR));
   });
 
   it("reports a busy quay, but only a genuinely busy one", () => {
@@ -182,7 +184,7 @@ describe("what the tavern knows", () => {
       ports: { ...base.ports, [NEAR]: { ...base.ports[NEAR], tradeIncome: 400 } },
     };
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_busy_quay");
-    expect(said?.vars?.port).toBe(CITIES[NEAR].name);
+    expect(said?.vars?.port).toBe(portNameKey(NEAR));
   });
 
   it("leads with the fact a captain can act on this afternoon", () => {
@@ -303,7 +305,7 @@ describe("two crowns standing together", () => {
   it("is told in a town of one of the two crowns", () => {
     const said = rumorsAt(allied(), HERE).find(r => r.key === "tavern.rumor_alliance");
     expect(said).toBeDefined();
-    expect(said!.vars!.against).toBe("Spain");
+    expect(said!.vars!.against).toBe(factionNameKey("spain"));
   });
 
   it("is not told in a town of the crown it is aimed at", () => {

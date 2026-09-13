@@ -5,7 +5,7 @@ import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
 import { CITIES } from "../../core/data/cities.ts";
-import { FACTIONS } from "../../core/data/factions.ts";
+
 import { pickNeighbours, getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import {
   platePos,
@@ -28,10 +28,6 @@ import { WAR_PARTY_STANDING, VILLAGE_RANGE } from "../../core/systems/VillageSys
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
 import { seedNamedShips, namedShips, namedShipById, livingNamedShips, namedShipPos, escortCount, reportNamedShip, namedReports, reckonedPos } from "../../core/systems/NamedShipSystem.ts";
 
-/** Crown ids are lower case in the data and title case on a noticeboard. */
-function capitalise(word: string): string {
-  return word.charAt(0).toUpperCase() + word.slice(1);
-}
 import { BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { fogPatch, fogNight } from "../../core/systems/FogSystem.ts";
 import { CURRENTS } from "../../core/data/currents.ts";
@@ -41,6 +37,7 @@ import { stampAlliances } from "../../core/systems/DiplomacySystem.ts";
 import { marqueFlag } from "../../core/systems/PrivateerSystem.ts";
 import { GOVERNOR_NEW_DAYS } from "../../core/systems/PardonSystem.ts";
 
+import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: "PreloadScene" });
@@ -783,8 +780,8 @@ export class PreloadScene extends Phaser.Scene {
           // on purpose: `endDay` is today here, because this harness exists to
           // resolve the landing at once.
           vars: {
-            port: def.name,
-            faction: def.factionId as string,
+            port: portNameKey(portKey),
+            faction: factionNameKey(def.factionId as string),
             soldiers,
             guns: Math.round(soldiers / 4),
             days: 8,
@@ -828,8 +825,8 @@ export class PreloadScene extends Phaser.Scene {
       severity: 3 as const,
       headline: "news.reconquest",
       vars: {
-        port: def.name,
-        faction: def.factionId as unknown as string,
+        port: portNameKey(portKey),
+        faction: factionNameKey(def.factionId as unknown as string),
         soldiers,
         guns: Math.round(soldiers / 4),
         days: 20,
@@ -897,7 +894,7 @@ export class PreloadScene extends Phaser.Scene {
       factions: [crown, enemy],
       severity: 3 as const,
       headline: "news.war_start",
-      vars: { faction1: FACTIONS[crown]?.name ?? crown, faction2: FACTIONS[enemy]?.name ?? enemy },
+      vars: { faction1: factionNameKey(crown), faction2: factionNameKey(enemy) },
     }));
 
     // Stamped by the production function, so the tavern and the news boards
@@ -926,9 +923,9 @@ export class PreloadScene extends Phaser.Scene {
           severity: 3 as const,
           headline: "news.campaign",
           vars: {
-            port: CITIES[threatened].name,
-            faction: FACTIONS[enemy]?.name ?? enemy,
-            holder: FACTIONS[holder]?.name ?? holder,
+            port: portNameKey(threatened),
+            faction: factionNameKey(enemy),
+            holder: factionNameKey(holder),
             soldiers: 160, guns: 40, days: 14,
           },
         }],
@@ -979,7 +976,7 @@ export class PreloadScene extends Phaser.Scene {
         factions: [crown],
         severity: 1 as const,
         headline: "news.new_governor",
-        vars: { mainPort: portKey, port: def.name, faction: FACTIONS[crown]?.name ?? crown, duration: GOVERNOR_NEW_DAYS },
+        vars: { mainPort: portKey, port: portNameKey(portKey), faction: factionNameKey(crown), duration: GOVERNOR_NEW_DAYS },
       }],
     };
   }
@@ -1013,7 +1010,7 @@ export class PreloadScene extends Phaser.Scene {
       factions: [crown, holder],
       severity: 3 as const,
       headline: "news.war_start",
-      vars: { faction1: FACTIONS[crown]?.name ?? crown, faction2: FACTIONS[holder]?.name ?? holder },
+      vars: { faction1: factionNameKey(crown), faction2: factionNameKey(holder) },
     }));
 
     // The alliance is stamped by the same function the daily tick calls, so it
@@ -1093,7 +1090,7 @@ export class PreloadScene extends Phaser.Scene {
           severity: 3 as const,
           headline: "news.campaign",
           vars: {
-            port: CITIES[target].name,
+            port: portNameKey(target),
             faction: crown === "spain" ? "england" : "spain",
             holder: crown,
             soldiers: 180,
@@ -1289,10 +1286,10 @@ export class PreloadScene extends Phaser.Scene {
           // that is missing a key prints the raw `{{faction1}}` on the tavern
           // noticeboard rather than failing (v0.30.0 — seen on a screenshot).
           vars: {
-            port: def.name,
-            faction: def.factionId as unknown as string,
-            faction1: capitalise(def.factionId as unknown as string),
-            faction2: "England",
+            port: portNameKey(portKey),
+            faction: factionNameKey(def.factionId as unknown as string),
+            faction1: factionNameKey(def.factionId as unknown as string),
+            faction2: factionNameKey("england"),
             duration: 60,
           },
         },

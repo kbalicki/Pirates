@@ -21,12 +21,13 @@ import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
-import { CITIES } from "../../core/data/cities.ts";
+
 import {
   villageDef, villageStanding, villageTier, tradeOffer, tradeCooldownLeft,
   barter, warPartyOffer, sendWarParty, neighbourCrown,
 } from "../../core/systems/VillageSystem.ts";
 
+import { portNameKey } from "../../core/i18n/names.ts";
 type VillageAction = "trade" | "war" | "leave";
 
 const DLG_W = 440;
@@ -248,7 +249,7 @@ export class VillageScene extends Phaser.Scene {
       const result = sendWarParty(this.worldState, this.villageKey);
       if (result.ok) {
         this.worldState = result.world;
-        this.message = t("village.war_party_done", { port: t(`port.${target}.name`) || CITIES[target]?.name || target });
+        this.message = t("village.war_party_done", { port: portNameKey(target) });
       }
     }
 

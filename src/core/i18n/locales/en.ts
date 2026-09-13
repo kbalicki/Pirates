@@ -27,7 +27,7 @@ export const EN: LocaleData = {
   "port.caracas.name": "Caracas",
   "port.gibraltar.name": "Gibraltar",
   "port.margarita.name": "Margarita",
-  "port.nombre_de_dios.name": "Nombre De Dios",
+  "port.nombre_de_dios.name": "Nombre de Dios",
   "port.puerto_cabello.name": "Puerto Cabello",
   "port.puerto_principe.name": "Puerto Príncipe",
   "port.rio_de_la_hacha.name": "Río de la Hacha",
@@ -228,6 +228,13 @@ export const EN: LocaleData = {
   "cabin.cannons": "Cannons: {{count}}",
 
   // -- Calendar --
+  "calendar.day_mo": "Mo",
+  "calendar.day_tu": "Tu",
+  "calendar.day_we": "We",
+  "calendar.day_th": "Th",
+  "calendar.day_fr": "Fr",
+  "calendar.day_sa": "Sa",
+  "calendar.day_su": "Su",
   "calendar.recent_events": "Recent Events",
   "calendar.no_events": "No events yet.",
 

@@ -5,7 +5,6 @@ export type ItemCategory = "trade" | "supply";
 
 export type ItemDef = {
   id: ItemId;
-  name: string;
   basePrice: number;
   weight: number;
   legal: boolean;
@@ -29,7 +28,6 @@ export type ItemDef = {
 export const ITEMS: Record<string, ItemDef> = {
   sugar_cane: {
     id: itemId("sugar_cane"),
-    name: "Sugar Cane",
     basePrice: 10,
     weight: 2,
     legal: true,
@@ -38,7 +36,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   tobacco: {
     id: itemId("tobacco"),
-    name: "Tobacco",
     basePrice: 15,
     weight: 1,
     legal: true,
@@ -47,7 +44,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   cocoa: {
     id: itemId("cocoa"),
-    name: "Cocoa",
     basePrice: 20,
     weight: 1,
     legal: true,
@@ -56,7 +52,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   rum: {
     id: itemId("rum"),
-    name: "Rum",
     basePrice: 12,
     weight: 1,
     legal: true,
@@ -65,7 +60,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   food: {
     id: itemId("food"),
-    name: "Food",
     basePrice: 5,
     weight: 1,
     legal: true,
@@ -74,7 +68,6 @@ export const ITEMS: Record<string, ItemDef> = {
   },
   water: {
     id: itemId("water"),
-    name: "Water",
     basePrice: 3,
     weight: 1,
     legal: true,
@@ -91,7 +84,6 @@ export const ITEMS: Record<string, ItemDef> = {
    */
   gold: {
     id: itemId("gold"),
-    name: "Gold",
     basePrice: 80,
     weight: 1,
     legal: true,

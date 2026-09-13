@@ -20,6 +20,7 @@ import { entityId, factionId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
 import type { WorldState } from "../../model/WorldState.ts";
+import { factionNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // PrivateerSystem — what a letter of marque is actually for (v0.37.0)
@@ -132,7 +133,7 @@ describe("a commission that covers him", () => {
     const after = settleHostileAct(commissioned(), "spain", "trader").world;
     const line = after.eventLog.find(e => e.key === "privateer.log_prize");
     expect(line).toBeDefined();
-    expect(line!.vars!.faction).toBe("England");
+    expect(line!.vars!.faction).toBe(factionNameKey("england"));
   });
 
   it("is only cover while the war is live", () => {
@@ -212,7 +213,7 @@ describe("the counter makes it exclusive", () => {
     const w = makeWorld({ reputation: { france: 40 } });
     const after = requestLetterOfMarque(w, factionId("france"));
     const line = after.world.eventLog.find(e => e.key === "event.letter_of_marque");
-    expect(line!.vars!.faction).toBe("France");
+    expect(line!.vars!.faction).toBe(factionNameKey("france"));
   });
 });
 

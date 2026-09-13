@@ -47,6 +47,7 @@ import { changeReputation } from "./ReputationSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /** How striking she is. Harder to win, worth more at the end. */
 export type Beauty = "plain" | "comely" | "beautiful";
 
@@ -323,7 +324,7 @@ export function propose(world: WorldState, portKey: string): ProposalResult {
       homeCrown: daughter.factionKey,
     },
   };
-  w = addLogEntry(w, "romance.log_married", { name: daughter.name, port: CITIES[portKey]?.name ?? portKey });
+  w = addLogEntry(w, "romance.log_married", { name: daughter.name, port: portNameKey(portKey) });
   const settled = payDowry(w, portKey);
 
   return { world: settled.world, accepted: true, dowry: settled.gold };
@@ -353,7 +354,7 @@ export function payDowry(world: WorldState, portKey: string): { world: WorldStat
   const w = addLogEntry(
     { ...world, player: { ...world.player, gold: world.player.gold + gold } },
     "home.log_dowry",
-    { gold, port: CITIES[portKey]?.name ?? portKey },
+    { gold, port: portNameKey(portKey) },
   );
   return { world: w, gold };
 }

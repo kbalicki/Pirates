@@ -16,9 +16,10 @@ import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
 import { getAggregatedEffects } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { letterCrowns, marqueFlag } from "./PrivateerSystem.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { diluteTraining } from "../model/CaptainState.ts";
 
+import { factionNameKey, itemNameKey, portNameKey, shipNameKey } from "../i18n/names.ts";
 // ── Governor ──────────────────────────────────────────────
 
 export type GovernorResult = {
@@ -73,10 +74,10 @@ export function requestLetterOfMarque(
   let newWorld = addLogEntry(
     { ...world, worldFlags: flags },
     "event.letter_of_marque",
-    { faction: FACTIONS[factionKey]?.name ?? factionKey },
+    { faction: factionNameKey(factionKey) },
   );
   for (const crown of given) {
-    newWorld = addLogEntry(newWorld, "privateer.log_given_up", { faction: FACTIONS[crown]?.name ?? crown });
+    newWorld = addLogEntry(newWorld, "privateer.log_given_up", { faction: factionNameKey(crown) });
   }
 
   return { world: newWorld, granted: true };
@@ -483,7 +484,7 @@ export function buyShip(
       },
     },
     "event.bought_ship",
-    { ship: classDef.name, cost: classDef.buyPrice },
+    { ship: shipNameKey(classDef.id), cost: classDef.buyPrice },
   );
 
   return { world: newWorld, bought: true };
@@ -570,7 +571,7 @@ export function buyShipToFleet(
       },
     },
     "event.bought_escort",
-    { ship: classDef.name, cost: classDef.buyPrice },
+    { ship: shipNameKey(classDef.id), cost: classDef.buyPrice },
   );
 
   return { world: newWorld, bought: true };
@@ -607,7 +608,7 @@ export function sellFleetShip(
       },
     },
     "event.sold_escort",
-    { ship: classDef?.name ?? "Ship", price: sellPrice },
+    { ship: shipNameKey(escort.classId), price: sellPrice },
   );
 
   return { world: newWorld, sold: true, goldReceived: sellPrice };
@@ -622,7 +623,6 @@ export function abandonFleetShip(
   if (fleetIndex < 0 || fleetIndex >= fleet.length) return world;
 
   const escort = fleet[fleetIndex];
-  const classDef = SHIP_CLASSES[escort.classId];
 
   return addLogEntry(
     {
@@ -633,7 +633,7 @@ export function abandonFleetShip(
       },
     },
     "event.abandoned_ship",
-    { ship: classDef?.name ?? "Ship" },
+    { ship: shipNameKey(escort.classId) },
   );
 }
 
@@ -642,7 +642,6 @@ export function abandonFleetShip(
 // Moved out to `RumorSystem` in v0.28.0. What the tavern says is a function of
 // what is happening within earshot of it now, and that needed more of the world
 // than this module has any business importing.
-
 
 // ── The public granary ────────────────────────────────────────────────────
 
@@ -793,8 +792,8 @@ export function sellGrain(world: WorldState, offer: GrainOffer): GrainResult {
   return {
     world: addLogEntry(withPrice, "event.granary_relieved", {
       qty: offer.qty,
-      item: ITEMS[offer.item]?.name ?? offer.item,
-      port: CITIES[offer.portKey]?.name ?? offer.portKey,
+      item: itemNameKey(offer.item),
+      port: portNameKey(offer.portKey),
       gold: offer.gold,
     }),
   };

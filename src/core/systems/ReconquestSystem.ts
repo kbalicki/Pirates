@@ -53,7 +53,7 @@ import type { WorldState, RngState, WorldEventState, PortRuntimeState } from "..
 import type { WorldEvent } from "../model/Events.ts";
 import { factionId as makeFactionId } from "../model/ids.ts";
 import { CITIES, type CitySize } from "../data/cities.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { t } from "../i18n/index.ts";
@@ -74,6 +74,7 @@ import {
   type AttackForce,
 } from "./SiegeSystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
 
 /** Days after a town falls before any squadron can be fitted out for it. */
@@ -445,9 +446,9 @@ export function launchExpedition(
   const holder = portFaction(world, portKey) as string;
 
   const vars: Record<string, string | number> = {
-    port: CITIES[portKey]?.name ?? portKey,
-    faction: FACTIONS[claimant]?.name ?? claimant,
-    holder: FACTIONS[holder]?.name ?? holder,
+    port: portNameKey(portKey),
+    faction: factionNameKey(claimant),
+    holder: factionNameKey(holder),
     soldiers: expedition.soldiers,
     guns: expedition.guns,
     days: expedition.sailDays,
@@ -658,8 +659,8 @@ export function settleRelief(
   }
 
   const vars = {
-    port: CITIES[portKey]?.name ?? portKey,
-    faction: FACTIONS[claimant]?.name ?? claimant,
+    port: portNameKey(portKey),
+    faction: factionNameKey(claimant),
     soldiers: expedition.soldiers,
   };
 

@@ -23,6 +23,7 @@ import { getPortBaseline } from "../../data/economyBaselines.ts";
 import { portId, entityId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
+import { portNameKey, factionNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // WorldEventSystem — the events have to land somewhere
@@ -117,7 +118,7 @@ describe("seedInitialEvents — the world starts with five things happening", ()
   it("names a real port in every one of them", () => {
     const w = seedInitialEvents(makeWorld());
     expect(w.worldEvents.length).toBeGreaterThan(0);
-    const names = new Set(Object.values(CITIES).map(c => c.name));
+    const names = new Set(Object.keys(CITIES).map(portNameKey));
     for (const ev of w.worldEvents) {
       expect(ev.vars?.port, `${ev.id} has no port`).toBeDefined();
       expect(names.has(String(ev.vars!.port)), `${ev.id}: ${ev.vars!.port}`).toBe(true);
@@ -127,7 +128,7 @@ describe("seedInitialEvents — the world starts with five things happening", ()
   it("names the crown that actually holds it, not always the pirates", () => {
     const w = seedInitialEvents(makeWorld());
     const crowns = new Set(w.worldEvents.map(ev => String(ev.vars?.faction)));
-    const real = new Set(Object.values(FACTIONS).map(f => f.name));
+    const real = new Set(Object.keys(FACTIONS).map(factionNameKey));
     for (const crown of crowns) expect(real.has(crown), crown).toBe(true);
     // Five events all belonging to one faction was the signature of the bug.
     expect(crowns.size).toBeGreaterThan(1);
@@ -227,8 +228,8 @@ describe("the events the world spawns as it runs", () => {
 
   it("name real ports and real crowns, every one of them", () => {
     const w = runYear(3);
-    const names = new Set(Object.values(CITIES).map(c => c.name));
-    const crowns = new Set(Object.values(FACTIONS).map(f => f.name));
+    const names = new Set(Object.keys(CITIES).map(portNameKey));
+    const crowns = new Set(Object.keys(FACTIONS).map(factionNameKey));
     let checked = 0;
     for (const ev of w.eventLog) {
       if (!ev.key.startsWith("news.")) continue;

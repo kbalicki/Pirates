@@ -82,6 +82,7 @@ import { consortCrew, consortCrewMax, consortMorale } from "./FleetSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /**
  * Share of the men still on the roll who reach a boat.
  *
@@ -352,7 +353,7 @@ export function settleDefeat(
 
   const landed = ship.crew.current;
   const logged = addLogEntry(w, prisoner ? "defeat.log_ransomed" : "defeat.log_castaway", {
-    port: PORTS[portKey]?.name ?? portKey,
+    port: portNameKey(portKey),
     gold: ransom + yardBill,
     count: landed,
   });

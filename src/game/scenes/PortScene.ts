@@ -144,6 +144,7 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
+import { portNameKey, shipClassName } from "../../core/i18n/names.ts";
 const DLG_W = 470;
 const DLG_H = 420;
 const BORDER = 3;
@@ -1294,7 +1295,7 @@ export class PortScene extends Phaser.Scene {
     const cityKey = cityKeys[pick.value];
     const burial = pickBurialSpot(pick.state, CITIES[cityKey].pos);
     const created = createTreasureMap(
-      burial.rng, burial.spot, quality, this.currentPortId as string, CITIES[cityKey].name,
+      burial.rng, burial.spot, quality, this.currentPortId as string, portNameKey(cityKey),
     );
 
     let world = {
@@ -1306,7 +1307,7 @@ export class PortScene extends Phaser.Scene {
 
     this.worldState = world;
     this.registry.set("worldState", this.worldState);
-    this.tavernMessage = t("tavern.map_bought", { city: CITIES[cityKey].name });
+    this.tavernMessage = t("tavern.map_bought", { city: portNameKey(cityKey) });
     this.switchView("tavern");
   }
 
@@ -1684,7 +1685,7 @@ export class PortScene extends Phaser.Scene {
     const chain = activeFamilyChain(this.worldState);
     const first = chain?.steps[0];
     this.tavernMessage = first
-      ? t("family.informer_told", { port: CITIES[first.portKey]?.name ?? first.portKey })
+      ? t("family.informer_told", { port: portNameKey(first.portKey) })
       : t("family.informer_nothing");
     this.switchView("tavern");
   }
@@ -2438,7 +2439,7 @@ export class PortScene extends Phaser.Scene {
         if (!escCls) continue;
         const hullPct = Math.round((esc.hullHp / esc.hullMax) * 100);
         const sellPrice = Math.floor(escCls.buyPrice * 0.4);
-        this.contentContainer.add(this.add.text(colName, y, `${t("fleet.escort")}: ${escCls.name}`, txt(11, { color: "#336699" })));
+        this.contentContainer.add(this.add.text(colName, y, `${t("fleet.escort")}: ${shipClassName(esc.classId)}`, txt(11, { color: "#336699" })));
         this.contentContainer.add(this.add.text(colHull, y, `${hullPct}%`, txt(11, { color: hullPct > 50 ? "#555555" : "#aa3333" })));
         const sellBtn = this.add.text(colPrice, y, `${t("fleet.sell")} (${sellPrice}g)`, txt(10, { bold: true, color: "#aa3333" }));
         sellBtn.setInteractive({ useHandCursor: true });

@@ -28,6 +28,7 @@ import type { WorldState, RngState, Vec2 } from "../model/WorldState.ts";
 import { rngNext, rngNextInt } from "../services/RNG.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /** How precise a map is, and what that costs to buy. */
 export type MapQuality = "crude" | "fair" | "exact";
 
@@ -66,6 +67,7 @@ export type TreasureMap = {
   ambush: boolean;
   /** Port whose tavern sold or told of it, for flavour. */
   fromPort: string;
+  /** Name **key** of the town it was drawn near (v0.63.0), not the name. */
   /** City key the chest is buried near — what the map actually names. */
   nearCity: string;
 };
@@ -156,7 +158,7 @@ export function treasureQuest(map: TreasureMap): QuestDef {
       search: {
         id: "search",
         objectiveKey: "treasure.objective_search",
-        vars: { city: map.nearCity, port: map.fromPort },
+        vars: { city: map.nearCity, port: portNameKey(map.fromPort) },
         on: [
           {
             trigger: { type: "dig_at", x: map.spot.x, y: map.spot.y, radius: map.radius },

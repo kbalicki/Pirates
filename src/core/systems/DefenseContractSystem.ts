@@ -50,7 +50,7 @@ import type { WorldState } from "../model/WorldState.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
 import { CITIES } from "../data/cities.ts";
-import { FACTIONS } from "../data/factions.ts";
+
 import { portFaction, SIZE_SOLDIERS } from "./SiegeSystem.ts";
 import {
   alliedWith,
@@ -61,6 +61,7 @@ import {
   DEFENSE_LOST_FLAG,
 } from "./ReconquestSystem.ts";
 
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
 
 /** Quest ids for a commission all start with this. */
@@ -94,6 +95,7 @@ export type DefenseContract = {
   /** The colony under threat. */
   portKey: string;
   /** Localised town name, so the quest log reads without a lookup. */
+  /** Key, not text: this contract is saved, and a save outlives a language. */
   portName: string;
   /** The crown that is asking. */
   holder: string;
@@ -165,7 +167,7 @@ export function offerFor(world: WorldState, portKey: string): DefenseContract | 
     const expedition = expeditionFromEvent(event);
     const candidate: DefenseContract = {
       portKey: target,
-      portName: CITIES[target].name,
+      portName: portNameKey(target),
       holder,
       claimant: event.factions[0],
       eventId: event.id,
@@ -196,8 +198,8 @@ export function defenseQuest(contract: DefenseContract): QuestDef {
   );
   const vars = {
     port: contract.portName,
-    faction: FACTIONS[contract.holder]?.name ?? contract.holder,
-    enemy: FACTIONS[contract.claimant]?.name ?? contract.claimant,
+    faction: factionNameKey(contract.holder),
+    enemy: factionNameKey(contract.claimant),
     soldiers: contract.soldiers,
     gold: contract.reward,
     days: window,

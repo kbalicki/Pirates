@@ -23,6 +23,7 @@ import type { WorldState, RngState } from "../../model/WorldState.ts";
 import { entityId, factionId, portId } from "../../model/ids.ts";
 import { CITIES } from "../../data/cities.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
+import { portNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
 // FamilyQuestSystem — three towns, three relatives, one marquis
@@ -196,7 +197,7 @@ describe("familyQuest", () => {
   it("names the town in the objective so the log reads as a lead", () => {
     const { chain } = createFamilyChain(makeWorld(), { seed: 9, state: 9 });
     const def = familyQuest(chain, "england");
-    expect(def.stages.step0.vars?.port).toBe(CITIES[chain.steps[0].portKey].name);
+    expect(def.stages.step0.vars?.port).toBe(portNameKey(chain.steps[0].portKey));
   });
 
   it("the last step pays in standing as well as gold", () => {

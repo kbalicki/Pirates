@@ -241,9 +241,9 @@ describe("fleetSummary — what the fleet tab renders", () => {
     expect(Number.isInteger(rows[1].hullPercent)).toBe(true);
   });
 
-  it("names an unknown consort class instead of crashing", () => {
+  it("falls back to the raw class id when the locale has never heard of it", () => {
     const rogue = { ...escort("sloop"), classId: "man_o_war" };
-    expect(fleetSummary("sloop", [rogue])[1].name).toBe("Unknown");
+    expect(fleetSummary("sloop", [rogue])[1].name).toBe("man_o_war");
   });
 
   it("shows 0% rather than NaN for a hull with no maximum", () => {

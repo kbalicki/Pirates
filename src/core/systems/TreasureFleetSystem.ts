@@ -94,6 +94,7 @@ import {
   EXPEDITION_INTERVAL_TICKS,
 } from "./ExpeditionFleetSystem.ts";
 
+import { portNameKey } from "../i18n/names.ts";
 /**
  * The harbours a plate fleet musters in.
  *
@@ -523,9 +524,9 @@ export function tickTreasureFleets(
 function nearestTownName(pos: Vec2): string {
   let best = "";
   let bestDist = Infinity;
-  for (const city of Object.values(CITIES)) {
+  for (const [key, city] of Object.entries(CITIES)) {
     const d = Math.hypot(city.pos.x - pos.x, city.pos.y - pos.y);
-    if (d < bestDist) { bestDist = d; best = city.name; }
+    if (d < bestDist) { bestDist = d; best = portNameKey(key); }
   }
   return best;
 }

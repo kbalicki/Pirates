@@ -21,7 +21,6 @@ export type WealthLevel = "poor" | "modest" | "prosperous" | "wealthy";
 
 export type CityDef = {
   id: PortId;
-  name: string;
   factionId: FactionId;
   type: "city" | "fort" | "outpost";
   pos: Vec2;
@@ -56,7 +55,6 @@ export const CITIES: Record<string, CityDef> = {
   // ===================================================================
   havana: {
     id: portId("havana"),
-    name: "Havana",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(82.4, 23.1),
@@ -70,7 +68,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   santiago: {
     id: portId("santiago"),
-    name: "Santiago",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(75.8, 20.0),
@@ -84,7 +81,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   santo_domingo: {
     id: portId("santo_domingo"),
-    name: "Santo Domingo",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(69.9, 18.5),
@@ -98,7 +94,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   san_juan: {
     id: portId("san_juan"),
-    name: "San Juan",
     factionId: factionId("spain"),
     type: "fort",
     pos: { x: 2416, y: 1488 }, // Direct pixel: Puerto Rico coast (fixed: was on water)
@@ -112,7 +107,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   cartagena: {
     id: portId("cartagena"),
-    name: "Cartagena",
     factionId: factionId("spain"),
     type: "fort",
     pos: geoToMap(75.5, 10.4),
@@ -126,7 +120,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   porto_bello: {
     id: portId("porto_bello"),
-    name: "Puerto Bello",
     factionId: factionId("spain"),
     type: "fort",
     pos: geoToMap(79.7, 9.6),
@@ -140,7 +133,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   panama: {
     id: portId("panama"),
-    name: "Panama",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(79.5, 8.95),
@@ -154,7 +146,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   vera_cruz: {
     id: portId("vera_cruz"),
-    name: "Vera Cruz",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(96.1, 19.2),
@@ -168,7 +159,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   campeche: {
     id: portId("campeche"),
-    name: "Campeche",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(90.5, 19.8),
@@ -182,7 +172,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   maracaibo: {
     id: portId("maracaibo"),
-    name: "Maracaibo",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(71.63, 10.63),
@@ -196,7 +185,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   cumana: {
     id: portId("cumana"),
-    name: "Cumaná",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(64.2, 10.5),
@@ -210,7 +198,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   trinidad: {
     id: portId("trinidad"),
-    name: "Trinidad",
     factionId: factionId("spain"),
     type: "city",
     pos: { x: 2740, y: 2117 }, // Direct pixel: Trinidad coast
@@ -224,7 +211,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   gran_granada: {
     id: portId("gran_granada"),
-    name: "Gran Granada",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(83.8, 12.0),
@@ -238,7 +224,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   caracas: {
     id: portId("caracas"),
-    name: "Caracas",
     factionId: factionId("spain"),
     type: "city",
     pos: { x: 2347, y: 2113 }, // Direct pixel: north coast of Venezuela
@@ -252,7 +237,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   gibraltar: {
     id: portId("gibraltar"),
-    name: "Gibraltar",
     factionId: factionId("spain"),
     type: "outpost",
     pos: { x: 1429, y: 1190 }, // Direct pixel: south coast of Cuba
@@ -266,7 +250,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   margarita: {
     id: portId("margarita"),
-    name: "Margarita",
     factionId: factionId("spain"),
     type: "outpost",
     pos: geoToMap(63.9, 11.0),
@@ -280,7 +263,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   nombre_de_dios: {
     id: portId("nombre_de_dios"),
-    name: "Nombre De Dios",
     factionId: factionId("spain"),
     type: "outpost",
     pos: geoToMap(79.47, 9.57),
@@ -294,7 +276,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   puerto_cabello: {
     id: portId("puerto_cabello"),
-    name: "Puerto Cabello",
     factionId: factionId("spain"),
     type: "outpost",
     pos: geoToMap(68.0, 10.5),
@@ -308,7 +289,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   puerto_principe: {
     id: portId("puerto_principe"),
-    name: "Puerto Príncipe",
     factionId: factionId("spain"),
     type: "city",
     pos: { x: 1620, y: 1348 }, // Direct pixel: south coast of Cuba (shifted east from water)
@@ -322,7 +302,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   rio_de_la_hacha: {
     id: portId("rio_de_la_hacha"),
-    name: "Río de la Hacha",
     factionId: factionId("spain"),
     type: "outpost",
     pos: geoToMap(72.9, 11.5),
@@ -336,7 +315,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   santa_catalina: {
     id: portId("santa_catalina"),
-    name: "Santa Catalina",
     factionId: factionId("spain"),
     type: "outpost",
     pos: { x: 1200, y: 1808 }, // Direct pixel: Providence Island (fixed: geoToMap was on water)
@@ -350,7 +328,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   santa_marta: {
     id: portId("santa_marta"),
-    name: "Santa Marta",
     factionId: factionId("spain"),
     type: "outpost",
     pos: geoToMap(74.2, 11.2),
@@ -364,7 +341,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   st_augustine: {
     id: portId("st_augustine"),
-    name: "St. Augustine",
     factionId: factionId("spain"),
     type: "fort",
     pos: geoToMap(81.3, 29.9),
@@ -378,7 +354,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   villa_hermosa: {
     id: portId("villa_hermosa"),
-    name: "Villa Hermosa",
     factionId: factionId("spain"),
     type: "city",
     pos: geoToMap(92.9, 18.0),
@@ -396,7 +371,6 @@ export const CITIES: Record<string, CityDef> = {
   // ===================================================================
   port_royal: {
     id: portId("port_royal"),
-    name: "Port Royale",
     factionId: factionId("england"),
     type: "city",
     pos: { x: 1646, y: 1511 }, // Direct pixel: Jamaica coast
@@ -410,7 +384,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   nassau: {
     id: portId("nassau"),
-    name: "Nassau",
     factionId: factionId("england"),
     type: "city",
     pos: geoToMap(77.35, 25.06),
@@ -424,7 +397,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   barbados: {
     id: portId("barbados"),
-    name: "Barbados",
     factionId: factionId("england"),
     type: "city",
     pos: { x: 2872, y: 1910 }, // Direct pixel: Barbados coast
@@ -438,7 +410,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   antigua: {
     id: portId("antigua"),
-    name: "Antigua",
     factionId: factionId("england"),
     type: "city",
     pos: geoToMap(61.8, 17.1),
@@ -452,7 +423,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   st_kitts: {
     id: portId("st_kitts"),
-    name: "St. Kitts",
     factionId: factionId("england"),
     type: "city",
     pos: geoToMap(62.7, 17.3),
@@ -466,7 +436,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   belize: {
     id: portId("belize"),
-    name: "Belize",
     factionId: factionId("england"),
     type: "outpost",
     pos: { x: 839, y: 1549 }, // Direct pixel: Belize coast
@@ -480,7 +449,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   bermuda: {
     id: portId("bermuda"),
-    name: "Bermuda",
     factionId: factionId("england"),
     type: "outpost",
     pos: { x: 2505, y: 255 }, // Direct pixel: Bermuda
@@ -494,7 +462,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   eleuthera: {
     id: portId("eleuthera"),
-    name: "Eleuthera",
     factionId: factionId("england"),
     type: "outpost",
     pos: { x: 1695, y: 904 }, // Direct pixel: Eleuthera coast
@@ -508,7 +475,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   gran_bahama: {
     id: portId("gran_bahama"),
-    name: "Gran Bahama",
     factionId: factionId("england"),
     type: "outpost",
     pos: { x: 1517, y: 782 }, // Direct pixel: Gran Bahama coast
@@ -522,7 +488,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   nevis: {
     id: portId("nevis"),
-    name: "Nevis",
     factionId: factionId("england"),
     type: "outpost",
     pos: { x: 2661, y: 1583 }, // Direct pixel: Nevis coast
@@ -540,7 +505,6 @@ export const CITIES: Record<string, CityDef> = {
   // ===================================================================
   tortuga: {
     id: portId("tortuga"),
-    name: "Tortuga",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 1935, y: 1338 }, // Direct pixel: center of Tortuga island (land_98)
@@ -554,7 +518,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   martinique: {
     id: portId("martinique"),
-    name: "Martinique",
     factionId: factionId("france"),
     type: "city",
     pos: { x: 2766, y: 1787 }, // Direct pixel: Martinique coast
@@ -568,7 +531,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   guadeloupe: {
     id: portId("guadeloupe"),
-    name: "Guadeloupe",
     factionId: factionId("france"),
     type: "city",
     pos: { x: 2736, y: 1655 }, // Direct pixel: Guadeloupe coast
@@ -582,7 +544,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   petit_goave: {
     id: portId("petit_goave"),
-    name: "Petit Goâve",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 1936, y: 1488 }, // Direct pixel: south coast Hispaniola (fixed: geoToMap was inland)
@@ -596,7 +557,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   port_de_paix: {
     id: portId("port_de_paix"),
-    name: "Port de Paix",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 1904, y: 1360 }, // Direct pixel: north coast of Hispaniola, at coastal cell
@@ -610,7 +570,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   florida_keys: {
     id: portId("florida_keys"),
-    name: "Florida Keys",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 1293, y: 952 }, // Direct pixel: Florida Keys
@@ -624,7 +583,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   leogane: {
     id: portId("leogane"),
-    name: "Léogane",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 1968, y: 1488 }, // Direct pixel: south coast Hispaniola, east of Petit Goâve
@@ -638,7 +596,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   montserrat: {
     id: portId("montserrat"),
-    name: "Montserrat",
     factionId: factionId("france"),
     type: "outpost",
     pos: { x: 2704, y: 1584 }, // Direct pixel (fixed: geoToMap was on water)
@@ -656,7 +613,6 @@ export const CITIES: Record<string, CityDef> = {
   // ===================================================================
   curacao: {
     id: portId("curacao"),
-    name: "Curaçao",
     factionId: factionId("netherlands"),
     type: "city",
     pos: { x: 2192, y: 1968 }, // Direct pixel: Curacao coast (fixed: was on water)
@@ -670,7 +626,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   st_eustatius: {
     id: portId("st_eustatius"),
-    name: "St. Eustatius",
     factionId: factionId("netherlands"),
     type: "city",
     pos: { x: 2643, y: 1559 }, // Direct pixel: St. Eustatius coast
@@ -684,7 +639,6 @@ export const CITIES: Record<string, CityDef> = {
   },
   st_martin: {
     id: portId("st_martin"),
-    name: "St. Martin",
     factionId: factionId("netherlands"),
     type: "city",
     pos: { x: 2630, y: 1500 }, // Direct pixel: St. Martin coast

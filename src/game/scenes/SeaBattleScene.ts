@@ -34,11 +34,11 @@ import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/s
 import { settlePlatePrize } from "../../core/systems/TreasureFleetSystem.ts";
 import { settleHostileAct } from "../../core/systems/PrivateerSystem.ts";
 import { settleDefeat, type DefeatFate } from "../../core/systems/DefeatSystem.ts";
-import { PORTS } from "../../core/data/ports.ts";
+
 import { advanceQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
-import { ITEMS } from "../../core/data/items.ts";
+
 import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import {
@@ -49,6 +49,7 @@ import {
   damageSpeedMultiplier,
 } from "../../core/systems/DamageSystem.ts";
 
+import { itemName, portNameKey } from "../../core/i18n/names.ts";
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
 /** How long a hull takes to go under once its hull hits zero (v0.9.9). */
@@ -1247,7 +1248,7 @@ export class SeaBattleScene extends Phaser.Scene {
             count: fate.survivors,
           })
         : t(fate.prisoner ? "battle.defeat_ransomed" : "battle.defeat_castaway", {
-            port: PORTS[fate.portKey]?.name ?? fate.portKey,
+            port: portNameKey(fate.portKey),
             gold: fate.ransom,
             count: fate.survivors,
           });
@@ -1291,7 +1292,7 @@ export class SeaBattleScene extends Phaser.Scene {
   private describeCargo(cargo: Record<string, number>): string {
     const parts = Object.entries(cargo)
       .filter(([, qty]) => qty > 0)
-      .map(([item, qty]) => `${ITEMS[item]?.name ?? item} ${qty}`);
+      .map(([item, qty]) => `${itemName(item)} ${qty}`);
     return parts.join(", ");
   }
 
