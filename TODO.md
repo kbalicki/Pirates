@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-14 · **Wersja:** v0.64.0.0 · **Branch:** `main`
-**Kod:** 237 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2041 przechodzi, 0 failuje, 0 `todo`** w 61 plikach
+**Stan na:** 2026-09-14 · **Wersja:** v0.64.0.1 · **Branch:** `main`
+**Kod:** 238 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2045 przechodzi, 0 failuje, 0 `todo`** w 62 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -13,6 +13,8 @@ się nie powiedzie, i o to chodzi.
 
 Ten plik jest źródłem prawdy dla **kolejności prac**.
 [documentation/11-ROADMAP.md](documentation/11-ROADMAP.md) opisuje **wizję i zakres** modułów.
+
+> **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA`, 49 modułów, plus tabela klas statków sprawdzana pole po polu). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
 > **Start sesji w jednym zdaniu:** v0.64.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2041/2041 zielone; **głód nie jest hossą**. Zadanie znalezione metodą z v0.61.0 — **podręcznik jako lista obietnic do sprawdzenia wiersz po wierszu** — doprowadzoną do końca na tabeli efektów zdarzeń: ze **130 kluczy `help.*`** dwadzieścia dwa niosą liczbę, pięć sprawdzono wcześniej, a pozostałe siedemnaście dało jeden trop — i ten jeden okazał się **defektem mechaniki, nie literówką w podręczniku**. `EventDailyEffects.priceMul` był **jedną liczbą na cały port**, wchodzącą do `spotPrice` niezależnie od towaru, a **trzy zdarzenia, które są o jedzeniu, używały właśnie jej**. Zmierzone na prawdziwej maszynie zdarzeń, 6 ziaren × 10 lat, **140 670 port-dni**: głód podnosił cenę **tytoniu ×2,32** i złota ×2,32 — dokładnie tyle, co żywności (×2,29), o którą w nim chodzi; epidemia podnosiła **każdy** towar na ladzie o połowę; dobre żniwa cukru **taniły złoto o 30%**. **Liczba, którą czuje gracz**: czterdzieści ton tytoniu sprzedane w głodującym mieście dawało **3551 złota zamiast 1534** (+131%) — czyli głód był najlepszą rzeczą, jaka mogła spotkać kapitana wiozącego **cokolwiek**, co jest odwrotnością tego, po co powstało zamówienie na dostawę (v0.26.0) i miejski spichlerz (v0.27.0): względem zwykłego dnia głód płacił za tonę żywności **tyle samo** co za tonę tytoniu. **Tym razem to podręcznik miał rację** — *„żywność ×2, woda ×2”* stało tam od początku, a komentarz w samym kodzie przy epidemii mówił *„food/water cost more during plague”* **trzy linijki nad liczbą, która ruszała wszystko**; odwrotnie niż omał nie wyszło w v0.62.0. Mnożnik ma teraz **temat**: `itemPriceMul` składane na wierzchu `priceMul`, jeden czytelnik `priceMulFor` — głód i epidemia nazywają żywność i wodę, żniwa nazywają żywność i cukier (czyli dwa towary, **których to są żniwa**), a dekret, hossa i wybuch wojny zostają ogólnorynkowe, bo te naprawdę są o całym rynku. Po zmianie: żywność ×2,29 przy tytoniu ×1,16, a pozostałe ×1,13–1,20 to nakładające się dekrety i wojny — poprawna odpowiedź, która wcześniej była nie do odróżnienia od błędu. **Migracji nie potrzeba**, `itemPriceMul` jest wyliczane. **Nic tego nie widziało**: wszystkie istniejące asercje o `priceMul` pytają, **czy** jest różny od 1, żadna nie pyta, **do czego** się stosuje — cały zestaw był zielony po obu stronach poprawki; nowy `EventPriceScope.test.ts` pyta, **które** ceny się ruszają, a jeden z jego testów **czyta źródło**, bo `spotPrice` przyjmuje zwykłą liczbę i przyszły wołający może podać samą połowę ogólnorynkową, myląc się dokładnie tak jak przedtem. **Weryfikacja na ekranie znalazła trzy rzeczy spoza zadania**: `?famine=` **nie stawiało zdarzenia `famine`** (opróżniało półki i stemplowało `hunger`, ale jedyna rzecz, którą głód robi z cenami, była niewidoczna w harnessie zbudowanym po to) i nie przeliczało cen portu; **`[Sprzedaj]` był ucinany krawędzią panelu w każdym wierszu lady** — przyciski stały na sztywnych +340 i +390 w panelu o wewnętrznej szerokości **438**, co mieści `[Sell]` i obcina jego polski odpowiednik, więc **lada była złamana po polsku i poprawna po angielsku** (to samo ostrzeżenie, które ten plik zapisał po v0.61.0, tylko na innym ekranie); oraz **`[ WRÓĆ DO PORTU ]` wchodził cztery piksele w linię podpowiedzi klawiszy** na wszystkich trzech ladach. Lista kandydatów na v0.65.0 jest niżej.
 
@@ -2387,6 +2389,16 @@ po wierszu** — i to jest dziś najskuteczniejsza metoda dla agenta. Co został
   zapytać. Jedyne miejsce, gdzie domyślny rok jest jedyną odpowiedzią — wymienione
   w teście zamiast być przemilczane. Jeśli lista zapisów kiedyś zacznie trzymać rok,
   ten wyjątek znika
+- **`14-MECHANICS.md` — co jeszcze trzeba w nim dokończyć** (v0.64.0.1). Dokument
+  pokrywa **liczby** (244 sprawdzane wiersze) i jest źródłem na instrukcję dla gracza.
+  Czego w nim świadomie brakuje i co warto dopisać **przed** pisaniem instrukcji:
+  **(a)** tabele strukturalne poza klasami statków — progi reputacji, obsady, uszkodzeń
+  i amunicji są przepisane ręcznie i **nie są sprawdzane maszynowo** (klasy statków są);
+  **(b)** zdania jakościowe (*„obrona spada”*, *„statki zostają uszkodzone”*) — test ich
+  nie widzi, trzeba je przejść po kolei tak jak wiersze podręcznika w v0.64.0;
+  **(c)** 45 portów — produkcja, zapotrzebowanie, poziom rynku i poziom stoczni nie są
+  wypisane, a instrukcja dla gracza będzie ich chciała; **(d)** ekrany — dokument opisuje
+  **mechaniki**, nie to, gdzie co jest kliknięciem, a instrukcja potrzebuje obu
 - **Podręcznik jest listą obietnic, którą da się sprawdzić** (metoda z v0.61.0).
   Od v0.60.0 cały ekran pomocy to 129 kluczy jawnej prozy, czyli spis tego, co
   gra **mówi**, że robi. Przejście po nim wiersz po wierszu i skonfrontowanie

@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.58.0.0 | **Ostatnia aktualizacja:** 2026-09-11
+**Wersja:** 0.64.0.1 | **Ostatnia aktualizacja:** 2026-09-14
 
 ---
 
@@ -21,6 +21,7 @@
 | 11 | [Roadmapa rozwoju](11-ROADMAP.md) | Plan rozwoju gry, moduły, fazy implementacji |
 | 12 | [Klasy statków](12-SHIP-CLASSES.md) | 9 klas statków — parametry, takielunek, zastosowanie |
 | 13 | [Pipeline 3D assets](13-3D-ASSET-PIPELINE.md) | Meshy.ai → spritesheet |
+| **14** | **[Mechaniki](14-MECHANICS.md)** | **Jak gra działa dziś** — stan, nie historia wydań; każda liczba z kodu i **sprawdzana testem**. Źródło na instrukcję dla gracza |
 
 ## Powiązane zasoby
 
@@ -33,7 +34,7 @@
 
 - Dokumentacja w języku polskim
 - Sygnatury funkcji w formacie TypeScript
-- Stałe i wartości liczbowe dokładnie z kodu źródłowego
+- Stałe i wartości liczbowe dokładnie z kodu źródłowego — w [14-MECHANICS.md](14-MECHANICS.md) **egzekwowane testem** (`src/core/__tests__/mechanics_doc.test.ts`: 244 wiersze, 49 modułów)
 - Każdy dokument jest samowystarczalny (nie wymaga czytania innych)
 
 ## Notatki z sesji

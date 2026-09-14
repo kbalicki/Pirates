@@ -6,6 +6,34 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.64.0.1",
+    date: "2026-09-14",
+    changes: [
+      "THE MECHANICS, WRITTEN DOWN - AND A TEST THAT KEEPS THEM WRITTEN DOWN",
+      "  documentation/14-MECHANICS.md: what the game does today, ordered by",
+      "  what a player does, with the real numbers. The rest of the docs are",
+      "  release archaeology - 04-CORE-SYSTEMS alone is 5500 lines of what was",
+      "  broken and how it was found - which is the right shape for writing",
+      "  code and the wrong shape for writing a manual, because it describes",
+      "  differences rather than state",
+      "  Every number in it is carried as `Module.CONSTANT | value | meaning`",
+      "  and mechanics_doc.test.ts reads the document back, finds the constant",
+      "  in the module's source and compares. 244 rows across 49 modules. The",
+      "  ship table is checked field by field against SHIP_CLASSES",
+      "  The machinery is not decoration. The in-game manual promised a",
+      "  reputation reset on a new governor from v0.9.7.1 and nothing produced",
+      "  one for fifty-one releases; in v0.64.0 it went the other way and the",
+      "  manual was the accurate document while the code was wrong. A prose",
+      "  description of a mechanic drifts from the mechanic silently, and this",
+      "  one is meant to be the source a player-facing manual is written from",
+      "  Also written down: what the game does NOT do, so a manual does not",
+      "  promise it - no shipyard queue, no crown monopoly or smuggling, no",
+      "  combat audio, no rain, no per-class ship art",
+      "  Verified by corrupting a value and watching it go red.",
+      "  00-INDEX refreshed; it still said 0.58.0.0",
+    ],
+  },
+  {
     version: "0.64.0.0",
     date: "2026-09-14",
     changes: [
