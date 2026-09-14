@@ -1250,7 +1250,7 @@ export class PortScene extends Phaser.Scene {
     this.contentContainer.add(rumorText);
 
     const backBtn = this.add.text(
-      this.infoX, this.dlgY + DLG_H - PAD - 30,
+      this.infoX, this.dlgY + DLG_H - PAD - 34,
       t("tavern.back"),
       txt(13, { bold: true }),
     );
@@ -1947,8 +1947,17 @@ export class PortScene extends Phaser.Scene {
     const colPrice = this.infoX + 130;
     const colStock = this.infoX + 200;
     const colOwn = this.infoX + 275;
-    const colBuy = this.infoX + 340;
-    const colSell = this.infoX + 390;
+    // The two buttons are right-aligned to the panel's inner edge and measured,
+    // not placed at a fixed x (v0.64.0). They were at +340 and +390 inside a
+    // 438-wide panel, which fits `[Sell]` and clips `[Sprzedaj]` — the counter
+    // was broken in Polish and correct in English, the same way the manual's
+    // World tab was in v0.61.0, and for the same reason: the one language the
+    // layout was checked in is the one it was written in.
+    //
+    // The back button below moved from 30 to 34 off the floor at the same time:
+    // the hint line runs from `DLG_H - PAD - 16` and a 13 px row is 18 tall, so
+    // 30 put the two four pixels into each other, and the wider the label the
+    // further it reached under the centred hint. Same on all three counters.
 
     this.contentContainer.add(this.add.text(colName, y, "Item", txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colPrice, y, t("port.col_buy_sell"), txt(10, { bold: true, color: "#666666" })));
@@ -2002,14 +2011,16 @@ export class PortScene extends Phaser.Scene {
       );
 
       // Buy button
-      const buyBtn = this.add.text(colBuy, y, t("port.buy"), txt(12, { bold: true, color: "#2a7a2a" }));
+      const buyBtn = this.add.text(0, y, t("port.buy"), txt(12, { bold: true, color: "#2a7a2a" }));
       buyBtn.setInteractive({ useHandCursor: true });
       buyBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
       buyBtn.on("pointerdown", () => this.handleBuy(key));
       this.contentContainer.add(buyBtn);
 
       // Sell button
-      const sellBtn = this.add.text(colSell, y, t("port.sell"), txt(12, { bold: true, color: "#8b4513" }));
+      const sellBtn = this.add.text(0, y, t("port.sell"), txt(12, { bold: true, color: "#8b4513" }));
+      sellBtn.setX(this.infoX + (DLG_W - PAD * 2) - sellBtn.width);
+      buyBtn.setX(sellBtn.x - buyBtn.width - 12);
       sellBtn.setInteractive({ useHandCursor: true });
       sellBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
       sellBtn.on("pointerdown", () => this.handleSell(key));
@@ -2077,7 +2088,7 @@ export class PortScene extends Phaser.Scene {
 
     // Back button
     const backBtn = this.add.text(
-      this.infoX, this.dlgY + DLG_H - PAD - 30,
+      this.infoX, this.dlgY + DLG_H - PAD - 34,
       t("governor.back"),
       txt(13, { bold: true }),
     );
@@ -2461,7 +2472,7 @@ export class PortScene extends Phaser.Scene {
 
     // Back button
     const backBtn = this.add.text(
-      this.infoX, this.dlgY + DLG_H - PAD - 30,
+      this.infoX, this.dlgY + DLG_H - PAD - 34,
       t("governor.back"),
       txt(13, { bold: true }),
     );

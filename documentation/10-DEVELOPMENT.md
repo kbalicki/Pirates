@@ -307,6 +307,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?ship=galleon` | Start w tym kadłubie (v0.48.0). Jedyny sposób, żeby poczuć sondowania: startowy slup zanurza 1,5 m i przechodzi wszędzie |
 | `?crew=16` | Tylu ludzi na flagowcu (v0.49.0). Każdy kadłub w grze jest obsadzony na 2-3× swojego minimum, więc braku rąk nie da się dosięgnąć ze zwykłego startu. `?skip&ship=galleon&crew=16` to przypadek podręcznikowy |
 | `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |
+| `?famine=<port>` (v0.64.0) | Od tego wydania harness stawia w tym mieście **prawdziwe zdarzenie `famine`** i przelicza ceny portu, więc lada pokaże drogą żywność i wodę przy normalnym tytoniu. Wcześniej opróżniał półki i stemplował `hunger`, ale zdarzenia nie było — czyli jedyna rzecz, którą głód robi z cenami, była niewidoczna w harnessie zbudowanym po to |
 | `?hail=cartagena` | Przyjaźny kupiec w zasięgu zawołania, niosący tablicę ogłoszeń tego miasta (v0.62.0). Ze zwykłej gry nie da się tego dosięgnąć na żądanie: nośnik musi być przyjazny, musi jeszcze trzymać wieść, której kapitan nie zna, i musi być w `HAIL_RANGE` w chwili, gdy chodzi kontrola. Jej tablica jest dopełniana z innych miast do trzech pozycji, bo jednopozycyjna nie pokazałaby podziału |
 | `?pardon=cartagena` | Kapitan, którego ta korona chce powiesić (–80 u Hiszpanii, sława 60), stoi w mieście, którego gubernator objął rezydencję wczoraj (v0.61.0). Ze zwykłej gry nie da się tam trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu żaglowania |
 | `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie |
@@ -342,3 +343,23 @@ Tekstu gotowego (`portName`, `factionName`, `itemName`, `shipClassName`) używaj
 
 **Tabele danych nie mają już pól `.name`.** Jedyna kopia nazwy jest w `en.ts` /
 `pl.ts`. Jeśli piszesz nową tabelę — nie dokładaj drugiej.
+
+### Cena zdarzenia ma **zakres** (v0.64.0)
+
+Nigdy nie czytaj `effects.priceMul` wprost — to jest dokładnie błąd z v0.64.0.
+
+```ts
+import { getAggregatedEffects, priceMulFor } from "./EventEffectsSystem.ts";
+
+const effects = getAggregatedEffects(world, portKey);
+spotPrice(portKey, item, stock, population, priceMulFor(effects, item));
+```
+
+`priceMul` to część **ogólnorynkowa** (tarify, hossa, wybuch wojny),
+`itemPriceMul` to część, która ma **temat** (głód i epidemia: żywność i woda;
+żniwa: żywność i cukier). Pilnuje tego `EventPriceScope.test.ts`, który czyta
+źródło i wywala się na każdym odczycie `.priceMul` poza `EventEffectsSystem`.
+
+Dokładając zdarzenie: jeśli dotyczy jednego towaru — `itemPriceMul`. Klucze to
+id towarów i jest na to test, bo klucz, który nic nie nazywa, czyta się jak
+reguła i nigdy się nie wykonuje.

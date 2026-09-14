@@ -30,6 +30,7 @@ import {
 } from "../data/economyBaselines.ts";
 import {
   getAggregatedEffects,
+  priceMulFor,
   applyOneShotEffects,
 } from "./EventEffectsSystem.ts";
 import { heldDefenseCeiling, heldPopulationCeiling, playerHolds } from "./ReconquestSystem.ts";
@@ -519,13 +520,13 @@ export function economyDailyTick(world: WorldState): WorldState {
     const newPrices: Record<string, number> = {};
     for (const item of itemKeys) {
       if (!ITEMS[item]) continue;
-      newPrices[item] = spotPrice(portKey, item, inventory[item] ?? 0, port.population, effects.priceMul);
+      newPrices[item] = spotPrice(portKey, item, inventory[item] ?? 0, port.population, priceMulFor(effects, item));
     }
     // Bonus produce "gold" has its own price (very valuable)
     if (port.bonusProduces.includes("gold")) {
       const supply = (inventory["gold"] ?? 0) + 1;
       const ratio = Math.max(0.6, Math.min(2.5, 30 / supply));
-      newPrices["gold"] = Math.max(40, Math.round(80 * ratio * effects.priceMul));
+      newPrices["gold"] = Math.max(40, Math.round(80 * ratio * priceMulFor(effects, "gold")));
     }
 
     // 7. Recovery toward baseline (modulated by event recoveryMul)

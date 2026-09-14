@@ -38,6 +38,8 @@ import { marqueFlag } from "../../core/systems/PrivateerSystem.ts";
 import { GOVERNOR_NEW_DAYS } from "../../core/systems/PardonSystem.ts";
 
 import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
+import { ITEMS } from "../../core/data/items.ts";
+import { repricePort } from "../../core/systems/PricingSystem.ts";
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super({ key: "PreloadScene" });
@@ -1752,7 +1754,44 @@ export class PreloadScene extends Phaser.Scene {
       ports[portKey] = { ...short, inventory, hunger: 0.45 };
     }
 
-    const starved = { ...base, ports };
+    // And the event itself (v0.64.0). Until this release the harness emptied
+    // the shelves and stamped `hunger` but never put a `famine` on the town, so
+    // the one thing a famine does to the counter - double the price of food and
+    // water, and nothing else since v0.64.0 - could not be looked at here. A
+    // debug world has to do what walking in through the gate does.
+    const starved: typeof base = {
+      ...base,
+      ports,
+      worldEvents: [
+        ...base.worldEvents,
+        {
+          id: `famine_debug_${portKey}`,
+          type: "famine" as const,
+          startDay: Math.max(1, base.time.day - 14),
+          endDay: base.time.day + 60,
+          ports: [portKey],
+          factions: [CITIES[portKey]?.factionId as unknown as string],
+          severity: 2 as const,
+          headline: "news.famine",
+          vars: {
+            mainPort: portKey,
+            port: portNameKey(portKey),
+            faction: factionNameKey(CITIES[portKey]?.factionId as unknown as string),
+            duration: 60,
+            // Already paid: the one-shot is a strike, not a thing that happens
+            // every time this harness is opened.
+            _applied: 1,
+          },
+        },
+      ],
+    };
+    // The counter reads the port's stored prices, and this harness never runs a
+    // tick, so without this the shelves were empty and the prices were the ones
+    // the world was born with (v0.64.0). Requoting is the rest of the same
+    // pretence the `hunger` stamp above is making.
+    const repriced = repricePort(starved, portKey, Object.keys(ITEMS));
+    if (repriced) starved.ports = { ...starved.ports, [portKey]: repriced };
+
     let standing = portKey;
     if (standInCover) {
       const cover = Object.keys(CITIES).find(key => reroutedOnto(starved, key).length > 0);

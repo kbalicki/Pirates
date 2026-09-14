@@ -157,6 +157,10 @@ describe("seedInitialEvents — the world starts with five things happening", ()
     const touched = w.worldEvents.some(ev => {
       const fx = getAggregatedEffects(w, ev.ports[0]);
       return fx.productionMul !== 1 || fx.consumptionMul !== 1 || fx.priceMul !== 1
+        // Since v0.64.0 a famine's or a harvest's only price effect is scoped
+        // to the goods it is about, so a reachability check that only asks
+        // about the blanket half would read those two as touching nothing.
+        || Object.keys(fx.itemPriceMul).length > 0
         || fx.popDelta !== 0 || fx.wealthDelta !== 0 || fx.defenseDelta !== 0
         || fx.portClosed || fx.recoveryMul !== 1 || fx.importMul !== 1;
     });

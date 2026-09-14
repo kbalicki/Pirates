@@ -5408,3 +5408,96 @@ to przebieg tłumacza, nie programisty.
   przekazuje argument, drugi nigdy się o nim nie dowiedział. Pilnuje tego
   teraz kontrola źródła obok `no_hardcoded_text`, bo sam helper jest poprawny
   i żaden test jednostkowy helpera tego nie złapie.
+
+
+---
+
+## Głód nie jest hossą (v0.64.0)
+
+Znalezione metodą z v0.61.0: **podręcznik jako lista obietnic, którą da się
+sprawdzić wiersz po wierszu**. Z 130 kluczy `help.*` dwadzieścia dwa niosą
+liczbę; cztery sprawdzono w v0.62.0, jeden w v0.61.0. Pozostałe zderzone
+z kodem dały jeden trop — i ten jeden okazał się defektem mechaniki, nie
+literówką w podręczniku.
+
+### Co było
+
+`EventDailyEffects.priceMul` był **jedną liczbą na cały port**, a trzy
+zdarzenia, które są o jedzeniu, używały właśnie jej. Zmierzone na prawdziwej
+maszynie zdarzeń, 6 ziaren × 10 lat, 140 670 port-dni:
+
+| zdarzenie | cukier | tytoń | kakao | rum | **żywność** | **woda** | złoto |
+|---|---|---|---|---|---|---|---|
+| epidemia | ×1,48 | ×1,49 | ×1,49 | ×1,51 | **×1,49** | **×1,51** | ×1,51 |
+| głód | ×2,32 | ×2,32 | ×2,29 | ×2,32 | **×2,29** | **×2,32** | ×2,32 |
+| żniwa | **×0,68** | ×0,69 | ×0,70 | ×0,70 | **×0,68** | ×0,70 | ×0,70 |
+
+Czyli: **głód podnosił cenę tytoniu dokładnie tak samo jak cenę chleba**,
+a dobre żniwa cukru taniły złoto o 30%.
+
+**Ile to było warte kapitanowi**: czterdzieści ton tytoniu sprzedane
+w głodującym mieście dawało **3551 złota zamiast 1534** — +131%. Głód był
+najlepszą rzeczą, jaka mogła spotkać człowieka wiozącego **cokolwiek**, co jest
+odwrotnością tego, po co powstało zamówienie na dostawę (v0.26.0) i miejski
+spichlerz (v0.27.0). Względem zwykłego dnia głód płacił za tonę żywności
+**tyle samo** co za tonę tytoniu.
+
+**Tym razem to podręcznik miał rację.** `help.event_famine_fx` mówi *„żywność
+×2, woda ×2"* odkąd ten wiersz powstał, a komentarz w samym kodzie przy
+epidemii mówił *„food/water cost more during plague"* trzy linijki nad liczbą,
+która ruszała wszystko na ladzie. Odwrotnie niż omal nie wyszło w v0.62.0,
+gdzie to ja miałem poprawić podręcznik na podstawie własnego błędnego rachunku.
+
+### Co jest
+
+```ts
+export type EventDailyEffects = {
+  /** Mnożnik ceny KAŻDEGO towaru — tylko dla zdarzeń naprawdę ogólnorynkowych. */
+  priceMul: number;
+  /** Mnożniki per towar, składane na wierzchu priceMul (v0.64.0). */
+  itemPriceMul: Record<string, number>;
+};
+
+export function priceMulFor(effects: EventDailyEffects, item: string): number {
+  return effects.priceMul * (effects.itemPriceMul[item] ?? 1);
+}
+```
+
+| zdarzenie | zakres |
+|---|---|
+| głód | `{ food: 2.0, water: 2.0 }` |
+| epidemia | `{ food: 1 + 0,15·sev, water: 1 + 0,15·sev }` |
+| żniwa | `{ food: 0.6, sugar_cane: 0.6 }` — dwa towary, **których to są żniwa** |
+| dekret królewski, hossa, wybuch wojny | `priceMul` bez zmian — to **naprawdę** cały rynek |
+
+Po zmianie: głód daje żywność ×2,29 i woda ×2,32 przy tytoniu ×1,16; żniwa
+cukier ×0,68 przy złocie ×1,16. Pozostałe ×1,13–1,20 to nakładające się dekrety
+i wojny — poprawna odpowiedź, która wcześniej była nie do odróżnienia od błędu.
+
+**Migracji nie potrzeba**: `itemPriceMul` jest **wyliczane**, nie zapisywane.
+
+### Dlaczego nic tego nie widziało
+
+Wszystkie istniejące asercje o `priceMul` pytają, **czy** jest różny od 1 —
+żadna nie pyta, **do czego** się stosuje. Cały zestaw był zielony po obu
+stronach poprawki. Nowe testy pytają, **które** ceny się ruszają; jeden z nich
+**czyta źródło**, bo `spotPrice` przyjmuje zwykłą liczbę i przyszły wołający
+może podać samą połowę ogólnorynkową, pomylić się dokładnie tak jak przedtem —
+i wyprodukować przy tym cenę, która wygląda całkowicie normalnie.
+
+### Znalezione przy weryfikacji na ekranie
+
+- **`[Sprzedaj]` był ucinany krawędzią panelu w każdym wierszu lady.** Oba
+  przyciski stały na sztywnych `+340` i `+390` w panelu o wewnętrznej szerokości
+  **438** — co mieści `[Sell]` i obcina jego polski odpowiednik. Są teraz
+  **mierzone i dosunięte do prawej krawędzi**, więc mieści się każdy język. To
+  samo ostrzeżenie, które TODO zapisało po v0.61.0: **polski jest dłuższy i to
+  on pęka pierwszy**, a jedyny język, w którym układ był sprawdzany, to ten,
+  w którym go napisano.
+- **`[ WRÓĆ DO PORTU ]` wchodził cztery piksele w linię podpowiedzi klawiszy**
+  na **wszystkich trzech** ladach (kupiec, tawerna, stocznia).
+- **`?famine=` nie stawiało zdarzenia `famine`.** Opróżniało półki i stemplowało
+  `hunger`, ale jedyna rzecz, którą głód robi z cenami, nie działała w harnessie
+  zbudowanym właśnie po to. Teraz stawia zdarzenie i **przelicza ceny portu** —
+  reszta tej samej udawanej przeszłości, co stempel `hunger`. Świat debugowy ma
+  robić to, co robi wejście przez bramę (v0.58.0).

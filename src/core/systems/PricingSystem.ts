@@ -30,7 +30,7 @@ import type { WorldState, PortRuntimeState } from "../model/WorldState.ts";
 import { ITEMS } from "../data/items.ts";
 import { getBasePrice } from "../data/prices.ts";
 import { baselineConsumptionRate } from "../data/economyBaselines.ts";
-import { getAggregatedEffects } from "./EventEffectsSystem.ts";
+import { getAggregatedEffects, priceMulFor } from "./EventEffectsSystem.ts";
 
 /** How many days of consumption count as "the market is balanced". */
 const DEMAND_HORIZON_DAYS = 30;
@@ -74,8 +74,8 @@ export function repriceItem(
 ): PortRuntimeState | null {
   const port = world.ports[portKey];
   if (!port || !ITEMS[item]) return null;
-  const priceMul = getAggregatedEffects(world, portKey).priceMul;
-  const price = spotPrice(portKey, item, port.inventory[item] ?? 0, port.population, priceMul);
+  const effects = getAggregatedEffects(world, portKey);
+  const price = spotPrice(portKey, item, port.inventory[item] ?? 0, port.population, priceMulFor(effects, item));
   if (port.prices[item] === price) return port;
   return { ...port, prices: { ...port.prices, [item]: price } };
 }
@@ -96,13 +96,13 @@ export function repricePort(
   const port = world.ports[portKey];
   if (!port) return null;
   const stock = inventory ?? port.inventory;
-  const priceMul = getAggregatedEffects(world, portKey).priceMul;
+  const effects = getAggregatedEffects(world, portKey);
 
   let prices = port.prices;
   let changed = false;
   for (const item of items) {
     if (!ITEMS[item]) continue;
-    const price = spotPrice(portKey, item, stock[item] ?? 0, port.population, priceMul);
+    const price = spotPrice(portKey, item, stock[item] ?? 0, port.population, priceMulFor(effects, item));
     if (prices[item] === price) continue;
     if (!changed) { prices = { ...prices }; changed = true; }
     prices[item] = price;

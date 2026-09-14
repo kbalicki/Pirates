@@ -31,8 +31,33 @@ export type EventDailyEffects = {
    * something every port felt.
    */
   importMul: number;
-  /** Multiplied with the demand/supply-derived price. Default 1. */
+  /**
+   * Multiplied with the demand/supply-derived price of **every** good. Default 1.
+   *
+   * Only for an event that really is market-wide: a tariff, a boom, the
+   * outbreak of a war. An event about one commodity uses `itemPriceMul`.
+   */
   priceMul: number;
+  /**
+   * Per-good multipliers, compounded on top of `priceMul` (v0.64.0).
+   *
+   * Until this release there was no such thing, and three events that are
+   * about food used `priceMul` for it. Measured over 6 seeds x 10 years, a
+   * famine multiplied the price of **tobacco** by 2.32 and of gold by 2.32,
+   * exactly as much as the food it is about; a sugar harvest took 30% off the
+   * price of gold. The manual had it right all along - "food x2, water x2" -
+   * and the code's own comment beside the epidemic row said "food/water cost
+   * more during plague" three lines above a number that moved everything.
+   *
+   * What that was worth to a captain: a forty-ton hold of tobacco sold into a
+   * starving town fetched **3551 gold instead of 1534**, +131%. A famine was
+   * the most profitable thing that could happen to a man carrying anything at
+   * all, which is the opposite of what the relief order (v0.26.0) and the town
+   * granary (v0.27.0) were built to reward.
+   *
+   * Keys are item ids; `items_have_prices.test.ts` checks they name real goods.
+   */
+  itemPriceMul: Record<string, number>;
   /** Flat add to population each day (can be negative). */
   popDelta: number;
   /** Flat add to wealth each day (can be negative). */
@@ -52,6 +77,7 @@ const NEUTRAL: EventDailyEffects = {
   consumptionMul: 1,
   importMul: 1,
   priceMul: 1,
+  itemPriceMul: {},
   popDelta: 0,
   wealthDelta: 0,
   defenseDelta: 0,
@@ -98,7 +124,10 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     case "epidemic":
       return { ...NEUTRAL,
         consumptionMul: 1.0,
-        priceMul: 1 + 0.15 * sev,   // food/water cost more during plague
+        // Food and water, and nothing else: a plague does not move the price
+        // of tobacco. This was `priceMul` until v0.64.0, three lines under a
+        // comment that already said what it was supposed to mean.
+        itemPriceMul: { food: 1 + 0.15 * sev, water: 1 + 0.15 * sev },
         popDelta: -2 * sev,         // ~60/month for severity 1
         wealthDelta: -0.5 * sev,    // -50..-150 settled; the plague's bite is in the people
         crewMul: 0.5,
@@ -172,14 +201,22 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     case "famine":
       return { ...NEUTRAL,
         consumptionMul: 1.5,  // people eating reserves
-        priceMul: 2.0,         // food spikes
+        // The spike is on what they cannot get, and the shortage feeds it
+        // twice: `consumptionMul` drains the store, which lifts the price on
+        // its own, and this doubles what is left. Everything else on the
+        // counter is priced by supply and demand like any other day.
+        itemPriceMul: { food: 2.0, water: 2.0 },
         popDelta: -3,
         crewMul: 0.7,
       };
     case "harvest":
       return { ...NEUTRAL,
         productionMul: 1.8,
-        priceMul: 0.6,
+        // A glut of what this town grows. The event only fires at a port whose
+        // `produces` carries sugar or food (`RANDOM_EVENTS`), so the two goods
+        // named here are the two the harvest is of - and a good harvest of
+        // sugar has never been a reason for gold to get cheaper.
+        itemPriceMul: { food: 0.6, sugar_cane: 0.6 },
         wealthDelta: +1,
       };
     case "royal_decree":
@@ -209,6 +246,18 @@ function effectsForType(type: WorldEventType, severity: 1 | 2 | 3): EventDailyEf
     default:
       return NEUTRAL;
   }
+}
+
+/**
+ * What multiplies the price of **this** good at a port with these events on it.
+ *
+ * The market-wide part and the part that has a subject, in one number. Every
+ * reader of a price goes through here: the daily tick, the merchant's counter
+ * and the requote that follows a hold changing hands. Reading `priceMul`
+ * directly is the v0.64.0 bug.
+ */
+export function priceMulFor(effects: EventDailyEffects, item: string): number {
+  return effects.priceMul * (effects.itemPriceMul[item] ?? 1);
 }
 
 /**
@@ -287,11 +336,16 @@ export function getAggregatedEffects(world: WorldState, portKey: string): EventD
     if (ev.type === "treasure_fleet") {
       e = { ...e, wealthDelta: e.wealthDelta * plateShareHome(ev) };
     }
+    const itemPriceMul = { ...agg.itemPriceMul };
+    for (const [item, mul] of Object.entries(e.itemPriceMul)) {
+      itemPriceMul[item] = (itemPriceMul[item] ?? 1) * mul;
+    }
     agg = {
       productionMul: agg.productionMul * e.productionMul,
       consumptionMul: agg.consumptionMul * e.consumptionMul,
       importMul: agg.importMul * e.importMul,
       priceMul: agg.priceMul * e.priceMul,
+      itemPriceMul,
       popDelta: agg.popDelta + e.popDelta,
       wealthDelta: agg.wealthDelta + e.wealthDelta,
       defenseDelta: agg.defenseDelta + e.defenseDelta,
