@@ -146,6 +146,36 @@ export function supplierShutIn(world: WorldState, portKey: string): boolean {
 const RESTOCK_SURGE = 1.0;
 
 /**
+ * The same answer on the importing side of the quay (v0.66.0).
+ *
+ * The producer's surge above has been there since v0.26.0 and the import order
+ * had no counterpart: it asked for one day's consumption, and one day's
+ * consumption is exactly what pass 4 takes back out. The net was zero, which
+ * meant a shed could only ever ratchet *down* — every ton a captain bought was
+ * gone from that town for the rest of the game, and the ten tons every port
+ * starts with were the ten tons it would still have in 1720.
+ *
+ * What made it invisible: `hunger` never fired. The day's import lands before
+ * the day's consumption, so the town was fed to the last man while its
+ * warehouse stood empty. Nothing in the world read the level itself — only the
+ * captain, at the counter, where the buy is hard-clamped to the stock.
+ *
+ * Gated by pass 2 exactly as the plain order is: the exporter still has to have
+ * the goods, and a good with no producer anywhere (water) still comes in by the
+ * same smugglers it always did.
+ *
+ * And it is suspended entirely below full supply, which is not a detail but the
+ * whole reason a cut bites. Every penalty on this side of the quay — blockade,
+ * black flag, war — worked by leaving the town a daily shortfall against a
+ * buffer of nothing. Given a buffer to draw on and a refill that scaled with
+ * the cut, a town under a black flag settled at 434 wealth instead of the 330
+ * it was meant to, and the war's `importMul` stopped costing a colony anything
+ * at all. A town whose trade has been interfered with spends its shed; it does
+ * not fill it.
+ */
+const IMPORT_RESTOCK_SURGE = 1.0;
+
+/**
  * Share of a producer's stock that never goes down the lanes, whoever asks.
  *
  * A quay does not ship its last barrel to a stranger. This never binds in the
@@ -392,7 +422,20 @@ export function economyDailyTick(world: WorldState): WorldState {
         // What the warehouse will not take is not ordered and is not paid for,
         // so the room is part of the order rather than a clamp after it.
         const room = Math.max(0, cap - (inventory[item] ?? 0));
-        const want = Math.min(need * flagShare * lane * cordon * effects.importMul, room);
+        const share = flagShare * lane * cordon * effects.importMul;
+        // An empty shed orders more than a day's need (v0.66.0). Without this
+        // the order was exactly `need` and pass 4 ate exactly `need`, so an
+        // imported good could never rise: measured at Havana, a warehouse
+        // emptied of food and water was still empty two hundred days later
+        // while the rum it grows itself came back to its cap in thirty.
+        //
+        // The refill is trade *above* the day's need, and a share below 1 is
+        // precisely the trade that is not sailing. So a cordon, a black flag or
+        // a war suspends it outright rather than scaling it: those towns spend
+        // their sheds, which is what made them hurt in the first place.
+        const empty = cap > 0 ? Math.max(0, Math.min(1, room / cap)) : 0;
+        const refill = share >= 1 - 1e-9 ? IMPORT_RESTOCK_SURGE * empty : 0;
+        const want = Math.min(need * (share + refill), room);
         if (want <= 0) continue;
         // Who is actually shipping it. Not the lane's named supplier if he is
         // shut in — a cordon or a black flag sends the trade to the next

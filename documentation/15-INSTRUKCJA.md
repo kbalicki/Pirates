@@ -204,6 +204,23 @@ Notowanie przelicza się **przy każdym ruchu towaru**, nie raz na dobę. Jeśli
 wykupisz cały magazyn, ostatnia tona będzie droższa od pierwszej. Magazynowanie
 pod górkę cenową działa gorzej, niż się wydaje.
 
+### Magazyn wraca, ale nie od razu
+
+Kupujesz tylko to, co leży w szopie — lada nie sprzeda Ci więcej niż ma.
+Miasto, które wykupiłeś do zera, odbudowuje zapas **w jakieś dwa tygodnie**:
+tego, co samo uprawia, przez większy wyrąb, a reszty przez zamówienie u swojego
+dostawcy. Duzi kupcy trzymają około dwudziestu pięciu ton importowanego towaru,
+więc **fregaty nie zaopatrzysz w jednym porcie na długi rejs** — osiemdziesięciu
+ludzi wypija dwanaście ton wody dziennie.
+
+> To jest zmiana od v0.66.0 i przed nią było gorzej, niż brzmi: szopa importowa
+> **nigdy** się nie odbudowywała. Każda tona, którą kapitan wyniósł, znikała
+> z tego miasta do końca gry.
+
+**Wody nie produkuje żaden port.** Jest w popycie czterdziestu czterech miast
+i w produkcji żadnego — dopływa bez szlaku, przemytem. Praktycznie: woda jest
+wszędzie i **nie da się jej nikomu odciąć**.
+
 ### Głód
 
 Miasto, któremu zabrakło importu, **mówi o tym** w nagłówku portu i na ladzie
@@ -233,6 +250,11 @@ Stań pod miastem i **zostań tam**. Po dwóch dniach dostawy zaczynają się
 dławić, garnizon topnieje, a korona wścieka. Miasto z drugim dostawcą przeboleje
 to bez trudu — sprawdź na mapie szlaków, zanim zakotwiczysz.
 
+Kordon **wstrzymuje też odbudowę magazynu**, nie tylko dzienną dostawę: miasto
+pod blokadą wydaje swój zapas, zamiast go uzupełniać. I jedna rzecz, której
+blokada nie zrobi nigdy — **nie wysuszy miasta**. Wody nikt nie wozi, więc nie
+ma czego przeciąć.
+
 ---
 
 ## Co się dzieje w świecie
@@ -255,7 +277,7 @@ statku.
 | **Dekret królewski** | ceny w górę o jedną piątą w **całej** koronie |
 | **Nowy gubernator** | ułaskawienie do kupienia (patrz wyżej) |
 | **Flota skarbowa** | cztery hiszpańskie kadłuby ze srebrem, trasą Vera Cruz → Hawana |
-| **Wojna** | podwojona marynarka, korsarze, cięcie dostaw, ceny w górę |
+| **Wojna** | więcej okrętów zamiast kupców, korsarze, cięcie dostaw, ceny w górę |
 
 Klawisz `N` rysuje na czarcie to, o czym już wiesz: pinezki zdarzeń, kursy
 wypraw koronnych, drogę huraganu.
@@ -267,7 +289,9 @@ wypraw koronnych, drogę huraganu.
 Na mapie w każdej chwili jest do trzydziestu obcych kadłubów. W kolonii
 w czasie pokoju to mniej więcej **połowa kupców, trzecia część marynarki
 i jeden łowca piratów na dziesięciu**. Wojna przesuwa to mocno w stronę
-okrętów. Przystanie pirackie wypuszczają **korsarzy**.
+okrętów — z 45% do 70% — i sprawia, że częściej wychodzą z portów walczącej
+korony. **Trzydzieści żagli jest tak czy owak**: wojna zmienia, czyje są, nie
+ile ich jest. Przystanie pirackie wypuszczają **korsarzy**.
 
 ### Oni żyją bez Ciebie
 
@@ -565,7 +589,7 @@ brzeg, `E` na statek.
 
 ---
 
-## Dziesięć rzeczy, których nikt Ci nie powie
+## Jedenaście rzeczy, których nikt Ci nie powie
 
 1. **Najszybciej płyniesz w poprzek wiatru**, nie z wiatrem.
 2. **Halsowanie się opłaca** — kilkukrotnie, nie o kilka procent.
@@ -580,6 +604,9 @@ brzeg, `E` na statek.
 9. **Policz ludzi, zanim weźmiesz galeon.** Niedomanowany pryz zabiera całej
    eskadrze zwrotność.
 10. **Bierz miasto po najeździe Indian.** Czterdzieści punktów obrony mniej.
+11. **Nie licz na jeden port przy długim rejsie.** Import leży w szopie
+    w około dwudziestu pięciu tonach, a osiemdziesięciu ludzi wypija dwanaście
+    ton wody na dobę.
 
 ---
 

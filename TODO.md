@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-15 · **Wersja:** v0.65.0.0 · **Branch:** `main`
-**Kod:** 238 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2052 przechodzi, 0 failuje, 0 `todo`** w 62 plikach
+**Stan na:** 2026-09-15 · **Wersja:** v0.66.0.0 · **Branch:** `main`
+**Kod:** 238 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2055 przechodzi, 0 failuje, 0 `todo`** w 62 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,7 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.65.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2052/2052 zielone; **instrukcja dla gracza ma szkic, a podręcznik bitwy miał sześć rzeczy źle**. Metoda z v0.61.0 — podręcznik jako lista obietnic — zastosowana do ekranu, który **nigdy nie był sprawdzany**: `BattleHelpScene` to ten, który v0.60.0 chwaliła za poprawne tłumaczenie, i nikt nie zapytał, czy to, co mówi, jest prawdą. **Fałszywe były: wpływ uszkodzenia kadłuba na ster** („połowa ≈ 0.7”, a są cztery progi: 1.00 / 0.85 / 0.65 / 0.45), **siła łańcucha** („3× względem kuli”, a jest **ośmiokrotnie** — 4,5 przeciwko 0,55, i tabela amunicji **na tym samym ekranie** podaje obie liczby), **pancerz slupa** (0.10 zamiast 0.12), **mnożnik połowy załogi** (0.85 zamiast 0,81), **najgorszy czas przeładowania** (24 s zamiast 21,4) i **łup z abordażu** („150–300 zł”, a jest 100 zł plus jej własna kiesa i ładunek). Do tego **dwa nieaktualne komentarze w samym `CombatSystem`**: nagłówek `effectiveReloadTicks` liczył najgorszy przypadek jako `0,7³` i wychodziło ~26 s, a trzy podłogi **nie są tą samą liczbą** (0,70 · 0,80 · 0,75 = 0,42 → **21,4 s**), oraz przykłady obrażeń używały bazy **0,7** — sprzed pięciokrotnego podbicia, o którym linijka pod nimi wprost mówi. I jedno z podręcznika świata: produkcja portu to `2 + poziom × 2` przy poziomach 1–5, czyli **4–12 dziennie, nie 2–12**. **Dokument mechanik jest kompletny**: doszły **wszystkie 45 portów** (korona, oba poziomy, co produkują i czego chcą — poziom stoczni 4 mają **trzy** miasta, więc galeona kupisz w Hawanie, Kartagenie i Port Royale) oraz **sekcja ekranów** (siedemnaście scen, klawisze per ekran, i dwie rzeczy, które mylą: żagle w bitwie mają **trzy** poziomy a na mapie cztery, a HUD to osobna scena). **I wszystko w nim jest teraz sprawdzane, nie tylko skalary** — progi reputacji (razem z tym, że każdy zakres zaczyna się i kończy tam, gdzie pisze), obsady, kadłuba, takielunku, amunicji, żagli i cała tabela portów; jedenaście kontroli, zweryfikowanych przez zepsucie trzech tabel naraz. Napisany też **szkic instrukcji dla gracza** ([15-INSTRUKCJA.md](documentation/15-INSTRUKCJA.md)) — z dokumentu 14, nie z pamięci, bo z podręcznika w grze przepisałbym do niej te sześć błędów. Lista kandydatów na v0.66.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.66.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2055/2055 zielone; **magazyn importowy nigdy nie wracał, a lada kupca była jedynym świadkiem**. Znalezione znowu przez czytanie podręcznika wiersz po wierszu — *„każde miasto ma nazwanego dostawcę tego, czego samo nie produkuje”*: **44 ze 130 par (miasto, towar importowany) nie ma żadnego dostawcy i wszystkie 44 to woda, której nie produkuje żaden port**. Pociągnięcie za to znalazło rzecz większą: **zamówienie importowe było dokładnie jedną dzienną konsumpcją, a czwarty przebieg dnia zabierał dokładnie tyle samo** — bilans zerowy, więc półka mogła iść tylko w dół. Zmierzone: średnia półka importowa **9,8 t przez dziesięć lat, co do dziesiątej części tony**; magazyn Hawany opróżniony z jedzenia i wody **pusty po dwustu dniach**, podczas gdy rum, który miasto samo pędzi, wrócił do sufitu w trzydzieści. **Nikt tego nie widział**, bo `hunger` liczy się **po** wyładunku dziennej dostawy — miasto było nakarmione co do człowieka przy pustym magazynie, a jedynym czytelnikiem poziomu półki jest **lada kupca**, gdzie zakup jest twardo ograniczony do stanu. Osiemdziesięciu ludzi na fregacie wypija **dwanaście ton wody dziennie**, Hawana miała piętnaście: jedno zaopatrzenie opróżniało największe miasto na Karaibach na zawsze. `IMPORT_RESTOCK_SURGE`, symetrycznie do strony producenta — i **zawieszony poniżej pełnej dostawy**, bo pierwsza wersja skalowana razem z udziałem dostaw **wywaliła sześć testów**: czarna bandera, blokada i wojna **działały przez zostawianie miastu dziennego deficytu przy zerowym buforze**. Po poprawce półka osiada na **27 t z 30**, opróżniona wraca **w 15 dni**, notowań przyklejonych do ×3 jest **23 zamiast 51**, a osiadły świat stoi gdzie stał (Hawana 907,6 → 908,1, pozostałe trzy miasta strażnicze bez zmian co do dziesiątej). Do tego **cztery kolejne fałszywe zdania podręcznika**: niedobór kosztuje **2/dzień za każdy** towar, nie 1 (płaska jedynka skasowana w v0.20.0); wojna **nie dokłada statków** — na morzu jest tych samych trzydzieści; Wojna 9-letnia to **para koron**, bo typ wiersza wojny to para; zlecenie obrony ma **trzecią drogę** — sojusznika patrona z v0.56.0. Lista kandydatów na v0.67.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.65.0.0):** v0.65.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2052/2052 zielone; **instrukcja dla gracza ma szkic, a podręcznik bitwy miał sześć rzeczy źle**. Metoda z v0.61.0 — podręcznik jako lista obietnic — zastosowana do ekranu, który **nigdy nie był sprawdzany**: `BattleHelpScene` to ten, który v0.60.0 chwaliła za poprawne tłumaczenie, i nikt nie zapytał, czy to, co mówi, jest prawdą. **Fałszywe były: wpływ uszkodzenia kadłuba na ster** („połowa ≈ 0.7”, a są cztery progi: 1.00 / 0.85 / 0.65 / 0.45), **siła łańcucha** („3× względem kuli”, a jest **ośmiokrotnie** — 4,5 przeciwko 0,55, i tabela amunicji **na tym samym ekranie** podaje obie liczby), **pancerz slupa** (0.10 zamiast 0.12), **mnożnik połowy załogi** (0.85 zamiast 0,81), **najgorszy czas przeładowania** (24 s zamiast 21,4) i **łup z abordażu** („150–300 zł”, a jest 100 zł plus jej własna kiesa i ładunek). Do tego **dwa nieaktualne komentarze w samym `CombatSystem`**: nagłówek `effectiveReloadTicks` liczył najgorszy przypadek jako `0,7³` i wychodziło ~26 s, a trzy podłogi **nie są tą samą liczbą** (0,70 · 0,80 · 0,75 = 0,42 → **21,4 s**), oraz przykłady obrażeń używały bazy **0,7** — sprzed pięciokrotnego podbicia, o którym linijka pod nimi wprost mówi. I jedno z podręcznika świata: produkcja portu to `2 + poziom × 2` przy poziomach 1–5, czyli **4–12 dziennie, nie 2–12**. **Dokument mechanik jest kompletny**: doszły **wszystkie 45 portów** (korona, oba poziomy, co produkują i czego chcą — poziom stoczni 4 mają **trzy** miasta, więc galeona kupisz w Hawanie, Kartagenie i Port Royale) oraz **sekcja ekranów** (siedemnaście scen, klawisze per ekran, i dwie rzeczy, które mylą: żagle w bitwie mają **trzy** poziomy a na mapie cztery, a HUD to osobna scena). **I wszystko w nim jest teraz sprawdzane, nie tylko skalary** — progi reputacji (razem z tym, że każdy zakres zaczyna się i kończy tam, gdzie pisze), obsady, kadłuba, takielunku, amunicji, żagli i cała tabela portów; jedenaście kontroli, zweryfikowanych przez zepsucie trzech tabel naraz. Napisany też **szkic instrukcji dla gracza** ([15-INSTRUKCJA.md](documentation/15-INSTRUKCJA.md)) — z dokumentu 14, nie z pamięci, bo z podręcznika w grze przepisałbym do niej te sześć błędów. Lista kandydatów na v0.66.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.64.0.1):** v0.64.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2041/2041 zielone; **głód nie jest hossą**. Zadanie znalezione metodą z v0.61.0 — **podręcznik jako lista obietnic do sprawdzenia wiersz po wierszu** — doprowadzoną do końca na tabeli efektów zdarzeń: ze **130 kluczy `help.*`** dwadzieścia dwa niosą liczbę, pięć sprawdzono wcześniej, a pozostałe siedemnaście dało jeden trop — i ten jeden okazał się **defektem mechaniki, nie literówką w podręczniku**. `EventDailyEffects.priceMul` był **jedną liczbą na cały port**, wchodzącą do `spotPrice` niezależnie od towaru, a **trzy zdarzenia, które są o jedzeniu, używały właśnie jej**. Zmierzone na prawdziwej maszynie zdarzeń, 6 ziaren × 10 lat, **140 670 port-dni**: głód podnosił cenę **tytoniu ×2,32** i złota ×2,32 — dokładnie tyle, co żywności (×2,29), o którą w nim chodzi; epidemia podnosiła **każdy** towar na ladzie o połowę; dobre żniwa cukru **taniły złoto o 30%**. **Liczba, którą czuje gracz**: czterdzieści ton tytoniu sprzedane w głodującym mieście dawało **3551 złota zamiast 1534** (+131%) — czyli głód był najlepszą rzeczą, jaka mogła spotkać kapitana wiozącego **cokolwiek**, co jest odwrotnością tego, po co powstało zamówienie na dostawę (v0.26.0) i miejski spichlerz (v0.27.0): względem zwykłego dnia głód płacił za tonę żywności **tyle samo** co za tonę tytoniu. **Tym razem to podręcznik miał rację** — *„żywność ×2, woda ×2”* stało tam od początku, a komentarz w samym kodzie przy epidemii mówił *„food/water cost more during plague”* **trzy linijki nad liczbą, która ruszała wszystko**; odwrotnie niż omał nie wyszło w v0.62.0. Mnożnik ma teraz **temat**: `itemPriceMul` składane na wierzchu `priceMul`, jeden czytelnik `priceMulFor` — głód i epidemia nazywają żywność i wodę, żniwa nazywają żywność i cukier (czyli dwa towary, **których to są żniwa**), a dekret, hossa i wybuch wojny zostają ogólnorynkowe, bo te naprawdę są o całym rynku. Po zmianie: żywność ×2,29 przy tytoniu ×1,16, a pozostałe ×1,13–1,20 to nakładające się dekrety i wojny — poprawna odpowiedź, która wcześniej była nie do odróżnienia od błędu. **Migracji nie potrzeba**, `itemPriceMul` jest wyliczane. **Nic tego nie widziało**: wszystkie istniejące asercje o `priceMul` pytają, **czy** jest różny od 1, żadna nie pyta, **do czego** się stosuje — cały zestaw był zielony po obu stronach poprawki; nowy `EventPriceScope.test.ts` pyta, **które** ceny się ruszają, a jeden z jego testów **czyta źródło**, bo `spotPrice` przyjmuje zwykłą liczbę i przyszły wołający może podać samą połowę ogólnorynkową, myląc się dokładnie tak jak przedtem. **Weryfikacja na ekranie znalazła trzy rzeczy spoza zadania**: `?famine=` **nie stawiało zdarzenia `famine`** (opróżniało półki i stemplowało `hunger`, ale jedyna rzecz, którą głód robi z cenami, była niewidoczna w harnessie zbudowanym po to) i nie przeliczało cen portu; **`[Sprzedaj]` był ucinany krawędzią panelu w każdym wierszu lady** — przyciski stały na sztywnych +340 i +390 w panelu o wewnętrznej szerokości **438**, co mieści `[Sell]` i obcina jego polski odpowiednik, więc **lada była złamana po polsku i poprawna po angielsku** (to samo ostrzeżenie, które ten plik zapisał po v0.61.0, tylko na innym ekranie); oraz **`[ WRÓĆ DO PORTU ]` wchodził cztery piksele w linię podpowiedzi klawiszy** na wszystkich trzech ladach. Lista kandydatów na v0.65.0 jest niżej.
 
@@ -64,7 +66,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [SESSION-2026-09-15.md](documentation/SESSION-2026-09-15.md) (v0.65.0 — instrukcja dla gracza i audyt podręcznika bitwy)
+> **Notatka z tej sesji:** [SESSION-2026-09-15b.md](documentation/SESSION-2026-09-15b.md) (v0.66.0 — magazyn importowy i cztery zdania podręcznika)
+
+> **Notatka z poprzedniej sesji:** [SESSION-2026-09-15.md](documentation/SESSION-2026-09-15.md) (v0.65.0 — instrukcja dla gracza i audyt podręcznika bitwy)
 
 > **Notatka z poprzedniej sesji:** [SESSION-2026-09-14.md](documentation/SESSION-2026-09-14.md) (v0.64.0 — głód nie jest hossą; **i lada kupca ucinana po polsku**)
 
@@ -2322,30 +2326,33 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.66.0 — co dalej
+### v0.67.0 — co dalej
 
-Nic nie jest wybrane. Dwa ostatnie wydania wzięły się **z przemiatania**, nie z tej listy —
-v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0 z **podręcznika czytanego wiersz
-po wierszu** — i to jest dziś najskuteczniejsza metoda dla agenta. Co zostało do przemiecenia:
+Nic nie jest wybrane. **Cztery ostatnie wydania wzięły się z przemiatania**, nie z tej listy —
+v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0, v0.65.0 i v0.66.0 z **podręcznika
+czytanego wiersz po wierszu** — i to jest dziś najskuteczniejsza metoda dla agenta.
 
-1. **Podręcznik: zostały wiersze bez liczby.** Sprawdzone są wszystkie 22 klucze `help.*`
-   niosące liczbę. Zostaje reszta ze **130** — twierdzenia jakościowe (*„defence falls”*,
-   *„ships damaged”*, *„weak defence is an easier town to plunder”*), które trzeba czytać
-   po kolei i konfrontować z kodem, bo grep ich nie znajdzie
-2. **Strojenie `priceMul` przy głodzie i żniwach** (otwarte z v0.64.0). Naprawiony jest
+**Podręcznik jest przeczytany do końca.** Wszystkie 130 kluczy `help.*` i cały `battle.help_*`
+skonfrontowane z kodem; dziesięć fałszywych zdań w trzech wydaniach, a ostatnie z nich
+wskazało **błąd mechaniki, nie opisu**. Następne teksty tego samego rodzaju, których nikt
+nie sprawdził wierszami: **drzewa dialogów** (`DialogueSystem` — gubernator, karczmarz,
+kupiec obiecują rzeczy, które kod ma spełnić), **plotki** (`RumorSystem`) i **nagłówki
+wiadomości** (`news.*`). Co zostało do przemiecenia poza tym:
+
+1. **Strojenie `priceMul` przy głodzie i żniwach** (otwarte z v0.64.0). Naprawiony jest
    **zakres**, nie to, czy podwojenie jest właściwą liczbą, skoro `consumptionMul` i
    `productionMul` **już** ruszają cenę przez podaż i popyt. To jest granie, nie pomiar —
    **wymaga użytkownika**
-3. **Sprite'y statków w pixel arcie** — 9 klas × 8 klatek, sekcja 6. Jedyna pozycja, która
+2. **Sprite'y statków w pixel arcie** — 9 klas × 8 klatek, sekcja 6. Jedyna pozycja, która
    zmienia to, **jak gra wygląda**, i jedyna stojąca w miejscu od sześciu wydań. Blokują ją
    dwie decyzje z sekcji 6, a druga (**`roundPixels`**) jest zmianą *odczucia* i wymaga
    playtestu. Propozycja do sprawdzenia: zaokrąglać **przewijanie kamery** do pełnych
    pikseli ekranu (`scrollX = round(scrollX * zoom) / zoom`), a nie pozycje sprite'ów
-4. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. **Nie jest to zadanie
+3. **Muzyka** — `MusicManager` ma 5 slotów, wypełniony jeden. **Nie jest to zadanie
    programistyczne**: brakuje plików audio, nie kodu
-5. **Przegrać v0.36.0 (pościg) i v0.54.0 (halsowanie).** Obie to zmiany **odczucia**
+4. **Przegrać v0.36.0 (pościg) i v0.54.0 (halsowanie).** Obie to zmiany **odczucia**
    z pokrętłami wybranymi z namysłu, nie zmierzonymi przy graniu. **Wymaga użytkownika**
-6. **Karta postaci a `effectiveSkills()`** — jedno pytanie do użytkownika, nie dwa zadania:
+5. **Karta postaci a `effectiveSkills()`** — jedno pytanie do użytkownika, nie dwa zadania:
    czy krzywa starzenia ma być w zasięgu kariery (wybór wieku startowego), czy zostać tam,
    gdzie jest. Szczegóły i pomiar w sekcji 4
 
@@ -2405,11 +2412,29 @@ po wierszu** — i to jest dziś najskuteczniejsza metoda dla agenta. Co został
   ekranu, i to wymaga decyzji, które ekrany pokazać; **(c)** **przykładowy pierwszy rejs**
   — jedyna część, której **nie da się wyprowadzić z dokumentu 14**, bo to dydaktyka,
   a nie fakty; **(d)** polskie nazwy towarów w tabeli portów (dokument 14 trzyma idów)
-- **Zdania jakościowe poza podręcznikiem bitwy** (v0.65.0.0). Sprawdzone są **wszystkie
-  22 wiersze `help.*` z liczbą** i **cały `battle.help_*`**. Zostaje reszta ze 130 kluczy
-  `help.*` — twierdzenia bez liczb w zakładkach Świat i Żegluga (*„obrona spada”*,
-  *„statki zostają uszkodzone”*, *„słaba obrona to łatwiejsze miasto”*). Grep ich nie
-  znajdzie — trzeba czytać po kolei, tak jak `battle.help_*` w tym wydaniu
+- ~~**Zdania jakościowe poza podręcznikiem bitwy**~~ ✅ v0.66.0.0 — **wszystkie 130 kluczy
+  `help.*` przeczytane wiersz po wierszu**. Cztery fałszywe (niedobór 1/dzień zamiast 2 za
+  każdy towar, „×2 więcej statków” przy stałym suficie trzydziestu, koalicja w Wojnie
+  9-letniej, brak trzeciej drogi do zlecenia obrony) — i **jedno z nich wskazało błąd
+  mechaniki, nie tylko opisu**: magazyn importowy nigdy się nie odbudowywał
+- **Sufit magazynu importowego a horyzont popytu** (v0.66.0.0, **decyzja dla użytkownika**).
+  `inventoryCap` dla towaru, którego miasto nie uprawia, to płaskie **30 ton**, a
+  `PricingSystem.DEMAND_HORIZON_DAYS` mówi, że „rynek w równowadze” to **trzydzieści dni
+  konsumpcji** — w dużym mieście do 135 ton. Iloraz jest więc przyklejony do `RATIO_MAX`
+  niezależnie od stanu półki: **23 ze 130 notowań importowych nie zejdzie z ×3 nigdy**
+  (przed v0.66.0 było 51). Skutki dwa: obietnica podręcznika *„pełny magazyn → ×0,4”* jest
+  dla importu nieosiągalna, a duże miasto nie zaopatrzy dużego statku (80 ludzi to 12 ton
+  wody dziennie, sufit to 30). Poprawka jest jednoliniowa — sufit skalowany konsumpcją —
+  ale **rusza ceny w całym świecie**, więc to strojenie, nie naprawa struktury
+- **Woda nie ma producenta nigdzie** (v0.66.0.0, świadomie niezmienione). 44 miasta mają
+  ją w popycie, zero w produkcji; dopływa ścieżką `from === undefined` napisaną dla blokad,
+  co kod wprost komentuje. Skutek mechaniczny: **miasta nie da się wysuszyć**. Jeśli to ma
+  być inaczej, trzeba dać wodzie źródło — i wtedy woda staje się towarem, który można
+  przeciąć kordonem. To jest zmiana projektowa, nie poprawka
+- **„81 szlaków” kontra 85 pod vitestem** (v0.66.0.0). Pod testami `LANDMASSES` jest puste,
+  więc kursy są prostymi i cztery pary mieszczą się w `MAX_LANE_LENGTH`, które z lądem
+  się nie mieszczą. Oczekiwane, nie błąd — ale jeśli kiedyś ktoś oprze test na liczbie
+  szlaków, ma wiedzieć, która liczba jest która
 
 - **Podręcznik jest listą obietnic, którą da się sprawdzić** (metoda z v0.61.0).
   Od v0.60.0 cały ekran pomocy to 129 kluczy jawnej prozy, czyli spis tego, co

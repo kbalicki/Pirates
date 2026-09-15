@@ -706,9 +706,16 @@ describe("an exporter's warehouse — the settled world", () => {
     // Santo Domingo did not move at all. Two towns better off, none worse, and
     // all of it under half a percent — which is the guard doing its job rather
     // than failing it.
+    //
+    // And once more in v0.66.0, when an importer's warehouse was given the
+    // refill the producer's has had since v0.26.0: Havana 907.6 -> 908.1, the
+    // other three unchanged to the decimal. One town better off by six
+    // hundredths of a percent, none worse — which is the point. The fix is
+    // about the *level* an imported shed sits at, not about what the town is
+    // worth, and the guard is what says so.
     const w = runDays(makeFullWorld(), 400);
     expect(w.ports.port_royal.wealth).toBeCloseTo(649.1, 0);
-    expect(w.ports.havana.wealth).toBeCloseTo(907.6, 0);
+    expect(w.ports.havana.wealth).toBeCloseTo(908.1, 0);
     expect(w.ports.santiago.wealth).toBeCloseTo(619.6, 0);
     expect(w.ports.santo_domingo.wealth).toBeCloseTo(920.6, 0);
   });
@@ -878,5 +885,59 @@ describe("hunger — the people leave", () => {
     const pop = held.ports.tortuga.population;
     expect(pop).toBeLessThan(baseline);
     expect(pop).toBeGreaterThan(baseline * 0.9);
+  });
+});
+
+// ===========================================================================
+// An importer's warehouse (v0.66.0)
+// ===========================================================================
+
+/**
+ * The producer's side of the quay has answered an empty shed since v0.26.0.
+ * The importing side had no answer at all: the order was one day's need and
+ * pass 4 took one day's need back out, so the net was exactly zero and an
+ * imported good could only ever ratchet *down*. Every ton a captain carried
+ * away was gone from that town for the rest of the game.
+ *
+ * Nothing in the world could see it. `hunger` is computed after the day's
+ * cargo lands, so the town was fed to the last man while its warehouse stood
+ * empty; the only reader of the level itself is the merchant's counter, where
+ * the buy is hard-clamped to the stock.
+ *
+ * The companion assertion is the important one: the refill is suspended below
+ * full supply. A blockade, a black flag and a war all worked by leaving a town
+ * a daily shortfall against a buffer of nothing, and a refill that survived
+ * them would have quietly repealed all three.
+ */
+describe("an importer's warehouse — a town answering an empty shed", () => {
+  /** A good Havana eats and does not grow. */
+  const IMPORTED = CITIES.havana.demands.find(i => !CITIES.havana.produces.includes(i)) as string;
+
+  it("puts back what was carried away", () => {
+    const emptied = makeFullWorld();
+    emptied.ports.havana = {
+      ...emptied.ports.havana,
+      inventory: { ...emptied.ports.havana.inventory, [IMPORTED]: 0 },
+    };
+    const after = runDays(emptied, 30).ports.havana.inventory[IMPORTED];
+    // Most of the way back to the cap, from nothing, inside a month.
+    expect(after).toBeGreaterThan(inventoryCap("havana", IMPORTED) * 0.8);
+  });
+
+  it("holds a stock rather than the ten tons the world opened with", () => {
+    const settled = runDays(makeFullWorld(), 365).ports.havana.inventory[IMPORTED];
+    expect(settled).toBeGreaterThan(20);
+  });
+
+  it("does not fill a shed the trade is being kept out of", () => {
+    // Same town, same empty shed, under the black flag: no licensed hull will
+    // lade for her, so she spends what she has instead of building it up.
+    const emptied = heldIn(makeFullWorld(), "havana");
+    emptied.ports.havana = {
+      ...emptied.ports.havana,
+      inventory: { ...emptied.ports.havana.inventory, [IMPORTED]: 20 },
+    };
+    const after = runDays(emptied, 30).ports.havana.inventory[IMPORTED];
+    expect(after).toBeLessThan(20);
   });
 });

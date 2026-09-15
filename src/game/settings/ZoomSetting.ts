@@ -1,6 +1,6 @@
 /**
- * Camera zoom levels — 12 levels from overview to maximum detail.
- * Default: "z8" (5th from closest).
+ * Camera zoom levels — fourteen steps from 1.5x (the whole chart) to 12x.
+ * Default: "z8" (6x, the seventh step from the closest).
  */
 
 const STORAGE_KEY = "pc_zoom_level";

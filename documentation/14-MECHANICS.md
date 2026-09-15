@@ -606,6 +606,40 @@ lada kupca, załadunek NPC i krok dokowania.
 w podręczniku w grze i są prawdziwe (`RATIO_MAX` / `RATIO_MIN`, prywatne
 w `PricingSystem`).
 
+**Ale dolnego końca nie da się dosięgnąć dla towaru importowanego.** „Równowaga”
+to **trzydzieści dni konsumpcji** (`DEMAND_HORIZON_DAYS`), czyli w dużym mieście
+do 135 ton, a magazyn na towar, którego miasto nie uprawia, mieści **30**. Iloraz
+jest więc przyklejony do sufitu niezależnie od stanu półki. Zmierzone na 45
+portach: **23 ze 130 notowań importowych nie może zejść z ×3 nigdy** (przed
+v0.66.0 było ich 51). To jest **decyzja do podjęcia**, nie błąd — wpisana
+w TODO §4.
+
+### Magazyn i uzupełnianie
+
+Producent odpowiada na pustą szopę od v0.26.0, importer od **v0.66.0**. Do tego
+wydania zamówienie wynosiło dokładnie jedną dzienną konsumpcję, a czwarty przebieg
+dnia zabierał dokładnie tyle samo — bilans zerowy, więc półka mogła iść tylko
+w dół. Zmierzone: magazyn Hawany opróżniony z jedzenia i wody był pusty
+**dwieście dni później**, podczas gdy rum, który miasto samo pędzi, wracał do
+sufitu w trzydzieści.
+
+| stała | wartość | znaczenie |
+|---|---|---|
+| `EconomyTickSystem.RESTOCK_SURGE` | 1.0 | ile razy mocniej pracuje plantacja przy pustej szopie |
+| `EconomyTickSystem.IMPORT_RESTOCK_SURGE` | 1.0 | to samo po stronie importu (v0.66.0) |
+| `EconomyTickSystem.EXPORT_RESERVE` | 0.15 | ile zapasu producent zostawia sobie, kto by nie prosił |
+| `EconomyTickSystem.SHORTAGE_WEALTH_PER_ITEM` | 2 | ile bogactwa dziennie kosztuje brak **jednego** towaru |
+| `EconomyTickSystem.IMPORT_SHARE_CROWN` | 1.0 | udział dostaw dla zwykłej kolonii |
+| `EconomyTickSystem.IMPORT_SHARE_BLACK_FLAG` | 0.35 | udział dostaw dla miasta pod czarną banderą |
+| `EconomyTickSystem.IMPORT_NOTORIETY_BONUS` | 0.4 | ile do tego dokłada pełna sława kapitana |
+| `PricingSystem.DEMAND_HORIZON_DAYS` | 30 | ile dni konsumpcji znaczy „rynek w równowadze” |
+
+**Uzupełnianie jest zawieszone poniżej pełnej dostawy.** Dowóz ponad dzienną
+potrzebę to właśnie ten handel, który kordon, czarna bandera i wojna wstrzymują —
+i na tym polegało ich ukąszenie, bo działały przez zostawianie miastu dziennego
+deficytu przy zerowym buforze. Miasto, któremu przerwano handel, **wydaje** swój
+magazyn, nie napełnia go.
+
 ### Siedem towarów
 
 | towar | cena bazowa | waga | kategoria |
@@ -621,10 +655,17 @@ w `PricingSystem`).
 Złota **nie trzyma żadna lada** — pojawia się wyłącznie po odkryciu złoża
 (`gold_discovery` dopisuje je do `bonusProduces`).
 
+**Wody nie produkuje żaden port.** Czterdzieści cztery miasta mają ją w popycie
+i ani jedno w produkcji, więc nie ma dla niej żadnego szlaku: dociera ścieżką
+dla przemytników (`from === undefined`), napisaną dla blokad. Skutek jest
+mechaniczny i wart znajomości: **miasto można zagłodzić, ale nie wysuszyć** —
+żaden kordon, żadna czarna bandera i żadna wojna nie odetną wody.
+
 ### Szlaki handlowe
 
-81 szlaków, nazwany dostawca na towar, kurs liczony **czasem przejścia**, nie
-milami — dostawca dwieście mil dalej, ale z prądem, jest bliżej w jedynym
+81 szlaków (pod vitestem, bez lądu, wychodzi 85 — kursy są wtedy prostymi
+i mieszczą się w limicie długości), nazwany dostawca na towar **z wyjątkiem
+wody**, kurs liczony **czasem przejścia**, nie milami — dostawca dwieście mil dalej, ale z prądem, jest bliżej w jedynym
 sensie, który obchodzi szypra. Szlak jest **jednokierunkowy**.
 
 | stała | wartość | znaczenie |
