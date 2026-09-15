@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.64.0.1 | **Ostatnia aktualizacja:** 2026-09-14
+**Wersja:** 0.65.0.0 | **Ostatnia aktualizacja:** 2026-09-15
 
 ---
 
@@ -22,6 +22,7 @@
 | 12 | [Klasy statków](12-SHIP-CLASSES.md) | 9 klas statków — parametry, takielunek, zastosowanie |
 | 13 | [Pipeline 3D assets](13-3D-ASSET-PIPELINE.md) | Meshy.ai → spritesheet |
 | **14** | **[Mechaniki](14-MECHANICS.md)** | **Jak gra działa dziś** — stan, nie historia wydań; każda liczba z kodu i **sprawdzana testem**. Źródło na instrukcję dla gracza |
+| **15** | **[Instrukcja](15-INSTRUKCJA.md)** | **SZKIC instrukcji dla gracza**, pisany z dokumentu 14 — nie z pamięci |
 
 ## Powiązane zasoby
 
@@ -34,7 +35,7 @@
 
 - Dokumentacja w języku polskim
 - Sygnatury funkcji w formacie TypeScript
-- Stałe i wartości liczbowe dokładnie z kodu źródłowego — w [14-MECHANICS.md](14-MECHANICS.md) **egzekwowane testem** (`src/core/__tests__/mechanics_doc.test.ts`: 244 wiersze, 49 modułów)
+- Stałe i wartości liczbowe dokładnie z kodu źródłowego — w [14-MECHANICS.md](14-MECHANICS.md) **egzekwowane testem** (`src/core/__tests__/mechanics_doc.test.ts`: 244 wiersze stałych z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, reputacja, obsada, uszkodzenia, amunicja, żagle i 45 portów)
 - Każdy dokument jest samowystarczalny (nie wymaga czytania innych)
 
 ## Notatki z sesji
@@ -70,6 +71,7 @@
 - [SESSION-2026-09-07D.md](SESSION-2026-09-07D.md) — v0.49.0.0 → v0.50.0.0: Karaiby mają w sobie piratów — korsarzy nie było **wcale**, `aggression` i `targetEntityId` nie czytał nikt, a pomiar zabił po drodze cały jeden projekt (monopol koronny)
 - [SESSION-2026-09-07E.md](SESSION-2026-09-07E.md) — v0.50.0.0 → v0.51.0.0: korony kłócą się same — **sześciu konsumentów bez producenta**; domyślna era startowała w dziewięcioletnim pokoju, więc list kaperski nie krył nigdy niczego
 - [SESSION-2026-09-07F.md](SESSION-2026-09-07F.md) — v0.51.0.0 → v0.52.0.0: wróg mojego wroga — reputacja była czterema niezależnymi liczbami; dlaczego progi wygrały z proporcją, i zegar, który mówił `08:5.993680000000001`
+- [SESSION-2026-09-15.md](SESSION-2026-09-15.md) — v0.64.0.1 → v0.65.0.0: szkic instrukcji dla gracza, audyt podręcznika bitwy (**sześć fałszywych twierdzeń** i dwa nieaktualne komentarze w kodzie), tabela 45 portów i sekcja ekranów, oraz maszynowe sprawdzanie **wszystkich** tabel strukturalnych
 - [SESSION-2026-09-14.md](SESSION-2026-09-14.md) — v0.63.0.0 → v0.64.0.0: głód nie jest hossą — mnożnik ceny zdarzenia nie miał **tematu**, więc głód podnosił cenę tytoniu tak samo jak chleba (+131% za ładownię tytoniu); metoda „podręcznik jako lista obietnic” doprowadzona do końca na wierszach tabeli zdarzeń; oraz lada kupca ucinana po polsku
 - [SESSION-2026-09-13.md](SESSION-2026-09-13.md) — v0.62.0.0 → v0.63.0.0: nazwa miasta jest faktem, jej pisownia nie — druga, angielska kopia nazw w tabelach danych wchodzi w polski tekst; decyzja o **stemplowaniu klucza** zamiast tekstu i dlaczego to jest uczciwe odczytanie reguły z v0.43.0; pięć wycieków, które znalazło dopiero skasowanie pola; zły rok w zakładce Kalendarz w pięciu z sześciu er
 - [SESSION-2026-09-12B.md](SESSION-2026-09-12B.md) — v0.61.0.0 → v0.62.0.0: co mówi mijający statek — dwa kanały wieści i pierwszy chodził ten zły; `npc_news` bez odbiorcy; przemiatanie unii `WorldEvent`; i angielskie nazwy z tabel danych w polskim tekście (znalezione przy weryfikacji, otwarte)

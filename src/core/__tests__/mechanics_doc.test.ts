@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { SHIP_CLASSES } from "../data/ships.ts";
+import { CITIES } from "../data/cities.ts";
+import { AMMO_DEFS } from "../data/ammo.ts";
+import { MANNING_TIERS } from "../systems/CrewSystem.ts";
+import { HULL_TIERS, RIG_TIERS } from "../systems/DamageSystem.ts";
+import { SAIL_LEVELS } from "../systems/SailSystem.ts";
+import { getReputationLevel } from "../systems/ReputationSystem.ts";
+import { PL } from "../i18n/locales/pl.ts";
 
 // ===========================================================================
 // documentation/14-MECHANICS.md says what the game does. This checks it.
@@ -144,5 +151,152 @@ describe("14-MECHANICS.md — the ship table", () => {
 
     expect(wrong).toEqual([]);
     expect(seen.sort()).toEqual(Object.keys(SHIP_CLASSES).sort());
+  });
+});
+
+
+// ===========================================================================
+// The structural tables (v0.65.0)
+// ===========================================================================
+
+/**
+ * Until this release only the scalar constants and the ship table were checked.
+ * Everything else — the reputation tiers, manning, damage, rigging, ammunition,
+ * sail levels and all forty-five ports — was transcribed by hand, which is the
+ * state the ship table was in before somebody checked it, and the state the
+ * in-game manual was in for fifty-one releases.
+ */
+
+/** The rows of the markdown table whose header line is `header`. */
+function rowsAfter(header: string): string[][] {
+  const start = DOC.indexOf(header);
+  expect(start, `table not found: ${header}`).toBeGreaterThan(-1);
+  return DOC.slice(start).split("\n\n")[0].split("\n").slice(2)
+    .filter(line => line.startsWith("|"))
+    .map(line => line.split("|").map(c => c.trim()).slice(1, -1));
+}
+
+/** "×1.25", "**×4.5**", "75%", "≤ −60" -> a number. */
+function cell(text: string): number {
+  return Number(text.replace(/\*\*/g, "").replace(/[×%]/g, "")
+    .replace(/−/g, "-").replace(/[≤≥<>]/g, "").trim());
+}
+
+describe("14-MECHANICS.md — the tables that are not constants", () => {
+  it("the four sail levels", () => {
+    const rows = rowsAfter("| poziom | wartość płótna |");
+    expect(rows.length).toBe(SAIL_LEVELS.length);
+    rows.forEach((r, i) => expect(cell(r[1]), `sail ${i}`).toBe(SAIL_LEVELS[i].value));
+  });
+
+  it("the four hull tiers", () => {
+    const rows = rowsAfter("| kadłub | od | prędkość | skręt |");
+    expect(rows.map(r => r[0])).toEqual(HULL_TIERS.map(t => t.id));
+    rows.forEach((r, i) => {
+      expect(cell(r[1]) / 100, `hull ${i} minFrac`).toBeCloseTo(HULL_TIERS[i].minFrac, 10);
+      expect(cell(r[2]), `hull ${i} speed`).toBe(HULL_TIERS[i].speedMul);
+      expect(cell(r[3]), `hull ${i} turn`).toBe(HULL_TIERS[i].turnMul);
+    });
+  });
+
+  it("the four rigging tiers", () => {
+    const rows = rowsAfter("| takielunek | od | prędkość |");
+    expect(rows.map(r => r[0])).toEqual(RIG_TIERS.map(t => t.id));
+    rows.forEach((r, i) => {
+      expect(cell(r[1]) / 100, `rig ${i} minFrac`).toBeCloseTo(RIG_TIERS[i].minFrac, 10);
+      expect(cell(r[2]), `rig ${i} speed`).toBe(RIG_TIERS[i].speedMul);
+    });
+  });
+
+  it("the four manning tiers", () => {
+    const rows = rowsAfter("| obsada | od ilu × `crewMin` | prędkość | skręt | czas zmiany żagli |");
+    expect(rows.map(r => r[0])).toEqual(MANNING_TIERS.map(t => t.id));
+    rows.forEach((r, i) => {
+      expect(cell(r[1]), `manning ${i} minFrac`).toBe(MANNING_TIERS[i].minFrac);
+      expect(cell(r[2]), `manning ${i} speed`).toBe(MANNING_TIERS[i].speedMul);
+      expect(cell(r[3]), `manning ${i} turn`).toBe(MANNING_TIERS[i].turnMul);
+      expect(cell(r[4]), `manning ${i} handling`).toBe(MANNING_TIERS[i].handlingMul);
+    });
+  });
+
+  it("the three kinds of shot", () => {
+    const rows = rowsAfter("| typ | kadłub | żagle | załoga | zasięg |");
+    const order = ["round", "chain", "grape"] as const;
+    expect(rows.length).toBe(order.length);
+    rows.forEach((r, i) => {
+      const def = AMMO_DEFS[order[i]];
+      expect(r[0].startsWith(order[i]), `ammo row ${i} is ${r[0]}`).toBe(true);
+      expect(cell(r[1]), `${order[i]} hull`).toBe(def.hullMul);
+      expect(cell(r[2]), `${order[i]} sails`).toBe(def.sailsMul);
+      expect(cell(r[3]), `${order[i]} crew`).toBe(def.crewMul);
+      expect(cell(r[4]), `${order[i]} range`).toBe(def.rangeMul);
+    });
+  });
+
+  it("the five reputation tiers, and the thresholds they start at", () => {
+    const rows = rowsAfter("| próg | zakres | spread | werbunek | fracht | magazyn | kadłuby | usługi |");
+    // `TIERS` is module-private, so the numbers come out of the source.
+    const src = BY_MODULE["PortAccessSystem"];
+    const wrong: string[] = [];
+    for (const r of rows) {
+      const level = r[0];
+      const line = src.match(new RegExp(`^  ${level}:\\s*\\{([^}]*)\\}`, "m"));
+      if (!line) { wrong.push(`${level}: no such tier`); continue; }
+      const field = (name: string) => {
+        const m = line[1].match(new RegExp(`${name}: ([^,}]+)`));
+        return m ? m[1].trim() : "";
+      };
+      if (cell(r[2]) !== Number(field("spread"))) wrong.push(`${level}.spread: doc ${r[2]}, code ${field("spread")}`);
+      if (cell(r[3]) !== Number(field("crewMul"))) wrong.push(`${level}.crewMul: doc ${r[3]}, code ${field("crewMul")}`);
+      if (cell(r[7]) !== Number(field("serviceMul"))) wrong.push(`${level}.serviceMul: doc ${r[7]}, code ${field("serviceMul")}`);
+      const yes = (t: string) => t.replace(/\*\*/g, "") === "tak";
+      if (yes(r[4]) !== (field("canCharter") === "true")) wrong.push(`${level}.canCharter`);
+      if (yes(r[5]) !== (field("canRentStore") === "true")) wrong.push(`${level}.canRentStore`);
+      if (yes(r[6]) !== (field("canBuyShips") === "true")) wrong.push(`${level}.canBuyShips`);
+      // Both ends of the range the row claims really land in that tier, and
+      // the point just outside each end does not. That is the assertion the
+      // reputation table needed and did not have: not "is there a threshold"
+      // but "is THIS the threshold".
+      const [lo, hi] = r[1].split("…").map(cell);
+      expect(getReputationLevel(lo), `${level} at its floor ${lo}`).toBe(level);
+      expect(getReputationLevel(hi), `${level} at its ceiling ${hi}`).toBe(level);
+      if (lo > -100) expect(getReputationLevel(lo - 1), `${lo - 1} should be below ${level}`).not.toBe(level);
+      if (hi < 100) expect(getReputationLevel(hi + 1), `${hi + 1} should be above ${level}`).not.toBe(level);
+    }
+    expect(wrong).toEqual([]);
+  });
+});
+
+describe("14-MECHANICS.md — the forty-five ports", () => {
+  const CROWN: Record<string, string> = {
+    spain: "Hiszpania", england: "Anglia", france: "Francja", netherlands: "Holandia",
+  };
+  const TYPE: Record<string, string> = { city: "miasto", fort: "forteca", outpost: "przystań" };
+
+  it("names every port once, with its crown, levels and goods", () => {
+    const rows = rowsAfter("| klucz | nazwa | korona | typ | rynek | stocznia | produkuje | potrzebuje |");
+    const wrong: string[] = [];
+    const seen: string[] = [];
+
+    for (const r of rows) {
+      const key = r[0].replace(/`/g, "");
+      const def = CITIES[key];
+      if (!def) { wrong.push(`${key}: not a port`); continue; }
+      seen.push(key);
+      const eq = (label: string, stated: string, actual: string) => {
+        if (stated !== actual) wrong.push(`${key}.${label}: doc "${stated}", code "${actual}"`);
+      };
+      eq("nazwa", r[1], PL[`port.${key}.name`] ?? "?");
+      eq("korona", r[2], CROWN[def.factionId as unknown as string] ?? "?");
+      eq("typ", r[3], TYPE[def.type] ?? "?");
+      eq("rynek", r[4], String(def.marketLevel));
+      eq("stocznia", r[5], String(def.shipyardLevel));
+      eq("produkuje", r[6], def.produces.join(" "));
+      eq("potrzebuje", r[7], def.demands.join(" "));
+    }
+
+    expect(wrong).toEqual([]);
+    expect(seen.sort()).toEqual(Object.keys(CITIES).sort());
+    expect(seen.length).toBe(45);
   });
 });

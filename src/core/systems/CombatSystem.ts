@@ -14,9 +14,12 @@ export const CANNON_COOLDOWN_TICKS = 180; // 9 seconds at 20 ticks/sec — best-
  *   • low morale      — frightened gunners are slow
  *   • low training    — green crews fumble powder & ramming
  *
- * Each factor contributes a 0.7..1.0 multiplier; total is at worst 0.7³≈0.343,
- * so the slowest a battered, terrified, untrained crew can reload is ~26 s.
- * A pristine, brave, veteran crew clears in the full 9 s.
+ * The three floors are **not** the same number, which is why the old note here
+ * saying 0.7³≈0.343 and "~26 s" was wrong twice over: crew bottoms out at 0.70,
+ * morale at 0.80 and training at 0.75, so the worst product is 0.42 and the
+ * slowest a battered, terrified, untrained crew can reload is **~21 s**.
+ * A pristine, brave, veteran crew clears in the full 9 s. (Audited v0.65.0;
+ * `battle.help_reload_body` said ~24 s and has been corrected to match.)
  *
  * Formula:
  *   crewFrac    = clamp((crew/max - 0.2) / 0.8, 0, 1)   // ramp 20%..100%
@@ -55,10 +58,12 @@ export const CANNON_RANGE = 480;
  *   sailsDelta  = -CANNON_DAMAGE_SAILS · shots · ammo.sailsMul · distFactor · (1 − target.armor)
  *   crewDelta   = -round(CANNON_DAMAGE_CREW · shots · ammo.crewMul · distFactor · (1 − target.armor·0.3))
  *
- * Examples (point-blank, hit):
- *   Galleon (18 guns) × round shot → Sloop (60 hull, armor 0.10):  18·0.7·1.0·1.6·0.90 ≈ 18.1 hull
- *   Sloop  (4 guns)   × round shot → Galleon (180 hull, armor 0.50): 4·0.7·1.0·1.6·0.50 ≈ 2.24 hull
- *   1 gun × round @ far (distFactor 0.05) vs Galleon armor 0.50:    1·0.7·1.0·0.05·0.50 ≈ 0.018 hull (≈ 0)
+ * Examples (point-blank, hit). These used 0.7 as the base until v0.65.0 — the
+ * figure from before the ×5 bump noted below — so every one of them was a fifth
+ * of the real number while the line under them said the bump had happened:
+ *   Galleon (18 guns) × round shot → Sloop (60 hull, armor 0.12):  18·3.5·1.0·1.6·0.88 ≈ 88.7 hull (one broadside sinks her)
+ *   Sloop  (4 guns)   × round shot → Galleon (180 hull, armor 0.60): 4·3.5·1.0·1.6·0.40 ≈ 8.96 hull
+ *   1 gun × round @ far (distFactor 0.05) vs Galleon armor 0.60:    1·3.5·1.0·0.05·0.40 ≈ 0.07 hull (≈ 0)
  */
 // All three base damages bumped × 5 vs prior tuning to shorten battles (user request).
 export const CANNON_DAMAGE_HULL = 3.5;

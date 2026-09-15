@@ -404,6 +404,95 @@ i **linię głodu**, gdy miastu zabrakło importu.
 | `PortInteractionSystem.GRANARY_REPUTATION` | 8 | reputacja za sprzedaż zboża do spichlerza |
 | `FamilyQuestSystem.INFORMER_PRICE` | 200 | ile bierze informator za wieść o rodzinie |
 
+
+---
+
+## 7a. Czterdzieści pięć portów
+
+Dwadzieścia cztery hiszpańskie, dziesięć angielskich, osiem francuskich, trzy
+holenderskie. **Żaden nie zaczyna pod czarną banderą** — korsarze rodzą się
+z osiemnastu przystań wskazanych osobno, nie z właściciela portu.
+
+### Co znaczą dwa poziomy
+
+**Poziom rynku (1–5)** decyduje o trzech rzeczach naraz:
+
+| | wzór | zakres |
+|---|---|---|
+| cena bazowa | `× (0,9 + poziom × 0,05)` | ×0,95 … ×1,15 |
+| produkcja dzienna | `2 + poziom × 2` | **4–12** jednostek |
+| pojemność magazynu | `poziom × 50` dla tego, co uprawia | 50–250, a **30** dla reszty |
+
+Do tego towar **uprawiany** na miejscu jest tańszy o 30% (`PRODUCE_MODIFIER`
+0,7), a **potrzebny** droższy o 40% (`DEMAND_MODIFIER` 1,4). To jest cały
+handel w jednym zdaniu: kup tam, gdzie rośnie, sprzedaj tam, gdzie tego chcą.
+
+**Poziom stoczni (1–4)** decyduje, jakie kadłuby stoją na sprzedaż:
+
+| poziom | co sprzeda |
+|---|---|
+| 1 | pinasa, slup |
+| 2 | + barka, brygantyna, fluyt |
+| 3 | + merchantman, fregata |
+| 4 | + szybki galeon, galeon |
+
+Rozkład poziomów stoczni: **24** porty mają poziom 1, **12** poziom 2, **6**
+poziom 3, a poziom 4 — czyli **galeona** — mają **trzy**: Hawana, Kartagena
+i Port Royale. Fregatę albo merchantmana kupisz w dziewięciu miastach.
+
+### Tabela
+
+Nazwy towarów są identyfikatorami z kodu (`sugar_cane`, `tobacco`, `cocoa`,
+`rum`, `food`, `water`); instrukcja dla gracza je tłumaczy.
+
+| klucz | nazwa | korona | typ | rynek | stocznia | produkuje | potrzebuje |
+|---|---|---|---|---|---|---|---|
+| `havana` | Hawana | Hiszpania | miasto | 5 | 4 | sugar_cane tobacco rum | food water cocoa |
+| `santiago` | Santiago | Hiszpania | miasto | 3 | 2 | sugar_cane rum | food water tobacco |
+| `santo_domingo` | Santo Domingo | Hiszpania | miasto | 4 | 3 | sugar_cane cocoa | food water rum |
+| `san_juan` | San Juan | Hiszpania | forteca | 4 | 3 | sugar_cane rum | food water cocoa |
+| `cartagena` | Kartagena | Hiszpania | forteca | 5 | 4 | cocoa sugar_cane | food water rum |
+| `porto_bello` | Puerto Bello | Hiszpania | forteca | 4 | 3 | cocoa | food water rum tobacco |
+| `panama` | Panama | Hiszpania | miasto | 5 | 3 | cocoa sugar_cane | food water rum tobacco |
+| `vera_cruz` | Vera Cruz | Hiszpania | miasto | 4 | 3 | sugar_cane tobacco | food water cocoa rum |
+| `campeche` | Campeche | Hiszpania | miasto | 3 | 2 | tobacco sugar_cane | food water rum |
+| `maracaibo` | Maracaibo | Hiszpania | miasto | 3 | 2 | cocoa tobacco | food water rum |
+| `cumana` | Cumaná | Hiszpania | miasto | 2 | 1 | cocoa | food water rum tobacco |
+| `trinidad` | Trynidad | Hiszpania | miasto | 2 | 1 | sugar_cane cocoa | food water rum |
+| `gran_granada` | Gran Granada | Hiszpania | miasto | 3 | 2 | sugar_cane cocoa | food water rum |
+| `caracas` | Caracas | Hiszpania | miasto | 4 | 2 | cocoa tobacco | food water rum |
+| `gibraltar` | Gibraltar | Hiszpania | przystań | 1 | 1 | sugar_cane | food water rum |
+| `margarita` | Margarita | Hiszpania | przystań | 2 | 1 | cocoa tobacco | food water rum |
+| `nombre_de_dios` | Nombre de Dios | Hiszpania | przystań | 1 | 1 | cocoa | food water |
+| `puerto_cabello` | Puerto Cabello | Hiszpania | przystań | 2 | 1 | cocoa | food water rum |
+| `puerto_principe` | Puerto Príncipe | Hiszpania | miasto | 3 | 2 | sugar_cane tobacco | food water rum |
+| `rio_de_la_hacha` | Río de la Hacha | Hiszpania | przystań | 1 | 1 | tobacco | food water |
+| `santa_catalina` | Santa Catalina | Hiszpania | przystań | 1 | 1 | sugar_cane | food water |
+| `santa_marta` | Santa Marta | Hiszpania | przystań | 1 | 1 | tobacco | food water |
+| `st_augustine` | St. Augustine | Hiszpania | forteca | 2 | 1 | food | water rum tobacco |
+| `villa_hermosa` | Villa Hermosa | Hiszpania | miasto | 3 | 2 | tobacco sugar_cane | food water rum |
+| `port_royal` | Port Royale | Anglia | miasto | 4 | 4 | rum food | sugar_cane cocoa tobacco |
+| `nassau` | Nassau | Anglia | miasto | 2 | 2 | rum | food water |
+| `barbados` | Barbados | Anglia | miasto | 4 | 3 | sugar_cane rum | food water tobacco |
+| `antigua` | Antigua | Anglia | miasto | 2 | 1 | sugar_cane | food water rum |
+| `st_kitts` | St. Kitts | Anglia | miasto | 2 | 1 | sugar_cane | food water rum tobacco |
+| `belize` | Belize | Anglia | przystań | 2 | 1 | rum | food water tobacco |
+| `bermuda` | Bermudy | Anglia | przystań | 2 | 1 | food | water rum tobacco |
+| `eleuthera` | Eleuthera | Anglia | przystań | 1 | 1 | rum | food water |
+| `gran_bahama` | Gran Bahama | Anglia | przystań | 1 | 1 | rum | food water |
+| `nevis` | Nevis | Anglia | przystań | 2 | 1 | sugar_cane | food water rum |
+| `tortuga` | Tortuga | Francja | przystań | 2 | 1 | rum | food water |
+| `martinique` | Martynika | Francja | miasto | 3 | 2 | cocoa sugar_cane rum | food water tobacco |
+| `guadeloupe` | Gwadelupa | Francja | miasto | 3 | 2 | sugar_cane cocoa | food water rum |
+| `petit_goave` | Petit Goâve | Francja | przystań | 2 | 1 | sugar_cane rum | food water cocoa |
+| `port_de_paix` | Port de Paix | Francja | przystań | 2 | 1 | rum | food water sugar_cane |
+| `florida_keys` | Florida Keys | Francja | przystań | 1 | 1 | food | water rum |
+| `leogane` | Léogane | Francja | przystań | 2 | 1 | sugar_cane rum | food water |
+| `montserrat` | Montserrat | Francja | przystań | 1 | 1 | sugar_cane | food water |
+| `curacao` | Curaçao | Holandia | miasto | 3 | 2 | tobacco cocoa | food water sugar_cane |
+| `st_eustatius` | St. Eustatius | Holandia | miasto | 3 | 2 | tobacco | food water sugar_cane rum |
+| `st_martin` | St. Martin | Holandia | miasto | 2 | 1 | tobacco | food water rum |
+
 ---
 
 ## 8. Reputacja, dyplomacja i papiery
@@ -414,11 +503,11 @@ Reputacja jest **osobna dla każdej korony** i decyduje o pięciu ladach naraz.
 
 | próg | zakres | spread | werbunek | fracht | magazyn | kadłuby | usługi |
 |---|---|---|---|---|---|---|---|
-| hostile | ≤ −60 | 0.30 | ×0 | nie | nie | **nie** | ×2.0 |
-| unfriendly | ≤ −20 | 0.20 | ×0.4 | nie | nie | tak | ×1.3 |
-| neutral | < 20 | 0.12 | ×1 | tak | tak | tak | ×1.0 |
-| friendly | < 60 | 0.08 | ×1.25 | tak | tak | tak | ×0.9 |
-| allied | ≥ 60 | 0.05 | ×1.5 | tak | tak | tak | ×0.8 |
+| hostile | −100 … −60 | 0.30 | ×0 | nie | nie | **nie** | ×2.0 |
+| unfriendly | −59 … −20 | 0.20 | ×0.4 | nie | nie | tak | ×1.3 |
+| neutral | −19 … 19 | 0.12 | ×1 | tak | tak | tak | ×1.0 |
+| friendly | 20 … 59 | 0.08 | ×1.25 | tak | tak | tak | ×0.9 |
+| allied | 60 … 100 | 0.05 | ×1.5 | tak | tak | tak | ×0.8 |
 
 *Spread to połowa różnicy między ceną kupna a sprzedaży; round trip to jego
 podwojenie — 24% u neutralnego, 10% u sojusznika.*
@@ -725,7 +814,7 @@ Arena, trzy typy amunicji, łuki ostrzału ±60°.
 
 | stała | wartość | znaczenie |
 |---|---|---|
-| `CombatSystem.CANNON_RANGE` | 480 | zasięg dział |
+| `CombatSystem.CANNON_RANGE` | 480 | **wartość zapasowa**, nie zasięg: prawdziwy liczy się per bitwa jako **połowa szerokości areny** |
 | `CombatSystem.CANNON_COOLDOWN_TICKS` | 180 | najlepsza możliwa kadencja burty (9 s) |
 | `CombatSystem.CANNON_DAMAGE_HULL` | 3.5 | obrażenia w kadłub na trafienie |
 | `CombatSystem.CANNON_DAMAGE_SAILS` | 3.0 | obrażenia w takielunek |
@@ -994,6 +1083,62 @@ za jego złoto, a ładunek to udział, który i tak przeżył zatonięcie.
 | `R` | naprawa (w stoczni) |
 
 Zoom **1,5×–12×** w czternastu krokach (`z1`–`z14`, domyślnie `z8` = 6×).
+
+
+---
+
+## 19a. Ekrany
+
+Dokument wyżej opisuje **mechaniki**. Ta sekcja opisuje **gdzie one są**, bo
+instrukcja dla gracza potrzebuje obu.
+
+| scena | kiedy się pojawia | co robi |
+|---|---|---|
+| `BootScene` → `PreloadScene` | start | ładowanie, parametry debugowania |
+| `CharacterCreationScene` | nowa gra | nazwisko, korona, era, rozdanie 10 punktów |
+| `MainMapScene` | rdzeń gry | żegluga po Karaibach |
+| `UIOverlayScene` | zawsze nad mapą | kompas, wiatr, data, zoom, żagle — **nie przewija się z mapą** |
+| `PortApproachScene` | wejście do portu | krótka scena bramy; **napełnia ławę w tawernie** |
+| `PortScene` | w porcie | sześć lad plus garnizon, przełączane widokami |
+| `CityInfoScene` | klik na miasto z mapy | czyje, co produkuje, co się tam dzieje |
+| `ShipEncounterScene` | spotkanie na morzu | manifest, wieści, atak, odejście |
+| `SeaBattleScene` | atak albo napaść | arena, działa, abordaż |
+| `BattleHelpScene` | `H` w bitwie | podręcznik bitwy |
+| `DuelScene` | abordaż, zasadzka przy skarbie, wątek rodzinny | pojedynek na tor przewagi |
+| `CityAssaultScene` | atak na miasto | ostrzał i desant falami |
+| `CityDefenseScene` | obrona miasta | ostrzał cudzej eskadry i szalupy |
+| `VillageScene` | wejście do wioski | barter rumem, wyprawa wojenna |
+| `OptionsMenuScene` | `Spacja` | siedem zakładek |
+| `HelpScene` | `H` na mapie | podręcznik świata, cztery zakładki |
+| `RetirementScene` | po propozycji gubernatora | podsumowanie kariery |
+
+### Klawisze per ekran
+
+**Mapa** — `W`/`S` żagle, `A`/`D` ster, `E` wejście do portu / powrót na statek,
+`L` ląd, `X` kopanie, `Spacja` menu, `H` podręcznik, `N` znaki zdarzeń,
+`T` szlaki, `C` prądy, `G` siatka, `V` strefa widzenia.
+
+**Bitwa morska** — `W`/`S` żagle (**trzy** poziomy, nie cztery: złożone, bojowe,
+pełne), `A`/`D` ster, `Q` lewa burta, `E` prawa burta, `1`/`2`/`3` amunicja,
+`B` abordaż, `Esc` zerwanie kontaktu, `H` podręcznik bitwy.
+
+**Pojedynek** — `W`/`S` wybór linii, `A`/`D` atak i parada, `Q`/`E` warianty.
+
+**Lada w porcie** — `W`/`S` wybór, `Enter` potwierdzenie, `Esc` powrót.
+W magazynie dodatkowo `Q` na brzeg, `E` na statek.
+
+**Menu (`Spacja`)** — `1`–`6` i strzałki po zakładkach, `Esc` zamyka.
+Zakładki: Kajuta · Kapitan · Dziennik · Kalendarz · Ustawienia · Zapis · Mapa.
+
+**Oblegańsko-obronne** — `W`/`S` albo strzałki wybierają cel ostrzału,
+`Enter` potwierdza, `L` rozpoczyna desant, `Spacja` przyśpiesza rundę.
+
+### Dwie rzeczy, które mylą
+
+- **Żagle w bitwie to trzy poziomy, na mapie cztery.** Bitwa ma złożone (0%),
+  bojowe (50%) i pełne (100%); mapa ma dodatkowo refowane (33%).
+- **HUD nie jest częścią mapy.** `UIOverlayScene` jest osobną sceną o stałej
+  pozycji ekranowej — dlatego kompas nie ucieka przy przewijaniu.
 
 ---
 
