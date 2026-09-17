@@ -47,6 +47,22 @@ export function itemNameKey(itemId: string): string {
   return nameKey("item", itemId);
 }
 
+/**
+ * The form a quantity takes: "twenty tons of sugar", never "twenty tons of
+ * Sugar Cane" (v0.68.0).
+ *
+ * Twenty sentences in the game stitch a number and an item name together - the
+ * governor's granary, the freight office, the informer's relief run, the
+ * rumours - and every one printed the nominative, capitalised, in the middle of
+ * a phrase that wanted the genitive. Polish needs a real second form; English
+ * needs the lower case. Falls back to the plain name, so a good with no `.gen`
+ * key is never worse off than it is today.
+ */
+export function itemNameKeyGen(itemId: string): string {
+  const key = `item.${itemId}.gen`;
+  return hasKey(key) ? key : itemNameKey(itemId);
+}
+
 /** Key for a ship class's name. */
 export function shipNameKey(classId: string): string {
   return nameKey("ship", classId);
@@ -70,6 +86,11 @@ export function factionName(factionKey: string): string {
 /** @see portName */
 export function itemName(itemId: string): string {
   return t(itemNameKey(itemId));
+}
+
+/** The genitive, for a screen drawing a quantity right now. @see itemNameKeyGen */
+export function itemNameGen(itemId: string): string {
+  return t(itemNameKeyGen(itemId));
 }
 
 /** @see portName */

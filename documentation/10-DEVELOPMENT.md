@@ -303,6 +303,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?alliance=cartagena` | Dwie korony robiące wspólną sprawę i wspólna wyprawa, którą to wystawia (v0.55.0): kapitan leży pół przeprawy od tej kolonii, angielski desant idzie na nią, a jeden kadłub linii ma banderę francuską. W zwykłej grze sojusz wymaga, żeby dwie korony wypowiedziały wojnę tej samej trzeciej — to 28,8% dni, ale nigdy pierwszy |
 | `?famine=tortuga` | Kapitan stoi w mieście, którego dostawca jest pod czarną banderą; miasto od dwóch tygodni głoduje |
 | `&stand=cover` | Stoi zamiast tego w porcie, który przejął cudze kursy — razem z `?famine=` |
+| `&hated` (v0.68.0) | Razem z `?famine=`: kapitan jest **wrogiem** tej korony (−70). Gubernator, którego ludzie nie jedli, ma wówczas własne powitanie zamiast wołania o straż — i to jest dokładnie ten ekran, na który instrukcja wysyła kapitana z zrujnowanymi notowaniami |
 | `?skills=navigation:10,medicine:0` | Kapitan, który wydał punkty gdzie indziej (v0.47.0). Działa z `?skip` i `?battle=`. Trzy z pięciu umiejętności nic nie robiły do tego wydania, a jedyną drogą do konkretnego zestawu było przejście tworzenia postaci ręcznie |
 | `?ship=galleon` | Start w tym kadłubie (v0.48.0). Jedyny sposób, żeby poczuć sondowania: startowy slup zanurza 1,5 m i przechodzi wszędzie |
 | `?crew=16` | Tylu ludzi na flagowcu (v0.49.0). Każdy kadłub w grze jest obsadzony na 2-3× swojego minimum, więc braku rąk nie da się dosięgnąć ze zwykłego startu. `?skip&ship=galleon&crew=16` to przypadek podręcznikowy |

@@ -51,7 +51,7 @@ import { tradeIncome } from "./TradeLedgerSystem.ts";
 import { activeAlliances } from "./DiplomacySystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
-import { itemNameKey, portNameKey } from "../i18n/names.ts";
+import { itemNameKeyGen, portNameKey } from "../i18n/names.ts";
 /** One thing the tavern has to say, ready for `t()`. */
 export type Rumor = { key: string; vars?: Record<string, string | number> };
 
@@ -147,7 +147,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
       key: "tavern.rumor_hunger",
       vars: {
         port: portNameKey(key),
-        item: itemNameKey(item),
+        item: itemNameKeyGen(item),
         pct: Math.round(townHunger(world, key) * 100),
       },
     });
@@ -181,7 +181,7 @@ export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
       vars: {
         port: portNameKey(key),
         other: shut ? portNameKey(shut.from) : "",
-        item: itemNameKey(covering[0].item),
+        item: itemNameKeyGen(covering[0].item),
       },
     });
     break;                                   // one is a story, four is a ledger

@@ -178,7 +178,18 @@ export function governorTree(ctx: GovernorTreeContext): DialogueTree {
         id: "greeting",
         // The man who has not yet read his predecessor's papers has his own
         // line: a greeting off the record is exactly what he does not have.
-        textKey: ctx.pardonOffer ? "governor.dialogue_newcomer" : `governor.dialogue_${ctx.level}`,
+        //
+        // And a governor whose town is short and whose visitor is carrying the
+        // answer does not open with the guards, whatever the ledger says about
+        // him (v0.68.0). That combination is not a corner: it is precisely the
+        // run back from a ruined standing the manual tells a captain to make,
+        // and until now the one screen he was told to aim for was the one that
+        // threw him out and then offered to buy his cargo in the same breath.
+        textKey: ctx.pardonOffer
+          ? "governor.dialogue_newcomer"
+          : ctx.grainOffer && (ctx.level === "hostile" || ctx.level === "unfriendly")
+            ? "governor.dialogue_hungry_enemy"
+            : `governor.dialogue_${ctx.level}`,
         vars: { name: ctx.playerName },
         options: [
           {

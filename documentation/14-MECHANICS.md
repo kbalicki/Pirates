@@ -525,6 +525,14 @@ wymaga `friendly`, zlecenie obrony wymaga listu, córka wymaga `friendly`,
 a kantor **nie ma pracy poniżej neutralnego w ogóle**. Zostaje jedno wejście:
 miejski spichlerz, wart +8, i tylko gdy miasto przymiera głodem.
 
+**Notowania są przycinane do −100…100 w jednym miejscu** — `changeReputation`.
+Do v0.68.0 był jeden pisarz, który go omijał: sprzedaż zboża do spichlerza,
+czyli **jedyna droga powrotna ze złych notowań**, a więc i ta, którą chodzi się
+najczęściej. Kapitan stojący już na `sojuszniku` i ratujący kolejne głodujące
+miasta szedł 99 → 105 → 111 → 117, a ekran gubernatora drukował
+*„sojusznik (117)”* ze skali, która kończy się na stu. Pilnuje tego teraz test
+czytający **źródło** całego `src`.
+
 ### Odprysk reputacji
 
 Co zrobisz jednej koronie, czytają wszystkie pozostałe przez własne zatargi.

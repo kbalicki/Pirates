@@ -9,6 +9,16 @@ export const EN: LocaleData = {
   "item.food.name": "Food",
   "item.water.name": "Water",
   "item.gold.name": "Gold",
+  // The form a quantity takes: "twenty tons of sugar", not "twenty tons of
+  // Sugar Cane" (v0.68.0). English only needs the lower case; Polish needs the
+  // genitive, which is what this pair of keys exists for.
+  "item.sugar_cane.gen": "sugar",
+  "item.tobacco.gen": "tobacco",
+  "item.cocoa.gen": "cocoa",
+  "item.rum.gen": "rum",
+  "item.food.gen": "food",
+  "item.water.gen": "water",
+  "item.gold.gen": "gold",
 
   // -- Ports (45 cities) --
   "port.havana.name": "Havana",
@@ -668,6 +678,7 @@ export const EN: LocaleData = {
   "governor.back": "[ BACK TO PORT ]",
   "governor.dialogue_hostile": "\"Guards! Remove this scoundrel from my sight!\"",
   "governor.dialogue_newcomer": "\"You will forgive me, sir, I have had this residence a fortnight and my predecessor left his papers in no order at all. Your name is in them somewhere, I am told. Sit down.\"",
+  "governor.dialogue_hungry_enemy": "\"I know your name, sir, and on any other morning the guards would have it from me. But my people have not eaten and you are riding low in the water. Sit down. We will quarrel again when they are fed.\"",
   "governor.dialogue_unfriendly": "\"I have no business with the likes of you. Good day.\"",
   "governor.dialogue_neutral": "\"Welcome, Captain. What brings you to our port?\"",
   "governor.dialogue_friendly": "\"Ah, Captain {{name}}! It is good to see a friend of the crown.\"",

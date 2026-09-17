@@ -258,7 +258,9 @@ export class PreloadScene extends Phaser.Scene {
     //                    playing it means actually losing, which is the one
     //                    state in the game nobody sets out to reach
     //   ?famine=tortuga — standing in that town with its supplier under the black flag
-    //                    (&stand=cover — standing instead in the port covering its runs)
+    //                    (&stand=cover — standing instead in the port covering its runs,
+    //                     &hated — at war with its crown, for the governor who needs the
+    //                     grain more than he needs the quarrel)
     //                    the town is already a fortnight hungry and the hold is full
     const params = new URLSearchParams(window.location.search);
     if (params.has("zoom")) {
@@ -505,7 +507,11 @@ export class PreloadScene extends Phaser.Scene {
     }
     if (params.has("famine")) {
       const portKey = params.get("famine") || "tortuga";
-      const world = this.createFamineWorld(portKey, params.get("stand") === "cover");
+      const world = this.createFamineWorld(
+        portKey,
+        params.get("stand") === "cover",
+        params.get("hated") !== null,
+      );
       this.registry.set("worldState", world);
       const standing = (world.player.location.portId as unknown as string) ?? portKey;
       this.scene.start("PortScene", { worldState: world, portId: standing });
@@ -1722,7 +1728,7 @@ export class PreloadScene extends Phaser.Scene {
     return generateAvailableCrew(world, makePortId(portKey));
   }
 
-  private createFamineWorld(portKey: string, standInCover = false): import("../../core/model/WorldState.ts").WorldState {
+  private createFamineWorld(portKey: string, standInCover = false, hated = false): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];
     if (!def) return base;
@@ -1842,13 +1848,23 @@ export class PreloadScene extends Phaser.Scene {
         }
       : entities;
 
+    // `&hated`: deep enough that the governor's own greeting would be the
+    // guards, which is the point. A famine is the one thing that outranks a
+    // grudge, and the run back from a ruined standing is the errand the manual
+    // sends a captain on - so the screen he is sent to has to be looked at.
+    const crown = stand.factionId as unknown as string;
+    const player = {
+      ...base.player,
+      location: { type: "port" as const, portId: stand.id, pos: { ...stand.pos } },
+      ...(hated
+        ? { reputation: { ...base.player.reputation, [crown]: -70 } }
+        : {}),
+    };
+
     return generateAvailableCrew({
       ...starved,
       entities: shorthanded,
-      player: {
-        ...base.player,
-        location: { type: "port", portId: stand.id, pos: { ...stand.pos } },
-      },
+      player,
     }, stand.id);
   }
 

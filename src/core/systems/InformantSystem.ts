@@ -58,7 +58,7 @@ import {
   escortCount,
 } from "./NamedShipSystem.ts";
 
-import { factionNameKey, itemNameKey, portNameKey } from "../i18n/names.ts";
+import { factionNameKey, itemNameKeyGen, portNameKey } from "../i18n/names.ts";
 /** Quest ids for an informer's commission all start with this. */
 export const RAID_QUEST_PREFIX = "raid_";
 
@@ -479,7 +479,7 @@ export function reliefOffer(world: WorldState, portKey: string): ReliefCommissio
 export function reliefQuest(commission: ReliefCommission): QuestDef {
   const vars = {
     port: commission.portName,
-    item: itemNameKey(commission.item),
+    item: itemNameKeyGen(commission.item),
     qty: commission.qty,
     gold: commission.reward,
     days: commission.days,

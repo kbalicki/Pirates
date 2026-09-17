@@ -38,7 +38,7 @@ import { blockadeEffective } from "./BlockadeSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
 
-import { factionNameKey, itemNameKey, portNameKey } from "../i18n/names.ts";
+import { factionNameKey, itemNameKeyGen, portNameKey } from "../i18n/names.ts";
 /** Quest ids for a charter all start with this. */
 export const CARGO_QUEST_PREFIX = "cargo_";
 
@@ -214,7 +214,7 @@ function charterSize(length: number): number {
 export function cargoQuest(contract: CargoContract): QuestDef {
   const vars = {
     port: contract.toName,
-    item: itemNameKey(contract.item),
+    item: itemNameKeyGen(contract.item),
     qty: contract.qty,
     gold: contract.reward,
     days: contract.days,

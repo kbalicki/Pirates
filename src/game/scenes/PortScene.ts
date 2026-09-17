@@ -144,7 +144,7 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
-import { portNameKey, shipClassName } from "../../core/i18n/names.ts";
+import { itemNameGen, portNameKey, shipClassName } from "../../core/i18n/names.ts";
 const DLG_W = 470;
 const DLG_H = 420;
 const BORDER = 3;
@@ -689,12 +689,12 @@ export class PortScene extends Phaser.Scene {
         .filter(c => c !== factionKey)
         .map(c => t("faction." + c + ".name"))[0],
       grainSold: this.lastGrainSale ? {
-        itemName: t("item." + this.lastGrainSale.item + ".name"),
+        itemName: itemNameGen(this.lastGrainSale.item),
         qty: this.lastGrainSale.qty,
         gold: this.lastGrainSale.gold,
       } : undefined,
       grainOffer: grain ? {
-        itemName: t("item." + grain.item + ".name"),
+        itemName: itemNameGen(grain.item),
         qty: grain.qty,
         gold: grain.gold,
         reputation: grain.reputation,
@@ -952,7 +952,7 @@ export class PortScene extends Phaser.Scene {
     // itself — the same shape the charter uses at the far end of a passage.
     const relief = activeRelief(this.worldState)[0];
     if (relief) {
-      const itemName = t("item." + relief.item + ".name");
+      const itemName = itemNameGen(relief.item);
       if (canLandRelief(this.worldState, relief)) {
         actions.push({
           label: t("informer.relief_land", { qty: relief.qty, item: itemName, gold: relief.reward }),

@@ -10,7 +10,7 @@ import { SHIP_CLASSES } from "../data/ships.ts";
 import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
 import { manPrize } from "./CrewSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
-import { getReputationLevel } from "./ReputationSystem.ts";
+import { changeReputation, getReputationLevel } from "./ReputationSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
 import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
 import { getAggregatedEffects } from "./EventEffectsSystem.ts";
@@ -19,7 +19,7 @@ import { letterCrowns, marqueFlag } from "./PrivateerSystem.ts";
 
 import { diluteTraining } from "../model/CaptainState.ts";
 
-import { factionNameKey, itemNameKey, portNameKey, shipNameKey } from "../i18n/names.ts";
+import { factionNameKey, itemNameKeyGen, portNameKey, shipNameKey } from "../i18n/names.ts";
 // ── Governor ──────────────────────────────────────────────
 
 export type GovernorResult = {
@@ -773,10 +773,12 @@ export function sellGrain(world: WorldState, offer: GrainOffer): GrainResult {
     player: {
       ...world.player,
       gold: world.player.gold + offer.gold,
-      reputation: {
-        ...world.player.reputation,
-        [factionKey]: (world.player.reputation[factionKey] ?? 0) + offer.reputation,
-      },
+      // Through `changeReputation`, which is where the -100..100 clamp lives
+      // (v0.68.0). This was the one raw write to `player.reputation` in the
+      // game, and being the only route back from a bad standing it is also the
+      // one most often walked: a captain already at `allied` who kept relieving
+      // famines went 99 -> 105 -> 111 with nothing to stop him.
+      reputation: changeReputation(world.player.reputation, factionKey, offer.reputation),
     },
     entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
     ports: { ...world.ports, [offer.portKey]: { ...port, inventory } },
@@ -792,7 +794,7 @@ export function sellGrain(world: WorldState, offer: GrainOffer): GrainResult {
   return {
     world: addLogEntry(withPrice, "event.granary_relieved", {
       qty: offer.qty,
-      item: itemNameKey(offer.item),
+      item: itemNameKeyGen(offer.item),
       port: portNameKey(offer.portKey),
       gold: offer.gold,
     }),

@@ -9,7 +9,7 @@ import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
 import { stampAlliances } from "../DiplomacySystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
-import { portNameKey, itemNameKey } from "../../i18n/names.ts";
+import { portNameKey, itemNameKeyGen } from "../../i18n/names.ts";
 import { factionNameKey } from "../../i18n/names.ts";
 
 // ===========================================================================
@@ -110,7 +110,9 @@ describe("what the tavern knows", () => {
     const said = rumorsAt(world, HERE).find(r => r.key === "tavern.rumor_hunger");
     expect(said).toBeDefined();
     expect(said!.vars!.port).toBe(portNameKey(NEAR));
-    expect(Object.keys(ITEMS).map(itemNameKey)).toContain(said!.vars!.item);
+    // The genitive key, not the nominative: the sentence is "the town is short
+    // of X" and Polish declines it (v0.68.0).
+    expect(Object.keys(ITEMS).map(itemNameKeyGen)).toContain(said!.vars!.item);
   });
 
   it("does not gossip about the town it is standing in", () => {

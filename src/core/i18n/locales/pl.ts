@@ -9,6 +9,15 @@ export const PL: LocaleData = {
   "item.food.name": "Jedzenie",
   "item.water.name": "Woda",
   "item.gold.name": "Z\u0142oto",
+  // Dopelniacz - forma, ktorej zada liczebnik: "dwadziescia ton cukru",
+  // a nie "dwadziescia ton Cukier trzcinowy" (v0.68.0).
+  "item.sugar_cane.gen": "cukru",
+  "item.tobacco.gen": "tytoniu",
+  "item.cocoa.gen": "kakao",
+  "item.rum.gen": "rumu",
+  "item.food.gen": "\u017cywno\u015bci",
+  "item.water.gen": "wody",
+  "item.gold.gen": "z\u0142ota",
 
   // -- Ports (45 cities) --
   "port.havana.name": "Hawana",
@@ -668,6 +677,7 @@ export const PL: LocaleData = {
   "governor.back": "[ WRÓĆ DO PORTU ]",
   "governor.dialogue_hostile": "\"Straże! Wyprowadzić tego łotra!\"",
   "governor.dialogue_newcomer": "\"Wybacz, panie, objąłem tę rezydencję dwa tygodnie temu, a mój poprzednik zostawił papiery w zupełnym nieładzie. Twoje nazwisko gdzieś w nich jest, tak mi mówią. Siądź.\"",
+  "governor.dialogue_hungry_enemy": "„Znam twoje nazwisko, panie, i każdego innego ranka usłyszałbyś je od straży. Ale moi ludzie nie jedli, a ty siedzisz głęboko w wodzie. Siądaj. Pokłócimy się znowu, kiedy będą najedzeni.”",
   "governor.dialogue_unfriendly": "\"Nie mam interesów z takimi jak ty. Dobrego dnia.\"",
   "governor.dialogue_neutral": "\"Witaj, Kapitanie. Co cię sprowadza do naszego portu?\"",
   "governor.dialogue_friendly": "\"Ach, Kapitanie {{name}}! Miło widzieć przyjaciela korony.\"",

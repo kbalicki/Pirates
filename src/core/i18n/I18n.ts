@@ -86,7 +86,8 @@ export function hasKey(key: string): boolean {
  * release holds plain English text, which does not match, and prints exactly
  * as it printed then.
  */
-const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.name$/;
+// `.gen` is the form a quantity takes - see `itemNameKeyGen` (v0.68.0).
+const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.(?:name|gen)$/;
 
 /**
  * Primary translation function.

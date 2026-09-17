@@ -601,7 +601,9 @@ brzeg, `E` na statek.
 2. **Halsowanie się opłaca** — kilkukrotnie, nie o kilka procent.
 3. **Droga tam i z powrotem to nie ten sam rejs.** Prądy.
 4. **Notowania poniżej neutralnych to pułapka.** Jedyne wyjście prowadzi przez
-   dowiezienie jedzenia do głodującego miasta.
+   dowiezienie jedzenia do głodującego miasta — i to działa nawet wtedy, gdy
+   korona cię nienawidzi: gubernator, którego ludzie nie jedli, odkłada kłótnię
+   na później. Skala kończy się na stu w obie strony.
 5. **Nowy gubernator to okazja** — ułaskawienie jest lokalne i trzeba po nie
    przypłynąć w trzydzieści dni.
 6. **W głodującym mieście sprzedawaj jedzenie**, nie tytoń.
