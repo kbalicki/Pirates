@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-17 · **Wersja:** v0.70.0.0 · **Branch:** `main`
-**Kod:** 241 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2103 przechodzi, 0 failuje, 0 `todo`** w 64 plikach
+**Stan na:** 2026-09-17 · **Wersja:** v0.71.0.0 · **Branch:** `main`
+**Kod:** 242 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2116 przechodzi, 0 failuje, 0 `todo`** w 65 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,7 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.70.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2103/2103 zielone; **pierwsza rzecz, jaką tawerna w ogóle mówi**. Od v0.28.0 tawerna relacjonuje świat, ale ośmioelementowa lista sprzed tamtego wydania wciąż siedzi w puli i dochodzi do głosu, gdy miasto ma mniej niż dwa prawdziwe fakty w zasięgu — co brzmi jak przypadek brzegowy, a **zmierzone okazało się regułą**: `rumorsAt` na świeżym świecie jest **puste we wszystkich 45 portach**, więc te osiem zdań to całość tego, co kapitan słyszy przy pierwszej kolejce. Trzy były sprawdzalnie nieprawdziwe. **„Ceny cukru w Barbados biją rekordy”** — Barbados uprawia cukier i jest **34. z 45** pod względem jego ceny (4 zł przy 27 w Port Royale), czyli jedyna darmowa porada handlowa w grze wysyłała ładownię do najgorszego kantoru na Karaibach. **Czarnobrody** nie występuje w żadnej innej linijce repozytorium, a jego kariera zaczyna się **36 lat po najpóźniejszej epoce**. A **flota skarbowa** jest od v0.46.0 prawdziwym zdarzeniem z prawdziwym kursem — tylko że `rumorsAt` **w ogóle o niej nie wiedział**, więc najcenniejsza rzecz w grze nie przechodziła przez kanał zbudowany po to, żeby relacjonować świat, a zmyślona wersja z niewłaściwą cieśniną przechodziła. Teraz jest faktem, razem z huraganem w zasięgu; reszta ósemki jest **bramkowana warunkiem** (sezon z `eventSeason`, wojna własnej flagi, gubernator z `offerFor`), a statek widmo zostaje bezwarunkowo, bo jako jedyny nic nie twierdzi. Lista kandydatów na v0.71.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.71.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2116/2116 zielone; **udział załogi nic nie kosztował**. `PlunderSystem` nazywa siebie „pierwszym mechanizmem, który coś zabiera na zegarze” i mówi „nie da się zbierać w nieskończoność” — przez trzydzieści wydań nie zabierał **nic**. Zaległość podziału zabierała **0,004 morale na dzień**, a `CrewConsumptionSystem` daje najedzonej załodze **0,005 na godzinę**: spiżarnia wygrywała **trzydzieści do jednego** i wystarczyło jej wystarczyć na **czterdzieści osiem minut doby**. Zmierzone silnikiem: załoga **547 dni** po terminie, z jedzeniem na pokładzie, ma **morale 1,000** i wspina się tam z podłogi w tydzień. Kolejka w tawernie dokładała 37 dni zaległości za 10 zł, czyli wyceniała cały mechanizm na **ćwierć złotego dziennie** — przy podziale kosztującym 13 000 zł i 78 ze 120 ludzi. Lekarstwo to to samo, co w v0.67.0: **rzecz była warunkiem, a napisano ją jako zdarzenie**. `moraleCeiling` mówi, jak dobrze najlepiej może się czuć nieopłacona załoga, i **wszystko, co podnosi morale, jest do tego przycinane**; pilnuje tego przemiatanie źródła. Kolejka **odmawia** zamiast brać za nic i mówi dlaczego, oraz stawia wreszcie konsortom. Nowy `?owed=<dni>`. Lista kandydatów na v0.72.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.70.0.0):** v0.70.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2103/2103 zielone; **pierwsza rzecz, jaką tawerna w ogóle mówi**. Od v0.28.0 tawerna relacjonuje świat, ale ośmioelementowa lista sprzed tamtego wydania wciąż siedzi w puli i dochodzi do głosu, gdy miasto ma mniej niż dwa prawdziwe fakty w zasięgu — co brzmi jak przypadek brzegowy, a **zmierzone okazało się regułą**: `rumorsAt` na świeżym świecie jest **puste we wszystkich 45 portach**, więc te osiem zdań to całość tego, co kapitan słyszy przy pierwszej kolejce. Trzy były sprawdzalnie nieprawdziwe. **„Ceny cukru w Barbados biją rekordy”** — Barbados uprawia cukier i jest **34. z 45** pod względem jego ceny (4 zł przy 27 w Port Royale), czyli jedyna darmowa porada handlowa w grze wysyłała ładownię do najgorszego kantoru na Karaibach. **Czarnobrody** nie występuje w żadnej innej linijce repozytorium, a jego kariera zaczyna się **36 lat po najpóźniejszej epoce**. A **flota skarbowa** jest od v0.46.0 prawdziwym zdarzeniem z prawdziwym kursem — tylko że `rumorsAt` **w ogóle o niej nie wiedział**, więc najcenniejsza rzecz w grze nie przechodziła przez kanał zbudowany po to, żeby relacjonować świat, a zmyślona wersja z niewłaściwą cieśniną przechodziła. Teraz jest faktem, razem z huraganem w zasięgu; reszta ósemki jest **bramkowana warunkiem** (sezon z `eventSeason`, wojna własnej flagi, gubernator z `offerFor`), a statek widmo zostaje bezwarunkowo, bo jako jedyny nic nie twierdzi. Lista kandydatów na v0.71.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.69.0.0):** v0.69.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2086/2086 zielone; **polszczyzna ma siedem przypadków, a gra znała jeden**. Zmierzone: **sto osiem polskich zdań** wkłada nazwę portu albo korony do zdania i każde wkłada **mianownik** — „Zamknęli port **w Hawana**”, „Przybito **do Kartagena**”, „Huragan **pod Martynika**”, „Szturm **na Hawana**”, „List Kaperski **od Hiszpania**”. To ten sam kształt, co dopełniacz towarów z v0.68.0, tylko w miejscu, gdzie boli: nazwa portu jest w prawie każdym zdaniu, jakie gra pisze o świecie. **Druga forma sama by nie wystarczyła** — polski wkłada miasto **w**, a wyspę **na** (`w Hawanie`, ale `na Martynice`; `do Kartageny`, ale `na Barbados`), a angielskie zdanie ma jeden przyimek dla wszystkich czterdziestu pięciu portów. Więc **przyimek należy do portu, nie do zdania**: `t()` przyjmuje `{{port:in}}`, `{{port:to}}`, `{{port:acc}}`, formy leżą w `src/core/i18n/plForms.ts`, a **`en.ts` nie ma ani jednej zmienionej linijki**. Trzecia rzecz znaleziona **dopiero na ekranie**, przy zielonym teście: `t("siege.title", { port: t("port." + key + ".name") })` w dziewiętnastu miejscach — **nazwa rozwinięta w miejscu wywołania jest słowem gotowym, a gotowego nie da się odmienić**; reguła z v0.63.0 ma teraz drugi powód i przemiatanie źródła. Lista kandydatów na v0.70.0 jest niżej.
 
@@ -74,7 +76,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [SESSION-2026-09-17d.md](documentation/SESSION-2026-09-17d.md) (v0.70.0 — osiem starych opowieści z tawerny)
+> **Notatka z tej sesji:** [SESSION-2026-09-17e.md](documentation/SESSION-2026-09-17e.md) (v0.71.0 — dług załogi jako sufit)
+
+> **Notatka z poprzedniej sesji:** [SESSION-2026-09-17d.md](documentation/SESSION-2026-09-17d.md) (v0.70.0 — osiem starych opowieści z tawerny)
 
 > **Notatka z poprzedniej sesji:** [SESSION-2026-09-17c.md](documentation/SESSION-2026-09-17c.md) (v0.69.0 — polskie przypadki nazw)
 
@@ -2342,24 +2346,34 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.71.0 — co dalej
+### v0.72.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
 
-**Co ten przemiot zostawił otwarte:**
+**Oba pytania pomiarowe z v0.70.0 są zamknięte** (v0.71.0.0, bez zmiany kodu):
 
-- **Rotacja „jedna plotka dziennie" przy sześciu faktach w puli** (v0.70.0.0). Zasada jest
-  z v0.28.0 i jest dobra — kto poczeka dzień, usłyszy następną rzecz — ale pula urosła.
-  Fakt o flocie skarbowej potrafi przegrać losowanie ze statkiem widmem, a ona ładuje się
-  tylko przez **trzydzieści procent** swojego zdarzenia. Do **zmierzenia**: ile dni mija,
-  zanim gracz stojący w porcie usłyszy akurat ten fakt, na którym mu zależy. Jeśli wychodzi
-  więcej niż dwa–trzy, wart rozważenia jest priorytet czasowy (fakt, który wygasa, przebija
-  fakt, który nie wygasa) zamiast czystej rotacji
-- **`QUIET_WORLD = 2` nigdy nie było zmierzone** (v0.70.0.0). Próg decyduje, kiedy stare
-  opowieści wchodzą do puli, a zmierzone jest tylko to, że na świeżym świecie wchodzą
-  **wszędzie**. Ile portów jest cichych po roku gry i po pięciu — nie wiadomo
+- **rotacja plotek** — mediana **1 dzień**, p90 **2**, maksimum **2** na wszystkich 45 portach.
+  Pula jest mała (2–4 fakty), a wybór idzie `(dzień + hash)`, więc chodzi po niej krok po kroku.
+  Obawa o przegapione okno floty skarbowej **nieuzasadniona**;
+- **`QUIET_WORLD = 2`** — cichych portów **45/45** pierwszego dnia, potem **0–2** przez rok.
+  Stare opowieści są zjawiskiem *początku gry*, nie stałym tłem — dokładnie tak, jak v0.70.0
+  to opisało
 
+**Znalezione przy czytaniu drzew dialogowych, nienaprawione** (v0.71.0.0), bo rozmyłyby wydanie:
+
+- **Wioski stemplują gotową nazwę do zapisywanego dziennika.** `village.log_trade`
+  i `village.log_war_party` wołają `t(\`village.${key}.name\`)` i wkładają **wynik** do
+  `vars` wpisu, który idzie do zapisu — czyli defekt z v0.63.0, wciąż żywy, bo `NAME_KEY`
+  w `I18n.ts` obejmuje tylko `port|faction|item|ship`. Przełączenie języka nie przepisuje
+  tych wpisów, a odmienić ich (v0.69.0) też się nie da. Poszerzyć `NAME_KEY` o `village`
+  i podawać klucz — i przy okazji dopisać wioskom wiersz w `plForms.ts`
+- **`romance.opt_propose_blocked` drukuje „ranga 2”** — surową liczbę (`MARRIAGE_MIN_RANK`),
+  podczas gdy gra ma **nazwane rangi** (`rank.<korona>.<n>`, 24 klucze) i wszędzie indziej
+  drukuje nazwę. Korona córki gubernatora jest w tym samym obiekcie, dwie linijki roboty
+- **`village.war_party_already`** („ich wojownicy są już w drodze na {{port}}”) jest prawdą
+  dla **każdego** `native_raid` na to miasto, także wylosowanego przez świat — przypisuje
+  wiosce coś, czego kod o niej nie wie
 
 Nic nie jest wybrane. **Cztery ostatnie wydania wzięły się z przemiatania**, nie z tej listy —
 v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0, v0.65.0 i v0.66.0 z **podręcznika

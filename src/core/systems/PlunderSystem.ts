@@ -12,6 +12,30 @@
  * that already drives reload speed, boarding strength and repair pace, so an
  * ignored crew is measurably worse at everything before it ever mutinies.
  *
+ * ## The debt is a ceiling, not a bleed (v0.71.0)
+ *
+ * It was written as a bleed, and for thirty releases the bleed did nothing at
+ * all. `CrewConsumptionSystem` gives a fed crew **0.005 morale an hour**; this
+ * module took **0.004 a day**. The larder outran the debt **thirty to one**,
+ * and it only had to hold for **forty-eight minutes of each day** to cancel it
+ * outright. Measured on the engine: a crew five hundred and forty-seven days
+ * past its division, with food and water aboard, sits at **morale 1.000** — and
+ * climbs there from the floor in a week. A round of drinks did the same for ten
+ * gold, which priced the whole mechanic at **0.27 gold a day**, against the
+ * thirteen thousand gold and seventy-eight of a hundred and twenty hands that
+ * an actual division costs.
+ *
+ * "You cannot hoard forever" was the design. You could hoard forever.
+ *
+ * The cure is the one v0.67.0 found for the price ceiling: **the thing was a
+ * condition, and it was written as an event.** `moraleCeiling` is the best an
+ * unpaid crew will feel however well it eats, and every hand that *raises*
+ * morale clamps to it — the larder, the tavern, the surgeon. Nothing else
+ * changed: a paid crew recovers exactly as fast as it always did, and an
+ * unpaid one still walks down the same curve at the same rate.
+ *
+ * What money buys is a good night. It does not buy a settled account.
+ *
  * Dividing the plunder is done in port. It costs most of the gold on hand and
  * most of the crew: paid men go ashore to spend it. What is left is a small,
  * loyal, well-rested core and a clean slate — which is exactly the rhythm the
@@ -81,6 +105,34 @@ export function captainShare(world: WorldState): number {
  * One day of an unpaid crew grumbling. A no-op until the division is overdue.
  * Pure — returns a new world.
  */
+/**
+ * The best an unpaid crew will feel, whatever else is done for them.
+ *
+ * Exactly the curve the daily bleed used to walk — `PLUNDER_OVERDUE_MORALE_PER_DAY`
+ * off a day, down to the floor — except that it is now a **property of the
+ * debt** rather than something that happened once a day and could be undone
+ * before the next one came round. Read by everything that lifts morale, which
+ * is the whole of the fix.
+ *
+ * A crew that is not overdue has no ceiling, and the value is 1.
+ */
+export function moraleCeiling(world: WorldState): number {
+  const { daysOverdue } = plunderStatus(world);
+  if (daysOverdue <= 0) return 1;
+  return Math.max(
+    PLUNDER_OVERDUE_MORALE_FLOOR,
+    1 - daysOverdue * PLUNDER_OVERDUE_MORALE_PER_DAY,
+  );
+}
+
+/** Lift `morale`, but no further than an unpaid crew allows. */
+export function raiseMorale(world: WorldState, morale: number, by: number): number {
+  const ceiling = moraleCeiling(world);
+  // Never *lower* anything: a crew already above its ceiling is walked down by
+  // `applyOverdueMorale` at the day boundary, not by having a drink.
+  return Math.max(morale, Math.min(Math.min(1, morale + by), ceiling));
+}
+
 export function applyOverdueMorale(world: WorldState): WorldState {
   if (!plunderStatus(world).overdue) return world;
 
@@ -89,7 +141,8 @@ export function applyOverdueMorale(world: WorldState): WorldState {
   const ship = entity?.ship;
   if (!ship) return world;
 
-  const decay = (m: number) => Math.max(PLUNDER_OVERDUE_MORALE_FLOOR, m - PLUNDER_OVERDUE_MORALE_PER_DAY);
+  const ceiling = moraleCeiling(world);
+  const decay = (m: number) => Math.min(m, ceiling);
 
   const morale = decay(ship.crew.morale);
   // The consorts' people are owed the same share and grumble at the same rate

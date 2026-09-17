@@ -689,6 +689,8 @@ export const PL: LocaleData = {
   "tavern.nobody_signs": "— nikt tu z tobą nie popłynie",
   "tavern.hear_rumors": "Posłuchaj plotek",
   "tavern.buy_drinks": "Postaw kolejkę ({{cost}} Złoto)",
+  "tavern.drinks_owed": "\u201eWypiją twoje zdrowie i wrócą do rozmowy o swoich pieniądzach — podział spóźniony już o {{days}} dni.\u201d",
+  "tavern.drinks_content": "\u201eSą tak zadowoleni, jak rum potrafi ich zrobić.\u201d",
   "tavern.back": "[ WRÓĆ DO PORTU ]",
   "treasure.quest_title": "Zakopana skrzynia",
   "treasure.objective_search": "Kop w okolicy {{city:gen}} — mapa kupiona {{port:in}}",

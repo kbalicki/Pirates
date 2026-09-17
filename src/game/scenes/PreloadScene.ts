@@ -24,6 +24,7 @@ import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
 import { MUSTER_PORTS } from "../../core/systems/TreasureFleetSystem.ts";
+import { PLUNDER_INTERVAL_DAYS } from "../../core/systems/PlunderSystem.ts";
 import { VILLAGES } from "../../core/data/villages.ts";
 import { WAR_PARTY_STANDING, VILLAGE_RANGE } from "../../core/systems/VillageSystem.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
@@ -508,11 +509,11 @@ export class PreloadScene extends Phaser.Scene {
     }
     if (params.has("famine")) {
       const portKey = params.get("famine") || "tortuga";
-      const world = this.createFamineWorld(
+      const world = this.applyOwedShare(this.createFamineWorld(
         portKey,
         params.get("stand") === "cover",
         params.get("hated") !== null,
-      );
+      ), params);
       this.registry.set("worldState", world);
       const standing = (world.player.location.portId as unknown as string) ?? portKey;
       this.scene.start("PortScene", { worldState: world, portId: standing });
@@ -631,6 +632,8 @@ export class PreloadScene extends Phaser.Scene {
       }
     }
 
+    w = this.applyOwedShare(w, params);
+
     const below = Number(params.get("wounded") ?? NaN);
     if (Number.isFinite(below) && below > 0) {
       const shipId = w.player.shipId as unknown as string;
@@ -647,6 +650,36 @@ export class PreloadScene extends Phaser.Scene {
     }
 
     return w;
+  }
+
+  /**
+   * A division this many days overdue (v0.71.0).
+   *
+   * The same lesson as `?crew=` and `?ship=`: the mechanic is sixty days of
+   * sailing away from any fresh start, so the one screen that shows it - a crew
+   * that will not be cheered up by rum, because it has not been paid - cannot
+   * be reached on demand without this.
+   *
+   * `?famine=havana&owed=200` is the headline case: the ceiling is down at 0.2,
+   * and neither a full larder nor the tavern will lift it a point.
+   */
+  private applyOwedShare(
+    world: import("../../core/model/WorldState.ts").WorldState,
+    params: URLSearchParams,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    const owed = Number(params.get("owed") ?? NaN);
+    if (!Number.isFinite(owed) || owed < 0) return world;
+    return {
+      ...world,
+      player: {
+        ...world.player,
+        // Not clamped to day 1: a debug world opens on its first morning, and
+        // clamping would make `?owed=` a no-op there - which is exactly the
+        // world this parameter exists to build. `plunderStatus` only ever
+        // subtracts this, so a day before the first one reads correctly.
+        lastPlunderDay: world.time.day - PLUNDER_INTERVAL_DAYS - Math.round(owed),
+      },
+    };
   }
 
   /**

@@ -690,6 +690,8 @@ export const EN: LocaleData = {
   "tavern.nobody_signs": "— nobody here will sail with you",
   "tavern.hear_rumors": "Hear Rumors",
   "tavern.buy_drinks": "Buy Round of Drinks ({{cost}} Gold)",
+  "tavern.drinks_owed": "\"They drink your health and go straight back to talking about their money \u2014 {{days}} days past a division now.\"",
+  "tavern.drinks_content": "\"They are as content as rum can make them.\"",
   "tavern.back": "[ BACK TO PORT ]",
   "treasure.quest_title": "A buried chest",
   "treasure.objective_search": "Dig near {{city}} — the map was bought in {{port}}",

@@ -3,6 +3,7 @@ import type { WorldEvent } from "../model/Events.ts";
 // Toasts are drawn verbatim by `WorldRenderer.showToast`, so they have to be
 // translated where they are made — the renderer has no idea these are keys.
 import { t } from "../i18n/index.ts";
+import { raiseMorale } from "./PlunderSystem.ts";
 
 // Consumption rates: units consumed per crew member per game-day
 const FOOD_PER_CREW_PER_DAY = 0.1;
@@ -76,7 +77,11 @@ export function processCrewConsumption(world: WorldState): ConsumptionResult {
   // --- Morale effects ---
   if (!hasFood) morale -= MORALE_DROP_NO_FOOD;
   if (!hasWater) morale -= MORALE_DROP_NO_WATER;
-  if (hasFood && hasWater) morale = Math.min(1, morale + MORALE_RECOVERY_FED);
+  // A fed crew cheers up - but no further than a crew owed a division will
+  // cheer up (v0.71.0). This recovery is per HOUR and the plunder debt was
+  // per DAY, so the larder used to outrun the debt thirty to one and the
+  // whole of `PlunderSystem` came to nothing.
+  if (hasFood && hasWater) morale = raiseMorale(world, morale, MORALE_RECOVERY_FED);
   morale = Math.max(0, Math.min(1, morale));
 
   // --- Crew death from starvation/dehydration ---

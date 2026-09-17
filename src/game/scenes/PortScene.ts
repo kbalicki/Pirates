@@ -1401,6 +1401,19 @@ export class PortScene extends Phaser.Scene {
       this.worldState = result.world;
       this.registry.set("worldState", this.worldState);
       this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "tavern" as PortView });
+      return;
+    }
+    // A round that cannot lift them has to say so (v0.71.0). Silently charging
+    // ten gold for a number that does not move reads as a bug; a crew that is
+    // owed a division and says so is the mechanic working.
+    if (result.error === "owed_a_share") {
+      this.tavernMessage = t("tavern.drinks_owed", {
+        days: plunderStatus(this.worldState).daysOverdue,
+      });
+      this.switchView("tavern");
+    } else if (result.error === "already_content") {
+      this.tavernMessage = t("tavern.drinks_content");
+      this.switchView("tavern");
     }
   }
 

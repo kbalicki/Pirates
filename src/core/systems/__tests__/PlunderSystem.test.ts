@@ -3,9 +3,9 @@ import {
   plunderStatus,
   captainShare,
   applyOverdueMorale,
+  moraleCeiling,
   dividePlunder,
   PLUNDER_INTERVAL_DAYS,
-  PLUNDER_OVERDUE_MORALE_PER_DAY,
   PLUNDER_OVERDUE_MORALE_FLOOR,
   CAPTAIN_SHARE_MIN,
   CAPTAIN_SHARE_MAX,
@@ -182,14 +182,28 @@ describe("applyOverdueMorale", () => {
     expect(applyOverdueMorale(world)).toBe(world);
   });
 
-  it("bleeds morale once the share is late", () => {
-    const world = overdue({ morale: 0.8 });
+  it("holds the crew at what the debt allows, not a step below where they are", () => {
+    // v0.71.0: the debt is a CEILING, not a bleed. Written as a bleed it was
+    // subtracted from wherever morale happened to be, once a day - and
+    // `CrewConsumptionSystem` put 0.005 back every HOUR, so the larder outran
+    // it thirty to one and the whole mechanic came to nothing. What the day
+    // boundary does now is hold the crew down to `moraleCeiling`, which is the
+    // same curve and cannot be climbed back over.
+    const world = overdue({ morale: 0.8 });          // 139 days past due
     const after = applyOverdueMorale(world);
-    expect(shipOf(after).crew.morale).toBeCloseTo(0.8 - PLUNDER_OVERDUE_MORALE_PER_DAY, 10);
+    expect(shipOf(after).crew.morale).toBeCloseTo(moraleCeiling(world), 10);
+    expect(moraleCeiling(world)).toBeLessThan(0.8);
+  });
+
+  it("leaves a crew that is already unhappier than the debt alone", () => {
+    // Grape shot and an unpaid year do not stack into a double punishment: the
+    // debt says how good it can get, not how much worse to make it.
+    const world = makeWorld({ day: 70, lastPlunderDay: 1, morale: 0.3 });
+    expect(shipOf(applyOverdueMorale(world)).crew.morale).toBeCloseTo(0.3, 10);
   });
 
   it("stops at the floor rather than driving the crew to zero", () => {
-    let w = overdue({ morale: 1.0 });
+    let w = overdue({ morale: 1.0, day: 5000 });
     for (let i = 0; i < 1000; i++) w = applyOverdueMorale(w);
     expect(shipOf(w).crew.morale).toBeCloseTo(PLUNDER_OVERDUE_MORALE_FLOOR, 10);
   });
@@ -200,8 +214,12 @@ describe("applyOverdueMorale", () => {
   });
 
   it("takes a couple of months to become really painful", () => {
-    let w = overdue({ morale: 1.0 });
-    for (let i = 0; i < 60; i++) w = applyOverdueMorale(w);
+    // Sixty days past due, walked a day at a time the way the engine walks it.
+    let w = makeWorld({ day: PLUNDER_INTERVAL_DAYS + 1, lastPlunderDay: 1, morale: 1.0 });
+    for (let i = 0; i < 60; i++) {
+      w = { ...w, time: { ...w.time, day: w.time.day + 1 } } as typeof w;
+      w = applyOverdueMorale(w);
+    }
     const after = shipOf(w).crew.morale;
     expect(after).toBeLessThan(0.85);
     expect(after).toBeGreaterThan(0.6);

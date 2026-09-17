@@ -15,6 +15,8 @@ import { portAccess } from "./PortAccessSystem.ts";
 import { townHunger, townIsHungry } from "./EconomyTickSystem.ts";
 import { getAggregatedEffects } from "./EventEffectsSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
+import { moraleCeiling, raiseMorale } from "./PlunderSystem.ts";
+import { consortMorale } from "./FleetSystem.ts";
 import { letterCrowns, marqueFlag } from "./PrivateerSystem.ts";
 
 import { diluteTraining } from "../model/CaptainState.ts";
@@ -248,12 +250,25 @@ export function recruitCrew(
 export type MoraleBoostResult = {
   world: WorldState;
   boosted: boolean;
-  error?: string;
+  /**
+   * `owed_a_share`: they are past due a division and no amount of rum will lift
+   * them above `moraleCeiling` (v0.71.0). `already_content`: nothing to lift.
+   */
+  error?: "not_enough_gold" | "no_ship" | "owed_a_share" | "already_content";
 };
 
 /**
  * Buy a round of drinks to boost crew morale.
- * Cost: 10g. Morale +15%, capped at 1.0.
+ *
+ * Cost: 10g, morale +15% — capped at 1.0, and since v0.71.0 capped again at
+ * what a crew owed a division will feel (`moraleCeiling`). Ten gold used to buy
+ * thirty-seven days of the plunder debt back, which priced the whole of
+ * `PlunderSystem` at a quarter of a gold a day. They will drink your health;
+ * they will still want their money.
+ *
+ * The consorts drink too. They grumble on the same clock (v0.19.0) and it was
+ * only ever the flagship that cheered up, which made a fleet's morale a
+ * property of one deck — the exact thing that release set out to fix.
  */
 export function buyRoundOfDrinks(world: WorldState): MoraleBoostResult {
   if (world.player.gold < DRINKS_COST) {
@@ -265,12 +280,29 @@ export function buyRoundOfDrinks(world: WorldState): MoraleBoostResult {
     return { world, boosted: false, error: "no_ship" };
   }
 
-  const newMorale = Math.min(1.0, playerEntity.ship.crew.morale + MORALE_BOOST);
+  const newMorale = raiseMorale(world, playerEntity.ship.crew.morale, MORALE_BOOST);
+  const newFleet = (world.player.fleet ?? []).map(consort => {
+    const next = raiseMorale(world, consortMorale(consort), MORALE_BOOST);
+    return next === consortMorale(consort) ? consort : { ...consort, morale: next };
+  });
+  const moved = newMorale !== playerEntity.ship.crew.morale
+    || newFleet.some((c, i) => c !== (world.player.fleet ?? [])[i]);
+  // Charging for a round that changes nothing is worse than refusing it: the
+  // captain would pay and watch a number not move, which reads as a bug rather
+  // than as a crew with something on its mind. `owed_a_share` is the one the
+  // tavern has a sentence for.
+  if (!moved) {
+    return {
+      world,
+      boosted: false,
+      error: moraleCeiling(world) < 1 ? "owed_a_share" : "already_content",
+    };
+  }
 
   const newWorld = addLogEntry(
     {
       ...world,
-      player: { ...world.player, gold: world.player.gold - DRINKS_COST },
+      player: { ...world.player, gold: world.player.gold - DRINKS_COST, fleet: newFleet },
       entities: {
         ...world.entities,
         [world.player.shipId as string]: {

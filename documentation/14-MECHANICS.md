@@ -145,6 +145,33 @@ Załoga chce swojego udziału. Zaległość zjada morale.
 Podział odbywa się w tawernie i **kosztuje ludzi**: opłaceni marynarze schodzą
 na ląd.
 
+**Zaległość jest sufitem, nie upływem** (v0.71.0). `moraleCeiling(world)` mówi,
+jak dobrze najlepiej może się czuć nieopłacona załoga — `1 − dni_zwłoki × 0,004`,
+nie niżej niż 0,15 — i **wszystko, co podnosi morale, jest do tego przycinane**:
+spiżarnia, kolejka w tawernie. Krzywa jest ta sama co wcześniej; różnica polega
+na tym, że nie da się po niej wspiąć z powrotem.
+
+Napisane jako upływ, nie robiło **nic**. `CrewConsumptionSystem` daje najedzonej
+załodze 0,005 morale **na godzinę**, a zaległość zabierała 0,004 **na dzień** —
+spiżarnia wygrywała trzydzieści do jednego i wystarczyło jej wystarczyć na
+**czterdzieści osiem minut doby**. Zmierzone silnikiem: załoga 547 dni po
+terminie podziału, z jedzeniem i wodą na pokładzie, ma **morale 1,000**.
+Kolejka za 10 zł dokładała do tego 37 dni zaległości, czyli wyceniała cały
+mechanizm na **ćwierć złotej monety dziennie**.
+
+| stała | wartość | znaczenie |
+|---|---|---|
+| `PlunderSystem.moraleCeiling` | — | sufit morale nieopłaconej załogi |
+| `PlunderSystem.raiseMorale` | — | jedyna droga, którą wolno podnieść morale |
+| `CrewConsumptionSystem.MORALE_RECOVERY_FED` | 0.005 | **na godzinę**, gdy jest jedzenie i woda |
+| `PortInteractionSystem.DRINKS_COST` | 10 | kolejka w tawernie |
+| `PortInteractionSystem.MORALE_BOOST` | 0.15 | ile daje kolejka (do sufitu) |
+
+Kolejka **odmawia**, gdy sufit jej nie przepuszcza, i nic nie kosztuje — płacenie
+za liczbę, która się nie rusza, czyta się jak błąd. Stawia też **konsortom**:
+grumrzą na tym samym zegarze od v0.19.0, a cieszył się dotąd tylko okręt
+flagowy.
+
 ---
 
 ## 3. Statek i żegluga
