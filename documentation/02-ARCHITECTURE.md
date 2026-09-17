@@ -140,6 +140,8 @@ Wszystkie akcje gracza są komendami (`Commands.ts`):
 
 - 2 języki: angielski (`en`), polski (`pl`)
 - System: `I18n.t(key, vars?)` z interpolacją `{{zmienna}}`
+- `{{zmienna:forma}}` — polski przypadek zamawiany przez zdanie (v0.69.0),
+  formy w `i18n/plForms.ts`; angielski ignoruje sufiks
 - Fallback na angielski przy brakujących kluczach
 - Wybór języka w localStorage (`pc_lang`)
 - 400+ kluczy tłumaczeń

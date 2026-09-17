@@ -609,7 +609,10 @@ describe("what the player is told", () => {
       const vars = Object.fromEntries(varNames.map(v => [v, "Spain"]));
       for (const [tag, loc] of [["EN", EN], ["PL", PL]] as const) {
         for (const varName of varNames) {
-          expect(loc[key], `${tag} ${key}`).toContain(`{{${varName}}}`);
+          // The form after the colon is Polish-only (v0.69.0): what has to be
+          // there is the variable, whatever case the sentence asks it for.
+          expect(loc[key], `${tag} ${key}`)
+            .toMatch(new RegExp(`\{\{${varName}(?::[a-z]+)?\}\}`));
         }
         expect(t(key, vars), `${tag} ${key} substituted`).not.toContain("{");
       }
@@ -752,7 +755,10 @@ describe("the alliance is a thing that happened", () => {
       const vars = Object.fromEntries(varNames.map(v => [v, "Spain"]));
       for (const [tag, loc] of [["EN", EN], ["PL", PL]] as const) {
         for (const varName of varNames) {
-          expect(loc[key], `${tag} ${key}`).toContain(`{{${varName}}}`);
+          // The form after the colon is Polish-only (v0.69.0): what has to be
+          // there is the variable, whatever case the sentence asks it for.
+          expect(loc[key], `${tag} ${key}`)
+            .toMatch(new RegExp(`\{\{${varName}(?::[a-z]+)?\}\}`));
         }
         expect(t(key, vars), `${tag} ${key} substituted`).not.toContain("{");
       }

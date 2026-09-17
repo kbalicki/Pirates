@@ -144,7 +144,7 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
-import { itemNameGen, portNameKey, shipClassName } from "../../core/i18n/names.ts";
+import { factionNameKey, itemNameGen, portNameKey, shipClassName } from "../../core/i18n/names.ts";
 const DLG_W = 470;
 const DLG_H = 420;
 const BORDER = 3;
@@ -325,8 +325,8 @@ export class PortScene extends Phaser.Scene {
       this.add.text(
         this.cx, y,
         t("port.standing_via_ally", {
-          patron: t("faction." + behind + ".name"),
-          crown: t("faction." + factionKey + ".name"),
+          patron: factionNameKey(behind),
+          crown: factionNameKey(factionKey),
         }),
         txt(10, { color: "#227722" }),
       ).setOrigin(0.5, 0);
@@ -672,7 +672,7 @@ export class PortScene extends Phaser.Scene {
       factionKey,
       level,
       playerName: this.worldState.playerName,
-      factionName: t("faction." + factionKey + ".name"),
+      factionName: factionNameKey(factionKey),
       levelName: t("rep." + level),
       reputation: rep,
       rankName: t(getRankNameKey(factionKey, rankIndex)),
@@ -701,8 +701,10 @@ export class PortScene extends Phaser.Scene {
       } : undefined,
       pardonOffer: pardon ? { points: pardon.points, gold: pardon.gold } : undefined,
       defenseOffer: offer && {
-        portName: t("port." + offer.portKey + ".name"),
-        enemyName: t("faction." + offer.claimant + ".name"),
+        // Keys, not resolved text: the Polish sentence has to be able to
+        // decline them (v0.69.0), and a resolved name cannot be declined.
+        portName: portNameKey(offer.portKey),
+        enemyName: factionNameKey(offer.claimant),
         soldiers: offer.soldiers,
         days: Math.max(0, offer.arrivalDay - this.worldState.time.day),
         reward: offer.reward,
@@ -744,7 +746,7 @@ export class PortScene extends Phaser.Scene {
     );
     this.standingText?.setColor(repHex);
     this.pardonNote?.setText(access.viaPardon
-      ? t("port.standing_via_pardon", { crown: t("faction." + factionKey + ".name") })
+      ? t("port.standing_via_pardon", { crown: factionNameKey(factionKey) })
       : "");
   }
 
@@ -1435,7 +1437,7 @@ export class PortScene extends Phaser.Scene {
 
     const title = this.add.text(
       this.cx, y,
-      t("garrison.title", { port: t("port." + portKey + ".name") }),
+      t("garrison.title", { port: portNameKey(portKey) }),
       txt(16, { bold: true }),
     );
     title.setOrigin(0.5, 0);
@@ -1752,7 +1754,7 @@ export class PortScene extends Phaser.Scene {
     let y = this.contentStartY;
 
     const title = this.add.text(this.infoX, y,
-      t("warehouse.title", { port: t("port." + portKey + ".name") }), txt(13, { bold: true }));
+      t("warehouse.title", { port: portNameKey(portKey) }), txt(13, { bold: true }));
     this.contentContainer.add(title);
     y += 20;
 

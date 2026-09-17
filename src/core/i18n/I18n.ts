@@ -1,6 +1,7 @@
 import type { Lang, LocaleData } from "./types.ts";
 import { EN } from "./locales/en.ts";
 import { PL } from "./locales/pl.ts";
+import { plNameForm, plPhraseFallback } from "./plForms.ts";
 
 const LOCALES: Record<Lang, LocaleData> = { en: EN, pl: PL };
 
@@ -90,18 +91,42 @@ export function hasKey(key: string): boolean {
 const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.(?:name|gen)$/;
 
 /**
+ * A placeholder, with the grammatical form the sentence around it wants.
+ *
+ * `{{port}}` is the nominative and always was; `{{port:in}}` asks for the form
+ * that goes where the sentence would otherwise have written a preposition and
+ * a bare name (v0.69.0). Only the Polish table answers - see `plForms.ts` for
+ * why the preposition has to travel with the name rather than with the string.
+ */
+const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)(?::([a-z]+))?\}\}/g;
+
+/** `port.havana.name` -> `["port", "havana"]`. */
+function splitNameKey(value: string): [string, string] | undefined {
+  const parts = value.split(".");
+  if (parts.length !== 3) return undefined;
+  return [parts[0], parts[1]];
+}
+
+/**
  * Primary translation function.
  * Usage: t("hud.gold") → "Gold" or "Złoto"
  * With interpolation: t("hud.crew", { current: 20, max: 30 })
  *   where locale has: "hud.crew": "Crew: {{current}}/{{max}}"
  */
 export function t(key: string, vars?: Record<string, string | number>): string {
-  let str = LOCALES[currentLang]?.[key] ?? LOCALES["en"]?.[key] ?? key;
-  if (vars) {
-    for (const [k, v] of Object.entries(vars)) {
-      const value = typeof v === "string" && NAME_KEY.test(v) ? t(v) : String(v);
-      str = str.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), value);
-    }
-  }
-  return str;
+  const str = LOCALES[currentLang]?.[key] ?? LOCALES["en"]?.[key] ?? key;
+  if (!vars) return str;
+  // One pass over the string rather than one pass per variable: a name that
+  // happens to contain `{{...}}` can no longer be substituted into by whatever
+  // variable the loop reached next.
+  return str.replace(PLACEHOLDER, (whole, name: string, form?: string) => {
+    const v = vars[name];
+    if (v === undefined) return whole;
+    const isName = typeof v === "string" && NAME_KEY.test(v);
+    const text = isName ? t(v as string) : String(v);
+    if (!form || currentLang !== "pl") return text;
+    const parts = isName ? splitNameKey(v as string) : undefined;
+    const declined = parts ? plNameForm(parts[0], parts[1], text, form) : undefined;
+    return declined ?? plPhraseFallback(form, text) ?? text;
+  });
 }

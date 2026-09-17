@@ -269,7 +269,9 @@ describe("every line the tavern can say", () => {
         const line = locale[rumor.key];
         expect(line, `${rumor.key} missing in ${lang}`).toBeDefined();
         for (const name of Object.keys(rumor.vars ?? {})) {
-          expect(line, `${rumor.key} in ${lang} ignores {{${name}}}`).toContain(`{{${name}}}`);
+          // The form after the colon is Polish-only (v0.69.0).
+          expect(line, `${rumor.key} in ${lang} ignores {{${name}}}`)
+            .toMatch(new RegExp(`\{\{${name}(?::[a-z]+)?\}\}`));
         }
       }
     }

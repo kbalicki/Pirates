@@ -345,6 +345,44 @@ Tekstu gotowego (`portName`, `factionName`, `itemName`, `shipClassName`) używaj
 **Tabele danych nie mają już pól `.name`.** Jedyna kopia nazwy jest w `en.ts` /
 `pl.ts`. Jeśli piszesz nową tabelę — nie dokładaj drugiej.
 
+Od v0.69.0 jest do tego **drugi powód**: gotowego słowa nie da się odmienić.
+Sprawdza to test czytający źródło (`pl_cases.test.ts`) — wywala się na każdym
+`{ port: t("port." + key + ".name") }` w całym `src`.
+
+### Polski przypadek zamawia **zdanie**, nie kod wołający (v0.69.0)
+
+`{{port}}` to mianownik i tak zostaje. Zdanie, które potrzebuje innej formy,
+pisze ją po dwukropku:
+
+```ts
+// pl.ts
+"news.famine": "Klęska głodu {{port:in}}. Ceny żywności szybują w górę.",
+"siege.title": "Szturm na {{port:acc}}",
+"event.departed": "Wypłynięto {{port:from}}",
+```
+
+```
+{{x:gen}} {{x:dat}} {{x:acc}} {{x:ins}} {{x:loc}}   gołe przypadki
+{{x:in}}  {{x:to}}  {{x:from}}                      całe wyrażenia Z PRZYIMKIEM
+```
+
+**Przyimek należy do portu, nie do zdania.** Polski wkłada miasto *w*, a wyspę
+*na*: `w Hawanie`, ale `na Martynice`; `do Kartageny`, ale `na Barbados`.
+Angielskie zdanie ma jeden przyimek dla wszystkich portów, polskie nie może —
+dlatego `in`/`to`/`from` są w tabeli **razem z przyimkiem**, a angielski plik
+zostaje nietknięty ze swoim `in {{port}}`.
+
+Formy leżą w `src/core/i18n/plForms.ts`. Trzydzieści z czterdziestu pięciu
+miast to nazwy, których polski nie odmienia — tam wpis mówi tylko `island: true`
+albo nic. Piętnaście odmiennych jest wypisane w całości.
+
+Dokładasz port? **Dopisz mu wiersz** — jest na to test. Bez wiersza formy
+spadają na zgadywany przyimek (`w`/`do`/`z`), co jest poprawne dla miasta na
+lądzie i błędne dla każdej wyspy.
+
+Dokładasz polskie zdanie z nazwą? Nie pisz `w {{port}}` — jest na to test, który
+czyta całą tabelę i szuka dokładnie tego kształtu.
+
 ### Cena zdarzenia ma **zakres** (v0.64.0)
 
 Nigdy nie czytaj `effects.priceMul` wprost — to jest dokładnie błąd z v0.64.0.

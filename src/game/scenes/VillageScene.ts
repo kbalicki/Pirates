@@ -28,6 +28,7 @@ import {
 } from "../../core/systems/VillageSystem.ts";
 
 import { portNameKey } from "../../core/i18n/names.ts";
+import { factionNameKey } from "../../core/i18n/names.ts";
 type VillageAction = "trade" | "war" | "leave";
 
 const DLG_W = 440;
@@ -96,8 +97,8 @@ export class VillageScene extends Phaser.Scene {
       txt(13, { bold: true, color: "#4a5a2a" })).setOrigin(0.5, 0);
     y += 20;
     this.add.text(cx, y, t("village.neighbour", {
-      port: t(`port.${def.neighbour}.name`),
-      faction: t(`faction.${crown}.name`),
+      port: portNameKey(def.neighbour),
+      faction: factionNameKey(crown),
     }), txt(12, { color: "#6a5a30" })).setOrigin(0.5, 0);
     y += 22;
 
@@ -183,7 +184,8 @@ export class VillageScene extends Phaser.Scene {
 
     const war = warPartyOffer(w, key);
     if (war) {
-      const portName = t(`port.${war.target}.name`);
+      // The key, so the Polish label can decline it (v0.69.0).
+      const portName = `port.${war.target}.name`;
       if (war.ready) {
         out.push({ label: t("village.war_party", { port: portName, rum: war.rum }), action: "war" });
       } else if (war.reason === "already") {

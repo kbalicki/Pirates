@@ -115,7 +115,12 @@ describe("the two locales are the same table", () => {
   });
 
   it("interpolates the same variables in both", () => {
-    const vars = (s: string) => [...s.matchAll(/\{\{(\w+)\}\}/g)].map(m => m[1]).sort();
+    // The grammatical form after the colon is deliberately one-sided (v0.69.0):
+    // Polish asks for a case where English has only a preposition of its own.
+    // What has to match is the *variable*, which is what prints raw when it is
+    // missing on one side.
+    const vars = (s: string) =>
+      [...s.matchAll(/\{\{(\w+)(?::[a-z]+)?\}\}/g)].map(m => m[1]).sort();
     const mismatched = Object.keys(EN).filter(k => {
       const a = vars(EN[k]), b = vars(PL[k] ?? "");
       return a.join(",") !== b.join(",");

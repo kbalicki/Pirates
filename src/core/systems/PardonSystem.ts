@@ -68,7 +68,7 @@
 import type { WorldState, WorldEventState, PortPardon } from "../model/WorldState.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
-import { t } from "../i18n/index.ts";
+import { factionNameKey, portNameKey } from "../i18n/names.ts";
 
 /**
  * How long a governor is new.
@@ -204,8 +204,8 @@ export function grantPardon(world: WorldState, offer: PardonOffer): PardonResult
     // Display names, not keys: a journal line is read by a person, and the raw
     // faction key reaching one of these is the v0.37.0 trap.
     world: addLogEntry(paid, "news.pardon_granted", {
-      port: t("port." + offer.portKey + ".name"),
-      faction: t("faction." + crown + ".name"),
+      port: portNameKey(offer.portKey),
+      faction: factionNameKey(crown),
     }),
   };
 }

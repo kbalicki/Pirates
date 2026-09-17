@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-17 · **Wersja:** v0.68.0.0 · **Branch:** `main`
-**Kod:** 239 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2063 przechodzi, 0 failuje, 0 `todo`** w 63 plikach
+**Stan na:** 2026-09-17 · **Wersja:** v0.69.0.0 · **Branch:** `main`
+**Kod:** 241 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2086 przechodzi, 0 failuje, 0 `todo`** w 64 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,7 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.68.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2063/2063 zielone; **niezmienniki, które projekt spisał i których nigdy nie sprawdził**. `src/core/services/Validation.ts` leży w repo **od pierwszego commita** i `validateWorldState` **nie ma ani jednego wywołania** — osiem niezmienników spisanych w lutym i zostawionych nikomu. Siedem się trzymało, jeden nie: **`sellGrain` był jedynym miejscem w grze piszącym `player.reputation` wprost**, z pominięciem `changeReputation`, gdzie mieszka przycięcie do −100…100 — a to jest **jedyna droga powrotna ze złych notowań**, więc i ta, którą chodzi się najczęściej: kapitan na `sojuszniku` ratujący kolejne głodujące miasta szedł **99 → 105 → 111 → 117**, a ekran drukował „sojusznik (117)” ze skali kończącej się na stu. Pilnują tego teraz **walidator uruchomiony nad światem po miesiącu żeglugi** i **test czytający źródło całego `src`**. Przy okazji przeczytane **drzewo dialogów gubernatora**: wszystkie liczby, które wypowiada, są prawdziwe (spichlerz, ułaskawienie, zlecenie obrony, emerytura, zrywany list kaperski), ale **powitanie było złe** — kapitan skłócony z koroną dostawał „Straż! Zabierzcie mi tego łotra!”, a pod spodem lista oferowała sprzedaż zboża głodującemu miastu, czyli **jedyny ekran, na który instrukcja wysyła zrujnowanego kapitana, wyrzucał go i w tym samym zdaniu robił z nim interes**; głód przebija teraz urazę (`?famine=<port>&hated`). I trzecie: gra skleja liczbę z nazwą towaru w **dwudziestu** zdaniach i każde drukowało **mianownik z wielkiej litery** tam, gdzie fraza chce dopełniacza („Mam na pokładzie 10 Jedzenie”) — doszły klucze `item.<id>.gen`. Lista kandydatów na v0.69.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.69.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2086/2086 zielone; **polszczyzna ma siedem przypadków, a gra znała jeden**. Zmierzone: **sto osiem polskich zdań** wkłada nazwę portu albo korony do zdania i każde wkłada **mianownik** — „Zamknęli port **w Hawana**”, „Przybito **do Kartagena**”, „Huragan **pod Martynika**”, „Szturm **na Hawana**”, „List Kaperski **od Hiszpania**”. To ten sam kształt, co dopełniacz towarów z v0.68.0, tylko w miejscu, gdzie boli: nazwa portu jest w prawie każdym zdaniu, jakie gra pisze o świecie. **Druga forma sama by nie wystarczyła** — polski wkłada miasto **w**, a wyspę **na** (`w Hawanie`, ale `na Martynice`; `do Kartageny`, ale `na Barbados`), a angielskie zdanie ma jeden przyimek dla wszystkich czterdziestu pięciu portów. Więc **przyimek należy do portu, nie do zdania**: `t()` przyjmuje `{{port:in}}`, `{{port:to}}`, `{{port:acc}}`, formy leżą w `src/core/i18n/plForms.ts`, a **`en.ts` nie ma ani jednej zmienionej linijki**. Trzecia rzecz znaleziona **dopiero na ekranie**, przy zielonym teście: `t("siege.title", { port: t("port." + key + ".name") })` w dziewiętnastu miejscach — **nazwa rozwinięta w miejscu wywołania jest słowem gotowym, a gotowego nie da się odmienić**; reguła z v0.63.0 ma teraz drugi powód i przemiatanie źródła. Lista kandydatów na v0.70.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.68.0.0):** v0.68.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2063/2063 zielone; **niezmienniki, które projekt spisał i których nigdy nie sprawdził**. `src/core/services/Validation.ts` leży w repo **od pierwszego commita** i `validateWorldState` **nie ma ani jednego wywołania** — osiem niezmienników spisanych w lutym i zostawionych nikomu. Siedem się trzymało, jeden nie: **`sellGrain` był jedynym miejscem w grze piszącym `player.reputation` wprost**, z pominięciem `changeReputation`, gdzie mieszka przycięcie do −100…100 — a to jest **jedyna droga powrotna ze złych notowań**, więc i ta, którą chodzi się najczęściej: kapitan na `sojuszniku` ratujący kolejne głodujące miasta szedł **99 → 105 → 111 → 117**, a ekran drukował „sojusznik (117)” ze skali kończącej się na stu. Pilnują tego teraz **walidator uruchomiony nad światem po miesiącu żeglugi** i **test czytający źródło całego `src`**. Przy okazji przeczytane **drzewo dialogów gubernatora**: wszystkie liczby, które wypowiada, są prawdziwe (spichlerz, ułaskawienie, zlecenie obrony, emerytura, zrywany list kaperski), ale **powitanie było złe** — kapitan skłócony z koroną dostawał „Straż! Zabierzcie mi tego łotra!”, a pod spodem lista oferowała sprzedaż zboża głodującemu miastu, czyli **jedyny ekran, na który instrukcja wysyła zrujnowanego kapitana, wyrzucał go i w tym samym zdaniu robił z nim interes**; głód przebija teraz urazę (`?famine=<port>&hated`). I trzecie: gra skleja liczbę z nazwą towaru w **dwudziestu** zdaniach i każde drukowało **mianownik z wielkiej litery** tam, gdzie fraza chce dopełniacza („Mam na pokładzie 10 Jedzenie”) — doszły klucze `item.<id>.gen`. Lista kandydatów na v0.69.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.67.0.0):** v0.67.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2059/2059 zielone; **sufit ceny był warunkiem, a nie stanem**. Na prośbę użytkownika (*„dostrój na oko ceny”*) rozstrzygnięte dwie pozycje trzymane jako **wymagające użytkownika**. `inventoryCap` trzymał **płaskie 30 ton** wszystkiego, czego miasto nie uprawia, a `PricingSystem` uważa rynek za zrównoważony przy **trzydziestu dniach konsumpcji** — do 135 ton w stolicy — więc **23 ze 130 notowań importowych stało na `RATIO_MAX` niezależnie od stanu półki**, czyli **każde duże miasto płaciło to samo maksimum za wszystko**: żadna lada nie była lepsza od innej, tablica newsów nie miała po co istnieć, a miasto głodujące wyglądało jak najedzone. Teraz magazyn mieści **20 dni własnego jedzenia** (podłoga 12 t) — próg wybrany **przemiataniem** 10/15/20/30/45/90 na osiadłej dekadzie, bo 10 nie zmienia nic, a 90 odwraca świat (import tańszy niż uprawa). Sufit jest **stanem**: opróźnij szopę, a nazajutrz notowanie wraca na ×3. **Pomiar odrzucił dwie inne zmiany**: sufit producenta zostaje przy ×50 (przy ×10 **szlak się odwraca** — rum kupowany w Port Royale za 7, sprzedawany w Hawanie za 5), a mnożnik głodu przy ×2, bo przy żywym ilorazie głód daje teraz **krzywą** 12 → 28 → 45 zamiast podwojenia ceny, która i tak stała na suficie. **Przy okazji, i warte więcej niż samo strojenie**: świat **nie startował tam, gdzie żyje** — każdy port dostawał płaskie 30/10 ton i pierwsze miesiące gry szły na dochodzenie do poziomu osiadłego, **przez księgę**, więc wyglądało to jak wzbogacenie świata; po zasianiu portów na 9/10 sufitu cztery miasta strażnicze wracają **dokładnie** tam, gdzie zostawiła je v0.42.0 — czyli **+9,8 z tego wydania i +0,5 z poprzedniego były stanem przejściowym, nie równowagą**. I drugie: **notowanie nie było funkcją zapasu** — tick liczył cenę, a zaokrąglał zapas po niej, więc cena potrafiła drgnąć o złotówkę bez ruchu towaru. Do tego **dwie liczby, które sam zepsułem w v0.65.0** (produkcja „4–12” jest 2–12 przez czynnik zamożności; „powyżej pięćdziesięciu nikogo nie dogonisz” — dogonisz wszystko poza brygantyną). Lista kandydatów na v0.68.0 jest niżej.
 
@@ -70,7 +72,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [SESSION-2026-09-17b.md](documentation/SESSION-2026-09-17b.md) (v0.68.0 — niesprawdzane niezmienniki, gubernator i przypadki gramatyczne)
+> **Notatka z tej sesji:** [SESSION-2026-09-17c.md](documentation/SESSION-2026-09-17c.md) (v0.69.0 — polskie przypadki nazw)
+
+> **Notatka z poprzedniej sesji:** [SESSION-2026-09-17b.md](documentation/SESSION-2026-09-17b.md) (v0.68.0 — niesprawdzane niezmienniki, gubernator i przypadki gramatyczne)
 
 > **Notatka z poprzedniej sesji:** [SESSION-2026-09-17.md](documentation/SESSION-2026-09-17.md) (v0.67.0 — strojenie cen, start świata i dwie własne pomyłki)
 
@@ -2334,7 +2338,46 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.69.0 — co dalej
+### v0.70.0 — co dalej
+
+**Zmierzone w tej sesji, nienaprawione — osiem starych opowieści z tawerny.**
+Zanim wziąłem przypadki, przemiotłem `RumorSystem`. Od v0.28.0 tawerna **relacjonuje
+świat**, ale ośmioelementowa lista `FLAVOUR_KEYS` z czasów sprzed tamtego wydania wciąż
+jest w puli i dochodzi do głosu, **kiedy świat nie ma nic do powiedzenia**. Zmierzone
+na świeżym świecie (`rumorsAt` dla wszystkich 45 portów, dzień 1): **45/45 portów jest
+ciche**, czyli te osiem zdań to **wszystko, co gracz może usłyszeć przy pierwszej wizycie
+w tawernie**. A trzy z nich są nieprawdą, którą da się sprawdzić:
+
+1. **„Ceny cukru w Barbados biją rekordy”** — Barbados **uprawia cukier**
+   (`produces: ["sugar_cane", "rum"]`). Zmierzone na osiadłej gospodarce: Barbados jest
+   **34. z 45** pod względem ceny cukru (4 zł przy 27 w Port Royale). Kapitan, który w to
+   uwierzy, wiezie ładunek tam, gdzie zapłacą mu najmniej w całym Karaibie
+2. **„Ludzie Czarnobrodego napadają na statki koło Nassau”** — Czarnobrody **nie istnieje
+   w grze** (jedyne wystąpienie w całym `src` to ta linijka w pliku locale), a jego kariera
+   (1716–1718) zaczyna się **trzydzieści sześć lat po najpóźniejszej epoce** (`pirates_sunset`,
+   1680). Kandydat na zamianę: własna sława gracza odbita z powrotem (`world.playerName`
+   + próg `notoriety`) — to jest ta sama sztuczka, co u Sida Meiera
+3. **„Hiszpańską flotę skarbową widziano w Cieśninie Nawietrznej”** — flota skarbowa jest
+   od v0.46.0 **prawdziwym wydarzeniem**, z prawdziwym portem zbiórki i prawdziwą trasą,
+   i ta trasa **nie idzie Cieśniną Nawietrzną**: zbiórka w Puerto Bello / Nombre de Dios /
+   Vera Cruz, rendez-vous w Hawanie, wyjście **Cieśniną Florydzką** (własny komentarz
+   `TreasureFleetSystem`). Gorsze jest to, czego **nie ma**: `rumorsAt` **w ogóle nie zna
+   floty skarbowej** — najcenniejsza rzecz w grze nie przechodzi przez kanał zbudowany po to,
+   żeby relacjonować świat, a zamiast niej leci zmyślona wersja z niewłaściwą wodą
+
+Do tego: **„Gubernator szuka zdolnych kapitanów”** jest prawdą tylko wtedy, gdy
+`offerFor()` coś zwraca (wymaga standingu `sojusznik` **i** wyprawy w drodze — na starcie
+kampanii nigdy), a **„na południu zbiera się wielki sztorm”** mówi się w lutym tak samo jak
+we wrześniu, chociaż huragan ma w kodzie **sezon** (`seasonal: [6..11]`) i chodzi **drogą
+po nazwanych miastach**, nie „na południu”. Jedyne, co powinno zostać nietknięte, to statek
+widmo koło Bermudów — bo nie twierdzi niczego o świecie.
+
+Kształt naprawy jest już przemyślany: flavour przestaje być listą kluczy, a staje się
+tabelą `{ key, when?, vars? }` — zdanie, które coś twierdzi o świecie, jest **oferowane
+tylko wtedy, gdy świat się zgadza**; zdanie, którego świat nie umie sprawdzić, jest
+przepisane tak, żeby niczego nie twierdziło. Flota skarbowa i huragan w zasięgu dochodzą
+do `rumorsAt` jako **fakty**, nie jako ozdoba.
+
 
 Nic nie jest wybrane. **Cztery ostatnie wydania wzięły się z przemiatania**, nie z tej listy —
 v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0, v0.65.0 i v0.66.0 z **podręcznika
@@ -2451,6 +2494,23 @@ wiadomości** (`news.*`). Co zostało do przemiecenia poza tym:
   się nie mieszczą. Oczekiwane, nie błąd — ale jeśli kiedyś ktoś oprze test na liczbie
   szlaków, ma wiedzieć, która liczba jest która
 
+- **Rodzaj gramatyczny nazw** (v0.69.0.0). Przypadki są zrobione, rodzaju tabela nie zna,
+  więc przymiotnik i czasownik w czasie przeszłym nie mają się z czym zgodzić: „Hawana
+  **zablokowany**”, „Martynika **padł**”. Pięć zdań, w których to wychodziło, jest
+  przeredagowanych tak, żeby port nigdy nie był tym, z czym coś się zgadza („Miasto padło:
+  {{port}}”), i reszta tabeli jest napisana bezpiecznie — ale to jest obejście, nie
+  rozwiązanie. Rozwiązanie: pole `gender: "f" | "m" | "n" | "pl"` w `plForms.ts` i formy
+  czasownika w samym zdaniu, czyli mechanizm **szerszy niż `{{x:forma}}`** — zdanie musiałoby
+  wybierać wariant, a nie tylko formę zmiennej
+- **Imiona osób w polskich zdaniach** (v0.69.0.0). „Ożeniłeś się z **Maria**”, „córka
+  **Isabella**”. Ten sam kształt, ale imiona są **losowane z generatora**, nie wypisane
+  w tabeli, więc formy musiałyby powstawać przy generowaniu albo z reguły dla końcówek
+  hiszpańskich i francuskich (`-a` → `-ą`, `-ia` → `-ią`). Mniej zdań niż portów, za to
+  widoczne w całym wątku rodzinnym i romansowym
+- **Wioski nie mają wiersza w `plForms.ts`** (v0.69.0.0). Osiem nazw (`Cimatan`, `Darien`,
+  `Kaurkira`…) — wszystkie nieodmienne w polskim i wszystkie na lądzie, więc „w Cimatan” jest
+  dziś **poprawne przypadkiem**. Dziewiąta wioska nie musi być. `NAME_KEY` w `I18n.ts` nie
+  obejmuje `village`, więc `{{village}}` niesie gotowy tekst, nie klucz — najpierw to
 - **Jednostka i zgoda liczebnikowa** (v0.68.0.0, projekt gotowy). Dopełniacz nazw towarów
   jest zrobiony (`item.<id>.gen`), ale została **jednostka**: po polsku „10 **ton**”, ale
   „2 **tony**” i „1 **tona**”. Ten sam wzorzec: zmienna `unit` z kluczem

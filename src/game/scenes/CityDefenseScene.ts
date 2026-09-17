@@ -3,6 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
+import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import type { AttackForce } from "../../core/systems/SiegeSystem.ts";
 import type { PendingDefense } from "../../core/systems/ReconquestSystem.ts";
@@ -107,15 +108,15 @@ export class CityDefenseScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#0a1420");
     this.add.rectangle(0, 0, cw, ch, 0x0a1420, 1).setOrigin(0).setDepth(0);
 
-    this.add.text(cw / 2, 24, t("defense.title", { port: t("port." + this.state.portKey + ".name") }),
+    this.add.text(cw / 2, 24, t("defense.title", { port: portNameKey(this.state.portKey) }),
       txt(24, { bold: true, color: "#ffdd66" })).setOrigin(0.5, 0).setDepth(2);
 
     const subtitle = this.state.allied
       ? t("defense.sub_ally", {
-          holder: t("faction." + this.state.holder + ".name"),
-          faction: t("faction." + this.state.claimant + ".name"),
+          holder: factionNameKey(this.state.holder),
+          faction: factionNameKey(this.state.claimant),
         })
-      : t("defense.sub_own", { faction: t("faction." + this.state.claimant + ".name") });
+      : t("defense.sub_own", { faction: factionNameKey(this.state.claimant) });
     this.add.text(cw / 2, 58, `${t("port_type." + def.type)} — ${subtitle}`,
       txt(13, { color: `#${claimantColor.toString(16).padStart(6, "0")}` }))
       .setOrigin(0.5, 0).setDepth(2);
@@ -246,7 +247,7 @@ export class CityDefenseScene extends Phaser.Scene {
     );
     this.worldState = { ...outcome.world, rng };
     this.pushLog(outcome.held ? t("defense.log_held") : t("defense.log_lost", {
-      port: t("port." + this.state.portKey + ".name"),
+      port: portNameKey(this.state.portKey),
     }));
     this.phase = "done";
     this.redraw();
@@ -290,7 +291,7 @@ export class CityDefenseScene extends Phaser.Scene {
     this.time.delayedCall(700 * (result.waves.length + 1), () => {
       this.pushLog(result.held
         ? t("defense.log_held")
-        : t("defense.log_lost", { port: t("port." + this.state.portKey + ".name") }));
+        : t("defense.log_lost", { port: portNameKey(this.state.portKey) }));
       this.redraw();
       this.time.delayedCall(1000, () => this.settle(result.held, result.townLeft));
     });
@@ -316,7 +317,7 @@ export class CityDefenseScene extends Phaser.Scene {
     if (outcome.gold > 0) this.pushLog(t("defense.log_gold", { gold: outcome.gold }));
     if (held && this.state.allied) {
       this.pushLog(t("defense.log_ally_reward", {
-        faction: t("faction." + this.state.holder + ".name"),
+        faction: factionNameKey(this.state.holder),
       }));
     }
     this.phase = "done";

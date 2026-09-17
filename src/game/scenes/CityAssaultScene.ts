@@ -4,6 +4,7 @@ import type { PortId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
+import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import {
   createSiege,
@@ -96,7 +97,7 @@ export class CityAssaultScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor("#0a1420");
     this.add.rectangle(0, 0, cw, ch, 0x0a1420, 1).setOrigin(0).setDepth(0);
 
-    this.add.text(cw / 2, 24, t("siege.title", { port: t("port." + this.portKey + ".name") }),
+    this.add.text(cw / 2, 24, t("siege.title", { port: portNameKey(this.portKey) }),
       txt(24, { bold: true, color: "#ffdd66" })).setOrigin(0.5, 0).setDepth(2);
 
     this.add.text(cw / 2, 58,
@@ -268,7 +269,7 @@ export class CityAssaultScene extends Phaser.Scene {
     for (const sponsor of availableSponsors(this.worldState, this.portKey)) {
       this.spoils.push({
         label: t("siege.spoils_sponsor", {
-          faction: t("faction." + sponsor + ".name"),
+          faction: factionNameKey(sponsor),
           gold: Math.round(loot * 0.5),
         }),
         choice: "sponsor",

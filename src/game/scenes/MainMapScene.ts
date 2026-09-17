@@ -86,6 +86,7 @@ import { LANDMASSES } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass, chaikinSmooth } from "../../core/services/Geometry.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
 import { t } from "../../core/i18n/index.ts";
+import { portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
 import { ShallowWaterRenderer } from "../render/ShallowWaterRenderer.ts";
@@ -1497,7 +1498,7 @@ export class MainMapScene extends Phaser.Scene {
       }
       this.wasNearPort = true;
       const promptPortKey = Object.entries(PORTS).find(([_, p]) => p === nearPort)?.[0] ?? "";
-      this.portPromptText!.setText(t("approach.prompt", { name: t("port." + promptPortKey + ".name") }));
+      this.portPromptText!.setText(t("approach.prompt", { name: portNameKey(promptPortKey) }));
       this.portPromptText!.setVisible(!this.portDialogOpen);
       return;
     }

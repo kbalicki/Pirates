@@ -387,7 +387,7 @@ export function sendWarParty(world: WorldState, key: string): { world: WorldStat
   };
   w = addLogEntry(w, "village.log_war_party", {
     village: t(`village.${key}.name`),
-    port: t(`port.${target}.name`),
+    port: portNameKey(target),
   });
   return { world: w, ok: true };
 }

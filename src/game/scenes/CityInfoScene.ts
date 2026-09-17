@@ -7,6 +7,7 @@ import Phaser from "phaser";
 import { PORTS, type PortDef } from "../../core/data/ports.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
+import { portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
@@ -176,7 +177,7 @@ export class CityInfoScene extends Phaser.Scene {
         const lane = routeSupplying(this.portKey, id);
         const name = t("item." + id + ".name");
         const source = lane
-          ? t("trade.lane_from", { port: t("port." + lane.from + ".name") })
+          ? t("trade.lane_from", { port: portNameKey(lane.from) })
           : "";
         const thin = lane && laneThroughput(this.worldState, lane.id) < 1;
         const line = source

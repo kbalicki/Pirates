@@ -93,7 +93,9 @@ describe("t() resolving a name key inside a var", () => {
   it("substitutes the name, not the key", () => {
     setLang("pl");
     const line = t("news.royal_decree", { faction: factionNameKey("spain") });
-    expect(line).toContain("Hiszpania");
+    // Genitive since v0.69.0 - the headline says "a decree *of* Spain", and the
+    // Polish sentence asks for the form with `{{faction:gen}}`.
+    expect(line).toContain("Hiszpanii");
     expect(line).not.toContain("faction.spain.name");
     expect(line).not.toContain("Spain");
   });
@@ -106,7 +108,7 @@ describe("t() resolving a name key inside a var", () => {
     setLang("en");
     expect(t("news.royal_decree", vars)).toContain("England");
     setLang("pl");
-    expect(t("news.royal_decree", vars)).toContain("Anglia");
+    expect(t("news.royal_decree", vars)).toContain("Anglii");
   });
 
   it("leaves a var that is not a name key exactly as it was", () => {
