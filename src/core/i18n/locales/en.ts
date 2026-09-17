@@ -808,7 +808,9 @@ export const EN: LocaleData = {
   "news.trade_boom": "Trade boom in {{port}}! Merchants flock to the harbor.",
   "news.slave_revolt": "Slave revolt in {{port}}! The colony is in turmoil.",
   "news.hurricane": "Hurricane struck {{port}}! Ships and buildings damaged.",
+  "news.hurricane_bound": "The hurricane has passed {{port}} and is standing on for {{bound}}.",
   "news.treasure_fleet": "Spanish treasure fleet preparing to sail from {{port}}.",
+  "news.treasure_fleet_sailed": "The Spanish treasure fleet has sailed from {{port}}, bound for {{rendezvous}}.",
   "plate.course_label": "plate fleet, for {{port}} — {{days}} d",
   "plate.log_sighted": "Sighted the plate fleet off {{port}}.",
   "plate.toast_sighted": "The plate fleet! Two galleons deep in silver and two more with nothing but guns.",
@@ -1008,7 +1010,7 @@ export const EN: LocaleData = {
   "siege.log_captured": "Stormed {{port}}: {{gold}} Gold. The town now answers to {{owner}}.",
   "siege.log_repulsed": "Driven off from {{port}}.",
   // ── Reconquest — the crown comes back (v0.15.0) ──────────
-  "news.reconquest": "{{faction}} is fitting out a squadron to retake {{port}} — {{soldiers}} soldiers, {{days}} days out.",
+  "news.reconquest": "{{faction}} is coming to retake {{port}} — {{soldiers}} soldiers, {{days}} days out.",
   "reconquest.toast_sailing": "A {{faction}} squadron has sailed for {{port}}. {{days}} days.",
   "reconquest.toast_held": "{{port}} holds. The {{faction}} squadron is broken.",
   "reconquest.toast_lost": "{{port}} has fallen. {{faction}} flies its flag again.",
@@ -1017,11 +1019,13 @@ export const EN: LocaleData = {
   "reconquest.log_lost": "Lost {{port}}. {{faction}} holds the town again.",
 
   // ── Crowns take colonies off each other (v0.16.0) ──────
-  "news.campaign": "{{faction}} is fitting out against {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
+  "news.campaign": "{{faction}} is coming for {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
   "campaign.toast_sailing": "A {{faction}} expedition has sailed for {{port}}. {{days}} days.",
   // A joint landing (v0.55.0): the ally is named, because one of the hulls in
   // that line will be flying his colours and the captain should know whose.
-  "news.campaign_joint": "{{faction}} and {{ally}} are fitting out together against {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
+  "news.campaign_joint": "{{faction}} and {{ally}} are coming together for {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
+  "news.landing_today": "{{faction}}'s squadron is standing off {{port}} — {{soldiers}} soldiers, and the landing is today.",
+  "news.landing_tomorrow": "{{faction}}'s squadron is one day out of {{port}} — {{soldiers}} soldiers.",
 
   // ── The invasion gets hulls (v0.17.0) ──────────────────
   // -- The home port (v0.18.0) --

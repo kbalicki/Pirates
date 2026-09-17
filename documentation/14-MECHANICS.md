@@ -873,6 +873,37 @@ w zasięgu — a na świeżym świecie to **wszystkie 45 portów**, więc są on
 pierwszym, co gracz w ogóle słyszy. Od v0.70.0 każda z nich, która coś twierdzi
 o świecie, jest **oferowana tylko wtedy, gdy świat to potwierdza**.
 
+### Nagłówek mówi, co jest dziś, nie co było
+
+Zdarzenie ma **ostemplowany** nagłówek i zmienne — zapisane w dniu, w którym
+powstało, i nietykane potem. Dla większości tabeli to jest dokładnie poprawne
+(reguła z v0.43.0: fakt o zdarzeniu stempluje się przy zdarzeniu). Ale
+**faza nie jest faktem o zdarzeniu — jest faktem o dzisiaj**, i od v0.72.0
+`NewsPhaseSystem.liveNews` wybiera zdanie **w chwili czytania tablicy**:
+
+| zdarzenie | dopóki | potem |
+|---|---|---|
+| `campaign` / `reconquest` | `{{days}}` liczone od `endDay` | `news.landing_tomorrow`, a w dniu desantu `news.landing_today` |
+| `treasure_fleet` | `news.treasure_fleet` (ładuje się) | `news.treasure_fleet_sailed` (wyszła, kurs na Hawanę) |
+| `hurricane` | `news.hurricane` (uderzył w X) | `news.hurricane_bound` (minął X, idzie na Y) |
+
+Przeliczenie dzieje się **tylko przy odczycie**. Zapisanie go z powrotem do
+`vars` byłoby błędem gorszym od naprawianego: `expeditionFromEvent` czyta
+`vars.days` jako `sailDays` wyprawy, więc licznik wpisany do zdarzenia
+skracałby rejs za każdym razem, gdy ktoś spojrzy na tablicę.
+
+**Dziennik zostaje nietknięty** — wpis z dnia zdarzenia jest datowanym zapisem
+tego, co wtedy powiedziano, i ma to mówić dalej. Tak samo kopia, którą zabiera
+ze sobą statek: zamraża się w dniu, w którym ją usłyszał (`dayHeard`).
+
+Ile to było warte, zmierzone przed poprawką: licznik dni **mylił się na 93,1%**
+dni-tablicowych (1143 wyprawy, 16 481 dni-tablic), o trzy dni i więcej na
+79,2%, mediana zawyżenia **7 dni**, najgorszy przypadek **20** — tablica
+mówiąca „dwadzieścia dni drogi” w dniu desantu. Flota skarbowa „szykuje się”
+przez **72,3%** swoich dni-tablicowych, będąc wtedy medianowo **1158 jednostek**
+od nazwanego portu (cała trasa Kartagena–Hawana). Oko huraganu jest za nazwanym
+miastem na **56%** jego dni-tablicowych.
+
 ---
 
 ## 12. Statki NPC

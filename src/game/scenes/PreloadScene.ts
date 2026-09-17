@@ -384,11 +384,32 @@ export class PreloadScene extends Phaser.Scene {
       return;
     }
     if (params.has("event")) {
-      const world = this.createEventWorld(
-        params.get("event") || "hurricane",
-        params.get("port") || "havana",
+      const type = params.get("event") || "hurricane";
+      const portKey = params.get("port") || "havana";
+      let world = this.createEventWorld(type, portKey);
+      // `&aged=` is about phases, and a hurricane has none until it has a road
+      // to walk: staged on one town its eye never leaves that town, which is
+      // the world before v0.45.0 rather than the one being looked at.
+      if (type === "hurricane" && params.has("aged")) world = this.stageStormRoad(world, portKey);
+      world = this.ageEvent(
+        world, `debug_${type}_${portKey}`,
+        Math.max(0, Number(params.get("days") ?? 0) || 0),
+        Math.max(0, Number(params.get("aged") ?? 0) || 0),
       );
       this.registry.set("worldState", world);
+      if (params.has("ashore")) {
+        // In front of the noticeboard rather than on the water outside it: the
+        // tavern board and the town card are where a headline is read, and
+        // there was no way to reach one on demand before v0.72.0.
+        const def = CITIES[portKey];
+        const ashore = def
+          ? { ...world, player: { ...world.player,
+              location: { type: "port" as const, portId: makePortId(portKey), pos: { ...def.pos } } } }
+          : world;
+        this.registry.set("worldState", ashore);
+        this.scene.start("PortScene", { worldState: ashore, portId: portKey });
+        return;
+      }
       this.scene.start("MainMapScene", { worldState: world });
       return;
     }
@@ -1226,6 +1247,33 @@ export class PreloadScene extends Phaser.Scene {
    * The neighbours come from `pickNeighbours`, the same function the generator
    * uses, so the staged road is a road the world could really have produced.
    */
+  /**
+   * Wind an already-staged event back into the past, for `?event=&aged=`.
+   *
+   * The whole of v0.72.0 is about what a headline says on a day that is not the
+   * day it was stamped, and every debug world in this file opens on the first
+   * morning of its event. `&aged=10&days=17` stages the plate fleet ten days
+   * into a seventeen-day sailing: her `vars` still say what they said alongside
+   * at Vera Cruz, and the board has to say something else.
+   */
+  private ageEvent(
+    world: import("../../core/model/WorldState.ts").WorldState,
+    id: string,
+    span: number,
+    aged: number,
+  ): import("../../core/model/WorldState.ts").WorldState {
+    if (span <= 0 && aged <= 0) return world;
+    const day = world.time.day;
+    return {
+      ...world,
+      worldEvents: world.worldEvents.map(ev => ev.id !== id ? ev : {
+        ...ev,
+        startDay: day - aged,
+        endDay: day - aged + (span > 0 ? span : ev.endDay - ev.startDay),
+      }),
+    };
+  }
+
   private stageStormRoad(
     world: import("../../core/model/WorldState.ts").WorldState,
     portKey: string,
@@ -1333,6 +1381,15 @@ export class PreloadScene extends Phaser.Scene {
             faction1: factionNameKey(def.factionId as unknown as string),
             faction2: factionNameKey("england"),
             duration: 60,
+            // The landing headlines interpolate a force and a clock, and a
+            // missing key prints `{{soldiers}}` on the board rather than
+            // failing. `days` is stamped here on purpose and deliberately
+            // never updated - that is the thing `&aged=` is for looking at.
+            holder: factionNameKey("england"),
+            ally: factionNameKey("france"),
+            soldiers: 600,
+            guns: 150,
+            days: 18,
             // The plate fleet keeps her muster harbour in `vars` (v0.46.0), and
             // everything that reads her - her course, her hulls, and since
             // v0.70.0 the tavern - goes through `musterPortFor`. Without the

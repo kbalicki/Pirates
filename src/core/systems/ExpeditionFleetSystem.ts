@@ -73,6 +73,7 @@ import {
   RELIEF_COOLDOWN_DAYS,
 } from "./ReconquestSystem.ts";
 import { CAMPAIGN_COOLDOWN_DAYS } from "./CrownCampaignSystem.ts";
+import { liveNews } from "./NewsPhaseSystem.ts";
 
 import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
@@ -512,8 +513,7 @@ export function materialize(
           // finds out he has run into the invasion rather than a convoy.
           news: [{
             eventId: event.id,
-            headline: event.headline,
-            vars: event.vars,
+            ...liveNews(world, event),
             dayHeard: world.time.day,
             sourcePort: event.ports[0],
           }],

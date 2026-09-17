@@ -17,6 +17,7 @@ import { HISTORICAL_WARS } from "../data/wars.ts";
 import { updateDiplomacy, TREATY_DAYS } from "./DiplomacySystem.ts";
 import { GOVERNOR_NEW_DAYS } from "./PardonSystem.ts";
 
+import { liveNews } from "./NewsPhaseSystem.ts";
 import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Random Event Templates ───────────────────────────────
 
@@ -336,10 +337,14 @@ export function getPortNews(world: WorldState, portId: string): NewsItem[] {
   const ranked = [...active].sort(
     (a, b) => reach(a) - reach(b) || b.startDay - a.startDay,
   );
+  // Through `liveNews`, never the stamped sentence: three of the types on
+  // this board have
+  // phases, and one stamped on the day the event broke goes on claiming the
+  // first of them (v0.72.0). A ship carrying this away keeps today's wording,
+  // which is right - she has been at sea since she picked it up.
   return ranked.slice(0, NEWS_ON_A_BOARD).map(ev => ({
     eventId: ev.id,
-    headline: ev.headline,
-    vars: ev.vars,
+    ...liveNews(world, ev),
     dayHeard: world.time.day,
     sourcePort: portId,
   }));
@@ -671,9 +676,3 @@ export function areAtWar(world: WorldState, faction1: string, faction2: string):
   );
 }
 
-/** Get all active wars as summaries. */
-export function getActiveWars(world: WorldState): Array<{ factions: string[]; headline: string }> {
-  return world.worldEvents
-    .filter(ev => ev.type === "war_start")
-    .map(ev => ({ factions: ev.factions, headline: ev.headline }));
-}

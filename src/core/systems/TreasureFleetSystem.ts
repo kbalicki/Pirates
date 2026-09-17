@@ -292,6 +292,35 @@ export function stillMustering(world: WorldState, event: WorldEventState): boole
   return dayFraction(world.time) < event.startDay + span * PLATE_MUSTER_SHARE;
 }
 
+/**
+ * What the noticeboards say about her today (v0.72.0).
+ *
+ * Two sentences, not one: she is alongside for `PLATE_MUSTER_SHARE` of the
+ * event and at sea for the rest, and the stamped headline — "preparing to sail
+ * from Vera Cruz" — was printed for the whole of it. Measured: false on 72.3%
+ * of her board-days, and when it was false she was a median of 1158 units from
+ * that harbour, which is the Cartagena-Havana passage.
+ *
+ * It lives here rather than in `NewsPhaseSystem` so that `materializePlate`
+ * below can use it without the two files importing each other, and so that the
+ * phase is read from the one function that decides it.
+ */
+export function plateNews(
+  world: WorldState,
+  event: WorldEventState,
+): { headline: string; vars: Record<string, string | number> } {
+  if (stillMustering(world, event)) return { headline: event.headline, vars: event.vars };
+  const from = musterPortFor(event);
+  return {
+    headline: "news.treasure_fleet_sailed",
+    vars: {
+      ...event.vars,
+      ...(from ? { port: portNameKey(from) } : {}),
+      rendezvous: portNameKey(PLATE_RENDEZVOUS),
+    },
+  };
+}
+
 /** Where she is today, or nothing while she is still in harbour. */
 export function platePos(world: WorldState, event: WorldEventState): Vec2 | undefined {
   if (stillMustering(world, event)) return undefined;
@@ -431,10 +460,11 @@ export function materializePlate(
           targetPortId: PLATE_RENDEZVOUS as unknown as PortId,
           aggression: plan.treasure ? 0.1 : 0.9,
           awarenessRadius: plan.treasure ? 200 : 300,
+          // What she would actually say if hailed today, not what the
+          // noticeboard said the week she was loading (v0.72.0).
           news: [{
             eventId: event.id,
-            headline: event.headline,
-            vars: event.vars,
+            ...plateNews(world, event),
             dayHeard: world.time.day,
             sourcePort: musterPortFor(event) ?? PLATE_RENDEZVOUS,
           }],

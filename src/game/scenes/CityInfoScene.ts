@@ -11,6 +11,7 @@ import { portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
+import { liveNews } from "../../core/systems/NewsPhaseSystem.ts";
 import { blockadeDays, blockadeEffective, BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { routeSupplying, laneThroughput } from "../../core/systems/TradeRouteSystem.ts";
 
@@ -207,7 +208,8 @@ export class CityInfoScene extends Phaser.Scene {
       y += 20;
       for (const ev of activeEvents.slice(0, 4)) {
         const sevColor = ev.severity >= 3 ? "#cc4444" : ev.severity === 2 ? "#cc8844" : "#cccc88";
-        const headline = t(ev.headline, ev.vars as Record<string, string | number>);
+        const live = liveNews(this.worldState, ev);
+        const headline = t(live.headline, live.vars as Record<string, string | number>);
         const trimmed = headline.length > 48 ? headline.slice(0, 47) + "…" : headline;
         this.add.text(left + 10, y, "• " + trimmed, { ...txt(11, { color: sevColor }) }).setDepth(5);
         y += 18;

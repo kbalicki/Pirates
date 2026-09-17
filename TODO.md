@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-17 · **Wersja:** v0.71.0.0 · **Branch:** `main`
-**Kod:** 242 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2116 przechodzi, 0 failuje, 0 `todo`** w 65 plikach
+**Stan na:** 2026-09-18 · **Wersja:** v0.72.0.0 · **Branch:** `main`
+**Kod:** 244 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2142 przechodzi, 0 failuje, 0 `todo`** w 66 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,7 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.71.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2116/2116 zielone; **udział załogi nic nie kosztował**. `PlunderSystem` nazywa siebie „pierwszym mechanizmem, który coś zabiera na zegarze” i mówi „nie da się zbierać w nieskończoność” — przez trzydzieści wydań nie zabierał **nic**. Zaległość podziału zabierała **0,004 morale na dzień**, a `CrewConsumptionSystem` daje najedzonej załodze **0,005 na godzinę**: spiżarnia wygrywała **trzydzieści do jednego** i wystarczyło jej wystarczyć na **czterdzieści osiem minut doby**. Zmierzone silnikiem: załoga **547 dni** po terminie, z jedzeniem na pokładzie, ma **morale 1,000** i wspina się tam z podłogi w tydzień. Kolejka w tawernie dokładała 37 dni zaległości za 10 zł, czyli wyceniała cały mechanizm na **ćwierć złotego dziennie** — przy podziale kosztującym 13 000 zł i 78 ze 120 ludzi. Lekarstwo to to samo, co w v0.67.0: **rzecz była warunkiem, a napisano ją jako zdarzenie**. `moraleCeiling` mówi, jak dobrze najlepiej może się czuć nieopłacona załoga, i **wszystko, co podnosi morale, jest do tego przycinane**; pilnuje tego przemiatanie źródła. Kolejka **odmawia** zamiast brać za nic i mówi dlaczego, oraz stawia wreszcie konsortom. Nowy `?owed=<dni>`. Lista kandydatów na v0.72.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.72.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2142/2142 zielone; **tablica ogłoszeń nie umiała zmienić zdania**. Nagłówek zdarzenia i jego `vars` zapisuje się raz, przy tworzeniu — i dla większości tabeli to jest poprawne (reguła z v0.43.0). Ale **faza nie jest faktem o zdarzeniu; jest faktem o dzisiaj**, a trzy zdarzenia stały po złej stronie tej granicy. Licznik „{{days}} dni drogi” był liczbą ostemplowaną rano w dniu wyjścia: zmierzone na 1143 wyprawach i 16 481 dniach-tablicach — **zły na 93,1%**, o trzy dni i więcej na 79,2%, mediana zawyżenia **7 dni**, najgorzej **20**, czyli „dwadzieścia dni drogi” w dniu desantu — podczas gdy **liczba żołnierzy w tym samym zdaniu była żywa** (`writeBackLedger` przepisuje ją co tik), a ekran garnizonu dwa wiersze menu dalej odlicza poprawnie od v0.17.0. Flota skarbowa „szykowała się do wyjścia” przez **72,3%** swoich dni-tablicowych, będąc wtedy medianowo **1158 jednostek** od tego portu — całą trasę Kartagena–Hawana — czyli jedyny nagłówek, dla którego kapitan przepłynąłby Karaiby, wysyłał go na pustą redę. A oko huraganu jest za nazwanym miastem na **56%** jego dni-tablicowych, choć tawerna wie, dokąd sztorm idzie, od v0.70.0. Teraz jedno miejsce — `NewsPhaseSystem.liveNews` — decyduje, co tablica czyta dzisiaj, **tylko przy odczycie** (wpisanie licznika do `vars` skracałoby rejs, bo `expeditionFromEvent` czyta go jako `sailDays`), a **dziennik i kopia niesiona przez statek zostają datowanymi zapisami**. Lista kandydatów na v0.73.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.71.0.0):** v0.71.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2116/2116 zielone; **udział załogi nic nie kosztował**. `PlunderSystem` nazywa siebie „pierwszym mechanizmem, który coś zabiera na zegarze” i mówi „nie da się zbierać w nieskończoność” — przez trzydzieści wydań nie zabierał **nic**. Zaległość podziału zabierała **0,004 morale na dzień**, a `CrewConsumptionSystem` daje najedzonej załodze **0,005 na godzinę**: spiżarnia wygrywała **trzydzieści do jednego** i wystarczyło jej wystarczyć na **czterdzieści osiem minut doby**. Zmierzone silnikiem: załoga **547 dni** po terminie, z jedzeniem na pokładzie, ma **morale 1,000** i wspina się tam z podłogi w tydzień. Kolejka w tawernie dokładała 37 dni zaległości za 10 zł, czyli wyceniała cały mechanizm na **ćwierć złotego dziennie** — przy podziale kosztującym 13 000 zł i 78 ze 120 ludzi. Lekarstwo to to samo, co w v0.67.0: **rzecz była warunkiem, a napisano ją jako zdarzenie**. `moraleCeiling` mówi, jak dobrze najlepiej może się czuć nieopłacona załoga, i **wszystko, co podnosi morale, jest do tego przycinane**; pilnuje tego przemiatanie źródła. Kolejka **odmawia** zamiast brać za nic i mówi dlaczego, oraz stawia wreszcie konsortom. Nowy `?owed=<dni>`. Lista kandydatów na v0.72.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.70.0.0):** v0.70.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2103/2103 zielone; **pierwsza rzecz, jaką tawerna w ogóle mówi**. Od v0.28.0 tawerna relacjonuje świat, ale ośmioelementowa lista sprzed tamtego wydania wciąż siedzi w puli i dochodzi do głosu, gdy miasto ma mniej niż dwa prawdziwe fakty w zasięgu — co brzmi jak przypadek brzegowy, a **zmierzone okazało się regułą**: `rumorsAt` na świeżym świecie jest **puste we wszystkich 45 portach**, więc te osiem zdań to całość tego, co kapitan słyszy przy pierwszej kolejce. Trzy były sprawdzalnie nieprawdziwe. **„Ceny cukru w Barbados biją rekordy”** — Barbados uprawia cukier i jest **34. z 45** pod względem jego ceny (4 zł przy 27 w Port Royale), czyli jedyna darmowa porada handlowa w grze wysyłała ładownię do najgorszego kantoru na Karaibach. **Czarnobrody** nie występuje w żadnej innej linijce repozytorium, a jego kariera zaczyna się **36 lat po najpóźniejszej epoce**. A **flota skarbowa** jest od v0.46.0 prawdziwym zdarzeniem z prawdziwym kursem — tylko że `rumorsAt` **w ogóle o niej nie wiedział**, więc najcenniejsza rzecz w grze nie przechodziła przez kanał zbudowany po to, żeby relacjonować świat, a zmyślona wersja z niewłaściwą cieśniną przechodziła. Teraz jest faktem, razem z huraganem w zasięgu; reszta ósemki jest **bramkowana warunkiem** (sezon z `eventSeason`, wojna własnej flagi, gubernator z `offerFor`), a statek widmo zostaje bezwarunkowo, bo jako jedyny nic nie twierdzi. Lista kandydatów na v0.71.0 jest niżej.
 
@@ -76,7 +78,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Kierunek artystyczny rozstrzygnięty 2026-09-04: cała gra to pixel art.** `sailship.png` i sprite'y miast są tymczasowe i idą do podmiany, a każda z dziewięciu klas statków dostaje **własny** art (8 klatek kierunkowych na klasę = 72 klatki). Szczegóły i dwie pułapki techniczne — sekcja 6.
 
-> **Notatka z tej sesji:** [SESSION-2026-09-17e.md](documentation/SESSION-2026-09-17e.md) (v0.71.0 — dług załogi jako sufit)
+> **Notatka z tej sesji:** [SESSION-2026-09-18a.md](documentation/SESSION-2026-09-18a.md) (v0.72.0 — nagłówek mówi, co jest dziś)
+
+> **Notatka z poprzedniej sesji:** [SESSION-2026-09-17e.md](documentation/SESSION-2026-09-17e.md) (v0.71.0 — dług załogi jako sufit)
 
 > **Notatka z poprzedniej sesji:** [SESSION-2026-09-17d.md](documentation/SESSION-2026-09-17d.md) (v0.70.0 — osiem starych opowieści z tawerny)
 
@@ -2346,7 +2350,7 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.72.0 — co dalej
+### v0.73.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
@@ -2374,6 +2378,22 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 - **`village.war_party_already`** („ich wojownicy są już w drodze na {{port}}”) jest prawdą
   dla **każdego** `native_raid` na to miasto, także wylosowanego przez świat — przypisuje
   wiosce coś, czego kod o niej nie wie
+
+**Znalezione przy czytaniu nagłówków `news.*`, nienaprawione** (v0.72.0.0):
+
+- **„Fitting out” jest fazą, której nic w świecie nie obserwuje.** `RELIEF_FIT_DAYS` (7)
+  i `CAMPAIGN_FIT_DAYS` (10) są wliczone w `sailDays`, ale `expeditionProgress` liczy postęp
+  od `startDay` do `endDay`, więc eskadra **wychodzi z portu pierwszego dnia** i pełznie —
+  czyli dni wyposażania są na czarcie rejsem. Symetryczne lekarstwo istnieje i działa od
+  v0.46.0: `PLATE_MUSTER_SHARE`. Zmienia to okno przechwycenia, więc **wymaga pomiaru**,
+  a nie dopisania trzech linijek
+- **Zgoda liczebnika.** Policzony licznik dochodzi do jedynki, więc v0.72.0 dała dwóm
+  ostatnim dniom własne zdania — ale `tavern.rumor_hurricane_bound` („zostało mu {{days}}
+  dni”) ma ten sam problem i nie jest naprawione. To ta sama pozycja, co „10 ton” / „2 tony”
+  niżej w tej sekcji; teraz ma **drugiego konsumenta**
+- **`endHeadline` w `wars.ts` jest polem martwym** — zadeklarowane i ustawione w dziesięciu
+  wierszach, czytane przez nikogo (peace idzie przez `news.war_end` wpisane wprost
+  w `checkHistoricalWars`). Kształt z v0.29.0, do skasowania
 
 Nic nie jest wybrane. **Cztery ostatnie wydania wzięły się z przemiatania**, nie z tej listy —
 v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0, v0.65.0 i v0.66.0 z **podręcznika

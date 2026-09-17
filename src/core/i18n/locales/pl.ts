@@ -807,7 +807,9 @@ export const PL: LocaleData = {
   "news.trade_boom": "Rozkwit handlu {{port:in}}! Kupcy zjeżdżają tłumnie.",
   "news.slave_revolt": "Bunt niewolników {{port:in}}! Kolonia w chaosie.",
   "news.hurricane": "Huragan uderzył w {{port:acc}}! Statki i budynki zniszczone.",
+  "news.hurricane_bound": "Huragan minął {{port:acc}} i idzie {{bound:to}}.",
   "news.treasure_fleet": "Hiszpańska flota skarbowa szykuje się {{port:in}}.",
+  "news.treasure_fleet_sailed": "Hiszpańska flota skarbowa wyszła {{port:from}} — kurs na {{rendezvous:acc}}.",
   "plate.course_label": "flota skarbów, na {{port:acc}} — {{days}} dni",
   "plate.log_sighted": "Namierzona flota skarbów pod {{port:ins}}.",
   "plate.toast_sighted": "Flota skarbów! Dwa galeony po burty w srebrze i dwa, które wiozą wyłącznie działa.",
@@ -1007,7 +1009,7 @@ export const PL: LocaleData = {
   "siege.log_captured": "Zdobyto {{port:acc}}: {{gold}} złota. Miasto podlega teraz {{owner:dat}}.",
   "siege.log_repulsed": "Odparto spod {{port:gen}}.",
   // ── Rekonkwista — korona wraca po swoje (v0.15.0) ──────
-  "news.reconquest": "{{faction}} zbroi eskadrę, by odbić {{port:acc}} — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.reconquest": "{{faction}} idzie odbić {{port:acc}} — {{soldiers}} żołnierzy, {{days}} dni drogi.",
   "reconquest.toast_sailing": "Eskadra ({{faction}}) wypłynęła po {{port:acc}}. {{days}} dni.",
   "reconquest.toast_held": "{{port}} broni się. Eskadra ({{faction}}) rozbita.",
   "reconquest.toast_lost": "Miasto padło: {{port}}. Znów powiewa flaga: {{faction}}.",
@@ -1016,8 +1018,10 @@ export const PL: LocaleData = {
   "reconquest.log_lost": "Utracono {{port:acc}}. Miasto znów należy do {{faction:gen}}.",
 
   // ── Korony odbierają sobie kolonie (v0.16.0) ───────────
-  "news.campaign": "{{faction}} zbroi wyprawę na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
-  "news.campaign_joint": "{{faction}} i {{ally}} zbroją wspólną wyprawę na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.campaign": "{{faction}} idzie na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.campaign_joint": "{{faction}} i {{ally}} idą razem na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.landing_today": "Eskadra {{faction:gen}} stoi pod {{port:ins}} — {{soldiers}} żołnierzy, desant dziś.",
+  "news.landing_tomorrow": "Eskadra {{faction:gen}} jest dzień drogi od {{port:gen}} — {{soldiers}} żołnierzy.",
   "campaign.toast_sailing": "Wyprawa ({{faction}}) wypłynęła na {{port:acc}}. {{days}} dni.",
 
   // ── Wyprawa dostaje kadłuby (v0.17.0) ──────────────────
