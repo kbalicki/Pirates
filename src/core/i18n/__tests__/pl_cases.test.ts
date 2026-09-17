@@ -254,6 +254,7 @@ describe("every sentence still fills every hole", () => {
       faction1: factionNameKey("spain"), faction2: factionNameKey("england"),
       holder: factionNameKey("france"), ally: factionNameKey("netherlands"),
       enemy: factionNameKey("spain"), target: portNameKey("havana"),
+      rendezvous: portNameKey("havana"),
     };
     const left: string[] = [];
     for (const key of Object.keys(PL)) {

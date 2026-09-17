@@ -434,6 +434,22 @@ const NEIGHBOUR_REACH = 700;
 const NEIGHBOUR_SHORTLIST = 6;
 
 /**
+ * The months this kind of event can happen in, or `null` for any month.
+ *
+ * Exported so nothing else has to keep a second copy of the season (v0.70.0).
+ * The project has already paid once for a table read in two places: until
+ * v0.57.0 the day-one seed was its own reading of `RANDOM_EVENTS` and had
+ * drifted from the daily roll in five ways, one of which opened three of six
+ * eras with no events at all.
+ *
+ * The tavern reads this to know whether "there is weather making" is a thing
+ * anybody would say in February.
+ */
+export function eventSeason(type: WorldEventType): number[] | null {
+  return RANDOM_EVENTS.find(t => t.type === type)?.seasonal ?? null;
+}
+
+/**
  * The other towns a multi-port event touches: near the first one, and rolled.
  *
  * Three separate bugs lived in the four lines this replaces, and they had been

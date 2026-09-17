@@ -23,6 +23,7 @@ import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { reroutedOnto } from "../../core/systems/EconomyTickSystem.ts";
 import { loadLandmassesFromCache } from "../world/GeoLoader.ts";
+import { MUSTER_PORTS } from "../../core/systems/TreasureFleetSystem.ts";
 import { VILLAGES } from "../../core/data/villages.ts";
 import { WAR_PARTY_STANDING, VILLAGE_RANGE } from "../../core/systems/VillageSystem.ts";
 import { setZoomLevel, type ZoomLevel } from "../settings/ZoomSetting.ts";
@@ -1299,6 +1300,15 @@ export class PreloadScene extends Phaser.Scene {
             faction1: factionNameKey(def.factionId as unknown as string),
             faction2: factionNameKey("england"),
             duration: 60,
+            // The plate fleet keeps her muster harbour in `vars` (v0.46.0), and
+            // everything that reads her - her course, her hulls, and since
+            // v0.70.0 the tavern - goes through `musterPortFor`. Without the
+            // stamp this harness built a treasure fleet that no reader could
+            // see, which is the thing `?famine=` taught in v0.64.0: a debug
+            // world has to do what walking in through the gate does.
+            ...(type === "treasure_fleet"
+              ? { muster: MUSTER_PORTS.includes(portKey) ? portKey : MUSTER_PORTS[0] }
+              : {}),
           },
         },
       ],

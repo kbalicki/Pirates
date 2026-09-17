@@ -3909,6 +3909,8 @@ Hawany, czy przespał go w Port Royale. Tymczasem świat miał sporo do powiedze
 
 | plotka | źródło w świecie |
 |---|---|
+| „huragan pod {{port}}, idzie na {{bound}}" | `liveHurricanes` (v0.70.0) |
+| „ładują flotę skarbową {{port}}" | `plateFleets` + `stillMustering` (v0.70.0) |
 | „nie ma {{item}} w {{port}}" | `townIsHungry` + najkrótsza półka (v0.27.0) |
 | „pod {{port}} stoi eskadra" | `blockadeEffective` (v0.22.0) |
 | „{{port}} karmi pół wybrzeża" | `reroutedOnto` (v0.26.0) |
@@ -3934,6 +3936,39 @@ zapisywane. Ten sam zapis opowiada tego samego ranka to samo, a kto poczeka
 dzień, usłyszy następny fakt zamiast tego samego. Osiem starych opowieści dalej
 jest w puli, ale tylko gdy dzieje się mniej niż `QUIET_WORLD = 2` rzeczy:
 spokojne Karaiby plotkują o statkach widmach, ruchliwe o cenie chleba.
+
+### Stara opowieść też musi być prawdziwa (v0.70.0)
+
+To „tylko gdy dzieje się mniej niż dwie rzeczy" brzmi jak rzadki przypadek
+brzegowy. **Nie jest.** Zmierzone: `rumorsAt` na świeżym świecie jest **puste we
+wszystkich 45 portach**, więc te osiem zdań to nie zapasowa pula — to
+**wszystko, co kapitan słyszy przy pierwszej kolejce**, czyli w pierwszej
+godzinie gry. Trzy z nich były sprawdzalnie nieprawdziwe (szczegóły w komentarzu
+`FLAVOURS` i w notatce z sesji).
+
+Dlatego `FLAVOUR_KEYS` (lista kluczy) jest teraz `FLAVOURS` — tabelą
+`{ key, when? }`. `when` zwraca **zmienne**, gdy świat potwierdza zdanie, i
+`null`, gdy nie:
+
+| zdanie | warunek |
+|---|---|
+| „cukier idzie za bezcen {{port}}" | sąsiad, który **uprawia** trzcinę |
+| „kapitan nazwiskiem {{name}} bierze tu statki" | `notoriety >= FAME_TALKED_ABOUT` |
+| „{{crown}} i {{enemy}} skaczą sobie do gardeł" | `enemiesOf(flaga tego miasta)` |
+| „gubernator {{port}} szuka kapitana" | `offerFor` ma co położyć na stole |
+| „pora na to, coś się nad wodą warzy" | miesiąc w `eventSeason("hurricane")` |
+| skarb / statek widmo | **bez warunku** — nie twierdzą niczego |
+
+Dwie zasady, które z tego wynikają i warto je nosić dalej:
+
+1. **Sezon czyta się z tabeli zdarzeń, nie przepisuje.** `eventSeason(type)` jest
+   po to wyeksportowane. Sezon w dwóch miejscach to defekt, za który projekt już
+   raz zapłacił (v0.57.0: zasiew dnia pierwszego był drugim odczytem
+   `RANDOM_EVENTS` i rozjechał się na pięć sposobów).
+2. **Kanał, który dowiaduje się o świecie, nie może czytać wiedzy gracza.**
+   Huragany bierze się z `liveHurricanes`, nie z `knownHurricanes` — ten drugi
+   jest filtrowany przez `knownEventIds`, więc plotka na nim zbudowana nie
+   mogłaby nigdy powiedzieć niczego, czego kapitan już nie ma na mapie.
 
 Nowe klucze i18n mają test pokrycia w obu językach — plotka złożona z faktów
 świata podstawia zmienne, a brakujący klucz albo nieużyta zmienna wyglądają jak

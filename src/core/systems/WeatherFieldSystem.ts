@@ -258,19 +258,27 @@ export function hurricaneEyes(
  * weather: the captain stayed well clear of the pin and the storm found him
  * anyway. Drawing the road is what turns three warnings into a schedule.
  */
-export function knownHurricanes(world: WorldState): {
+export type HurricaneReport = {
   id: string;
   road: Vec2[];
   eye: Vec2;
   daysLeft: number;
   port: string;
   bound: string;
-}[] {
-  const known = new Set(world.knownEventIds ?? []);
+};
+
+/**
+ * Every hurricane actually on the water, whether or not the player knows.
+ *
+ * Split out of `knownHurricanes` in v0.70.0 for the tavern, which is one of the
+ * ways he *finds out*: a channel that only reported storms already on his chart
+ * could never tell him anything he did not have.
+ */
+export function liveHurricanes(world: WorldState): HurricaneReport[] {
   const day = world.time.day;
-  const out: { id: string; road: Vec2[]; eye: Vec2; daysLeft: number; port: string; bound: string }[] = [];
+  const out: HurricaneReport[] = [];
   for (const ev of world.worldEvents ?? []) {
-    if (ev.type !== "hurricane" || !known.has(ev.id)) continue;
+    if (ev.type !== "hurricane") continue;
     if (day < ev.startDay || day >= ev.endDay) continue;
     const track = hurricaneTrack(ev);
     if (track.length === 0) continue;
@@ -287,6 +295,12 @@ export function knownHurricanes(world: WorldState): {
     });
   }
   return out;
+}
+
+/** The ones on his chart: what the renderer and the HUD may draw. */
+export function knownHurricanes(world: WorldState): HurricaneReport[] {
+  const known = new Set(world.knownEventIds ?? []);
+  return liveHurricanes(world).filter(h => known.has(h.id));
 }
 
 /**

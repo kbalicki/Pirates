@@ -48,10 +48,17 @@ import { blockadeEffective } from "./BlockadeSystem.ts";
 import { isPortClosed } from "./EventEffectsSystem.ts";
 import { playerHolds } from "./ReconquestSystem.ts";
 import { tradeIncome } from "./TradeLedgerSystem.ts";
-import { activeAlliances } from "./DiplomacySystem.ts";
+import { activeAlliances, enemiesOf } from "./DiplomacySystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
+import { offerFor } from "./DefenseContractSystem.ts";
+import {
+  plateFleets, musterPortFor, stillMustering, PLATE_RENDEZVOUS,
+} from "./TreasureFleetSystem.ts";
+import { liveHurricanes } from "./WeatherFieldSystem.ts";
+import { eventSeason } from "./WorldEventSystem.ts";
+import { dayToCalendar } from "./TimeSystem.ts";
 
-import { itemNameKeyGen, portNameKey } from "../i18n/names.ts";
+import { factionNameKey, itemNameKeyGen, portNameKey } from "../i18n/names.ts";
 /** One thing the tavern has to say, ready for `t()`. */
 export type Rumor = { key: string; vars?: Record<string, string | number> };
 
@@ -74,17 +81,129 @@ const RUMOR_BUSY_QUAY = 60;
 /** Below this many real facts, the old stories get a turn as well. */
 const QUIET_WORLD = 2;
 
-/** The eight originals. Furniture, but good furniture. */
-const FLAVOUR_KEYS = [
-  "tavern.rumor_treasure",
-  "tavern.rumor_fleet",
-  "tavern.rumor_storm",
-  "tavern.rumor_trade",
-  "tavern.rumor_pirates",
-  "tavern.rumor_war",
-  "tavern.rumor_governor",
-  "tavern.rumor_ghost_ship",
+/** How famous a captain has to be before the back table is discussing him. */
+const FAME_TALKED_ABOUT = 25;
+
+/**
+ * The eight originals, read against the world that grew around them (v0.70.0).
+ *
+ * They were furniture, and v0.28.0 left them in the pool for a quiet Caribbean
+ * on the grounds that a tavern should never be silent. What nobody had done was
+ * read them. Measured on a fresh world - `rumorsAt` over all forty-five ports on
+ * day one - **every port is quiet**, so these eight are not the fallback: they
+ * are the entire first thing a captain ever hears in a tavern. And three of them
+ * were checkably untrue.
+ *
+ * - *"Sugar prices are sky-high in Barbados"*: Barbados **grows** sugar.
+ *   Settled, it is 34th of 45 for the price of it - 4 gold against 27 at Port
+ *   Royale. A captain who believed it carried a hold to the one counter in the
+ *   Caribbean that would pay him least.
+ * - *"Blackbeard's men have been raiding near Nassau"*: Blackbeard is in no
+ *   other line of this codebase, and his career (1716-18) begins thirty-six
+ *   years after the latest era the game has.
+ * - *"A Spanish treasure fleet was spotted heading through the Windward
+ *   Passage"*: since v0.46.0 the plate fleet is a **real event** with a real
+ *   muster port and a real course, and that course does not go near the
+ *   Windward Passage - she musters on the Main, rounds Havana and goes home by
+ *   the Florida Straits. Worse than the wrong water is what was missing:
+ *   `rumorsAt` did not know about her at all, so the most valuable thing in the
+ *   game never crossed the channel built to report the world, and a made-up
+ *   version of it did instead.
+ *
+ * So a flavour line is offered only when the world agrees with it. The ones the
+ * world can answer carry their answer in `vars`; the ones it cannot are worded
+ * so they claim nothing. The ghost ship off Bermuda is the only one left with no
+ * predicate, and that is the point of keeping it: a tavern needs one line that
+ * is just a story.
+ */
+type Flavour = {
+  key: string;
+  /** Vars when the world bears the line out, `null` when it does not. */
+  when?: (
+    world: WorldState,
+    portKey: string,
+    neighbours: string[],
+  ) => Record<string, string | number> | null;
+};
+
+const FLAVOURS: Flavour[] = [
+  // Claims nothing about a place any more. It used to name an island south of
+  // Jamaica, which is not where any map the tavern sells points - a map names a
+  // spot near a town, and which town is exactly what the paper is for.
+  { key: "tavern.rumor_treasure" },
+
+  // Weather, but only in the season the event table itself rolls on. Read from
+  // `eventSeason`, not copied: a season in two places is the v0.57.0 defect.
+  {
+    key: "tavern.rumor_storm",
+    when: world => {
+      const months = eventSeason("hurricane");
+      const month = dayToCalendar(world.time.day, world.startYear).month;
+      return !months || months.includes(month) ? {} : null;
+    },
+  },
+
+  // Sugar, the right way round: it is cheap where they grow it. The line is now
+  // the trade rule the whole economy runs on, told as gossip.
+  {
+    key: "tavern.rumor_trade",
+    when: (_world, _here, neighbours) => {
+      const grower = neighbours.find(key => CITIES[key]?.produces.includes("sugar_cane"));
+      return grower ? { port: portNameKey(grower) } : null;
+    },
+  },
+
+  // His own name, coming back at him across a table. The game has no Blackbeard
+  // and never did; it has a captain whose notoriety it has been counting all
+  // along.
+  {
+    key: "tavern.rumor_pirates",
+    when: world =>
+      (world.player.notoriety ?? 0) >= FAME_TALKED_ABOUT ? { name: world.playerName } : null,
+  },
+
+  // A war this town's own flag is actually in. Same rule as the alliance rumour
+  // (v0.55.0): a Dutch quay talks about what the Dutch are doing, it does not
+  // recite the whole Caribbean's diplomatic post.
+  {
+    key: "tavern.rumor_war",
+    when: (world, portKey) => {
+      const flag = portFaction(world, portKey) as string;
+      const foes = enemiesOf(world, flag);
+      return foes.length > 0
+        ? { crown: factionNameKey(flag), enemy: factionNameKey(foes[0]) }
+        : null;
+    },
+  },
+
+  // A governor with work on the table, named. `offerFor` wants an ally's
+  // standing and a landing already at sea, so this is rare - and when it fires
+  // it is worth more than anything else in the pool, because a defence
+  // commission is easy to sail past without ever knowing it existed.
+  {
+    key: "tavern.rumor_governor",
+    when: (world, portKey, neighbours) => {
+      for (const key of [portKey, ...neighbours]) {
+        if (offerFor(world, key)) return { port: portNameKey(key) };
+      }
+      return null;
+    },
+  },
+
+  // The one that claims nothing, and therefore the one that stays.
+  { key: "tavern.rumor_ghost_ship" },
 ];
+
+/** The old stories that are true in this town today. */
+export function flavoursAt(world: WorldState, portKey: string, neighbours: string[]): Rumor[] {
+  const out: Rumor[] = [];
+  for (const flavour of FLAVOURS) {
+    if (!flavour.when) { out.push({ key: flavour.key }); continue; }
+    const vars = flavour.when(world, portKey, neighbours);
+    if (vars) out.push({ key: flavour.key, vars });
+  }
+  return out;
+}
 
 /** Towns within earshot of this one, this one excluded. */
 /**
@@ -135,6 +254,48 @@ function shortestOf(world: WorldState, portKey: string): string | null {
 export function rumorsAt(world: WorldState, portKey: string): Rumor[] {
   const out: Rumor[] = [];
   const neighbours = within(portKey);
+
+  // 0. Weather standing between here and somewhere (v0.70.0). First because it
+  //    is the only fact in the list a captain has to act on *before* he casts
+  //    off rather than after, and because the tavern is one of the ways he can
+  //    find out at all: `knownHurricanes` is filtered by his own chart, so a
+  //    channel built on it could never tell him anything new. The road has
+  //    towns on it since v0.45.0, so the line can say which way she is walking.
+  for (const storm of liveHurricanes(world)) {
+    const here = portNameKey(portKey);
+    const onRoad = [storm.port, storm.bound].some(
+      name => name === here || neighbours.some(key => portNameKey(key) === name),
+    );
+    if (!onRoad) continue;
+    out.push({
+      key: storm.bound === storm.port ? "tavern.rumor_hurricane" : "tavern.rumor_hurricane_bound",
+      vars: storm.bound === storm.port
+        ? { port: storm.port, days: storm.daysLeft }
+        : { port: storm.port, bound: storm.bound, days: storm.daysLeft },
+    });
+    break;                                   // one storm is weather, three is a forecast
+  }
+
+  // 0b. The plate fleet (v0.70.0). The single most valuable thing in the game,
+  //     and until now the tavern had never heard of her - while telling a
+  //     made-up version of the same story with the wrong water in it. She is
+  //     news on the Main, where she loads, and at the rendezvous she cannot
+  //     avoid; the fortnight in harbour is what makes an interception a plan
+  //     rather than a coincidence, so the two halves of her passage say
+  //     different things.
+  for (const event of plateFleets(world)) {
+    const muster = musterPortFor(event);
+    if (!muster) continue;
+    const audible = (key: string) => key === portKey || neighbours.includes(key);
+    if (!audible(muster) && !audible(PLATE_RENDEZVOUS)) continue;
+    out.push(stillMustering(world, event)
+      ? { key: "tavern.rumor_plate_muster", vars: { port: portNameKey(muster) } }
+      : {
+        key: "tavern.rumor_plate_sailed",
+        vars: { port: portNameKey(muster), rendezvous: portNameKey(PLATE_RENDEZVOUS) },
+      });
+    break;
+  }
 
   // 1. Somewhere within reach cannot feed itself, and that is money.
   const hungry = neighbours
@@ -307,7 +468,7 @@ export function tavernRumor(world: WorldState, portKey: string): Rumor {
   const real = rumorsAt(world, portKey);
   const pool: Rumor[] = real.length >= QUIET_WORLD
     ? real
-    : [...real, ...FLAVOUR_KEYS.map(key => ({ key }))];
+    : [...real, ...flavoursAt(world, portKey, within(portKey))];
 
   let hash = 0;
   for (let i = 0; i < portKey.length; i++) hash = (hash * 31 + portKey.charCodeAt(i)) | 0;

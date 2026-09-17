@@ -836,9 +836,15 @@ dotyczy tego miasta albo jego korony). Jedna tablica to **15%** zdarzeń żywych
 w świecie, trzy tablice **26%** — wieści są **rzadkie** i dlatego warto je
 dzielić między kanały.
 
-Tawerna mówi o tym, co się dzieje w promieniu 1300 (`RumorSystem`): głód,
-blokada, przecięty szlak, czarna bandera, najruchliwsze nabrzeże, sojusz.
-Jedna plotka dziennie, rotuje po dniu i po mieście.
+Tawerna mówi o tym, co się dzieje w promieniu 1300 (`RumorSystem`): huragan,
+flota skarbowa, głód, blokada, przecięty szlak, czarna bandera, najruchliwsze
+nabrzeże, sojusz. Jedna plotka dziennie, rotuje po dniu i po mieście.
+
+Osiem starych opowieści (skarb, sztorm, cukier, piraci, wojna, gubernator,
+statek widmo) dochodzi do głosu, gdy miasto ma mniej niż **2** prawdziwe fakty
+w zasięgu — a na świeżym świecie to **wszystkie 45 portów**, więc są one
+pierwszym, co gracz w ogóle słyszy. Od v0.70.0 każda z nich, która coś twierdzi
+o świecie, jest **oferowana tylko wtedy, gdy świat to potwierdza**.
 
 ---
 
