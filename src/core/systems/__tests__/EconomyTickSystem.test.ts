@@ -23,6 +23,8 @@ import {
   baselineProductionRate,
   inventoryCap,
 } from "../../data/economyBaselines.ts";
+import { spotPrice } from "../PricingSystem.ts";
+import { ITEMS } from "../../data/items.ts";
 import { portId, entityId, factionId } from "../../model/ids.ts";
 import type { WorldState, WorldEventState, WorldEventType, PortRuntimeState } from "../../model/WorldState.ts";
 
@@ -707,15 +709,20 @@ describe("an exporter's warehouse — the settled world", () => {
     // all of it under half a percent — which is the guard doing its job rather
     // than failing it.
     //
-    // And once more in v0.66.0, when an importer's warehouse was given the
-    // refill the producer's has had since v0.26.0: Havana 907.6 -> 908.1, the
-    // other three unchanged to the decimal. One town better off by six
-    // hundredths of a percent, none worse — which is the point. The fix is
-    // about the *level* an imported shed sits at, not about what the town is
-    // worth, and the guard is what says so.
+    // v0.66.0 and v0.67.0 rewrote both halves of how a warehouse fills and
+    // these four numbers came back to exactly where v0.42.0 left them - which
+    // is worth a sentence, because for most of v0.67.0 they had not.
+    //
+    // The refill of v0.66.0 read as +0.5 on Havana, and v0.67.0's larger shed
+    // as +9.8 on Port Royal. Both were **the transient, not the equilibrium**:
+    // the world opened with a flat ten tons in every imported shed and spent
+    // its first months ordering hard to catch up, and the catching up went
+    // through the ledger. Seeding each port at nine tenths of its own cap - the
+    // level it settles at anyway - removed the catch-up, and with it both
+    // "gains". The counter changed; the Caribbean did not.
     const w = runDays(makeFullWorld(), 400);
     expect(w.ports.port_royal.wealth).toBeCloseTo(649.1, 0);
-    expect(w.ports.havana.wealth).toBeCloseTo(908.1, 0);
+    expect(w.ports.havana.wealth).toBeCloseTo(907.6, 0);
     expect(w.ports.santiago.wealth).toBeCloseTo(619.6, 0);
     expect(w.ports.santo_domingo.wealth).toBeCloseTo(920.6, 0);
   });
@@ -919,9 +926,13 @@ describe("an importer's warehouse — a town answering an empty shed", () => {
       ...emptied.ports.havana,
       inventory: { ...emptied.ports.havana.inventory, [IMPORTED]: 0 },
     };
-    const after = runDays(emptied, 30).ports.havana.inventory[IMPORTED];
-    // Most of the way back to the cap, from nothing, inside a month.
-    expect(after).toBeGreaterThan(inventoryCap("havana", IMPORTED) * 0.8);
+    // Four fifths of the way back in a month, all but full in two (v0.67.0:
+    // a 90-ton cap, 70.8 tons at thirty days, 85.5 at sixty). Buying out a town
+    // is a real consequence that wears off, which is neither of the two things
+    // it was before: permanent, and then invisible.
+    const cap = inventoryCap("havana", IMPORTED);
+    expect(runDays(emptied, 30).ports.havana.inventory[IMPORTED]).toBeGreaterThan(cap * 0.75);
+    expect(runDays(emptied, 60).ports.havana.inventory[IMPORTED]).toBeGreaterThan(cap * 0.9);
   });
 
   it("holds a stock rather than the ten tons the world opened with", () => {
@@ -939,5 +950,83 @@ describe("an importer's warehouse — a town answering an empty shed", () => {
     };
     const after = runDays(emptied, 30).ports.havana.inventory[IMPORTED];
     expect(after).toBeLessThan(20);
+  });
+});
+
+// ===========================================================================
+// The price ceiling is a state, not a condition (v0.67.0)
+// ===========================================================================
+
+/**
+ * `inventoryCap` held a flat 30 tons of anything a town did not grow, while
+ * `PricingSystem` calls a market balanced at thirty *days* of consumption - up
+ * to 135 tons. The shed was therefore too small for the ratio ever to come
+ * down: 23 of the 130 import quotes in the world sat at RATIO_MAX whatever was
+ * in the warehouse, so every large town paid the same maximum for everything it
+ * wanted and a town that was actually short looked exactly like one that was
+ * full.
+ */
+describe("an importer's quote — the ceiling has to be reachable in both directions", () => {
+  const IMPORTED = CITIES.havana.demands.find(i => !CITIES.havana.produces.includes(i)) as string;
+
+  it("comes off the ceiling when the town is supplied", () => {
+    const w = runDays(makeFullWorld(), 365);
+    const port = w.ports.havana;
+    const ceiling = spotPrice("havana", IMPORTED, 0, port.population);
+    expect(port.prices[IMPORTED]).toBeLessThan(ceiling * 0.75);
+  });
+
+  it("goes back up when the shed is emptied", () => {
+    const settled = runDays(makeFullWorld(), 365);
+    const before = settled.ports.havana.prices[IMPORTED];
+    const stripped: WorldState = {
+      ...settled,
+      ports: {
+        ...settled.ports,
+        havana: {
+          ...settled.ports.havana,
+          inventory: { ...settled.ports.havana.inventory, [IMPORTED]: 0 },
+        },
+      },
+    };
+    const after = runDays(stripped, 1).ports.havana.prices[IMPORTED];
+    expect(after).toBeGreaterThan(before * 1.5);
+  });
+
+  it("keeps a remote colony dearer than a capital, not cheaper", () => {
+    // An outpost eats 0.45 a day, so the old flat thirty tons was sixty days'
+    // cover and had it selling imported food under the base price of the good.
+    const w = runDays(makeFullWorld(), 365);
+    const small = w.ports.nevis ?? w.ports.tortuga;
+    expect(small.prices.food).toBeGreaterThan(ITEMS.food.basePrice);
+  });
+});
+
+// ===========================================================================
+// The world opens where it lives (v0.67.0)
+// ===========================================================================
+
+/**
+ * `initPortInventory` handed every port a flat 30 tons of what it grows and 10
+ * of everything else, and the daily tick then spent the opening months of every
+ * game walking the warehouses to the level they actually settle at. A new
+ * captain met the shortage quotes of an empty Caribbean for his first hours of
+ * play and watched them drift for no reason he could see - and the drift went
+ * through the ledger, which is why two releases of warehouse work each looked
+ * like it had made the Caribbean slightly richer when it had done nothing of
+ * the kind.
+ */
+describe("the opening stock is the settled stock", () => {
+  it("does not move the sheds over the first season", () => {
+    const start = makeFullWorld();
+    const settled = runDays(makeFullWorld(), 120);
+    for (const key of ALL_PORTS) {
+      for (const item of [...CITIES[key].produces, ...CITIES[key].demands]) {
+        const a = start.ports[key].inventory[item] ?? 0;
+        const b = settled.ports[key].inventory[item] ?? 0;
+        if (a === 0) continue;   // rare goods start nowhere on purpose
+        expect(Math.abs(b - a) / a, `${key}/${item}`).toBeLessThan(0.35);
+      }
+    }
   });
 });

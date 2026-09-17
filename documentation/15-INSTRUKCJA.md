@@ -207,15 +207,21 @@ pod górkę cenową działa gorzej, niż się wydaje.
 ### Magazyn wraca, ale nie od razu
 
 Kupujesz tylko to, co leży w szopie — lada nie sprzeda Ci więcej niż ma.
-Miasto, które wykupiłeś do zera, odbudowuje zapas **w jakieś dwa tygodnie**:
-tego, co samo uprawia, przez większy wyrąb, a reszty przez zamówienie u swojego
-dostawcy. Duzi kupcy trzymają około dwudziestu pięciu ton importowanego towaru,
-więc **fregaty nie zaopatrzysz w jednym porcie na długi rejs** — osiemdziesięciu
-ludzi wypija dwanaście ton wody dziennie.
+Ile tam leży, zależy od wielkości miasta: port trzyma **dwadzieścia dni
+własnego jedzenia** tego, czego nie uprawia. Stolica ma więc około
+**dziewięćdziesięciu ton** żywności i tyleż wody, a mała placówka
+**dwanaście**. Osiemdziesięciu ludzi na fregacie wypija dwanaście ton wody na
+dobę — z Hawany wyjdziesz zaopatrzony na tydzień, z placówki na dzień.
 
-> To jest zmiana od v0.66.0 i przed nią było gorzej, niż brzmi: szopa importowa
-> **nigdy** się nie odbudowywała. Każda tona, którą kapitan wyniósł, znikała
-> z tego miasta do końca gry.
+Miasto wykupione do zera odbudowuje zapas: **cztery piąte w miesiąc**, prawie
+do pełna w dwa. Tego, co samo uprawia, przez większy wyrąb, a reszty przez
+zamówienie u swojego dostawcy.
+
+> Dwie zmiany, obie świeże. Przed **v0.66.0** szopa importowa **nigdy** się nie
+> odbudowywała — każda tona, którą kapitan wyniósł, znikała z miasta do końca
+> gry. Przed **v0.67.0** każde miasto mieściło płaskie trzydzieści ton, przez co
+> **każde duże płaciło za wszystko tę samą maksymalną cenę** i nie było żadnego
+> powodu, żeby wolić jedną ladę od drugiej.
 
 **Wody nie produkuje żaden port.** Jest w popycie czterdziestu czterech miast
 i w produkcji żadnego — dopływa bez szlaku, przemytem. Praktycznie: woda jest
@@ -599,7 +605,10 @@ brzeg, `E` na statek.
 5. **Nowy gubernator to okazja** — ułaskawienie jest lokalne i trzeba po nie
    przypłynąć w trzydzieści dni.
 6. **W głodującym mieście sprzedawaj jedzenie**, nie tytoń.
-7. **Sława ma cenę**: powyżej pięćdziesięciu nikogo już nie dogonisz.
+7. **Sława ma cenę**: powyżej pięćdziesięciu notowań każdy kupiec zaczyna
+   uciekać na Twój widok. Dogonisz go dalej — merchantman robi 5 węzłów,
+   fluyt 6, barka 9 — ale brygantyny (11) nie złapiesz niczym wolniejszym
+   od fregaty.
 8. **Zmiana amunicji zeruje przeładowanie.** Wybierz przed zbliżeniem.
 9. **Policz ludzi, zanim weźmiesz galeon.** Niedomanowany pryz zabiera całej
    eskadrze zwrotność.

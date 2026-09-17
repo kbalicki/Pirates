@@ -1,6 +1,6 @@
 # Pirates Chronicles — Dokumentacja Projektu
 
-**Wersja:** 0.66.0.0 | **Ostatnia aktualizacja:** 2026-09-15
+**Wersja:** 0.67.0.0 | **Ostatnia aktualizacja:** 2026-09-17
 
 ---
 
@@ -71,6 +71,7 @@
 - [SESSION-2026-09-07D.md](SESSION-2026-09-07D.md) — v0.49.0.0 → v0.50.0.0: Karaiby mają w sobie piratów — korsarzy nie było **wcale**, `aggression` i `targetEntityId` nie czytał nikt, a pomiar zabił po drodze cały jeden projekt (monopol koronny)
 - [SESSION-2026-09-07E.md](SESSION-2026-09-07E.md) — v0.50.0.0 → v0.51.0.0: korony kłócą się same — **sześciu konsumentów bez producenta**; domyślna era startowała w dziewięcioletnim pokoju, więc list kaperski nie krył nigdy niczego
 - [SESSION-2026-09-07F.md](SESSION-2026-09-07F.md) — v0.51.0.0 → v0.52.0.0: wróg mojego wroga — reputacja była czterema niezależnymi liczbami; dlaczego progi wygrały z proporcją, i zegar, który mówił `08:5.993680000000001`
+- [SESSION-2026-09-17.md](SESSION-2026-09-17.md) — v0.66.0.0 → v0.67.0.0: **sufit ceny był warunkiem, a nie stanem** — magazyn importowy mieści teraz 20 dni własnego jedzenia zamiast płaskich 30 ton, więc żadne notowanie nie stoi już na ×3 na stałe; przy okazji **świat startuje tam, gdzie żyje** i **notowanie jest funkcją zapasu**, a dwie liczby poprawione w v0.65.0 były poprawione źle
 - [SESSION-2026-09-15b.md](SESSION-2026-09-15b.md) — v0.65.0.0 → v0.66.0.0: **magazyn importowy nigdy nie wracał** (zamówienie równe dziennej konsumpcji, którą dzień zjadał co do tony — średnia półka 9,8 t przez dziesięć lat), **woda bez producenta w całym świecie**, i cztery kolejne fałszywe zdania podręcznika — którym **kończy się czytanie wszystkich 130 kluczy `help.*`**
 - [SESSION-2026-09-15.md](SESSION-2026-09-15.md) — v0.64.0.1 → v0.65.0.0: szkic instrukcji dla gracza, audyt podręcznika bitwy (**sześć fałszywych twierdzeń** i dwa nieaktualne komentarze w kodzie), tabela 45 portów i sekcja ekranów, oraz maszynowe sprawdzanie **wszystkich** tabel strukturalnych
 - [SESSION-2026-09-14.md](SESSION-2026-09-14.md) — v0.63.0.0 → v0.64.0.0: głód nie jest hossą — mnożnik ceny zdarzenia nie miał **tematu**, więc głód podnosił cenę tytoniu tak samo jak chleba (+131% za ładownię tytoniu); metoda „podręcznik jako lista obietnic” doprowadzona do końca na wierszach tabeli zdarzeń; oraz lada kupca ucinana po polsku

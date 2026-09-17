@@ -411,7 +411,7 @@ export const PL: LocaleData = {
   "help.econ_city_b2": "Kliknij miasto na mapie aby zobaczyć aktualne wartości i aktywne wydarzenia. Strzałki ↑↓ pokazują czy port jest powyżej/poniżej baseline.",
   "help.econ_prices_h": "CENY I MAGAZYN",
   "help.econ_prices_b1": "Cena = bazowa × stosunek popytu do podaży × modyfikator wydarzeń.\nPusty magazyn → cena rośnie (do ×3).\nPełny magazyn → cena spada (do ×0.4).",
-  "help.econ_prices_b2": "Każdy port produkuje swoje towary eksportowe (4–12 j./dzień zależnie od poziomu rynku) i konsumuje importowe (skala z populacją). Magazyn mieści poziom rynku × 50 tego, co uprawia, i 30 czegokolwiek innego.",
+  "help.econ_prices_b2": "Każdy port produkuje swoje towary eksportowe (2–12 j./dzień, zależnie od poziomu rynku i zamożności) i konsumuje importowe (skala z populacją). Magazyn mieści poziom rynku × 50 tego, co uprawia, i dwadzieścia dni własnego jedzenia — nie mniej niż 12 ton — tego, czego nie uprawia. Stolica trzyma więc około dziewięćdziesięciu ton żywności, a placówka dwanaście.",
   "help.econ_wealth_h": "BOGACTWO I OBRONA",
   "help.econ_wealth_b": "Sprzedaż towarów z popytem podnosi bogactwo. Niedobór kosztuje 2/dzień za każdy towar, którego miastu brakuje, proporcjonalnie do skali braku — potrzebuje trzech, nie dostaje żadnego, traci 6 dziennie.\nObrona spada po napadach piratów/Indian. Słaba obrona = łatwiejszy port do rabunku.",
   "help.econ_war_h": "WOJNA NA MORZU",

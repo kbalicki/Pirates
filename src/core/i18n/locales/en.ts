@@ -411,7 +411,7 @@ export const EN: LocaleData = {
   "help.econ_city_b2": "Click a town on the chart for its present figures and its live events. The arrows show whether the port is above or below its baseline.",
   "help.econ_prices_h": "PRICES AND THE WAREHOUSE",
   "help.econ_prices_b1": "Price = base x demand over supply x the events upon it.\nAn empty warehouse -> the price rises (to x3).\nA full one -> the price falls (to x0.4).",
-  "help.econ_prices_b2": "Every port makes its own exports (4-12 units a day by market level) and eats its imports (scaled to population). Its warehouse holds market level x 50 of what it grows, and 30 of anything else.",
+  "help.econ_prices_b2": "Every port makes its own exports (2-12 units a day, by market level and how rich the town is) and eats its imports (scaled to population). Its warehouse holds market level x 50 of what it grows, and twenty days of its own eating - at least 12 tons - of what it does not. A capital therefore keeps some ninety tons of food, and an outpost twelve.",
   "help.econ_wealth_h": "WEALTH AND DEFENCE",
   "help.econ_wealth_b": "Selling goods that are wanted raises wealth. Going short costs 2 a day for every good the town cannot get, in proportion to how short it went - wanting three and getting none is 6 a day.\nDefence falls after a raid. Weak defence is an easier town to plunder.",
   "help.econ_war_h": "WAR AT SEA",

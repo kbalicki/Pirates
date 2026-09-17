@@ -557,6 +557,16 @@ export function economyDailyTick(world: WorldState): WorldState {
       population -= population * hunger * HUNGER_EXODUS;
     }
 
+    // Round the stock BEFORE quoting against it (v0.67.0). The rounding used to
+    // come after, so the price on the counter was a function of 27.24 tons
+    // while the counter held 27.2 — and `repriceItem`, which every trade calls,
+    // quotes from what is on the shelf. The quote could therefore move by a
+    // gold with no goods moving at all. A quote is a function of the stock
+    // behind it, and this is what makes that sentence true.
+    for (const k of Object.keys(inventory)) {
+      inventory[k] = Math.max(0, Math.round(inventory[k] * 10) / 10);
+    }
+
     // 5. Price recompute. The arithmetic lives in `PricingSystem` since
     // v0.24.0, because every hand that moves goods now requotes with it — the
     // merchant's counter and a docking convoy as well as this loop.
@@ -591,11 +601,6 @@ export function economyDailyTick(world: WorldState): WorldState {
     // raise for whoever holds the fort — no crown is paying for a garrison any
     // more. Without this the player would never have to defend a conquest.
     b.defense    += (heldDefenseCeiling(w, portKey) - b.defense) * RECOVERY_DEFENSE * rmul;
-
-    // Round inventory values (avoid float drift in saves)
-    for (const k of Object.keys(inventory)) {
-      inventory[k] = Math.max(0, Math.round(inventory[k] * 10) / 10);
-    }
 
     b.wealth = wealth;
     b.population = population;

@@ -420,8 +420,16 @@ z osiemnastu przystań wskazanych osobno, nie z właściciela portu.
 | | wzór | zakres |
 |---|---|---|
 | cena bazowa | `× (0,9 + poziom × 0,05)` | ×0,95 … ×1,15 |
-| produkcja dzienna | `2 + poziom × 2` | **4–12** jednostek |
-| pojemność magazynu | `poziom × 50` dla tego, co uprawia | 50–250, a **30** dla reszty |
+| produkcja dzienna | `(2 + poziom × 2) × (0,5 + bogactwo/1800)` | **2–12** jednostek |
+| pojemność magazynu | `poziom × 50` dla tego, co uprawia | 50–250 |
+| … dla tego, co importuje | `20 dni własnej konsumpcji`, nie mniej niż 12 t | 12–90 t |
+
+> **Poprawka do własnego wiersza z v0.65.0.** Było tu „4–12", bo `2 + poziom × 2`
+> daje 4–12 przy poziomach 1–5. Ale `baselineProductionRate` mnoży jeszcze przez
+> `0,5 + min(1, bogactwo/900) × 0,5`, więc biedny port robi **połowę** tego —
+> osiadły zakres to **2–12**, i tak było napisane w podręczniku w grze, zanim
+> v0.65.0 to „poprawiła". Liczba jest teraz sprawdzana z obu stron.
+> (Przy pustej szopie dochodzi jeszcze `RESTOCK_SURGE`, czyli do ×2.)
 
 Do tego towar **uprawiany** na miejscu jest tańszy o 30% (`PRODUCE_MODIFIER`
 0,7), a **potrzebny** droższy o 40% (`DEMAND_MODIFIER` 1,4). To jest cały
@@ -606,13 +614,16 @@ lada kupca, załadunek NPC i krok dokowania.
 w podręczniku w grze i są prawdziwe (`RATIO_MAX` / `RATIO_MIN`, prywatne
 w `PricingSystem`).
 
-**Ale dolnego końca nie da się dosięgnąć dla towaru importowanego.** „Równowaga”
-to **trzydzieści dni konsumpcji** (`DEMAND_HORIZON_DAYS`), czyli w dużym mieście
-do 135 ton, a magazyn na towar, którego miasto nie uprawia, mieści **30**. Iloraz
-jest więc przyklejony do sufitu niezależnie od stanu półki. Zmierzone na 45
-portach: **23 ze 130 notowań importowych nie może zejść z ×3 nigdy** (przed
-v0.66.0 było ich 51). To jest **decyzja do podjęcia**, nie błąd — wpisana
-w TODO §4.
+**I da się go dosięgnąć od v0.67.0.** Do tego wydania magazyn na towar, którego
+miasto nie uprawia, mieścił płaskie **30 ton**, podczas gdy „równowaga” to
+**trzydzieści dni konsumpcji** (`DEMAND_HORIZON_DAYS`) — w stolicy do 135 ton.
+Iloraz był więc przyklejony do sufitu niezależnie od stanu półki: **23 ze 130
+notowań importowych nie mogły zejść z ×3 nigdy**. Skutek był gorszy niż sama
+arytmetyka — **każde duże miasto płaciło to samo maksimum za wszystko, czego
+chciało**, więc żadna lada nie była lepsza od innej, tablica newsów nie miała po
+co istnieć, a miasto naprawdę głodujące wyglądało dokładnie jak najedzone.
+Teraz sufit jest **stanem, nie warunkiem**: pusty magazyn → ×3, zaopatrzony →
+w dół (Hawana: woda 15 → 8, jedzenie 24 → 12 złota za tonę).
 
 ### Magazyn i uzupełnianie
 
@@ -633,6 +644,55 @@ sufitu w trzydzieści.
 | `EconomyTickSystem.IMPORT_SHARE_BLACK_FLAG` | 0.35 | udział dostaw dla miasta pod czarną banderą |
 | `EconomyTickSystem.IMPORT_NOTORIETY_BONUS` | 0.4 | ile do tego dokłada pełna sława kapitana |
 | `PricingSystem.DEMAND_HORIZON_DAYS` | 30 | ile dni konsumpcji znaczy „rynek w równowadze” |
+| `economyBaselines.IMPORT_COVER_DAYS` | 20 | ile dni własnego jedzenia trzyma miasto z importu |
+
+**Dwadzieścia dni wybrane pomiarem**, nie z powietrza — przemiecione 10 / 15 /
+20 / 30 / 45 / 90 na osiadłej dekadzie:
+
+| dni | notowań przy ×3 | woda w Hawanie | kakao Caracas → Hawana |
+|---|---|---|---|
+| 10 | 23/130 | 41 t @ 15 | 6 → 96 (×16,0) |
+| 15 | 0/130 | 63 t @ 11 | 6 → 68 (×11,3) |
+| **20** | **0/130** | **86 t @ 8** | **6 → 50 (×8,3)** |
+| 30 | 0/130 | 131 t @ 5 | 6 → 33 (×5,5) |
+| 90 | 130/130 **przy podłodze** | 401 t @ 2 | import tańszy niż uprawa |
+
+Dwadzieścia to pierwszy próg, przy którym nic nie jest przyklejone, a handel
+kapitana dalej jest jawnie wart roboty. Dziewięćdziesiąt odwraca świat.
+
+**Podłoga 12 ton** jest dla małego końca: placówka zjada 0,45 dziennie, więc
+sama reguła pokrycia dałaby jej 9 ton. Dwanaście to u niej około miesiąca —
+i świadomie **mniej niż dawne płaskie 30**, bo trzydzieści to było dla placówki
+**sześćdziesiąt dni** pokrycia i sprzedawała importowane jedzenie po **3 złote**,
+poniżej ceny bazowej towaru. Odległa kolonia płaci za to, co trzeba jej
+przywieźć, **więcej**, nie mniej — i teraz tak jest (3 → 8).
+
+**Świat startuje tam, gdzie żyje** (v0.67.0). `initPortInventory` dawał każdemu
+portowi płaskie 30 ton tego, co uprawia, i 10 reszty, razy mnożnik zamożności —
+więc każda nowa gra spędzała pierwsze miesiące na dochodzeniu magazynów do
+poziomu, na którym i tak osiadają. Teraz start to **dziewięć dziesiątych sufitu**.
+
+To nie jest kosmetyka: dochodzenie szło **przez księgę**, więc wyglądało jak
+wzbogacenie świata. Cztery miasta strażnicze pokazywały +0,5 po v0.66.0 i +9,8 po
+zmianie sufitu — **obie liczby były stanem przejściowym, nie równowagą**. Po
+poprawieniu startu wszystkie cztery wracają dokładnie tam, gdzie zostawiła je
+v0.42.0: **649,1 / 907,6 / 619,6 / 920,6**. Dwa wydania pracy nad magazynami
+zmieniły ladę, a nie Karaiby.
+
+**Notowanie jest funkcją zapasu, który za nim stoi** (v0.67.0). Dzienny tick
+liczył cenę, a zaokrąglał zapas **po** niej — więc lada podawała cenę policzoną
+z 27,24 tony, mając na półce 27,2. Każda transakcja woła `repriceItem`, który
+liczy z tego, co leży, więc cena potrafiła drgnąć o złotówkę **bez ruchu
+towaru**. Zaokrąglenie idzie teraz przed wyceną.
+
+**Czego pomiar **nie** kazał ruszać.** Sufit producenta (`poziom × 50`)
+przemieciony tak samo — ×50 / ×20 / ×10 — i został przy ×50: przy ×10 cena
+u producenta rośnie tak, że **szlak się odwraca** (rum kupowany w Port Royale
+za 7, sprzedawany w Hawanie za 5). Mnożnik głodu też został przy ×2 — bo to
+nie on był zły: przy żywym ilorazie głód daje teraz **krzywą** 12 → 28 → 45
+(×2,3 w pięć dni, ×3,75 po dwóch miesiącach), a nie natychmiastowe podwojenie
+ceny, która i tak stała na suficie. Podręcznikowe *„dwa do czterech razy”* jest
+dzięki temu prawdą pierwszy raz.
 
 **Uzupełnianie jest zawieszone poniżej pełnej dostawy.** Dowóz ponad dzienną
 potrzebę to właśnie ten handel, który kordon, czarna bandera i wojna wstrzymują —

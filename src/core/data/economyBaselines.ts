@@ -78,10 +78,61 @@ export function baselineConsumptionRate(portKey: string, itemKey: string, curren
   return 1.5 * popFactor; // ~0.45..4.5 units/day
 }
 
+/**
+ * Days of its own eating a town keeps of a good it does not grow (v0.67.0).
+ *
+ * This number exists because the flat 30 tons it replaces was not a warehouse,
+ * it was a gag on the price model. `PricingSystem` calls a market balanced at
+ * **thirty days of consumption** - up to 135 tons in a capital - so a shed that
+ * could never hold more than 30 quoted at `RATIO_MAX` whatever was in it.
+ * Measured across 45 ports: **23 of 130 import quotes could not leave x3**, and
+ * the manual's promise that a full warehouse brings the price down to x0.4 was
+ * unreachable for anything a town imports.
+ *
+ * What it cost the game, which is worse than the arithmetic: every large town
+ * paid the same maximum for everything it wanted, so there was no reason to
+ * prefer one counter to another, no reason to read the news board, and no
+ * difference between a town that was actually short and a town that was full.
+ * The demand half of the model was drawing no distinctions at all.
+ *
+ * Twenty days, chosen by sweeping 10 / 15 / 20 / 30 / 45 / 90 over a settled
+ * decade and reading the counter:
+ *
+ *     days   quotes at x3   Havana water   cocoa Caracas->Havana
+ *       10        23/130        41t @ 15         6 -> 96  (x16.0)
+ *       15         0/130        63t @ 11         6 -> 68  (x11.3)
+ *   >>  20         0/130        86t @  8         6 -> 50  (x8.3)
+ *       30         0/130       131t @  5         6 -> 33  (x5.5)
+ *       90       floor, 130/130   401t @  2      imports cheaper than crops
+ *
+ * Twenty is the first step where nothing is pinned and the captain's trade is
+ * still plainly worth making. Ninety inverts the world - a town's imports end
+ * up cheaper than what it grows - and ten changes nothing at all.
+ *
+ * The floor of twelve tons is for the small end: an outpost eats 0.45 a day, so
+ * a cover rule alone would give it five tons. Twelve is about a month for such
+ * a place, and it is deliberately below the old flat thirty, because thirty was
+ * **sixty days' cover** for an outpost and had it selling imported food at 3
+ * gold - under the base price of the thing. A remote colony pays more for what
+ * must be carried to it, not less; that is now the case (3 -> 8 gold).
+ */
+export const IMPORT_COVER_DAYS = 20;
+
+/** Tons an importing town keeps whatever its size. */
+const IMPORT_COVER_FLOOR = 12;
+
 /** Per-item inventory cap (a producer port can stockpile up to this much). */
 export function inventoryCap(portKey: string, itemKey: string): number {
   const def = CITIES[portKey];
   if (!def) return 50;
-  const producing = def.produces.includes(itemKey);
-  return producing ? def.marketLevel * 50 : 30;
+  if (def.produces.includes(itemKey)) return def.marketLevel * 50;
+  // A good the town neither grows nor eats keeps no cover, because there is no
+  // eating to measure it against. Gold on its way through a strike town is the
+  // case that matters: it is stocked by `bonusProduces`, which this function
+  // cannot see, and it kept the flat thirty it always had.
+  if (!def.demands.includes(itemKey)) return 30;
+  // Baseline population, not today's: a cap that moved with the population
+  // would shrink the warehouse of a town an epidemic had already emptied.
+  const pop = getPortBaseline(portKey).population;
+  return Math.max(IMPORT_COVER_FLOOR, baselineConsumptionRate(portKey, itemKey, pop) * IMPORT_COVER_DAYS);
 }
