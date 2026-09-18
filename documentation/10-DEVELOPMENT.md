@@ -387,6 +387,61 @@ lądzie i błędne dla każdej wyspy.
 Dokładasz polskie zdanie z nazwą? Nie pisz `w {{port}}` — jest na to test, który
 czyta całą tabelę i szuka dokładnie tego kształtu.
 
+### Liczebnik też zamawia formę: `{{n}} {{n:rzeczownik}}` (v0.74.0)
+
+Polski liczy w trzech kategoriach — `1 tona`, `2 tony`, `5 ton` — a gra znała
+jedną. **85 polskich zdań i 69 angielskich** przyszywało liczbę do rzeczownika
+w jednym kształcie.
+
+To nie jest przypadek brzegowy. Zmierzone na kodzie, który te liczby produkuje:
+
+| co liczy | ile razy wychodzi **1** |
+|---|---|
+| `tendSickBay` (lazaret, `max(1, …)`) | **55,5%** linii „wraca N rannych” |
+| to samo, zgony | 49,9% |
+| `CrewConsumptionSystem` (głód, `max(1, …)`) | **67,1%** toastów |
+| `VillageSystem` płaci 2–5 ton złota | **3 z 4** możliwych zdań były błędne |
+
+Najczęstsza wartość liczby była jedyną, której zdanie nie umiało powiedzieć.
+
+```ts
+// pl.ts
+"weather.chart_storm": "Huragan — {{days}} {{days:day}}",
+// en.ts — ta sama składnia, bo „1 days” jest tak samo złe jak „1 dni”
+"news.reconquest": "… — {{soldiers}} {{soldiers:soldier}}, {{days}} {{days:day}} out.",
+```
+
+Zmienna to **liczba**, forma to **rzeczownik**. Jedenaście rzeczowników leży
+w `src/core/i18n/plurals.ts` i — inaczej niż tabela przypadków — **odpowiada też
+po angielsku**.
+
+Tabela odmienia **frazy**, nie słowa (`member` to „członek załogi”), a zdanie,
+które chce rzeczownika poza rejestrem policzalnym, dostaje własny wpis
+(`soldier_ins`, `soldier_dat`, `day_gen`) zamiast wymiaru przypadków — trzydzieści
+wierszy dla trzech zdań to zła wymiana.
+
+**Czego tabela nie zrobi:** zgody **czasownika** i **przymiotnika**. To ta sama
+pozycja, którą v0.69.0 zostawiła otwartą dla rodzaju. Szesnaście polskich zdań
+jest przeredagowanych tak, żeby problem nie powstał:
+
+- czas teraźniejszy z liczbą **na końcu**: `na ląd schodzi 1 człowiek` /
+  `schodzi 26 ludzi` (dopełniacz mnogi bierze czasownik w liczbie pojedynczej,
+  i „1 człowiek” też);
+- niezmienne `mniej` tam, gdzie chciał się zgodzić imiesłów: `3 działa mniej`,
+  `5 dział mniej`;
+- `zostało {{days}} dni` → `jeszcze {{days}} {{days:day}}` — bo „został 1 dzień”
+  potrzebuje innego czasownika, a „jeszcze” nie potrzebuje żadnego.
+
+**Jedno zdanie zostaje z gołym rzeczownikiem i jest poprawne:** `2 z 3 dział
+potrzebnych` — po `z` dopełniacz mnogi jest dobry przy każdej liczbie. Test
+przemiatający obie tabele ma dla niego **nazwane odstępstwo z uzasadnieniem**,
+i wywala się na każdym innym liczniku postawionym przy gołym rzeczowniku.
+
+Piszesz nowe zdanie z liczbą? Użyj `{{n:rzeczownik}}` — jest na to test, który
+czyta obie tabele i sprawdza jeszcze, czy rzeczownik zgadza się ze **swoją**
+liczbą, a nie z sąsiadem (przebieg mechaniczny wyprodukował w `en.ts`
+`{{soldiers}} {{faction}} {{faction:soldier}}`).
+
 ### Cena zdarzenia ma **zakres** (v0.64.0)
 
 Nigdy nie czytaj `effects.priceMul` wprost — to jest dokładnie błąd z v0.64.0.

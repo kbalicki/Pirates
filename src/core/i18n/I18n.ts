@@ -2,6 +2,7 @@ import type { Lang, LocaleData } from "./types.ts";
 import { EN } from "./locales/en.ts";
 import { PL } from "./locales/pl.ts";
 import { plNameForm, plPhraseFallback } from "./plForms.ts";
+import { nounForm } from "./plurals.ts";
 
 const LOCALES: Record<Lang, LocaleData> = { en: EN, pl: PL };
 
@@ -97,8 +98,15 @@ const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.(?:name|gen)$/;
  * that goes where the sentence would otherwise have written a preposition and
  * a bare name (v0.69.0). Only the Polish table answers - see `plForms.ts` for
  * why the preposition has to travel with the name rather than with the string.
+ *
+ * Since v0.74.0 the form may also name a **noun** rather than a case, and then
+ * the variable is the *count* it has to agree with: `{{days}} {{days:day}}`.
+ * That one answers in both languages, because "1 days out" is as wrong as
+ * "1 dni" - see `plurals.ts`. The underscore in the form is for `soldier_ins`
+ * and its two neighbours; no grammatical case has one, so the two namespaces
+ * cannot collide, and `plural_forms.test.ts` holds them apart.
  */
-const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)(?::([a-z]+))?\}\}/g;
+const PLACEHOLDER = /\{\{([A-Za-z_][A-Za-z0-9_]*)(?::([a-z_]+))?\}\}/g;
 
 /** `port.havana.name` -> `["port", "havana"]`. */
 function splitNameKey(value: string): [string, string] | undefined {
@@ -124,7 +132,13 @@ export function t(key: string, vars?: Record<string, string | number>): string {
     if (v === undefined) return whole;
     const isName = typeof v === "string" && NAME_KEY.test(v);
     const text = isName ? t(v as string) : String(v);
-    if (!form || currentLang !== "pl") return text;
+    if (!form) return text;
+    // A noun before a case: the noun table is the narrow one (eleven ids that
+    // no declension shares), so asking it first cannot swallow `{{port:acc}}`,
+    // and it has to be asked in English too.
+    const counted = isName ? undefined : nounForm(currentLang, form, Number(v));
+    if (counted !== undefined) return counted;
+    if (currentLang !== "pl") return text;
     const parts = isName ? splitNameKey(v as string) : undefined;
     const declined = parts ? plNameForm(parts[0], parts[1], text, form) : undefined;
     return declined ?? plPhraseFallback(form, text) ?? text;

@@ -117,10 +117,13 @@ describe("the two locales are the same table", () => {
   it("interpolates the same variables in both", () => {
     // The grammatical form after the colon is deliberately one-sided (v0.69.0):
     // Polish asks for a case where English has only a preposition of its own.
-    // What has to match is the *variable*, which is what prints raw when it is
-    // missing on one side.
+    // Deduplicated since v0.74.0: Polish writes `{{days}} {{days:day}}` where
+    // English writes `{{days}}d` on a chart label, and the same variable twice
+    // is not a second variable. The form allows an underscore now
+    // (`soldier_ins`), and it is still ignored: what has to match is the
+    // variable, which is what prints raw when it is missing on one side.
     const vars = (s: string) =>
-      [...s.matchAll(/\{\{(\w+)(?::[a-z]+)?\}\}/g)].map(m => m[1]).sort();
+      [...new Set([...s.matchAll(/\{\{(\w+)(?::[a-z_]+)?\}\}/g)].map(m => m[1]))].sort();
     const mismatched = Object.keys(EN).filter(k => {
       const a = vars(EN[k]), b = vars(PL[k] ?? "");
       return a.join(",") !== b.join(",");

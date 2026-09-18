@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-18 · **Wersja:** v0.73.0.1 · **Branch:** `main`
-**Kod:** 244 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2161 przechodzi, 0 failuje, 0 `todo`** w 66 plikach
+**Stan na:** 2026-09-18 · **Wersja:** v0.74.0.0 · **Branch:** `main`
+**Kod:** 246 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2179 przechodzi, 0 failuje, 0 `todo`** w 67 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,9 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.73.0.1 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2161/2161 zielone; **dni uzbrajania były rysowane jako rejs**. `sailDays` wyprawy to uzbrajanie (`RELIEF_FIT_DAYS` 7 / `CAMPAIGN_FIT_DAYS` 10) **plus** przeprawa policzona prawdziwym kursem z prądem **plus** rzut, a potem widełki tną sumę — i zapisywana była **tylko suma**, więc nic nie umiało rozdzielić tych połówek z powrotem, a `expeditionProgress` rozciągał całość wzdłuż kursu. Zmierzone po wszystkich celach z wczytanym wybrzeżem: przeprawa to mediana **2 dni z 9** (odsiecz) i **4 z 14** (kampania), czyli **78%** i **67%** dni eskadry na czarcie to dni, w których stała przy nabrzeżu — a rysowana była na **22** i **35 jednostek na dobę** przy `SQUADRON_SPEED = 120`, czyli **piątej części** prędkości, którą moduł sam sobie dokumentuje jako tempo jej transportowców. Teraz przeprawa jest stemplowana osobno (`vars.passage`), dzień wyjścia liczy się **wstecz od desantu**, a rzut i przycięcie lądują w uzbrajaniu — dokładnie tam, gdzie v0.43.0 powiedziała, że mają być (mediana po poprawce: **95** i **112**; reszta rozrzutu to prąd). Uzbrajającej się eskadry **nie ma na czarcie**, tak jak floty skarbowej od v0.46.0 — i to nie jest kosmetyka, bo `materialize` wręcza kadłubom port docelowy jako rozkaz. **Cena zapłacona świadomie:** okno przechwycenia spada z 9 dni do 2 i z 14 do 4, bo prawie każdy kurs w tym morzu jest krótszy niż średnica zasięgu 620; w zamian tablica mówi, że jeszcze nie wyszła i z którego portu wyjdzie (trzy nowe klucze `news.*_fitting` — zdanie, które v0.72.0 musiała wyrzucić, bo było fałszywe). Lista kandydatów na v0.74.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.74.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2179/2179 zielone; **jeden dzień, dwa dni, pięć dni**. Polski liczy w trzech kategoriach — `1 tona`, `2 tony`, `5 ton` — a gra znała jedną: **85 polskich zdań i 69 angielskich** przyszywało liczbę do rzeczownika w jednym kształcie. Pozycja leżała w TODO od v0.68.0 z gotowym projektem, v0.72.0 musiała ją **obejść** (dwa ostatnie dni wyprawy dostały własne zdania zamiast liczby), a v0.73.0 dołożyła trzeciego konsumenta. Zmierzone **na kodzie, który te liczby produkuje**, nie na stringach: `tendSickBay` bierze 30% lazaretu dziennie i **nigdy mniej niż jednego**, więc **55,5%** linii „wraca N rannych” mówi *jeden* (i 49,9% linii o zmarłych); zgony z głodu to `max(1, floor(…))`, czyli jedynka jest **wbudowana** — **67,1%** toastów; a wioska płaci 2, 3, 4 albo 5 ton złota, więc **trzy z czterech** jej zdań były niegramatyczne. Najczęstsza wartość liczby była tą, której zdanie nie umiało powiedzieć. Teraz rzeczownik jest **formą liczby** (`{{days}} {{days:day}}`, jedenaście rzeczowników w `plurals.ts`) — i inaczej niż tabela przypadków ta **odpowiada też po angielsku**, bo „1 days out” jest tak samo złe jak „1 dni”. Czego tabela nie zrobi, to zgoda **czasownika i imiesłowu** (ta sama pozycja, którą v0.69.0 zostawiła otwartą dla rodzaju): szesnaście polskich zdań jest przeredagowanych — czas teraźniejszy z liczbą na końcu, nieodmienne `mniej`, `jeszcze` zamiast `zostało`. Jedno zdanie zostaje z gołym rzeczownikiem i **jest poprawne** („2 z 3 dział potrzebnych” — po `z` dopełniacz mnogi pasuje do każdej liczby); przemiatanie ma dla niego nazwane odstępstwo i wywala się na każdym innym. Lista kandydatów na v0.75.0 jest niżej.
 
-> **Poprzednie zdanie startowe (v0.72.0.0):** v0.72.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2142/2142 zielone; **tablica ogłoszeń nie umiała zmienić zdania**. Nagłówek zdarzenia i jego `vars` zapisuje się raz, przy tworzeniu — i dla większości tabeli to jest poprawne (reguła z v0.43.0). Ale **faza nie jest faktem o zdarzeniu; jest faktem o dzisiaj**, a trzy zdarzenia stały po złej stronie tej granicy. Licznik „{{days}} dni drogi” był liczbą ostemplowaną rano w dniu wyjścia: zmierzone na 1143 wyprawach i 16 481 dniach-tablicach — **zły na 93,1%**, o trzy dni i więcej na 79,2%, mediana zawyżenia **7 dni**, najgorzej **20**, czyli „dwadzieścia dni drogi” w dniu desantu — podczas gdy **liczba żołnierzy w tym samym zdaniu była żywa** (`writeBackLedger` przepisuje ją co tik), a ekran garnizonu dwa wiersze menu dalej odlicza poprawnie od v0.17.0. Flota skarbowa „szykowała się do wyjścia” przez **72,3%** swoich dni-tablicowych, będąc wtedy medianowo **1158 jednostek** od tego portu — całą trasę Kartagena–Hawana — czyli jedyny nagłówek, dla którego kapitan przepłynąłby Karaiby, wysyłał go na pustą redę. A oko huraganu jest za nazwanym miastem na **56%** jego dni-tablicowych, choć tawerna wie, dokąd sztorm idzie, od v0.70.0. Teraz jedno miejsce — `NewsPhaseSystem.liveNews` — decyduje, co tablica czyta dzisiaj, **tylko przy odczycie** (wpisanie licznika do `vars` skracałoby rejs, bo `expeditionFromEvent` czyta go jako `sailDays`), a **dziennik i kopia niesiona przez statek zostają datowanymi zapisami**.
+> **Poprzednie zdanie startowe (v0.73.0.x):** v0.73.0.1 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2161/2161 zielone; **dni uzbrajania były rysowane jako rejs**. `sailDays` wyprawy to uzbrajanie (`RELIEF_FIT_DAYS` 7 / `CAMPAIGN_FIT_DAYS` 10) **plus** przeprawa policzona prawdziwym kursem z prądem **plus** rzut, a potem widełki tną sumę — i zapisywana była **tylko suma**, więc nic nie umiało rozdzielić tych połówek z powrotem, a `expeditionProgress` rozciągał całość wzdłuż kursu. Zmierzone po wszystkich celach z wczytanym wybrzeżem: przeprawa to mediana **2 dni z 9** (odsiecz) i **4 z 14** (kampania), czyli **78%** i **67%** dni eskadry na czarcie to dni, w których stała przy nabrzeżu — a rysowana była na **22** i **35 jednostek na dobę** przy `SQUADRON_SPEED = 120`, czyli **piątej części** prędkości, którą moduł sam sobie dokumentuje jako tempo jej transportowców. Teraz przeprawa jest stemplowana osobno (`vars.passage`), dzień wyjścia liczy się **wstecz od desantu**, a rzut i przycięcie lądują w uzbrajaniu — dokładnie tam, gdzie v0.43.0 powiedziała, że mają być (mediana po poprawce: **95** i **112**; reszta rozrzutu to prąd). Uzbrajającej się eskadry **nie ma na czarcie**, tak jak floty skarbowej od v0.46.0 — i to nie jest kosmetyka, bo `materialize` wręcza kadłubom port docelowy jako rozkaz. **Cena zapłacona świadomie:** okno przechwycenia spada z 9 dni do 2 i z 14 do 4, bo prawie każdy kurs w tym morzu jest krótszy niż średnica zasięgu 620; w zamian tablica mówi, że jeszcze nie wyszła i z którego portu wyjdzie (trzy nowe klucze `news.*_fitting` — zdanie, które v0.72.0 musiała wyrzucić, bo było fałszywe).
 
 > **Poprzednie zdanie startowe (v0.70.0.0):** v0.70.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2103/2103 zielone; **pierwsza rzecz, jaką tawerna w ogóle mówi**. Od v0.28.0 tawerna relacjonuje świat, ale ośmioelementowa lista sprzed tamtego wydania wciąż siedzi w puli i dochodzi do głosu, gdy miasto ma mniej niż dwa prawdziwe fakty w zasięgu — co brzmi jak przypadek brzegowy, a **zmierzone okazało się regułą**: `rumorsAt` na świeżym świecie jest **puste we wszystkich 45 portach**, więc te osiem zdań to całość tego, co kapitan słyszy przy pierwszej kolejce. Trzy były sprawdzalnie nieprawdziwe. **„Ceny cukru w Barbados biją rekordy”** — Barbados uprawia cukier i jest **34. z 45** pod względem jego ceny (4 zł przy 27 w Port Royale), czyli jedyna darmowa porada handlowa w grze wysyłała ładownię do najgorszego kantoru na Karaibach. **Czarnobrody** nie występuje w żadnej innej linijce repozytorium, a jego kariera zaczyna się **36 lat po najpóźniejszej epoce**. A **flota skarbowa** jest od v0.46.0 prawdziwym zdarzeniem z prawdziwym kursem — tylko że `rumorsAt` **w ogóle o niej nie wiedział**, więc najcenniejsza rzecz w grze nie przechodziła przez kanał zbudowany po to, żeby relacjonować świat, a zmyślona wersja z niewłaściwą cieśniną przechodziła. Teraz jest faktem, razem z huraganem w zasięgu; reszta ósemki jest **bramkowana warunkiem** (sezon z `eventSeason`, wojna własnej flagi, gubernator z `offerFor`), a statek widmo zostaje bezwarunkowo, bo jako jedyny nic nie twierdzi. Lista kandydatów na v0.71.0 jest niżej.
 
@@ -2350,7 +2350,7 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.74.0 — co dalej
+### v0.75.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
@@ -2387,13 +2387,28 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   przy `SQUADRON_SPEED = 120`. Przeprawa jest stemplowana osobno, dzień wyjścia liczy się
   wstecz od desantu, a **okno przechwycenia spadło z 9 dni do 2 i z 14 do 4** — zapłacone
   świadomie, w zamian za tablicę, która mówi, z którego portu wyjdzie
-- **Zgoda liczebnika.** Policzony licznik dochodzi do jedynki, więc v0.72.0 dała dwóm
-  ostatnim dniom własne zdania — ale `tavern.rumor_hurricane_bound` („zostało mu {{days}}
-  dni”) ma ten sam problem i nie jest naprawione. To ta sama pozycja, co „10 ton” / „2 tony”
-  niżej w tej sekcji; teraz ma **drugiego konsumenta**
+- ~~**Zgoda liczebnika.**~~ ✅ v0.74.0.0 — i `tavern.rumor_hurricane_bound` razem z 84 innymi
+  polskimi zdaniami i 69 angielskimi. Zostało to, czego tabela rzeczowników nie robi: zgoda
+  **czasownika i imiesłowu** (pozycja o rodzaju, niżej w tej sekcji)
 - **`endHeadline` w `wars.ts` jest polem martwym** — zadeklarowane i ustawione w dziesięciu
   wierszach, czytane przez nikogo (peace idzie przez `news.war_end` wpisane wprost
   w `checkHistoricalWars`). Kształt z v0.29.0, do skasowania
+
+**Znalezione przy zgodzie liczebnika, nienaprawione** (v0.74.0.0):
+
+- **Zgoda czasownika i imiesłowu została otwarta.** Tabela w `plurals.ts` odmienia
+  **rzeczownik** (i całą frazę), ale zdanie, w którym czasownik albo przymiotnik musi się
+  zgodzić z liczbą, dalej trzeba przeredagować: „3 działa **zbite**” kontra „5 dział
+  **zbitych**”. Szesnaście zdań obeszło problem (czas teraźniejszy z liczbą na końcu,
+  nieodmienne `mniej`), ale to jest **obejście**, nie rozwiązanie — dokładnie tak samo,
+  jak v0.69.0 zostawiła rodzaj. Rozwiązanie to mechanizm **wybierający wariant zdania**,
+  a nie formę zmiennej, i obsłużyłby obie pozycje naraz
+- **Rejestr policzalny to jedyny, jaki tabela zna.** `soldier_ins`, `soldier_dat`
+  i `day_gen` to trzy wpisy dla trzech zdań; czwarte zdanie w innym przypadku dołoży
+  czwarty. Przy siedmiu wpisach warto policzyć, czy wymiar przypadków nie jest tańszy
+- **Liczba ułamkowa spada do `many`.** Polski chce tam dopełniacza **liczby pojedynczej**
+  („1,5 tony”). Nic w grze nie drukuje ułamka do zdania, więc czwarta kategoria nie
+  powstała — ale jeśli kiedyś powstanie tonaż z przecinkiem, to jest miejsce
 
 **Znalezione przy rozdzielaniu uzbrajania od przeprawy, nienaprawione** (v0.73.0.0):
 
@@ -2544,13 +2559,11 @@ wiadomości** (`news.*`). Co zostało do przemiecenia poza tym:
   `Kaurkira`…) — wszystkie nieodmienne w polskim i wszystkie na lądzie, więc „w Cimatan” jest
   dziś **poprawne przypadkiem**. Dziewiąta wioska nie musi być. `NAME_KEY` w `I18n.ts` nie
   obejmuje `village`, więc `{{village}}` niesie gotowy tekst, nie klucz — najpierw to
-- **Jednostka i zgoda liczebnikowa** (v0.68.0.0, projekt gotowy). Dopełniacz nazw towarów
-  jest zrobiony (`item.<id>.gen`), ale została **jednostka**: po polsku „10 **ton**”, ale
-  „2 **tony**” i „1 **tona**”. Ten sam wzorzec: zmienna `unit` z kluczem
-  `unit.ton.one|few|many`, `NAME_KEY` poszerzony o `unit`, i **osiem miejsc stemplujących**
-  (spichlerz, kantor frachtowy, zlecenie informatora, plotki, log handlu). Po angielsku
-  wystarczy „tons of”. Bez tego zdania czyta się eliptycznie: „10 żywności” zamiast
-  „10 ton żywności”
+- ~~**Jednostka i zgoda liczebnikowa** (v0.68.0.0, projekt gotowy)~~ ✅ v0.74.0.0 — zrobione
+  szerzej, niż notatka zakładała: nie tylko `unit.ton`, ale **jedenaście rzeczowników**
+  i **154 zdania** w obu tabelach, bo „1 days” jest tak samo złe jak „1 dni”. Zmierzone przed
+  pisaniem: **55,5%** linii o lazarecie, **67,1%** toastów o głodzie i **3 z 4** zdań wioski
+  drukowały liczbę, przy której stary rzeczownik był błędny.
 - **Reszta drzew dialogowych** (v0.68.0.0). Gubernator przeczytany wiersz po wierszu.
   Zostają: **karczmarz** (41 kluczy `tavern.*`), **wioska** (38 `village.*`), **romans**
   (34 `romance.*`) i **kupiec** — każde z nich obiecuje coś, co kod ma spełnić, i żadnego

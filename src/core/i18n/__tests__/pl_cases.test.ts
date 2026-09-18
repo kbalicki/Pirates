@@ -1,6 +1,7 @@
 import { describe, it, expect, afterAll } from "vitest";
 import { t, setLang, getLang } from "../I18n.ts";
 import { plNameForm, plPhraseFallback, plDeclinedKeys, isPlForm } from "../plForms.ts";
+import { isPluralNoun } from "../plurals.ts";
 import { EN } from "../locales/en.ts";
 import { PL } from "../locales/pl.ts";
 import { CITIES } from "../../data/cities.ts";
@@ -154,18 +155,27 @@ describe("no Polish sentence leaves a name bare after a preposition", () => {
     const bad: string[] = [];
     for (const [key, line] of Object.entries(PL)) {
       if (typeof line !== "string") continue;
-      for (const m of line.matchAll(/\{\{[A-Za-z_][A-Za-z0-9_]*:([a-z]+)\}\}/g)) {
-        if (!isPlForm(m[1])) bad.push(`${key}: :${m[1]}`);
+      for (const m of line.matchAll(/\{\{[A-Za-z_][A-Za-z0-9_]*:([a-z_]+)\}\}/g)) {
+        // A form is either a case this table can decline or a noun the count
+        // has to agree with (v0.74.0). Anything else prints itself.
+        if (!isPlForm(m[1]) && !isPluralNoun(m[1])) bad.push(`${key}: :${m[1]}`);
       }
     }
     expect(bad).toEqual([]);
   });
 
-  it("leaves English alone", () => {
-    // English has one form and one preposition; the whole mechanism is Polish.
-    const marked = Object.entries(EN)
-      .filter(([, line]) => typeof line === "string" && /\{\{\w+:[a-z]+\}\}/.test(line))
-      .map(([key]) => key);
+  it("never asks English for a grammatical case", () => {
+    // English has one form and one preposition, so the case machinery is
+    // Polish and only Polish. It does ask for nouns, because "1 days" is as
+    // wrong as "1 dni" (v0.74.0) - so the assertion is about cases, not about
+    // the colon.
+    const marked: string[] = [];
+    for (const [key, line] of Object.entries(EN)) {
+      if (typeof line !== "string") continue;
+      for (const m of line.matchAll(/\{\{\w+:([a-z_]+)\}\}/g)) {
+        if (!isPluralNoun(m[1])) marked.push(`${key}: :${m[1]}`);
+      }
+    }
     expect(marked).toEqual([]);
   });
 });
@@ -256,12 +266,23 @@ describe("every sentence still fills every hole", () => {
       enemy: factionNameKey("spain"), target: portNameKey("havana"),
       rendezvous: portNameKey("havana"),
     };
+    // Every variable a sentence counts with gets a number, or the noun form
+    // beside it is a hole this sweep would report (v0.74.0). Three is on
+    // purpose: it is the Polish `few`, the category that did not exist before
+    // this release and the one most of the old strings were wrong about.
+    for (const line of Object.values(PL)) {
+      if (typeof line !== "string") continue;
+      for (const m of line.matchAll(/\{\{(\w+):([a-z_]+)\}\}/g)) {
+        if (isPluralNoun(m[2])) vars[m[1]] = 3;
+      }
+    }
+
     const left: string[] = [];
     for (const key of Object.keys(PL)) {
       const out = t(key, vars);
       // A form that survived substitution means a placeholder the renderer
       // could not read - which prints on the screen exactly as it is written.
-      if (/\{\{\w+:[a-z]+\}\}/.test(out)) left.push(key);
+      if (/\{\{\w+:[a-z_]+\}\}/.test(out)) left.push(key);
       // And a name key that reached the screen raw (v0.63.0's defect).
       if (/\b(?:port|faction)\.[a-z0-9_]+\.name\b/.test(out)) left.push(key + " (raw key)");
     }
