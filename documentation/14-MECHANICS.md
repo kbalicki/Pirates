@@ -883,7 +883,7 @@ powstało, i nietykane potem. Dla większości tabeli to jest dokładnie poprawn
 
 | zdarzenie | dopóki | potem |
 |---|---|---|
-| `campaign` / `reconquest` | `{{days}}` liczone od `endDay` | `news.landing_tomorrow`, a w dniu desantu `news.landing_today` |
+| `campaign` / `reconquest` | dopóki się uzbraja: `news.*_fitting` z portem, w którym stoi (v0.73.0) | po wyjściu `{{days}}` liczone od `endDay`, potem `news.landing_tomorrow`, a w dniu desantu `news.landing_today` |
 | `treasure_fleet` | `news.treasure_fleet` (ładuje się) | `news.treasure_fleet_sailed` (wyszła, kurs na Hawanę) |
 | `hurricane` | `news.hurricane` (uderzył w X) | `news.hurricane_bound` (minął X, idzie na Y) |
 
@@ -1119,6 +1119,40 @@ Ostrzał rundowy → desant falami → trzy zakończenia; port zmienia właścic
 | `CrownCampaignSystem.ALLY_PRESSURE` | 1.5 | ile dokłada sojusznik |
 
 Rozbicie eskadry **kasuje zdarzenie** i daje celowi karencję.
+
+#### Najpierw uzbrojenie, dopiero potem rejs (v0.73.0)
+
+`sailDays` to **uzbrajanie + przeprawa + rzut**, a potem widełki przycinają sumę
+(`RELIEF_SAIL_DAYS` 6–14, `CAMPAIGN_SAIL_DAYS` 10–20). Przeprawa jest liczona
+`expeditionDeparture` — prawdziwym kursem, **z prądem** — i od v0.73.0 jest
+**stemplowana osobno** (`vars.passage`). Dzień wyjścia liczy się **wstecz od
+desantu**: `sailingDay = endDay − passage`. Rzut i przycięcie lądują
+w uzbrajaniu, bo przeprawa jest faktem o mapie.
+
+| | odsiecz | kampania |
+|---|---|---|
+| uzbrajanie (`*_FIT_DAYS`) | 7 dni | 10 dni |
+| przeprawa (mediana) | **2 dni** | **4 dni** |
+| całe zdarzenie (mediana) | 9 dni | 14 dni |
+| udział dni w porcie | **78%** | **67%** |
+
+Dopóki się uzbraja, **eskadry nie ma na czarcie**: `expeditionPos` nie zwraca nic,
+tak jak `platePos` dla floty skarbowej. To nie jest kosmetyka — `materialize`
+wręcza każdemu kadłubowi port docelowy jako rozkaz, więc kadłuby postawione na
+wodzie za wcześnie nie stoją na kotwicy, tylko ruszają na miasto.
+
+Przed v0.73.0 cała rozpiętość zdarzenia była rysowana jako rejs, więc eskadra
+wychodziła z portu pierwszego ranka i **pełzła medianowo 22 (odsiecz) i 35
+(kampania) jednostek na dobę** przy `SQUADRON_SPEED = 120`. Po poprawce
+mediana to **95** i **112**; reszta rozrzutu to prąd, bo kurs pod prąd kosztuje
+więcej dni niż wynosi jego długość. **Cena zapłacona świadomie:** okno, w którym
+kapitan może ją spotkać na morzu, spada z 9 dni do 2 (odsiecz) i z 14 do 4
+(kampania) — prawie każdy kurs w tym morzu jest krótszy niż średnica zasięgu
+620, więc okno **jest** jej czasem na morzu. W zamian tablica mówi teraz, że
+jeszcze nie wyszła i z którego portu wyjdzie.
+
+Zapis sprzed v0.73.0 nie ma `vars.passage` i chodzi po staremu (cała rozpiętość
+jako jeden rejs). Wyprawy żyją 6–20 dni, więc stary kształt znika z gry sam.
 
 ---
 

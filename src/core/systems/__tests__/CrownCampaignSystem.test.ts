@@ -18,7 +18,7 @@ import {
   ALLY_CONTINGENT,
 } from "../CrownCampaignSystem.ts";
 import { resolveRelief } from "../ReconquestSystem.ts";
-import { materialize, hullsOf } from "../ExpeditionFleetSystem.ts";
+import { materialize, hullsOf, sailingDay, stillFittingOut } from "../ExpeditionFleetSystem.ts";
 import { portFaction } from "../SiegeSystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
@@ -326,6 +326,21 @@ describe("fitting out", () => {
     const world = makeWorld();
     const out = launchCampaign(world, spainOnEngland, ENGLISH, world.rng);
     expect(out.world.eventLog.some(e => e.key === "news.campaign")).toBe(true);
+  });
+
+  it("writes down how much of the voyage is sailing (v0.73.0)", () => {
+    // Ten of a campaign's days are `CAMPAIGN_FIT_DAYS`, and until this was
+    // stamped all of them were drawn as passage: measured at a median 35 units
+    // a day against a `SQUADRON_SPEED` of 120, with two thirds of the event
+    // spent crossing water she had not put to sea on yet.
+    const world = makeWorld();
+    const { event } = launchCampaign(world, spainOnEngland, ENGLISH, world.rng);
+    const passage = Number(event.vars.passage);
+    expect(passage).toBeGreaterThan(0);
+    expect(passage).toBeLessThanOrEqual(event.endDay - event.startDay);
+    // She lies alongside first and crosses last, never the other way round.
+    expect(sailingDay(event)).toBeGreaterThanOrEqual(event.startDay);
+    expect(stillFittingOut({ ...world, time: { ...world.time, day: event.startDay } }, event)).toBe(true);
   });
 
   it("sends more against a capital than against an outpost", () => {

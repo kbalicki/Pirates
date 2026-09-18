@@ -1020,6 +1020,9 @@ export const PL: LocaleData = {
   // ── Korony odbierają sobie kolonie (v0.16.0) ───────────
   "news.campaign": "{{faction}} idzie na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
   "news.campaign_joint": "{{faction}} i {{ally}} idą razem na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, {{days}} dni drogi.",
+  "news.reconquest_fitting": "{{faction}} zbroi wyprawę {{from:in}}, by odbić {{port:acc}} — {{soldiers}} żołnierzy, desant za {{days}} dni.",
+  "news.campaign_fitting": "{{faction}} zbroi wyprawę {{from:in}} na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, desant za {{days}} dni.",
+  "news.campaign_fitting_joint": "{{faction}} i {{ally}} zbroją wyprawę {{from:in}} na {{port:acc}} ({{holder}}) — {{soldiers}} żołnierzy, desant za {{days}} dni.",
   "news.landing_today": "Eskadra {{faction:gen}} stoi pod {{port:ins}} — {{soldiers}} żołnierzy, desant dziś.",
   "news.landing_tomorrow": "Eskadra {{faction:gen}} jest dzień drogi od {{port:gen}} — {{soldiers}} żołnierzy.",
   "campaign.toast_sailing": "Wyprawa ({{faction}}) wypłynęła na {{port:acc}}. {{days}} dni.",

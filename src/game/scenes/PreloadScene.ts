@@ -17,7 +17,7 @@ import {
 const PLATE_DEBUG_DAYS = 17;
 import { ERAS } from "../../core/data/eras.ts";
 import { factionId, portId as makePortId } from "../../core/model/ids.ts";
-import { expeditionPos, nearestWater } from "../../core/systems/ExpeditionFleetSystem.ts";
+import { expeditionPos, nearestWater, passageDaysOf } from "../../core/systems/ExpeditionFleetSystem.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
 import { routesTo } from "../../core/systems/TradeRouteSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
@@ -893,6 +893,12 @@ export class PreloadScene extends Phaser.Scene {
         soldiers,
         guns: Math.round(soldiers / 4),
         days: 20,
+        // The whole twenty days are passage here, which a real ocean crossing
+        // can be (the band absorbs the fitting out into the clamp) and which
+        // this harness needs: `stillFittingOut` keeps a squadron off the chart
+        // until she sails (v0.73.0), and the point of `?intercept=` is to be
+        // standing on her with ten days left to sink her in.
+        passage: 20,
       },
     };
 
@@ -1083,13 +1089,18 @@ export class PreloadScene extends Phaser.Scene {
     const staged = { ...launched.world, rng: launched.rng };
 
     // Half a passage out, off the same function the running game draws with.
+    // The whole event is slid back in time rather than having its `startDay`
+    // pulled: since v0.73.0 the squadron casts off `passage` days before the
+    // landing, not on the day she was ordered, so moving the start moves the
+    // fitting out and leaves her still in harbour.
     const halfway = {
       ...staged,
-      worldEvents: staged.worldEvents.map(ev =>
-        ev.id === launched.event.id
-          ? { ...ev, startDay: day - Math.round((ev.endDay - day) / 2) }
-          : ev,
-      ),
+      worldEvents: staged.worldEvents.map(ev => {
+        if (ev.id !== launched.event.id) return ev;
+        const passage = passageDaysOf(ev);
+        const shift = day + Math.round(passage / 2) - ev.endDay;
+        return { ...ev, startDay: ev.startDay + shift, endDay: ev.endDay + shift };
+      }),
     };
     const event = halfway.worldEvents.find(ev => ev.id === launched.event.id)!;
     const pos = expeditionPos(halfway, event) ?? { x: def.pos.x + 200, y: def.pos.y + 200 };
@@ -1399,6 +1410,11 @@ export class PreloadScene extends Phaser.Scene {
             ...(type === "treasure_fleet"
               ? { muster: MUSTER_PORTS.includes(portKey) ? portKey : MUSTER_PORTS[0] }
               : {}),
+            // How much of those eighteen days is sailing (v0.73.0). Without it
+            // the staged expedition takes the path an old save takes - the
+            // whole span walked as one passage - and the fitting-out phase the
+            // release is about cannot be reached from the URL at all.
+            ...(type === "reconquest" || type === "campaign" ? { passage: 4 } : {}),
           },
         },
       ],

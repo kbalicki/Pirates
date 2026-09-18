@@ -59,7 +59,7 @@ import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { getReputationLevel } from "./ReputationSystem.ts";
-import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
+import { expeditionDeparture, PASSAGE_VAR } from "./ExpeditionFleetSystem.ts";
 import { patronBehind } from "./PrivateerSystem.ts";
 import {
   portFaction,
@@ -376,6 +376,14 @@ export type Expedition = {
   sailDays: number;
   /** The harbour she was fitted out in, settled once and stamped (v0.43.0). */
   origin?: string;
+  /**
+   * How much of `sailDays` is the passage itself (v0.73.0).
+   *
+   * The rest is the fitting out. Until this was written down the two were one
+   * number, and `expeditionProgress` spread the whole of it across the course:
+   * a relief squadron with a two-day passage was drawn crawling for nine days.
+   */
+  passageDays?: number;
 };
 
 /**
@@ -423,6 +431,7 @@ export function expeditionFor(
       guns: Math.max(4, Math.round(soldiers / 4)),
       sailDays,
       origin: departure?.origin,
+      passageDays: departure?.passageDays,
     },
     rng: sailRoll.state,
   };
@@ -458,6 +467,10 @@ export function launchExpedition(
   // whose course jumps because her home port changed hands mid-voyage is a
   // squadron the chart is lying about (v0.43.0).
   if (expedition.origin) vars.origin = expedition.origin;
+  // And how much of those days is sailing rather than loading (v0.73.0), for
+  // the same reason: it is settled here and cannot be worked out again from
+  // the event afterwards, because the band has already clamped the sum.
+  if (expedition.passageDays) vars[PASSAGE_VAR] = expedition.passageDays;
 
   const event: WorldEventState = {
     id: `reconquest_${portKey}_${world.time.day}`,

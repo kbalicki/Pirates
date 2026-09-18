@@ -294,7 +294,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?defend=cartagena` | Rozgrywalna bitwa obronna od razu, bez czekania na eskadrę |
 | `&ally=1` | Bronisz cudzej kolonii (list kaperski dodany), a nie własnego miasta |
 | `&garrison=N` `&soldiers=N` | Ludzie na murach (domyślnie 60) i wielkość wyprawy (domyślnie 140) — razem z `?defend=` |
-| `?intercept=cartagena` | Wyprawa w połowie przeprawy, gracz stoi dokładnie na niej — do przechwycenia na morzu |
+| `?intercept=cartagena` | Wyprawa w połowie przeprawy, gracz stoi dokładnie na niej — do przechwycenia na morzu. Od v0.73.0 zdarzenie stempluje `passage` równe całej rozpiętości: eskadra, która się uzbraja, **nie jest na czarcie**, a ten harness ma ją pokazać z dziesięcioma dniami zapasu |
 | `&soldiers=N` | Wielkość wyprawy (domyślnie 200) — razem z `?intercept=` |
 | `?commission=port_royal` | Gubernator z kolonią pod desantem i listem kaperskim w kieszeni gracza |
 | `?home=port_royal` | Kapitan żonaty z córką tamtejszego gubernatora, poobijana flota i pełna ładownia |
@@ -308,6 +308,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?ship=galleon` | Start w tym kadłubie (v0.48.0). Jedyny sposób, żeby poczuć sondowania: startowy slup zanurza 1,5 m i przechodzi wszędzie |
 | `?event=<typ>&port=<port>&ashore=1` | Staje **w mieście** zamiast na wodzie przed nim (v0.72.0). Nagłówek czyta się przy tablicy w tawernie i na karcie miasta, a nie z pokładu |
 | `?event=...&days=<n>&aged=<n>` | Zdarzenie trwa `days` dni i zaczęło się `aged` dni temu (v0.72.0). Każdy świat debugowy w `PreloadScene` otwiera się **pierwszego poranka** swojego zdarzenia, czyli w jedynym dniu, o którym v0.72.0 nie jest. `?event=campaign&port=port_royal&ashore=1&days=18&aged=17` daje tablicę mówiącą „Eskadra Anglii jest dzień drogi od Port Royale”, przy `vars.days` wciąż stojącym na 18. Dla huraganu `&aged=` dokłada też **drogę** (trzy miasta), bo bez niej oko nie ma się po czym przesuwać |
+| `?event=reconquest\|campaign&aged=` | Od v0.73.0 te dwa światy stemplują też `vars.passage` (4 dni), więc tablica ma **pięć** faz, nie trzy: `aged=0` → „Hiszpania zbroi wyprawę w Gibraltarze, by odbić Hawanę — desant za 18 dni”, `aged=14` → „idzie odbić Hawanę — 4 dni drogi”, `aged=17` → „dzień drogi”, `aged=18` → „desant dziś”. Bez stempla świat chodzi ścieżką starego zapisu i faza uzbrajania jest nieosiągalna z URL-a |
 | `?owed=200` | Podział łupu spóźniony o tyle dni (v0.71.0). Sześćdziesiąt dni żeglugi dzieli każdy świeży start od tego ekranu, więc bez tego nie da się go zobaczyć na żądanie. Łącz z `?famine=<port>`, który stawia kapitana w porcie: `?famine=havana&owed=200` daje sufit morale na 0,2 i tawernę, która **odmawia kolejki** i mówi dlaczego |
 | `?crew=16` | Tylu ludzi na flagowcu (v0.49.0). Każdy kadłub w grze jest obsadzony na 2-3× swojego minimum, więc braku rąk nie da się dosięgnąć ze zwykłego startu. `?skip&ship=galleon&crew=16` to przypadek podręcznikowy |
 | `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |

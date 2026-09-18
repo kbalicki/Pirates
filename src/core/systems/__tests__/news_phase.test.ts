@@ -121,6 +121,77 @@ describe("the days-out number counts down", () => {
   });
 });
 
+// ── The fitting out (v0.73.0) ──────────────────────────────
+
+/** The same campaign, with the passage told apart from the fitting out. */
+function fittingCampaign(passage: number, over: Record<string, string | number> = {}): WorldEventState {
+  const ev = campaign(100, 18);
+  return { ...ev, vars: { ...ev.vars, passage, ...over } };
+}
+
+describe("a squadron still alongside says so", () => {
+  it("names the harbour she is fitting out in", () => {
+    const live = liveNews(worldAt(101), fittingCampaign(4));
+    expect(live.headline).toBe("news.campaign_fitting");
+    // A key, not a resolved name: the sentence has to be able to decline it
+    // in Polish and to survive the player changing language (v0.63.0).
+    expect(String(live.vars.from)).toMatch(/^port\..+\.name$/);
+  });
+
+  it("stops saying it on the day she casts off", () => {
+    // Eighteen days ordered, four of them at sea: she sails on day 114.
+    expect(liveNews(worldAt(113), fittingCampaign(4)).headline).toBe("news.campaign_fitting");
+    expect(liveNews(worldAt(114), fittingCampaign(4)).headline).toBe("news.campaign");
+  });
+
+  it("counts the days to the beach while she loads, not the days to sailing", () => {
+    // What the town cares about is when the men arrive, and that is what the
+    // garrison screen has counted since v0.17.0.
+    expect(liveNews(worldAt(101), fittingCampaign(4)).vars.days).toBe(17);
+  });
+
+  it("puts both crowns in the sentence when the landing is joint", () => {
+    const live = liveNews(worldAt(101), fittingCampaign(4, { ally: "faction.france.name" }));
+    expect(live.headline).toBe("news.campaign_fitting_joint");
+  });
+
+  it("has its own line for a relief squadron", () => {
+    const ev = fittingCampaign(4);
+    const relief = { ...ev, type: "reconquest" as const, headline: "news.reconquest" };
+    expect(liveNews(worldAt(101), relief).headline).toBe("news.reconquest_fitting");
+  });
+
+  it("keeps the relief line even if something else left an ally in the bag", () => {
+    // Only `launchCampaign` writes `ally`, but `?event=reconquest` fills the
+    // whole vars bag so that no headline prints a raw `{{key}}` - and reading
+    // the ally before the event type made a relief squadron announce itself as
+    // a joint invasion. Found on the tavern board, not in a test.
+    const ev = fittingCampaign(4, { ally: "faction.france.name" });
+    const relief = { ...ev, type: "reconquest" as const, headline: "news.reconquest" };
+    expect(liveNews(worldAt(101), relief).headline).toBe("news.reconquest_fitting");
+  });
+
+  it("can never print a bare 1 next to a plural noun", () => {
+    // `passageDaysOf` never answers less than one, so the last day she is
+    // alongside is always at least two days from the landing. That is what
+    // keeps the fitting-out line out of the numeral-agreement problem the
+    // last two days of the passage needed sentences of their own to dodge.
+    for (let passage = 1; passage <= 18; passage++) {
+      for (let day = 100; day <= 118; day++) {
+        const live = liveNews(worldAt(day), fittingCampaign(passage));
+        if (!live.headline.endsWith("_fitting")) continue;
+        expect(Number(live.vars.days), `passage ${passage} day ${day}`).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it("leaves an old save walking the whole span, as it always did", () => {
+    // No `passage` in `vars`, so no fitting out: the sentence is the stamped
+    // one from the first morning, exactly as before v0.73.0.
+    expect(liveNews(worldAt(101), campaign(100, 18)).headline).toBe("news.campaign");
+  });
+});
+
 // ── The plate fleet ────────────────────────────────────────
 
 function plate(startDay: number, span: number, muster = MUSTER_PORTS[0]): WorldEventState {
@@ -265,12 +336,15 @@ describe("what the tavern board actually prints", () => {
 
 // ── The sentences ──────────────────────────────────────────
 
-describe("the four new lines say something in both languages", () => {
+describe("the seven new lines say something in both languages", () => {
   const KEYS = [
     "news.landing_today",
     "news.landing_tomorrow",
     "news.treasure_fleet_sailed",
     "news.hurricane_bound",
+    "news.reconquest_fitting",
+    "news.campaign_fitting",
+    "news.campaign_fitting_joint",
   ];
 
   it("exists in English and in Polish", () => {
@@ -298,6 +372,31 @@ describe("the four new lines say something in both languages", () => {
     expect(EN["news.hurricane_bound"]).toContain("{{bound}}");
     expect(PL["news.hurricane_bound"]).toContain("{{bound");
   });
+
+  it("declines the harbour the squadron is fitting out in", () => {
+    setLang("pl");
+    try {
+      const line = t("news.campaign_fitting", {
+        faction: "faction.spain.name", holder: "faction.england.name",
+        port: portNameKey("port_royal"), from: portNameKey("havana"),
+        soldiers: 600, days: 17,
+      });
+      // `w Hawanie`, and the preposition comes out of `plForms`, not out of
+      // the Polish sentence — an island would want `na` (v0.69.0).
+      expect(line).toContain("w Hawanie");
+      expect(line).not.toContain("w w ");
+      expect(line).not.toContain("Hawana");
+    } finally {
+      setLang("en");
+    }
+  });
+
+  it("names the harbour in every fitting-out line, or the line is pointless", () => {
+    for (const k of ["news.reconquest_fitting", "news.campaign_fitting", "news.campaign_fitting_joint"]) {
+      expect(EN[k], k).toContain("{{from}}");
+      expect(PL[k], k).toContain("{{from:in}}");
+    }
+  });
 });
 
 // ── The guard ──────────────────────────────────────────────
@@ -308,11 +407,16 @@ describe("nothing may render a stamped headline again", () => {
   }) as Record<string, string>;
 
   /**
-   * Everything in `src`, less the tests and the two modules that are allowed
+   * Everything in `src`, less the tests and the three modules that are allowed
    * to answer with the stamped sentence because they are the ones deciding
-   * that today is the phase it describes.
+   * that today is the phase it describes. `ExpeditionFleetSystem` joined them
+   * in v0.73.0, when `expeditionNews` moved into it so that the file handing
+   * every hull a copy of her orders reads the phase from the function that
+   * decides it rather than importing a module that imports it back.
    */
-  const OWNERS = ["NewsPhaseSystem.ts", "TreasureFleetSystem.ts"];
+  const OWNERS = [
+    "NewsPhaseSystem.ts", "TreasureFleetSystem.ts", "ExpeditionFleetSystem.ts",
+  ];
   const FILES = Object.entries(SOURCES).filter(([path]) =>
     !path.includes("__tests__") && !path.includes(".test.")
     && !OWNERS.some(o => path.endsWith(o)));

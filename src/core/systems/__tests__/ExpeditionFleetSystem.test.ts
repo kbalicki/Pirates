@@ -3,6 +3,9 @@ import {
   originPortFor,
   expeditionProgress,
   expeditionPos,
+  passageDaysOf,
+  sailingDay,
+  stillFittingOut,
   withinReach,
   planHulls,
   hullsOf,
@@ -293,11 +296,14 @@ describe("originPortFor — which harbour the squadron sailed from", () => {
 });
 
 describe("expeditionProgress / expeditionPos — walking the passage by the day", () => {
-  it("is at the harbour it sailed from on the day it sailed", () => {
+  // `makeWorld` stands at noon, and since v0.73.0 the passage is walked on the
+  // fractional day, so half a day of a ten-day passage is 0.05 of it. That is
+  // the whole reason the fraction is there: a squadron making SQUADRON_SPEED
+  // covers 120 units in a day, and a convoy that jumps 120 units at midnight
+  // while the player is lying across her course is a convoy he cannot meet.
+  it("is barely out of the harbour it sailed from on the day it sailed", () => {
     const w = makeWorld({ day: 100 });
-    expect(expeditionProgress(w, reconquestEvent())).toBe(0);
-    const origin = originPortFor(w, reconquestEvent())!;
-    expect(expeditionPos(w, reconquestEvent())).toEqual(CITIES[origin].pos);
+    expect(expeditionProgress(w, reconquestEvent())).toBeCloseTo(0.05, 6);
   });
 
   it("is off the target on the day it arrives", () => {
@@ -308,7 +314,7 @@ describe("expeditionProgress / expeditionPos — walking the passage by the day"
 
   it("is halfway across on the middle day", () => {
     const w = makeWorld({ day: 105 });
-    expect(expeditionProgress(w, reconquestEvent())).toBeCloseTo(0.5, 6);
+    expect(expeditionProgress(w, reconquestEvent())).toBeCloseTo(0.55, 6);
   });
 
   it("never runs past either end of the passage", () => {
@@ -319,6 +325,47 @@ describe("expeditionProgress / expeditionPos — walking the passage by the day"
   it("treats a zero-day passage as already arrived", () => {
     const w = makeWorld({ day: 100 });
     expect(expeditionProgress(w, reconquestEvent({ endDay: 100 }))).toBe(1);
+  });
+
+  // ── The fitting out (v0.73.0) ────────────────────────────
+
+  it("walks a save that never stamped a passage exactly as it always did", () => {
+    // The whole span as one voyage — the shape every expedition had before the
+    // two halves of `sailDays` were told apart.
+    const ev = reconquestEvent();
+    expect(passageDaysOf(ev)).toBe(ev.endDay - ev.startDay);
+    expect(sailingDay(ev)).toBe(ev.startDay);
+    expect(stillFittingOut(makeWorld({ day: 100 }), ev)).toBe(false);
+  });
+
+  it("counts the sailing day back from the landing, not forward from the order", () => {
+    // Ten days ordered, two of them at sea: she lies alongside until day 108.
+    const ev = reconquestEvent({ vars: { ...reconquestEvent().vars, passage: 2 } });
+    expect(passageDaysOf(ev)).toBe(2);
+    expect(sailingDay(ev)).toBe(108);
+    expect(stillFittingOut(makeWorld({ day: 103 }), ev)).toBe(true);
+    expect(stillFittingOut(makeWorld({ day: 109 }), ev)).toBe(false);
+  });
+
+  it("puts nothing on the chart while she is fitting out", () => {
+    const ev = reconquestEvent({ vars: { ...reconquestEvent().vars, passage: 2 } });
+    expect(expeditionPos(makeWorld({ day: 103 }), ev)).toBeUndefined();
+    expect(expeditionPos(makeWorld({ day: 109 }), ev)).toBeDefined();
+  });
+
+  it("crosses in the days she is at sea, not in the days she was ordered", () => {
+    // Half past the sailing day of a two-day passage is a quarter of the way,
+    // where the old arithmetic had her 0.85 of the way along after nine days.
+    const ev = reconquestEvent({ vars: { ...reconquestEvent().vars, passage: 2 } });
+    expect(expeditionProgress(makeWorld({ day: 108 }), ev)).toBeCloseTo(0.25, 6);
+    expect(expeditionProgress(makeWorld({ day: 110 }), ev)).toBe(1);
+  });
+
+  it("never claims a passage longer than the event or shorter than a day", () => {
+    const base = reconquestEvent().vars;
+    expect(passageDaysOf(reconquestEvent({ vars: { ...base, passage: 99 } }))).toBe(10);
+    expect(passageDaysOf(reconquestEvent({ vars: { ...base, passage: 0 } }))).toBe(10);
+    expect(passageDaysOf(reconquestEvent({ vars: { ...base, passage: -4 } }))).toBe(10);
   });
 });
 
@@ -587,6 +634,39 @@ describe("tickExpeditionFleets", () => {
     const w = nearWorld({ tick: EXPEDITION_INTERVAL_TICKS + 0.2 });
     expect(hullsOf(tickExpeditionFleets(w, DT).world, "reconquest_cartagena_100").length)
       .toBeGreaterThan(0);
+  });
+
+  it("leaves a squadron still fitting out off the chart entirely (v0.73.0)", () => {
+    // The player is lying exactly where the old arithmetic had her, and she is
+    // not there: she is alongside in her own harbour with three days of
+    // loading left. Hulls put on the water here would not sit at their
+    // moorings either - `materialize` hands each one the target port as its
+    // orders, so they would weigh and steer for the town days early.
+    const base = nearWorld();
+    const w = {
+      ...base,
+      worldEvents: base.worldEvents.map(ev => ({
+        ...ev, vars: { ...ev.vars, passage: 2 },
+      })),
+    };
+    const out = tickExpeditionFleets(w, DT).world;
+    expect(hullsOf(out, "reconquest_cartagena_100")).toHaveLength(0);
+  });
+
+  it("takes a squadron off the chart again if she is somehow back alongside", () => {
+    // Afloat first, then the event says she has not sailed. Without the guard
+    // the tick simply skipped her and left four hulls adrift under a crown's
+    // colours with nothing steering them.
+    let w = tickExpeditionFleets(nearWorld(), DT).world;
+    expect(hullsOf(w, "reconquest_cartagena_100").length).toBeGreaterThan(0);
+    w = {
+      ...w,
+      time: { ...w.time, tick: EXPEDITION_INTERVAL_TICKS },
+      worldEvents: w.worldEvents.map(ev => ({
+        ...ev, vars: { ...ev.vars, passage: 2 },
+      })),
+    };
+    expect(hullsOf(tickExpeditionFleets(w, DT).world, "reconquest_cartagena_100")).toHaveLength(0);
   });
 
   it("puts the squadron on the chart when the player comes up on it", () => {

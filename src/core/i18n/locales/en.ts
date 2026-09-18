@@ -1024,6 +1024,9 @@ export const EN: LocaleData = {
   // A joint landing (v0.55.0): the ally is named, because one of the hulls in
   // that line will be flying his colours and the captain should know whose.
   "news.campaign_joint": "{{faction}} and {{ally}} are coming together for {{holder}}'s {{port}} — {{soldiers}} soldiers, {{days}} days out.",
+  "news.reconquest_fitting": "{{faction}} is fitting out at {{from}} to retake {{port}} — {{soldiers}} soldiers, and they land in {{days}} days.",
+  "news.campaign_fitting": "{{faction}} is fitting out at {{from}} for {{holder}}'s {{port}} — {{soldiers}} soldiers, and they land in {{days}} days.",
+  "news.campaign_fitting_joint": "{{faction}} and {{ally}} are fitting out at {{from}} for {{holder}}'s {{port}} — {{soldiers}} soldiers, and they land in {{days}} days.",
   "news.landing_today": "{{faction}}'s squadron is standing off {{port}} — {{soldiers}} soldiers, and the landing is today.",
   "news.landing_tomorrow": "{{faction}}'s squadron is one day out of {{port}} — {{soldiers}} soldiers.",
 

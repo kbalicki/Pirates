@@ -39,6 +39,7 @@ import {
   ROYAL_QUALITY,
   type Expedition,
 } from "../ReconquestSystem.ts";
+import { sailingDay } from "../ExpeditionFleetSystem.ts";
 import { garrisonFor, capturePort, attackForceFor, SHIP_KEEPERS, SIZE_SOLDIERS } from "../SiegeSystem.ts";
 import type { WorldState, PortRuntimeState, WorldEventState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
@@ -511,6 +512,20 @@ describe("launchExpedition", () => {
     const world = makeWorld();
     const { world: next } = launchExpedition(world, FORT, world.rng);
     expect(next.eventLog.at(-1)?.key).toBe("news.reconquest");
+  });
+
+  it("writes down how much of the voyage is sailing (v0.73.0)", () => {
+    // `sailDays` is the fitting out plus the passage plus a roll, and then the
+    // band clamps the sum — so afterwards there is no way to tell the two
+    // apart again. Measured before this was stamped: a relief squadron's
+    // passage is a median of 2 days out of a 9-day event, and the whole 9 were
+    // drawn as sailing, at 22 units a day against a documented 120.
+    const world = makeWorld();
+    const { event } = launchExpedition(world, FORT, world.rng);
+    const passage = Number(event.vars.passage);
+    expect(passage).toBeGreaterThan(0);
+    expect(passage).toBeLessThanOrEqual(event.endDay - event.startDay);
+    expect(sailingDay(event)).toBeGreaterThanOrEqual(event.startDay);
   });
 });
 

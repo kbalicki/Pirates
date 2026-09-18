@@ -64,7 +64,7 @@ import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { portFaction, SIZE_SOLDIERS } from "./SiegeSystem.ts";
 import { crownStrength, activeExpeditionFor, SIZE_PRIORITY } from "./ReconquestSystem.ts";
-import { expeditionDeparture } from "./ExpeditionFleetSystem.ts";
+import { expeditionDeparture, PASSAGE_VAR } from "./ExpeditionFleetSystem.ts";
 import { CROWNS, coBelligerentAgainst } from "./DiplomacySystem.ts";
 
 import { factionNameKey, portNameKey } from "../i18n/names.ts";
@@ -307,6 +307,10 @@ export function launchCampaign(
     days: sailDays,
   };
   if (departure?.origin) vars.origin = departure.origin;
+  // How many of those days are the passage and not the fitting out (v0.73.0).
+  // The band above has already clamped the sum, so this cannot be recovered
+  // from the event later — it has to be written down here or not at all.
+  if (departure?.passageDays) vars[PASSAGE_VAR] = departure.passageDays;
   if (ally) {
     vars.ally = factionNameKey(ally);
     // Read by `materialize` to put one escort under the other ensign, and by

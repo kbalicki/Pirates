@@ -55,6 +55,7 @@
 import type { WorldState, WorldEventState } from "../model/WorldState.ts";
 import { plateNews } from "./TreasureFleetSystem.ts";
 import { liveHurricanes } from "./WeatherFieldSystem.ts";
+import { expeditionNews } from "./ExpeditionFleetSystem.ts";
 
 export type LiveNews = {
   headline: string;
@@ -81,26 +82,6 @@ function stormNews(world: WorldState, ev: WorldEventState): LiveNews {
     headline: "news.hurricane_bound",
     vars: { ...ev.vars, port: report.port, bound: report.bound },
   };
-}
-
-/**
- * The countdown, counted.
- *
- * The last two days get sentences of their own, and not for flavour. `endDay`
- * is the day the landing is fought and the event is still on the board that
- * morning, so zero is a real value rather than an edge case, and "0 days out"
- * is not a sentence. One is worse: a frozen number was always ten or twenty
- * and a counted one reaches one every time, so "1 days out" — and in Polish
- * "1 dni drogi", where the noun changes and the rest of the count does not.
- * Naming the two days the way a person would says it correctly in both
- * languages and needs no numeral agreement to do it. (The general problem —
- * "10 ton" but "2 tony" — is still open; see TODO.)
- */
-function expeditionNews(world: WorldState, ev: WorldEventState): LiveNews {
-  const days = Math.max(0, ev.endDay - world.time.day);
-  if (days <= 0) return { headline: "news.landing_today", vars: { ...ev.vars, days: 0 } };
-  if (days === 1) return { headline: "news.landing_tomorrow", vars: { ...ev.vars, days: 1 } };
-  return { headline: ev.headline, vars: { ...ev.vars, days } };
 }
 
 /** The headline and vars this event should be rendered with today. */

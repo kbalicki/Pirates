@@ -65,7 +65,7 @@ import { pointInLandmass, normalizeHeading } from "../services/Geometry.ts";
 import { rngNextFloat } from "../services/RNG.ts";
 import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
-import { tickBoundaryCrossed } from "./TimeSystem.ts";
+import { tickBoundaryCrossed, dayFraction } from "./TimeSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import {
   expeditionsInFlight,
@@ -73,7 +73,6 @@ import {
   RELIEF_COOLDOWN_DAYS,
 } from "./ReconquestSystem.ts";
 import { CAMPAIGN_COOLDOWN_DAYS } from "./CrownCampaignSystem.ts";
-import { liveNews } from "./NewsPhaseSystem.ts";
 
 import { factionNameKey, portNameKey } from "../i18n/names.ts";
 // ── Constants ─────────────────────────────────────────────
@@ -284,11 +283,110 @@ export function originPortFor(world: WorldState, event: WorldEventState): string
   return held ?? founded;
 }
 
-/** How far along its passage the expedition is, 0 at sailing and 1 on arrival. */
-export function expeditionProgress(world: WorldState, event: WorldEventState): number {
+/**
+ * Days of the event she really spends at sea, stamped when she was ordered.
+ *
+ * `expeditionDeparture` has costed the passage properly, with the current,
+ * since v0.43.0 — and then `sailDays` added the fitting out to it and the band
+ * clamped the sum. Only the sum was ever written down, so the two halves could
+ * not be told apart again, and the whole of it was drawn as sailing.
+ *
+ * A save written before v0.73.0 has nothing here, and gets what it always had:
+ * the whole span walked as one passage. Expeditions live six to twenty days,
+ * so the old shape clears itself out of a running game inside three weeks.
+ */
+export const PASSAGE_VAR = "passage";
+
+/** How long she is at sea: the stamped passage, or the whole span in an old save. */
+export function passageDaysOf(event: WorldEventState): number {
   const span = event.endDay - event.startDay;
-  if (span <= 0) return 1;
-  return clampTo(0, 1, (world.time.day - event.startDay) / span);
+  const stamped = Number(event.vars?.[PASSAGE_VAR]);
+  if (!Number.isFinite(stamped) || stamped <= 0) return span;
+  return Math.max(1, Math.min(span, stamped));
+}
+
+/**
+ * The day she casts off — counted back from the landing, not forward from the
+ * order.
+ *
+ * This is where the clamp and the roll land, and that is the point.
+ * `RELIEF_FIT_DAYS` is documented as "most of what the old dice roll was
+ * measuring": a squadron for the next island was never a fortnight at sea, it
+ * was a fortnight finding men, powder and a captain and then two days' sail.
+ * The passage is a fact about the map, so everything else the arithmetic does
+ * to `sailDays` has to be absorbed by the time alongside.
+ */
+export function sailingDay(event: WorldEventState): number {
+  return event.endDay - passageDaysOf(event);
+}
+
+/** True while she is still fitting out and has not put to sea. */
+export function stillFittingOut(world: WorldState, event: WorldEventState): boolean {
+  return dayFraction(world.time) < sailingDay(event);
+}
+
+/**
+ * How far along its passage the expedition is, 0 at sailing and 1 on arrival.
+ *
+ * On the fractional day, for the reason `plateProgress` needs one: she makes
+ * `SQUADRON_SPEED` now rather than a fifth of it, so a whole day's run is 120
+ * units, and a convoy that jumps that far at midnight while the player is
+ * standing across her course is a convoy he cannot meet.
+ */
+export function expeditionProgress(world: WorldState, event: WorldEventState): number {
+  const passage = passageDaysOf(event);
+  if (passage <= 0) return 1;
+  return clampTo(0, 1, (dayFraction(world.time) - sailingDay(event)) / passage);
+}
+
+/**
+ * What the noticeboards say about her today (v0.72.0), now that the fitting
+ * out is a phase the world can see (v0.73.0).
+ *
+ * Four sentences, not one. v0.72.0 dropped the words "is fitting out" from
+ * these headlines because nothing in the world was fitting out: the squadron
+ * left harbour on the first morning and crawled. She really does lie alongside
+ * now, so the sentence can be given back — and this time it is true, and it
+ * names the harbour she is lying in, which is the one thing a captain who
+ * means to meet her at sea actually needs.
+ *
+ * The last two days keep their own sentences, and the order of the branches is
+ * what keeps them safe: `passageDaysOf` never returns less than one, so a
+ * squadron still alongside is always at least two days from the beach, and the
+ * fitting-out line can never print "1 days out".
+ *
+ * It lives here rather than in `NewsPhaseSystem` for the reason `plateNews`
+ * lives in `TreasureFleetSystem`: `materialize` below hands every hull a copy
+ * of her own orders, and the phase has to be read from the one function that
+ * decides it — not from a module that would then have to import this one back.
+ */
+export function expeditionNews(
+  world: WorldState,
+  ev: WorldEventState,
+): { headline: string; vars: Record<string, string | number> } {
+  const days = Math.max(0, ev.endDay - world.time.day);
+  if (days <= 0) return { headline: "news.landing_today", vars: { ...ev.vars, days: 0 } };
+  if (days === 1) return { headline: "news.landing_tomorrow", vars: { ...ev.vars, days: 1 } };
+  if (stillFittingOut(world, ev)) {
+    const from = originPortFor(world, ev);
+    // `vars.origin` is a raw port key, because `originPortFor` reads it back as
+    // one. The sentence needs a name, so it gets a second variable carrying the
+    // key shape `t()` expands and `plForms` declines (v0.63.0, v0.69.0).
+    const vars = { ...ev.vars, days, ...(from ? { from: portNameKey(from) } : {}) };
+    if (!from) return { headline: ev.headline, vars };
+    return {
+      // Type first, ally second. Only a campaign is ever fought jointly
+      // (`launchCampaign` is the one launcher that writes `ally`), so reading
+      // the ally before the type makes a relief squadron print the invasion's
+      // sentence the moment anything else puts that key in the bag - which is
+      // what `?event=reconquest` does, and what the screen caught.
+      headline: ev.type !== "campaign" ? "news.reconquest_fitting"
+        : ev.vars.ally ? "news.campaign_fitting_joint"
+        : "news.campaign_fitting",
+      vars,
+    };
+  }
+  return { headline: ev.headline, vars: { ...ev.vars, days } };
 }
 
 /**
@@ -325,6 +423,12 @@ export function expeditionCourse(world: WorldState, event: WorldEventState): Vec
  * along the long one.
  */
 export function expeditionPos(world: WorldState, event: WorldEventState): Vec2 | undefined {
+  // Nothing on the chart until she sails, exactly as `platePos` answers nothing
+  // while the plate fleet is still loading. Not a cosmetic choice: a hull put
+  // on the water here is handed to `NpcAiSystem` with the target port as its
+  // orders, so a squadron materialised while she is still fitting out does not
+  // sit at her moorings — she weighs and steers for the town, days early.
+  if (stillFittingOut(world, event)) return undefined;
   const course = expeditionCourse(world, event);
   if (!course || course.length === 0) return undefined;
   return pointAlong(course, expeditionProgress(world, event));
@@ -513,7 +617,7 @@ export function materialize(
           // finds out he has run into the invasion rather than a convoy.
           news: [{
             eventId: event.id,
-            ...liveNews(world, event),
+            ...expeditionNews(world, event),
             dayHeard: world.time.day,
             sourcePort: event.ports[0],
           }],
@@ -680,7 +784,13 @@ export function tickExpeditionFleets(world: WorldState, dtTicks: number): Expedi
     }
 
     const ideal = expeditionPos(w, current);
-    if (!ideal) continue;
+    if (!ideal) {
+      // She is fitting out, or the route cannot be worked out at all. Either
+      // way there is no station to keep, so anything already afloat under her
+      // name comes off the chart rather than being left adrift.
+      if (afloat) w = markAfloat(dematerialize(w, current.id), current.id, false);
+      continue;
+    }
     // Reach is measured against the route, station-keeping against the water:
     // a squadron whose plotted position is a mile inland is still in the
     // offing, it is just anchored a little differently than the ruler says.
