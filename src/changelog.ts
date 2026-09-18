@@ -6,6 +6,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.73.0.1",
+    date: "2026-09-18",
+    changes: [
+      "THE DOC TEST WAS ONE CHECKOUT AWAY FROM A FALSE RED",
+      "  `mechanics_doc.test.ts` reads `14-MECHANICS.md` off the working tree",
+      "  and finds where a table ends by splitting on a blank line. With",
+      "  `core.autocrlf` - which is how this repository is checked out on",
+      "  Windows - that split never matches, the rest of the file comes back as",
+      "  one enormous table, and EIGHT STRUCTURAL TESTS FAIL AT ONCE on a",
+      "  document nobody has touched. `git diff` shows nothing, because git",
+      "  normalises. The document is read as LF now",
+    ],
+  },
+  {
     version: "0.73.0.0",
     date: "2026-09-18",
     changes: [

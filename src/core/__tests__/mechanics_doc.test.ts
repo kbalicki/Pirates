@@ -34,11 +34,18 @@ import { PL } from "../i18n/locales/pl.ts";
  * would be changing the code to fit the test.
  */
 
-const DOC = Object.values(
+/**
+ * Normalised to LF, because the document is read off the working tree and
+ * `core.autocrlf` checks it out with CRLF on Windows. Everything below splits
+ * on a blank line to find where a table ends, and with CRLF that split never
+ * matches: the whole rest of the file comes back as one table and every
+ * structural test fails at once, on a document nobody has touched (v0.73.0).
+ */
+const DOC = (Object.values(
   import.meta.glob("../../../documentation/14-MECHANICS.md", {
     query: "?raw", import: "default", eager: true,
   }) as Record<string, string>,
-)[0];
+)[0] ?? "").replace(/\r\n/g, "\n");
 
 const SOURCES = import.meta.glob("../**/*.ts", {
   query: "?raw", import: "default", eager: true,
