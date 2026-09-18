@@ -359,6 +359,17 @@ misja jezuicka „lecząca wszystkich" została odłożona: warta jest około
   ważone ludźmi przy oblężeniach.
 - **Ładownia jest własnością eskadry, nie flagowca** (v0.77.0).
 
+### Partie: tona, dziesięć, wszystko
+
+Lada kupca (v0.76.0) i magazyn (v0.78.0) mówią tym samym słownictwem: **samo
+naciśnięcie to tona, `Shift` dziesięć, `Ctrl` tyle, ile zniesie druga strona**.
+Magazyn przesuwał przedtem płaskie dziesięć ton — trzydzieści naciśnięć na
+opróżnienie trzystutonowej szopy rodzinnej i żadnego sposobu na jedną tonę.
+
+Modyfikator jest bezpieczny dopiero od v0.78.0: przedtem naciśnięcie
+z wciśniętym `Shift` docierało do handlera **trzy razy** (szczegóły i pomiar
+w dokumencie 10).
+
 ### Jedna ładownia na eskadrę
 
 `HoldSystem` jest jedynym miejscem, które wie, ile eskadra uniesie. Flagowiec

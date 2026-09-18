@@ -3,6 +3,7 @@ import { t } from "../../core/i18n/I18n.ts";
 import { UI_FONT, TEXT_RES, txt } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
 import { WindCompassWidget } from "../render/WindCompassWidget.ts";
+import { MAX_FLEET_SIZE } from "../../core/systems/FleetSystem.ts";
 
 const MARGIN = 8;
 const COMPASS_SIZE = 100; // px on screen
@@ -224,7 +225,7 @@ export class UIOverlayScene extends Phaser.Scene {
       } else {
         // Convert to knots display: speedBase×windMod×32 = max knots (frigate=12kn)
         const knots = (speed * 32).toFixed(1);
-        this.speedText.setText(`${knots} kn`);
+        this.speedText.setText(t("hud.knots", { knots }));
       }
     }
   }
@@ -259,7 +260,11 @@ export class UIOverlayScene extends Phaser.Scene {
     if (!this.driftText) return;
     if (setDeg === null || Math.abs(setDeg) < 3) { this.driftText.setText(""); return; }
     this.driftText.setText(
-      `${t("hud.set")} ${setDeg > 0 ? "+" : ""}${Math.round(setDeg)}\u00b0  ${(overGround * 32).toFixed(1)} kn`,
+      t("hud.set_drift", {
+        sign: setDeg > 0 ? "+" : "",
+        deg: Math.round(setDeg),
+        speed: t("hud.knots", { knots: (overGround * 32).toFixed(1) }),
+      }),
     );
   }
 
@@ -274,7 +279,7 @@ export class UIOverlayScene extends Phaser.Scene {
   updateFleet(fleetCount: number): void {
     if (this.fleetText) {
       if (fleetCount > 0) {
-        this.fleetText.setText(`Flota: ${fleetCount + 1}/3`);
+        this.fleetText.setText(t("hud.fleet", { count: fleetCount + 1, max: MAX_FLEET_SIZE }));
       } else {
         this.fleetText.setText("");
       }

@@ -45,6 +45,7 @@
  */
 
 import type { WorldState } from "../model/WorldState.ts";
+import { squadronHeld, stowInSquadron, drawFromSquadron } from "./HoldSystem.ts";
 import { CITIES, type CitySize } from "../data/cities.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { portAccess } from "./PortAccessSystem.ts";
@@ -220,29 +221,26 @@ export function storeAt(
   const lease = leaseAt(world, portKey);
   if (!lease) return { world, moved: 0 };
 
-  const shipId = world.player.shipId as string;
-  const entity = world.entities[shipId];
-  if (!entity?.ship) return { world, moved: 0 };
-
-  const aboard = entity.ship.cargo?.[itemId] ?? 0;
+  // The squadron, not the flagship (v0.78.0). v0.77.0 moved the family
+  // storehouse onto `HoldSystem` and left the rented one reading
+  // `entity.ship.cargo` directly, so a leased shed could not be filled out of
+  // a consort's hold — the same defect one branch over.
+  const aboard = squadronHeld(world, itemId);
   const moved = Math.max(0, Math.min(Math.floor(qty), aboard, storageFree(world, portKey)));
   if (moved <= 0) return { world, moved: 0 };
 
-  const cargo = { ...entity.ship.cargo };
-  cargo[itemId] = aboard - moved;
-  if (cargo[itemId] <= 0) delete cargo[itemId];
+  const unloaded = drawFromSquadron(world, itemId, moved).world;
 
   const goods = { ...lease.goods };
   goods[itemId] = (goods[itemId] ?? 0) + moved;
 
   return {
     world: {
-      ...world,
+      ...unloaded,
       player: {
-        ...world.player,
+        ...unloaded.player,
         storehouses: { ...leases(world), [portKey]: { ...lease, goods } },
       },
-      entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
     },
     moved,
   };
@@ -260,10 +258,6 @@ export function withdrawAt(
   const lease = leaseAt(world, portKey);
   if (!lease) return { world, moved: 0 };
 
-  const shipId = world.player.shipId as string;
-  const entity = world.entities[shipId];
-  if (!entity?.ship) return { world, moved: 0 };
-
   const stored = lease.goods[itemId] ?? 0;
   const moved = Math.max(0, Math.min(Math.floor(qty), stored, holdFree(world)));
   if (moved <= 0) return { world, moved: 0 };
@@ -272,17 +266,15 @@ export function withdrawAt(
   goods[itemId] = stored - moved;
   if (goods[itemId] <= 0) delete goods[itemId];
 
-  const cargo = { ...entity.ship.cargo };
-  cargo[itemId] = (cargo[itemId] ?? 0) + moved;
+  const loaded = stowInSquadron(world, { [itemId]: moved }).world;
 
   return {
     world: {
-      ...world,
+      ...loaded,
       player: {
-        ...world.player,
+        ...loaded.player,
         storehouses: { ...leases(world), [portKey]: { ...lease, goods } },
       },
-      entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
     },
     moved,
   };

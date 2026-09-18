@@ -148,7 +148,7 @@ export class WindCompassWidget {
       this.windLabel.setText(t("hud.wind_calm"));
     } else {
       const label = radToCompassLabel(dirRad);
-      this.windLabel.setText(`${knots} kn ${label}`);
+      this.windLabel.setText(`${t("hud.wind_knots", { knots })} ${label}`);
     }
   }
 

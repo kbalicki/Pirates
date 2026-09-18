@@ -117,6 +117,10 @@ export const EN: LocaleData = {
   "time.month_names": "January,February,March,April,May,June,July,August,September,October,November,December",
 
   // -- Port Scene --
+  "hud.knots": "{{knots}} kn",
+  "hud.fleet": "Fleet: {{count}}/{{max}}",
+  "battle.wind": "Wind {{pct}}%",
+  "hud.set_drift": "set {{sign}}{{deg}}°  {{speed}}",
   "hud.wind_calm": "Calm",
   "hud.wind_knots": "{{knots}} kn",
   "hud.zoom": "zoom: {{level}}×",
@@ -1071,7 +1075,7 @@ export const EN: LocaleData = {
   "warehouse.col_ashore": "Ashore",
   "warehouse.store": "Put ashore \u25b8",
   "warehouse.take": "\u25c2 Take aboard",
-  "warehouse.hint": "\u2191\u2193 \u2014 Select   Q \u2014 Put ashore   E \u2014 Take aboard   Esc \u2014 Back",
+  "warehouse.hint": "↑↓ — Select   Q — Put ashore   E — Take aboard   Shift — ten   Ctrl — all   Esc — Back",
   "warehouse.empty": "Nothing aboard, and nothing left here.",
   "shipyard.careen": "Careen the whole fleet ({{damage}}) \u2014 on your wife's father",
   "home.log_dowry": "Her father settles {{gold}} Gold on you. {{port}} is your home port now.",

@@ -116,6 +116,10 @@ export const PL: LocaleData = {
   "time.month_names": "Styczeń,Luty,Marzec,Kwiecień,Maj,Czerwiec,Lipiec,Sierpień,Wrzesień,Październik,Listopad,Grudzień",
 
   // -- Port Scene --
+  "hud.knots": "{{knots}} w.",
+  "hud.fleet": "Flota: {{count}}/{{max}}",
+  "battle.wind": "Wiatr {{pct}}%",
+  "hud.set_drift": "znos {{sign}}{{deg}}°  {{speed}}",
   "hud.wind_calm": "Cisza",
   "hud.wind_knots": "{{knots}} w.",
   "hud.zoom": "zoom: {{level}}×",
@@ -1068,7 +1072,7 @@ export const PL: LocaleData = {
   "warehouse.col_ashore": "Na brzegu",
   "warehouse.store": "Na brzeg \u25b8",
   "warehouse.take": "\u25c2 Na statek",
-  "warehouse.hint": "\u2191\u2193 \u2014 Wybór   Q \u2014 Na brzeg   E \u2014 Na statek   Esc \u2014 Powrót",
+  "warehouse.hint": "↑↓ — Wybór   Q — Na brzeg   E — Na statek   Shift — dziesięć   Ctrl — wszystko   Esc — Powrót",
   "warehouse.empty": "Nic na statku i nic tutaj.",
   "shipyard.careen": "Wyklaruj flotę ({{damage}}) \u2014 na rachunek teścia",
   "home.log_dowry": "Jej ojciec zapisuje ci {{gold}} złota. {{port}} jest teraz twoim portem macierzystym.",

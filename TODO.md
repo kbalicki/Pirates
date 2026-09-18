@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-18 · **Wersja:** v0.77.0.0 · **Branch:** `main`
-**Kod:** 249 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2216 przechodzi, 0 failuje, 0 `todo`** w 69 plikach
+**Stan na:** 2026-09-18 · **Wersja:** v0.78.0.0 · **Branch:** `main`
+**Kod:** 252 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2226 przechodzi, 0 failuje, 0 `todo`** w 70 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2350,7 +2350,7 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.78.0 — co dalej
+### v0.79.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
@@ -2396,11 +2396,13 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 **Znalezione przy ladzie kupca, nienaprawione** (v0.76.0.0):
 
-- **Jeden `keydown` z DOM-u dociera do handlera Phasera po kilka razy.** Zmierzone:
-  trzy wywołania w odstępie 1–2 ms przy `listenerCount("keydown-ENTER") === 1`. Lada ma
-  teraz bramkę `tradePending` szerokości klatki, ale **to samo dotyczy każdego innego
-  ekranu z akcją na Enter** — po prostu nigdzie indziej nie widać różnicy, bo akcja jest
-  idempotentna albo zmienia widok. Warto sprawdzić stocznię, werbunek i podział łupów
+- ~~**Jeden `keydown` z DOM-u dociera do handlera Phasera po kilka razy.**~~ ✅ v0.78.0.0 —
+  i notatka **zgadywała zasięg**. Zmierzone: samo `Enter` przychodzi **raz**; trzy razy
+  przychodzi tylko naciśnięcie z **modyfikatorem**, bo strażnik duplikatów w Phaserze
+  pamięta **jedno** zdarzenie, a modyfikator robi dwa. Stocznia, werbunek i podział łupów
+  **nigdy nie były zagrożone** — nie wiążą klawisza z modyfikatorem, a każdy ekran ma
+  po jednym słuchaczu na klawisz. Bramka pamiętająca obiekt zdarzenia, zakładana raz na
+  wszystkie sceny; `tradePending` skasowane
 - ~~**`cargoCap` liczy wagę, a nagłówek sumuje tony.**~~ ✅ v0.77.0.0 — i notatka
   celowała za nisko. `ItemDef.weight` miał **dwóch** czytelników i żaden nie był regułą
   pojemności: to był **dławik na jedną transakcję**, przez który pusty slup brał trzcinę
@@ -2412,6 +2414,20 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   `port.trade_income`, `port.stock`, `port.own`, `port.closed_to_you`, `port.price`).
   Jedno było fałszywe i jest naprawione; reszta się broni. **To była ostatnia
   nieprzeczytana proza w grze** — pozostają teksty generowane (nazwy, kroniki)
+
+**Znalezione przy bramce naciśnięć, nienaprawione** (v0.78.0.0):
+
+- **Etykiety róży kompasowej są angielskie i nikt ich nie tłumaczy.** `COMPASS_LABELS`
+  w `WindCompassWidget` to `N`, `NE`, `E`… — w polskim tekście żeglarskim te same skróty
+  są w powszechnym użyciu, więc to jest **decyzja**, a nie defekt; ale jest to decyzja
+  nigdzie nie zapisana, podjęta przez to, że tabela jest stałą w pliku renderera
+- **Strażnik szablonów widzi tylko `add.text` i `setText` z szablonem **w miejscu**.**
+  `Wind ${n}%` w `SeaBattleScene` szło przez zmienną (`const label = …`) i przemiatanie
+  go **nie znalazło** — znalazło go oko na ekranie. Pełne pokrycie wymagałoby czytania
+  drzewa składni, a nie wyrażeń regularnych; do rozważenia, jeśli to się powtórzy trzeci raz
+- **`tickStorehouses` i czynsz nie wiedzą o ładowni eskadry.** Wygasła dzierżawa przepada
+  razem z towarem (to jest zamierzone), ale nic nie próbuje przenieść go na pokład, choć
+  po v0.77.0 eskadra bardzo często ma gdzie. Pozycja projektowa
 
 **Znalezione przy ładowni eskadry, nienaprawione** (v0.77.0.0):
 

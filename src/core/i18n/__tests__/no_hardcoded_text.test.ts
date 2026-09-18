@@ -203,3 +203,52 @@ describe("dayToCalendar is never asked without the world's start year", () => {
     expect(offenders.filter(o => !o.includes("CharacterCreationScene"))).toEqual([]);
   });
 });
+
+// ===========================================================================
+// And the doors the guard above does not look at (v0.78.0)
+// ===========================================================================
+
+/**
+ * The sweeps above read **quoted literals**: the Polish one reads every
+ * literal in a file, the English one reads the third argument of `add.text`.
+ * Two other doors onto the same screen were open, and both had text behind
+ * them:
+ *
+ *   - a **template literal**, which the Polish sweep skips by design ("a
+ *     Polish letter cannot hide in the expression part") and the English sweep
+ *     never looked at: `Wind ${n}%` on the sea-battle screen, in English, in a
+ *     Polish game;
+ *   - **`setText`**, which is how a held label is refreshed and therefore how
+ *     most numbers reach the player: `Flota: ${n}/3` in the map overlay,
+ *     Polish this time, hardcoded, and so unable to turn English;
+ *   - and `${knots} kn` in both compasses, drawn straight past the
+ *     `hud.wind_knots` key that v0.76.0 had already written for them.
+ *
+ * The same lesson a third time, and the useful form of it is this: **a guard
+ * sees one shape, and the text does not care which shape carried it.**
+ */
+const DRAWN_TEMPLATE = /(?:\badd\.text\(\s*[^,]+,\s*[^,]+,\s*|\.setText\(\s*)`([^`]*)`/g;
+
+describe("no screen draws words through a template either", () => {
+  it("hands `add.text` and `setText` no words of their own", () => {
+    const offenders: string[] = [];
+    for (const [path, src] of Object.entries(SOURCES)) {
+      const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+      DRAWN_TEMPLATE.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = DRAWN_TEMPLATE.exec(code)) !== null) {
+        // The `${...}` holes are values, not language. What is left is prose.
+        const words = m[1].replace(/\$\{[^}]*\}/g, " ");
+        // A unit the whole world writes the same way is not a language: a
+        // degree sign, a percent, a slash. Two letters running are.
+        if (/[A-Za-ząćęłńóśźż]{2}/.test(words)) {
+          offenders.push(`${path.replace(/^.*\/game\//, "game/")}: ${m[1].slice(0, 60)}`);
+        }
+      }
+    }
+    // Four before v0.78.0.
+    expect(offenders).toEqual([]);
+  });
+});

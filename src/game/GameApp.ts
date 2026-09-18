@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { onePressOneAction } from "./ui/keys.ts";
 import type { WorldState } from "../core/model/WorldState.ts";
 import { entityId, factionId, shipClassId } from "../core/model/ids.ts";
 import { createRng } from "../core/services/RNG.ts";
@@ -202,6 +203,21 @@ export function launchGame(containerId: string): Phaser.Game {
   };
 
   const game = new Phaser.Game(config);
+  // One press, one action — for every scene in the list above and every key
+  // any of them will ever bind (v0.78.0). Installed here rather than in each
+  // `create()` because a screen should not have to know this exists: see
+  // `core/services/InputGate.ts` for the measurement and the mechanism.
+  // `game.scene.scenes` is empty until the game has booted — the config's
+  // scenes sit in the manager's pending list until then, which is why this
+  // waits for `ready` and then covers both the scene already up and every one
+  // created afterwards.
+  game.events.once("ready", () => {
+    for (const scene of game.scene.scenes) {
+      onePressOneAction(scene);
+      scene.events.on(Phaser.Scenes.Events.CREATE, () => onePressOneAction(scene));
+    }
+  });
+
   (window as unknown as Record<string, unknown>).__PHASER_GAME__ = game;
   (window as unknown as Record<string, unknown>).__CREATE_WORLD__ = createNewWorldState;
 

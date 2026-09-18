@@ -318,6 +318,49 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?pardon=cartagena` | Kapitan, którego ta korona chce powiesić (–80 u Hiszpanii, sława 60), stoi w mieście, którego gubernator objął rezydencję wczoraj (v0.61.0). Ze zwykłej gry nie da się tam trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu żaglowania |
 | `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie. **Od v0.70.0 `?event=treasure_fleet&port=` stempluje też port zbiórki** (`vars.muster`) — bez niego harness budował flotę skarbową, której żaden czytelnik nie widział, bo wszystko idzie przez `musterPortFor`: kurs, kadłuby i plotka w tawernie |
 
+### Jedno naciśnięcie, jedna akcja
+
+Zmierzone na zbudowanej grze, licznikiem na żywym handlerze:
+
+| naciśnięcie | zdarzeń DOM | wywołań handlera |
+|---|---|---|
+| `Enter` | 1 | **1** |
+| `Shift`+`Enter` | 2 | **3** |
+| `Ctrl`+`Enter` | 2 | **3** |
+
+`KeyboardManager.onKeyDown` wkłada zdarzenie do kolejki **i od razu** emituje
+`MANAGER_PROCESS`, więc kolejka jest przechodzona raz natychmiast i drugi raz na
+kroku klatki; opróżnia ją dopiero `POST_STEP`. `KeyboardPlugin.update` broni się
+przed tym **jednym zapamiętanym zdarzeniem** (`prevCode`, `prevTime`,
+`prevType`) — co wystarcza na pojedynczy klawisz i **nigdy** nie wystarcza na
+parę na przemian, a parę robi wciśnięty modyfikator.
+
+`createInputGate()` pamięta **obiekt zdarzenia**, więc jest dokładny; zakładana
+jest raz, w `GameApp`, na wszystkie sceny — owinięty jest `emit`, nie słuchacz.
+`scripts/keycount.mjs` mierzy to na żądanie.
+
+**Pułapka:** `game.scene.scenes` jest **puste** zaraz po `new Phaser.Game(config)`
+— sceny z konfiguracji czekają w liście oczekujących do startu gry. Cokolwiek
+się po nich iteruje, musi poczekać na `game.events.once("ready", ...)`.
+
+**Lekcja o notatkach:** wpis z v0.76.0 opisał objaw poprawnie („trzy wywołania,
+jeden słuchacz") i **zgadywał** zasięg („to samo dotyczy każdego ekranu z akcją
+na Enter"). Zgadnięty zasięg trafił do TODO jako zadanie i był nieprawdziwy.
+Objaw zapisuj razem z **warunkiem**, w którym został zobaczony.
+
+### Strażnik widzi jeden kształt
+
+Przemiatanie z v0.76.0 czyta **trzeci argument `add.text`, w cudzysłowie**. Poza
+jego zasięgiem są dwa inne wejścia na ten sam ekran: **szablon** (polskie
+przemiatanie pomija szablony z założenia) i **`setText`** (czyli sposób, w jaki
+odswieża się każda trzymana etykieta). Za nimi stało `Wind 43%` po angielsku
+w polskiej grze, `Flota: 2/3` po polsku w angielskiej i dwa kompasy rysujące `kn`
+obok gotowego klucza.
+
+**Tekstowi jest wszystko jedno, którym kształtem przyjechał na ekran.** Każdy
+strażnik napisany pod jeden kształt ma ślepą plamę wielkości wszystkich
+pozostałych.
+
 ### Jedna jednostka, i to tona
 
 `ItemDef.weight` miał **dwóch** czytelników i żaden nie był regułą pojemności:

@@ -17,6 +17,8 @@ import {
   LEASE_DAYS,
 } from "../StorehouseSystem.ts";
 import { WAREHOUSE_CAP } from "../HomePortSystem.ts";
+import { squadronHeld } from "../HoldSystem.ts";
+import { SHIP_CLASSES } from "../../data/ships.ts";
 import { spotPrice } from "../PricingSystem.ts";
 import { CITIES } from "../../data/cities.ts";
 import { ITEMS } from "../../data/items.ts";
@@ -342,5 +344,55 @@ describe("the home port's own storehouse", () => {
     // absence of one.
     expect(canRent(makeWorld(), PORT)).toBe(true);
     expect(WAREHOUSE_CAP).toBeGreaterThan(0);
+  });
+});
+
+// ── A leased shed is filled out of the squadron ────────────────────────────
+
+/**
+ * v0.77.0 gave the fleet one hold and moved the **family** storehouse onto it
+ * (`HomePortSystem.storeGoods` / `withdrawGoods`). The **rented** shed one
+ * branch over kept reading `entity.ship.cargo` directly, so a captain with a
+ * merchantman astern could not put a ton of what she carried into a shed he was
+ * paying rent on. Fixed in v0.78.0; this is the assertion that says so.
+ */
+describe("a rented storehouse and the squadron's hold", () => {
+  function withConsort(flagCargo: Record<string, number>, consortCargo: Record<string, number>): WorldState {
+    const w = makeWorld({ cargo: flagCargo });
+    const cls = SHIP_CLASSES.fluyt;
+    return rentStorehouse({
+      ...w,
+      player: {
+        ...w.player,
+        fleet: [{
+          classId: "fluyt",
+          hullHp: cls.hullMax, hullMax: cls.hullMax,
+          sailsHp: cls.sailsMax, sailsMax: cls.sailsMax,
+          cannons: cls.cannons, crew: 30, morale: 0.8,
+          cargo: consortCargo,
+        }],
+      },
+    }, PORT).world;
+  }
+
+  it("takes goods out of a consort when the flagship carries none", () => {
+    const w = withConsort({}, { [GOOD]: 60 });
+    expect(squadronHeld(w, GOOD)).toBe(60);
+    const stored = storeAt(w, PORT, GOOD, 40);
+    expect(stored.moved).toBe(40);
+    expect(squadronHeld(stored.world, GOOD)).toBe(20);
+    expect(leaseAt(stored.world, PORT)?.goods[GOOD]).toBe(40);
+  });
+
+  it("puts goods back into a consort when the flagship has no room left", () => {
+    // The flagship is full of something else, so the shed's own good can only
+    // go aft. Before v0.78.0 this wrote it into her hold anyway, past her cap.
+    const w = withConsort({ rum: 400 }, { [GOOD]: 60 });
+    const stored = storeAt(w, PORT, GOOD, 60).world;
+    expect(squadronHeld(stored, GOOD)).toBe(0);
+    const back = withdrawAt(stored, PORT, GOOD, 40);
+    expect(back.moved).toBe(40);
+    expect(back.world.entities.player_ship.ship?.cargo[GOOD]).toBeUndefined();
+    expect(back.world.player.fleet[0].cargo?.[GOOD]).toBe(40);
   });
 });

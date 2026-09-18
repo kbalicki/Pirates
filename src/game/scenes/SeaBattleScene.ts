@@ -1072,7 +1072,7 @@ export class SeaBattleScene extends Phaser.Scene {
     this.windArrow.lineStyle(2, 0xffeeaa, 1).lineBetween(cx, cy, ax, ay);
     this.windArrow.fillStyle(0xffeeaa, 1).fillCircle(ax, ay, 3);
     // strength label
-    const label = `Wind ${Math.round(this.combatState.wind.strength * 100)}%`;
+    const label = t("battle.wind", { pct: Math.round(this.combatState.wind.strength * 100) });
     this.add.text(cx, cy + r + 8, label, txt(10, { color: "#cceeff" }))
       .setOrigin(0.5, 0).setDepth(9000).setScrollFactor(0);
   }

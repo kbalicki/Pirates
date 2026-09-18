@@ -198,20 +198,11 @@ export class PortScene extends Phaser.Scene {
   private goldText: Phaser.GameObjects.Text | null = null;
   /** Held for the same reason as `goldText`: a trade moves it without leaving the view. */
   private cargoText: Phaser.GameObjects.Text | null = null;
-  /**
-   * One press, one trade (v0.76.0).
-   *
-   * Measured with a counter in the handler: a single DOM `keydown` reached
-   * `buySelected` **three times**, one to two milliseconds apart, with
-   * `listenerCount("keydown-ENTER")` reporting exactly one listener. Phaser is
-   * emitting the queued key more than once per frame, and while one ton a
-   * press hid it, a lot of ten does not: the captain asked for ten and came
-   * away with the whole shelf.
-   *
-   * Cleared by the same `delayedCall(0, ...)` that redraws the counter, so the
-   * gate is a frame wide and nothing a human can press survives it.
-   */
-  private tradePending = false;
+  // The frame-wide `tradePending` flag this screen carried since v0.76.0 is
+  // gone in v0.78.0. It was the right cure applied in the wrong place: the
+  // press arrives three times only when a modifier is held, and it does so for
+  // every binding in the game, so the gate belongs in one place rather than in
+  // whichever screen notices. See `core/services/InputGate.ts`.
   /**
    * The standing line and the note under it, held for the same reason as the
    * purse: a pardon is bought without leaving the view, and a header drawn once
@@ -1896,13 +1887,15 @@ export class PortScene extends Phaser.Scene {
       if (aboard > 0 && storageFree(this.worldState, portKey) > 0) {
         const btn = this.add.text(colStore, y, t("warehouse.store"), txt(10, { bold: true, color: "#2266aa" }));
         btn.setInteractive({ useHandCursor: true });
-        btn.on("pointerdown", () => this.moveGoods(key, 10, true));
+        btn.on("pointerdown", (p: Phaser.Input.Pointer) =>
+          this.moveGoods(key, this.lotSize(p.event as MouseEvent), true));
         this.contentContainer.add(btn);
       }
       if (ashore > 0 && holdFree(this.worldState) > 0) {
         const btn = this.add.text(colTake, y, t("warehouse.take"), txt(10, { bold: true, color: "#2266aa" }));
         btn.setInteractive({ useHandCursor: true });
-        btn.on("pointerdown", () => this.moveGoods(key, 10, false));
+        btn.on("pointerdown", (p: Phaser.Input.Pointer) =>
+          this.moveGoods(key, this.lotSize(p.event as MouseEvent), false));
         this.contentContainer.add(btn);
       }
       y += 20;
@@ -1931,13 +1924,25 @@ export class PortScene extends Phaser.Scene {
     this.bindKey("keydown-W", () => move(-1));
     this.bindKey("keydown-DOWN", () => move(1));
     this.bindKey("keydown-S", () => move(1));
-    this.bindKey("keydown-Q", () => { const k = rows[this.selectedIndex]; if (k) this.moveGoods(k, 10, true); });
-    this.bindKey("keydown-E", () => { const k = rows[this.selectedIndex]; if (k) this.moveGoods(k, 10, false); });
+    // The counter's vocabulary, now that a modified press is safe (v0.78.0):
+    // a ton, Shift for ten, Ctrl for everything. A three-hundred-ton family
+    // storehouse at the flat ten this screen used to move was thirty presses.
+    this.bindKey("keydown-Q", (ev) => {
+      const k = rows[this.selectedIndex];
+      if (k) this.moveGoods(k, this.lotSize(ev), true);
+    });
+    this.bindKey("keydown-E", (ev) => {
+      const k = rows[this.selectedIndex];
+      if (k) this.moveGoods(k, this.lotSize(ev), false);
+    });
     this.bindKey("keydown-ESC", () => this.switchView("menu"));
   }
 
-  private moveGoods(itemId: string, qty: number, ashore: boolean): void {
+  private moveGoods(itemId: string, lot: number | "all", ashore: boolean): void {
     const portKey = this.currentPortId as string;
+    // "All" is what the other side will take, and both sides clamp anyway, so
+    // the largest number the hold or the shed could possibly hold will do.
+    const qty = lot === "all" ? Number.MAX_SAFE_INTEGER : lot;
     const result = ashore
       ? storeAt(this.worldState, portKey, itemId, qty)
       : withdrawAt(this.worldState, portKey, itemId, qty);
@@ -2665,7 +2670,6 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleBuy(itemKey: string, lot: number | "all" = 1): void {
-    if (this.tradePending) return;
     const qty = lot === "all" ? this.roomToBuy(itemKey) : Math.min(lot, this.roomToBuy(itemKey));
     if (qty <= 0) { this.showTradeMessage(t("port.trade_refused")); return; }
     const before = this.worldState.player.gold;
@@ -2680,7 +2684,6 @@ export class PortScene extends Phaser.Scene {
   }
 
   private handleSell(itemKey: string, lot: number | "all" = 1): void {
-    if (this.tradePending) return;
     const owned = Math.floor(squadronHeld(this.worldState, itemKey));
     const qty = lot === "all" ? owned : Math.min(lot, owned);
     if (qty <= 0) { this.showTradeMessage(t("port.trade_refused")); return; }
@@ -2710,22 +2713,15 @@ export class PortScene extends Phaser.Scene {
     }));
     // Next tick, not this one: `switchView` unbinds the key handlers and binds
     // fresh ones, and rebinding from inside one of them is asking for trouble.
-    // It is also where the one-press gate opens again.
-    this.tradePending = true;
-    this.time.delayedCall(0, () => {
-      this.tradePending = false;
-      this.switchView("merchant", true);
-    });
+    this.time.delayedCall(0, () => this.switchView("merchant", true));
   }
 
   /** A refusal needs no scene restart — the counter simply says why. */
   private showTradeMessage(message: string): void {
     this.merchantMessage = message;
-    this.tradePending = true;
-    this.time.delayedCall(0, () => {
-      this.tradePending = false;
-      this.switchView("merchant", true);
-    });
+    // Next tick, not this one: `switchView` unbinds the key handlers and binds
+    // fresh ones, and rebinding from inside one of them is asking for trouble.
+    this.time.delayedCall(0, () => this.switchView("merchant", true));
   }
 
   private leavePort(): void {
