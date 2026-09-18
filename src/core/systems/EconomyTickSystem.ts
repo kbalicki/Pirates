@@ -195,6 +195,18 @@ const EXPORT_RESERVE = 0.15;
  * not — the cover comes out of stock nobody planted for, and that gap is the
  * cost of a reroute.
  */
+/**
+ * What a producer's warehouse holds while an event is on it.
+ *
+ * Only downwards. A warehouse is a building: a bumper harvest cannot make it
+ * bigger, and `trade_boom` and `harvest` already carry a `priceMul` of their
+ * own. What was missing is the other direction - an event that stops the
+ * plantations has to empty the shed, because nothing else can.
+ */
+function workingCap(portKey: string, item: string, productionMul: number): number {
+  return inventoryCap(portKey, item) * Math.max(0, Math.min(1, productionMul));
+}
+
 function laneCommitment(world: WorldState, portKey: string, item: string): number {
   let total = 0;
   for (const client of laneClients(portKey, item)) {
@@ -390,7 +402,11 @@ export function economyDailyTick(world: WorldState): WorldState {
         const base = baselineProductionRate(portKey, item, port.wealth);
         // bonus produces (e.g. gold) get a flat rate even if not in CityDef
         const rate = base > 0 ? base : 3;
-        const cap = inventoryCap(portKey, item);
+        // The working ceiling, not the shed's own (v0.75.0): a town whose
+        // plantations have stopped does not keep a full warehouse. Measured
+        // against the surge as well, or a shed pulled down by a revolt would
+        // read as empty and produce *harder* to refill itself.
+        const cap = workingCap(portKey, item, effects.productionMul);
         const stock = inventory[item] ?? 0;
         const empty = cap > 0 ? Math.max(0, Math.min(1, (cap - stock) / cap)) : 0;
         const committed = laneCommitment(w, portKey, item);
@@ -526,8 +542,21 @@ export function economyDailyTick(world: WorldState): WorldState {
       // sailings, not before them.
       for (const item of b.produces) {
         if (inventory[item] === undefined) continue;
-        const cap = inventoryCap(portKey, item);
-        inventory[item] = Math.min(cap, inventory[item] - (shipped[`${portKey}|${item}`] ?? 0));
+        const shed = inventoryCap(portKey, item);
+        // What the warehouse holds today, which is not what it could hold
+        // (v0.75.0). Nothing leaves a producer except the lanes, and two
+        // thirds of what this map grows has no lane at all, so the stock was
+        // decided by the cap alone and `productionMul` could not move it: a
+        // slave revolt at 30% output for sixty days changed the price of the
+        // town's own staple by 0.0%. The ceiling falls with the output now,
+        // and the shed walks down to it at the pace the plantations would
+        // have refilled it - about a week, not a cliff.
+        const target = workingCap(portKey, item, b.effects.productionMul);
+        const after = inventory[item] - (shipped[`${portKey}|${item}`] ?? 0);
+        const rate = baselineProductionRate(portKey, item, port.wealth) || 3;
+        inventory[item] = after > target
+          ? Math.max(target, Math.min(after, shed) - rate)
+          : Math.min(after, shed);
       }
 
       // 4. Consumption

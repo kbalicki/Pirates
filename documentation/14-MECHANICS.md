@@ -680,6 +680,7 @@ sufitu w trzydzieści.
 | `EconomyTickSystem.IMPORT_NOTORIETY_BONUS` | 0.4 | ile do tego dokłada pełna sława kapitana |
 | `PricingSystem.DEMAND_HORIZON_DAYS` | 30 | ile dni konsumpcji znaczy „rynek w równowadze” |
 | `economyBaselines.IMPORT_COVER_DAYS` | 20 | ile dni własnego jedzenia trzyma miasto z importu |
+| `economyBaselines.PRODUCER_COVER_DAYS` | 8 | ile dni **własnej produkcji** trzyma producent na nabrzeżu (v0.75.0) |
 
 **Dwadzieścia dni wybrane pomiarem**, nie z powietrza — przemiecione 10 / 15 /
 20 / 30 / 45 / 90 na osiadłej dekadzie:
@@ -713,6 +714,67 @@ zmianie sufitu — **obie liczby były stanem przejściowym, nie równowagą**. 
 poprawieniu startu wszystkie cztery wracają dokładnie tam, gdzie zostawiła je
 v0.42.0: **649,1 / 907,6 / 619,6 / 920,6**. Dwa wydania pracy nad magazynami
 zmieniły ladę, a nie Karaiby.
+
+### Szopa producenta ma **osiem dni jego własnej produkcji** (v0.75.0)
+
+`inventoryCap` ma dwie gałęzie i v0.67.0 przepisała tylko tę importową. Gałąź
+producenta została taka, jaka była: `marketLevel * 50`, czyli **150–250 ton**
+przy producencie robiącym jakieś sześć ton dziennie.
+
+Co to kosztowało, zmierzone na osiadłych Karaibach:
+
+| |  |
+|---|---|
+| par (port, towar) stojących **na suficie** | **69 z 69** |
+| produkcja wyrzucana dziennie na całej mapie | **440 ton** |
+| towarów, których **nie zabiera żaden szlak** | **44 z 69** |
+| notowań przyklejonych do **podłogi** `RATIO_MIN` | **61 z 69** |
+| ile musiałby spaść zapas, żeby cena drgnęła | poniżej **32,7%** sufitu |
+| o ile bunt niewolników (produkcja ×0,3 przez 60 dni) ruszał cenę | **0,0%** |
+
+Z producenta nie ubywa nic prócz tego, co zabiorą szlaki — a dwie trzecie tego,
+co ta mapa uprawia, nie ma **żadnego** klienta szlakowego. Zapas był więc
+ustalany wyłącznie przez sufit i `productionMul` **nie miał którędy wejść**.
+Podręcznik wymienia „produkcja ×0,3” i „×1,5” jako rzeczy, które kapitan widzi.
+
+**Dwie zmiany, obie konieczne** (sprawdzone cofnięciem każdej z osobna — po
+cztery czerwone testy):
+
+1. sufit to `PRODUCER_COVER_DAYS` × własna produkcja (podłoga 20 t), czyli
+   mediana **43 t** zamiast 150–250;
+2. **roboczy** sufit schodzi razem z produkcją (`cap × min(1, productionMul)`),
+   a zapas dochodzi do niego po dniu własnej produkcji dziennie — czyli około
+   tygodnia, nie z dnia na dzień.
+
+Osiem dni wybrane przemiataniem na osiadłym świecie:
+
+| dni | sufit (mediana) | notowań przy podłodze | głodnych miast | bunt rusza cenę o | Hawana cukier | rozpiętość szlaku |
+|---|---|---|---|---|---|---|
+| 4 | 21 t | 0/69 | 0 | +210% | 48 t @ 5 | ×2,67 |
+| 6 | 32 t | 20/69 | 0 | +225% | 72 t @ 4 | ×4,00 |
+| **8** | **43 t** | **32/69** | **0** | **+225%** | **96 t @ 3** | **×4,50** |
+| 12 | 64 t | 42/69 | 0 | +100% | 144 t @ 3 | ×5,40 |
+| 20 | 107 t | 63/69 | 0 | +25% | 240 t @ 3 | ×5,50 |
+| 30 (≈ stan sprzed) | 160 t | **69/69** | 0 | **0,0%** | 360 t @ 3 | ×5,50 |
+
+Osiem to ostatni próg, przy którym **surowiec u źródła dalej kosztuje 3 złote**
+(czyli handel kapitana jest nietknięty), i pierwszy, przy którym świat da się
+poczuć. Cztery dni już podnoszą cenę u producenta i ścinają rozpiętość szlaku
+do ×2,67 — czyli płaci się za to samym handlem. Podłoga w podłodze: **żadne
+miasto nie zaczyna głodować** przy żadnej z tych wartości.
+
+**Sufit nie rośnie przy dobrym roku.** Magazyn jest budynkiem: żniwa i boom
+handlowy niosą własny `priceMul` i tam są odczuwalne.
+
+**Nabrzeże mówi teraz, jakie to miasto.** Hawana trzyma 86 ton trzciny,
+Nevis 29 — wcześniej obie miały szopę, której nie dało się opróżnić.
+
+Osiadły świat drgnął o **mniej niż 1,1% i tylko w górę**: 649,1 → 651,1,
+907,6 → 913,1, 619,6 → 626,1, 920,6 → 925,1. Mniejsza szopa oznacza, że szlak
+ciągnący z niej zostawia zapas bliżej kolana krzywej cenowej, więc eksporter
+dostaje odrobinę więcej za tonę. Sprawdzone przeciwko lekcji z v0.67.0 —
+liczby są **identyczne w dniu 400 i w dniu 900**, czyli to równowaga, a nie
+stan przejściowy.
 
 **Notowanie jest funkcją zapasu, który za nim stoi** (v0.67.0). Dzienny tick
 liczył cenę, a zaokrąglał zapas **po** niej — więc lada podawała cenę policzoną

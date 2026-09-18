@@ -121,11 +121,41 @@ export const IMPORT_COVER_DAYS = 20;
 /** Tons an importing town keeps whatever its size. */
 const IMPORT_COVER_FLOOR = 12;
 
+/**
+ * Days of its own output a producer keeps on the quay (v0.75.0).
+ *
+ * The other half of `IMPORT_COVER_DAYS`, and it went unread for eight
+ * releases. `marketLevel * 50` is 150 to 250 tons, against a producer that
+ * makes about six tons a day and ships a median of a third of that, so the
+ * shed stood at the cap in **69 of 69** cases and threw 440 tons a day away
+ * across the map.
+ *
+ * What that cost is the same thing the import ceiling cost, in the mirror.
+ * `PricingSystem` prices a good the town does not eat against a stand-in
+ * demand of one ton a day, so the quote leaves `RATIO_MIN` only below about
+ * fifty tons - a third of the cap. **61 of 69** produced goods were therefore
+ * quoted at the floor, permanently, and nothing in the world could move them:
+ * a slave revolt cutting output to 30% for sixty days changed the price of the
+ * town's own staple by **0.0%**, and the pirate raid that already takes 30% of
+ * the warehouse changed it by nothing either. The manual states "output x0.3"
+ * and "output x1.5" as if a captain could see them.
+ */
+export const PRODUCER_COVER_DAYS = 8;
+
+/** Tons a producer keeps whatever its size. */
+const PRODUCER_COVER_FLOOR = 20;
+
 /** Per-item inventory cap (a producer port can stockpile up to this much). */
 export function inventoryCap(portKey: string, itemKey: string): number {
   const def = CITIES[portKey];
   if (!def) return 50;
-  if (def.produces.includes(itemKey)) return def.marketLevel * 50;
+  if (def.produces.includes(itemKey)) {
+    // Baseline wealth, not today's, for the reason the import branch uses
+    // baseline population: a cap that shrank with the town would shrink the
+    // warehouse of a town an event had already emptied.
+    const rate = baselineProductionRate(portKey, itemKey, getPortBaseline(portKey).wealth);
+    return Math.max(PRODUCER_COVER_FLOOR, rate * PRODUCER_COVER_DAYS);
+  }
   // A good the town neither grows nor eats keeps no cover, because there is no
   // eating to measure it against. Gold on its way through a strike town is the
   // case that matters: it is stocked by `bonusProduces`, which this function

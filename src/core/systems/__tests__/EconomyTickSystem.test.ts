@@ -720,11 +720,21 @@ describe("an exporter's warehouse — the settled world", () => {
     // through the ledger. Seeding each port at nine tenths of its own cap - the
     // level it settles at anyway - removed the catch-up, and with it both
     // "gains". The counter changed; the Caribbean did not.
+    //
+    // Moved a second time in v0.75.0, and in the direction the guard allows:
+    // Port Royal 649.1 -> 651.1, Havana 907.6 -> 913.1, Santiago 619.6 ->
+    // 626.1, Santo Domingo 920.6 -> 925.1. All four **better off**, the worst
+    // of them by 1.05%. A producer's shed is eight days of his own output now
+    // instead of a flat 150-250 tons, so a lane drawing on it leaves the stock
+    // nearer the knee of the price curve and the exporter is paid a shade more
+    // a ton. Checked against the v0.67.0 lesson - the numbers are identical at
+    // day 400 and at day 900, so this is the equilibrium and not the opening
+    // transient.
     const w = runDays(makeFullWorld(), 400);
-    expect(w.ports.port_royal.wealth).toBeCloseTo(649.1, 0);
-    expect(w.ports.havana.wealth).toBeCloseTo(907.6, 0);
-    expect(w.ports.santiago.wealth).toBeCloseTo(619.6, 0);
-    expect(w.ports.santo_domingo.wealth).toBeCloseTo(920.6, 0);
+    expect(w.ports.port_royal.wealth).toBeCloseTo(651.1, 0);
+    expect(w.ports.havana.wealth).toBeCloseTo(913.1, 0);
+    expect(w.ports.santiago.wealth).toBeCloseTo(626.1, 0);
+    expect(w.ports.santo_domingo.wealth).toBeCloseTo(925.1, 0);
   });
 });
 
