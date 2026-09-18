@@ -93,14 +93,25 @@ Każda frakcja posiada:
 
 ## Towary (`src/core/data/items.ts`)
 
-| Towar | ID | Cena bazowa | Waga | Typ |
-|-------|----|-------------|------|-----|
-| Cukier trzcinowy | sugar | 10 | 2 | handlowy |
-| Tytoń | tobacco | 15 | 1 | handlowy |
-| Kakao | cocoa | 20 | 1 | handlowy |
-| Rum | rum | 12 | 1 | handlowy |
-| Jedzenie | food | 5 | 1 | konsumpcyjny |
-| Woda | water | 3 | 1 | konsumpcyjny |
+| Towar | ID | Cena bazowa | Typ |
+|-------|----|-------------|-----|
+| Cukier trzcinowy | `sugar_cane` | 10 | handlowy |
+| Tytoń | `tobacco` | 15 | handlowy |
+| Kakao | `cocoa` | 20 | handlowy |
+| Rum | `rum` | 12 | handlowy |
+| Jedzenie | `food` | 5 | konsumpcyjny |
+| Woda | `water` | 3 | konsumpcyjny |
+| **Złoto** | `gold` | 80 | handlowy, `rare` |
+
+**Złoto jest `rare`** (v0.29.0): żaden port nie zaczyna z ziarnem, na ladzie
+pojawia się tylko tam, gdzie odkryto złoże (`gold_discovery` dopisuje je do
+`bonusProduces`) albo gdzie kapitan je przywiózł.
+
+**Towar nie ma wagi** (v0.77.0). `ItemDef.weight` istniał od pierwszej wersji
+i został skasowany: miał dwóch czytelników, żaden nie był regułą pojemności,
+a pomiar odrzucił naprawę „w górę" (zysk na jednostkę ładowni wynosiłby wtedy
+3 dla cukru przy 13 dla kakao, a cukier jest uprawiany w 23 z 45 portów).
+**Ładownia liczy tony.** Szczegóły w [14-MECHANICS.md](14-MECHANICS.md).
 
 **Mechanika cen:**
 - Cena = bazowa × modyfikator podaży/popytu × modyfikator reputacji

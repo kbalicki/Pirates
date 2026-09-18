@@ -476,7 +476,25 @@ Do **trzech kadłubów**: flagowiec i dwie konsorty.
 Konsorty mają własną załogę, morale i wyszkolenie. Ludzie zabici na konsorcie
 **zostają zabici**.
 
-Czasem lepiej **sprzedać** świeży pryz niż go trzymać.
+### Eskadra ma jedną ładownię
+
+Każdy kadłub w Twojej flocie **wozi towar**, a liczby, które widzisz w porcie
+i w kajucie, mówią o całej eskadrze. Statek handlowy kupiony w stoczni dokłada
+dwieście pięćdziesiąt ton — i to jest powód, żeby go kupić.
+
+Ładuje się i rozładowuje **od flagowca**, więc dopóki pływasz sam, nic się dla
+Ciebie nie zmienia.
+
+**Pryz jest Twój z ładownią.** Kiedy bierzesz statek na abordaż i wchodzi do
+floty, to, co nie zmieści się do Twoich kadłubów, **zostaje w jej własnym** —
+nie idzie do wody.
+
+**Ale co wiezie konsorta, idzie tam, gdzie ona.** Sprzedana w stoczni sprzedaje
+się razem z ładunkiem; porzucona na morzu idzie z nim na dno. Do pozostałych
+kadłubów przechodzi tyle, ile się w nich zmieści, a dziennik zapisze tony, które
+przepadły. Rozładuj ją, zanim ją sprzedasz.
+
+Czasem i tak lepiej **sprzedać** świeży pryz niż go trzymać.
 
 ---
 
@@ -590,8 +608,16 @@ i ostatnie zdarzenia) · **Ustawienia** · **Zapis** (pięć slotów) · **Mapa*
 
 ### Na ladzie
 
-`W`/`S` wybiera, `Enter` potwierdza, `Esc` cofa. W magazynie `Q` znosi na
-brzeg, `E` na statek.
+`W`/`S` wybiera, `Enter` kupuje, `Backspace` sprzedaje, `Esc` cofa.
+W magazynie `Q` znosi na brzeg, `E` na statek.
+
+**Ile naraz:** samo naciśnięcie to **jedna tona**, z `Shift` — **dziesięć**,
+z `Ctrl` — **wszystko**, co zniesie ładownia, kiesa i druga strona. Działa tak
+samo na ladzie i w magazynie, myszą też.
+
+Rachunek jest zaokrąglany **raz, na pieniądzach**, a nie na każdej tonie — dlatego
+dziesięć ton potrafi kosztować mniej niż dziesięć razy cena jednej, i dlatego
+notowania w mieście w ogóle da się odczuć przy tanim towarze.
 
 ---
 

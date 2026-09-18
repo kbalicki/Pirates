@@ -341,3 +341,42 @@ dziewięciu pozycjach dalej ją pokazuje.
 Komunikat odpowiedzi chowa podpowiedź od v0.26.0 z tego samego powodu. Miejsca
 starcza na jedno z dwojga i to się nie zmieniło; zmieniło się to, że teraz o
 zabraniu podpowiedzi decyduje też **sama długość listy**.
+
+## Ilości: tona, dziesięć, wszystko (v0.76.0, v0.78.0)
+
+Dwa ekrany przesuwają towar i mówią tym samym słownictwem:
+
+| ekran | klawisz | samo | `Shift` | `Ctrl` |
+|---|---|---|---|---|
+| lada kupca | `Enter` / `Backspace` | 1 tona | 10 | tyle, ile zniesie ładownia, kiesa i nabrzeże |
+| magazyn | `Q` (na brzeg) / `E` (na statek) | 1 tona | 10 | tyle, ile zniesie druga strona |
+
+Kliknięcie myszą czyta te same modyfikatory (`lotSize(p.event)`).
+
+**Lada przerysowuje siebie, nie restartuje miasta.** `scene.restart` na każdą
+tonę było wolniejsze, niż trzeba, i odrzucało kursor na pierwszy wiersz;
+nagłówek jest rysowany raz w `create()`, więc kiesa i ładunek są **trzymane**
+(`goldText`, `cargoText`) i odświeżane w `afterTrade()`. Ta sama sztuczka, co
+spichlerz gubernatora w v0.27.0.
+
+**Transakcja mówi, co zrobiła** — „Kupiono 7 ton cukru za 24 zł" — z biernikiem
+z `plurals.ts` i dopełniaczem towaru z `names.ts`.
+
+## Jedno naciśnięcie, jedna akcja (v0.78.0)
+
+Naciśnięcie z wciśniętym modyfikatorem docierało do handlera **trzy razy**
+(samo `Enter` — raz). Bramka pamiętająca obiekt zdarzenia jest zakładana **raz,
+w `GameApp`, na wszystkie sceny**: owinięty jest `emit` wtyczki klawiatury, nie
+słuchacz, więc scena dalej wiąże klawisze tak, jak wiązała.
+
+Dla piszącego scenę znaczy to tyle: **nie buduj własnej bramki**. `PortScene`
+miała taką (`tradePending`, v0.76.0) i została skasowana. Pomiar i mechanizm
+w [10-DEVELOPMENT.md](10-DEVELOPMENT.md), narzędzie w `scripts/keycount.mjs`.
+
+## Ekran wyniku bitwy opisuje, a nie przelicza (v0.78.0)
+
+`showBattleResult` wołało `computePrize` **drugi raz**, żeby narysować swoje
+linijki. Uchodziło mu to, dopóki ładownia była flagowca; po v0.77.0 drugie
+wywołanie nic nie wiedziałoby o konsortach i wypisałoby **jako utopiony ładunek,
+który jest na pokładzie**. Wynik rozliczenia jest trzymany (`lastPrize`,
+`prizeKept`) — tak samo jak `defeatFate` z v0.59.0 i z tego samego powodu.

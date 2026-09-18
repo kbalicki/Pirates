@@ -118,6 +118,22 @@ Wszystkie akcje gracza są komendami (`Commands.ts`):
 - Akumulator delta — niezależność od FPS renderowania
 - Gwarantuje spójność fizyki niezależnie od wydajności
 
+### Jedna decyzja — jedno miejsce
+
+Kiedy ten sam fakt jest liczony w kilku miejscach, rozjechał się już albo
+rozjedzie. Trzy moduły istnieją wyłącznie po to, żeby były **jedynym**
+czytelnikiem swojego faktu:
+
+| moduł | fakt | co było przedtem |
+|---|---|---|
+| `core/systems/HoldSystem.ts` | ile eskadra uniesie i co wiezie | każdy ekran sumował `ship.cargo` sam, a konsorty nie miały ładowni (v0.77.0) |
+| `core/services/InputGate.ts` | czy to naciśnięcie już zostało obsłużone | `PortScene` miał własną bramkę na jedną klatkę, reszta gry żadnej (v0.78.0) |
+| `core/i18n/plForms.ts` + `plurals.ts` | jak odmienić nazwę i liczebnik | zdanie po zdaniu, ręcznie (v0.69.0, v0.74.0) |
+
+`game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
+**wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran
+napisany za rok dostanie ją za darmo.
+
 ## Konfiguracja Phaser
 
 ```typescript
@@ -147,3 +163,17 @@ Wszystkie akcje gracza są komendami (`Commands.ts`):
 - Fallback na angielski przy brakujących kluczach
 - Wybór języka w localStorage (`pc_lang`)
 - 400+ kluczy tłumaczeń
+
+**Trzy strażnicy w `no_hardcoded_text.test.ts`**, bo tekst trafia na ekran
+kilkoma kształtami i każdy strażnik widzi jeden:
+
+1. **polska litera w dowolnym literale** pod `src/game` (v0.60.0) — znajduje
+   ekran napisany po polsku;
+2. **angielskie słowo w trzecim argumencie `add.text`** (v0.76.0) — znajduje
+   ekran napisany po angielsku, którego pierwszy strażnik nie widzi z definicji;
+3. **słowa w szablonie podanym do `add.text` albo `setText`** (v0.78.0) —
+   znajduje `Wind 43%` i `Flota: 2/3`, których nie widzą dwaj poprzedni.
+
+Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele nie
+mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
+przypisany najpierw do zmiennej.

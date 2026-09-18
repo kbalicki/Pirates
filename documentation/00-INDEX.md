@@ -24,6 +24,25 @@
 | **14** | **[Mechaniki](14-MECHANICS.md)** | **Jak gra działa dziś** — stan, nie historia wydań; każda liczba z kodu i **sprawdzana testem**. Źródło na instrukcję dla gracza |
 | **15** | **[Instrukcja](15-INSTRUKCJA.md)** | **SZKIC instrukcji dla gracza**, pisany z dokumentu 14 — nie z pamięci |
 
+## Który dokument jest aktualny, a który jest archiwum
+
+Nie wszystkie są utrzymywane na bieżąco i **udawanie, że są, kosztuje więcej niż
+powiedzenie tego wprost**:
+
+| dokument | stan |
+|---|---|
+| **14-MECHANICS** | **żywy** — stan gry na dziś, każda liczba i każda tabela strukturalna egzekwowana testem |
+| **15-INSTRUKCJA** | żywy szkic, pisany z dokumentu 14 |
+| 02, 03, 05, 06, 10, 12 | utrzymywane — dopisywane, gdy wydanie ich dotyczy |
+| 11-ROADMAP | wizja i zakres; nie opisuje bieżącego stanu |
+| **04-CORE-SYSTEMS** | **narracja urywa się na v0.64.0** (14 wydań wstecz). Nie jest fałszywy, jest **niepełny**: opisy do v0.64.0 dalej obowiązują, późniejszych wydań tam po prostu nie ma. Szukaj ich w **14-MECHANICS** i w notatkach z sesji |
+| 01, 07, 08, 09, 13 | stabilne — rzadko się zmieniają, rzadko są dotykane |
+| IMPLEMENTATION-PLAN | **archiwum** — plan z początku projektu, po angielsku |
+
+**Historia wydań mieszka w trzech miejscach i każde ma inną robotę:**
+`src/changelog.ts` (co się zmieniło, dla gracza), **notatki z sesji** poniżej
+(dlaczego, z pomiarami — jedno wydanie, jeden plik) i **TODO.md** (co dalej).
+
 ## Powiązane zasoby
 
 - [AI Asset Generation](../ai-assets/README.md) — Subprojekt generowania assetów AI

@@ -549,3 +549,47 @@ spotkał i płyną wszystkie cztery.
 i był tak czytany od pierwszego nagłówka; cokolwiek musi **odszukać** miasto,
 potrzebuje klucza (ta sama lekcja co surowy klucz frakcji docierający do
 Dziennika w v0.37.0).
+
+## `FleetShip.cargo?` — eskadra ma jedną ładownię (v0.77.0)
+
+```ts
+// PlayerState.fleet[i] — opcjonalne, jak każdy znacznik dołożony po wydaniu
+cargo?: Record<string, number>;
+```
+
+**Bez migracji, i to jest reguła, a nie szczęście.** Pole jest czytane przez
+`consortCargo()` w `HoldSystem`, które odpowiada `{}`, więc zapis sprzed v0.77.0
+ma puste konsorty — bo naprawdę nie było gdzie nic włożyć. Ten sam kontrakt, co
+`crew?` (v0.17.0), `morale?` (v0.19.0), `training?` (v0.21.0) i `wounded?`
+(v0.47.0): **stary zapis odpowiada dokładnie to, co odpowiadał**. Wersja zapisu
+stoi na **12** od v0.15.0, czyli od czterdziestu jeden wydań.
+
+Czego to dotyka poza modelem:
+
+- pojemność i zawartość liczy **wyłącznie** `HoldSystem` (`squadronCap`,
+  `squadronStowed`, `squadronRoom`, `squadronHeld`, `squadronManifest`);
+- zapisuje **wyłącznie** `stowInSquadron` (flagowiec pierwszy), `drawFromSquadron`
+  (flagowiec pierwszy) i `detachConsort` (kadłub odchodzi z tym, czego pozostałe
+  nie przyjmą);
+- `validateWorldState` sprawdza ładownię konsorty tak samo, jak ładownię encji.
+
+## `ItemDef.weight` — skasowane (v0.77.0)
+
+Pole istniało od pierwszej wersji i **nie było regułą pojemności**: jego dwaj
+czytelnicy porównywali `weight × ilość` z sumą **ton** już załadowanych, czyli
+dwie jednostki w jednym porównaniu. Skutkiem był dławik na jedną transakcję —
+pusty czterdziestotonowy slup brał 20 ton trzciny, potem 10, 5, 2, 1, 1.
+
+Odwrotna naprawa (żeby waga zaczęła znaczyć) **została odrzucona po pomiarze**:
+zysk na jednostkę ładowni wynosiłby wtedy 3 dla cukru przy 9/12/13 dla tytoniu,
+rumu i kakao, a cukier jest uprawiany w 23 z 45 portów. **Ładownia liczy tony.**
+
+Zapis nie zawiera `ItemDef` — to jest tabela statyczna — więc skasowanie pola nie
+dotyka żadnego pliku gracza.
+
+## `createInputGate()` — nie jest polem stanu (v0.78.0)
+
+Wart odnotowania **brak**: bramka „jedno naciśnięcie, jedna akcja" nie trzyma
+niczego w `WorldState` ani w `localStorage`. Pamięta obiekty zdarzeń DOM w
+`WeakMap`, żyje tyle, co scena, i nie ma nic do zapisania. Szczegóły i pomiar
+w [10-DEVELOPMENT.md](10-DEVELOPMENT.md).

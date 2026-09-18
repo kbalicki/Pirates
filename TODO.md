@@ -18,7 +18,11 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.76.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2194/2194 zielone; **lada drukowała rozpiętość, której nie brała**. Ekran kupca mówi „to miasto jest NEUTRALNE: 24% między tym, czego żąda, a tym, co oferuje” — i kwotował **3 / 3**. Rozpiętość to ułamek, cena to mała liczba całkowita, a `Math.round` biegł **dwa razy** (w `spotPrice` i w `buyPrice`); dwunasta część czterech złotych to nie jest moneta, a cztery złote to najczęstsze notowanie na mapie. Zmierzone na 315 notowaniach osiadłego świata: `ask === bid` na **47 (14,9%)**, a **neutralny, przyjazny i sojusznik dają te same dwie liczby na 90 (28,6%)** — mediana straty na tonę to **2 / 2 / 2** przy 8 dla wrogiego i 4 dla nieprzyjaznego, czyli **połowa drabiny reputacji, która karze, działała, a ta, która nagradza, nie** (i im lepszy standing, tym częściej lada nie umiała go wyrazić: 126 zerowych rozpiętości u sojusznika). Rachunek jest teraz zaokrąglany **raz, na pieniądzach** (`askExact`/`bidExact` + `tradeCost`/`tradeProceeds`), a lada **handluje partiami** — Shift dziesięć, Ctrl wszystko — bo tona na naciśnięcie to sto dwadzieścia naciśnięć na merchantmana i po każdym restart całego miasta. Przy okazji zmierzone: jeden `keydown` docierał do handlera **trzy razy** (bramka `tradePending` szerokości klatki), a przemiatanie po źródle scen szukało od v0.60.0 **polskich liter** i dlatego nie widziało **siedemnastu angielskich napisów** na ekranach, w tym **siedmiu linii podpowiedzi klawiszy**. Lista kandydatów na v0.77.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.78.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2226/2226 zielone; **jedno naciśnięcie, jedna akcja**. Notatka z v0.76.0 opisała objaw poprawnie („jeden `keydown` dociera do handlera trzy razy przy jednym słuchaczu") i **zgadła zasięg** („to samo dotyczy każdego ekranu z akcją na Enter") — a zgadnięty zasięg trafił do tego pliku jako zadanie. Zmierzone na zbudowanej grze: samo `Enter` przychodzi **raz**, a trzy razy przychodzi **wyłącznie naciśnięcie z wciśniętym modyfikatorem**, bo `KeyboardManager.onKeyDown` wkłada zdarzenie do kolejki **i od razu** emituje `MANAGER_PROCESS` (kolejkę czyści dopiero `POST_STEP`), a `KeyboardPlugin.update` broni się przed tym **jednym zapamiętanym zdarzeniem** — jedno gniazdo łapie pojedynczy klawisz przejechany dwa razy i **nigdy** nie złapie pary na przemian, którą robi modyfikator. Czyli: **strażnik duplikatów pamięta jedno zdarzenie, a modyfikator robi dwa**; stocznia, werbunek i podział łupów nigdy nie były zagrożone, bo nie wiążą klawisza z modyfikatorem. Bramka pamięta **obiekt zdarzenia** (`core/services/InputGate.ts`), owija `emit` wtyczki klawiatury i jest zakładana **raz w `GameApp` na wszystkie sceny** — 78 wiązań; `tradePending` z v0.76.0 skasowane. Skoro modyfikator jest bezpieczny, **magazyn dostał słownictwo lady** (tona / `Shift` dziesięć / `Ctrl` wszystko) zamiast płaskich dziesięciu ton na naciśnięcie. Przy okazji, przez czytanie: **wynajęta szopa dalej czytała samego flagowca** (niedoróbka v0.77.0, która przeniosła na ładownię eskadry tylko magazyn rodzinny) i **cztery ekrany mówiły własnym językiem** przez kształty, których strażnik z v0.76.0 nie ogląda — szablon i `setText`: `Wind 43%` po angielsku w polskiej grze, `Flota: 2/3` po polsku w angielskiej, dwa kompasy rysujące `kn` obok gotowego klucza. Lista kandydatów na v0.79.0 jest niżej.
+
+> **Poprzednie zdanie startowe (v0.77.0.0):** **eskadra ma jedną ładownię**. `FleetShip` nie miał pola `cargo` **w ogóle**: lista w stoczni drukowała 250 ton ładowni statku handlowego, kapitan za nią płacił, i ona nie niosła nic. Gorzej na morzu — `SALVAGE_TAKEN = 1` nosi komentarz *„she is yours, hold and all"* od v0.22.0, a kod przycinał zdobycz do wolnego miejsca **u flagowca** i resztę wylewał do wody: zmierzone na pospolitym czterdziestotonowym slupie, dziewięć klas, **751 z 1391 ton (54%)** za burtę, a przy pełnym statku handlowym **185 z 225 (82%)**. `HoldSystem` jest jedynym miejscem, które wie, ile eskadra uniesie; flagowiec napełnia się i opróżnia pierwszy, więc kapitan pływający sam widzi to, co widział. Pryz wzięty na abordaż **zatrzymuje to, co by przepadło**; konsorta, która odchodzi (sprzedana, porzucona), **zabiera ładunek**, a dziennik nazywa tony, których pozostałe kadłuby nie przyjęły. `FleetShip.cargo?` jest opcjonalne, więc **bez migracji** (wersja zapisu stoi na 12 od czterdziestu jeden wydań). Przy okazji skasowane `ItemDef.weight`: dwóch czytelników, żaden nie był regułą pojemności, a pomiar odrzucił naprawę „w górę" (zysk na jednostkę ładowni: cukier 3, kakao 13, przy cukrze uprawianym w 23 z 45 portów).
+
+> **Poprzednie zdanie startowe (v0.76.0.0):** v0.76.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2194/2194 zielone; **lada drukowała rozpiętość, której nie brała**. Ekran kupca mówi „to miasto jest NEUTRALNE: 24% między tym, czego żąda, a tym, co oferuje” — i kwotował **3 / 3**. Rozpiętość to ułamek, cena to mała liczba całkowita, a `Math.round` biegł **dwa razy** (w `spotPrice` i w `buyPrice`); dwunasta część czterech złotych to nie jest moneta, a cztery złote to najczęstsze notowanie na mapie. Zmierzone na 315 notowaniach osiadłego świata: `ask === bid` na **47 (14,9%)**, a **neutralny, przyjazny i sojusznik dają te same dwie liczby na 90 (28,6%)** — mediana straty na tonę to **2 / 2 / 2** przy 8 dla wrogiego i 4 dla nieprzyjaznego, czyli **połowa drabiny reputacji, która karze, działała, a ta, która nagradza, nie** (i im lepszy standing, tym częściej lada nie umiała go wyrazić: 126 zerowych rozpiętości u sojusznika). Rachunek jest teraz zaokrąglany **raz, na pieniądzach** (`askExact`/`bidExact` + `tradeCost`/`tradeProceeds`), a lada **handluje partiami** — Shift dziesięć, Ctrl wszystko — bo tona na naciśnięcie to sto dwadzieścia naciśnięć na merchantmana i po każdym restart całego miasta. Przy okazji zmierzone: jeden `keydown` docierał do handlera **trzy razy** (bramka `tradePending` szerokości klatki), a przemiatanie po źródle scen szukało od v0.60.0 **polskich liter** i dlatego nie widziało **siedemnastu angielskich napisów** na ekranach, w tym **siedmiu linii podpowiedzi klawiszy**. Lista kandydatów na v0.77.0 jest niżej.
 
 > **Poprzednie zdanie startowe (v0.75.0.0):** v0.75.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2191/2191 zielone; **bunt niewolników nie zmieniał ceny cukru**. `inventoryCap` ma dwie gałęzie i v0.67.0 przepisała tylko importową — gałąź producenta została `marketLevel * 50`, czyli 150–250 ton przy producencie robiącym sześć ton dziennie. Zmierzone na osiadłych Karaibach: szopa stoi na suficie w **69 z 69** par (port, towar), **440 ton dziennie** idzie do kosza, **44 z 69** towarów nie zabiera **żaden** szlak, a **61 z 69** notowań leży przyklejonych do podłogi `RATIO_MIN` — zapas musiałby spaść poniżej **32,7%** sufitu, żeby cena w ogóle drgnęła. Skutek: produkcja ×0,3 przez sześćdziesiąt dni ruszała cenę własnego surowca miasta o **0,0%**, i tak samo żniwa, epidemia, boom handlowy oraz **jednorazowe uderzenia w magazyn, które już istniały** (najazd piracki −30% szopy, huragan −15%) — a podręcznik wymienia „produkcja ×0,3” jako rzecz, którą kapitan widzi. Teraz sufit to **osiem dni własnej produkcji** (podłoga 20 t, wartość wybrana przemiataniem 4/6/8/12/20/30 — osiem to ostatni próg, przy którym surowiec u źródła dalej kosztuje **3 złote**, i pierwszy, przy którym świat da się poczuć), a **roboczy** sufit schodzi razem z produkcją i zapas dochodzi do niego po dniu własnej produkcji dziennie. **Obie zmiany są konieczne** — cofnięcie każdej z osobna daje po cztery czerwone testy. Osiadły świat drgnął o **mniej niż 1,1% i tylko w górę**, identycznie w dniu 400 i 900 (czyli równowaga, nie stan otwarcia — lekcja z v0.67.0).
 
@@ -183,6 +187,10 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Pogoda ma miejsce na mapie | ✅ | `WeatherFieldSystem`: `weatherAt(world, pos)` — strefy wiatru mapy wreszcie ciągną pasat, a huragan ze zdarzenia świata jest prawdziwym sztormem z krążącym wiatrem, kadłubem i podłogami na progach, które HUD już nazywa |
 | Przegrana coś kosztuje | ✅ | `DefeatSystem`: zatopiony flagowiec **przepada** — bandera przechodzi na największą konsortę albo kapitan ląduje w porcie z pinasą i połową kiesy; a kadłub, który mapa jeszcze niesie, nigdy nie stoi w zerze (`MIN_AFLOAT_HULL`) |
 | Wioski Indian | ✅ | `VillageSystem` + `VillageScene` + `VillageMarkerRenderer`: osiem wiosek na czarcie, które nie noszą żadnej bandery; rum za złoto, stosunek z dwiema połowami (wyprowadzaną z reputacji u sąsiedniej korony i stemplowaną), a przy zaufaniu 60 — **wyprawa wojenna, która łamie mury sąsiedniej kolonii** |
+| Gra mówi dwoma językami **naprawdę** | ✅ | `plForms.ts` (przypadek zamawiany przez zdanie, v0.69.0) + `plurals.ts` (zgoda liczebnika, czytana **też po angielsku**, v0.74.0) + `names.ts` (stempel niesie **klucz**, nie nazwę, v0.63.0). Trzech strażników czyta **źródło scen**: polska litera (v0.60.0), angielskie słowo w `add.text` (v0.76.0), słowa w szablonie i `setText` (v0.78.0) |
+| Cała proza w grze przeczytana | ✅ | 130 kluczy `help.*` i `battle.help_*` (v0.64–v0.66), drzewo gubernatora (v0.68.0), `RumorSystem` (v0.70.0), tawerna/wioski/romans (v0.71.0), 22 nagłówki `news.*` (v0.72.0), osiem zdań lady kupca (v0.76.0). **Zostały teksty generowane** (nazwy, kroniki) |
+| Eskadra ma jedną ładownię | ✅ | `HoldSystem` (v0.77.0): konsorty wiozą towar, pryz zatrzymuje to, co by przepadło (przedtem **54%** za burtę), kadłub odchodzący zabiera ładunek; jedna jednostka — tona, `ItemDef.weight` skasowane |
+| Jedno naciśnięcie, jedna akcja | ✅ | `InputGate` + `game/ui/keys.ts` (v0.78.0): naciśnięcie z modyfikatorem docierało **trzy razy**; bramka zakładana raz w `GameApp` na wszystkie sceny i 78 wiązań. Lada i magazyn handlują partiami (tona / `Shift` 10 / `Ctrl` wszystko) |
 
 ### Nietknięte
 
@@ -2500,9 +2508,61 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   `Math.round` na jednodniowych skokach — przy przeprawie 1–2 dni zaokrąglenie potrafi dać
   36 j./dobę. Poprawne co do kierunku, szorstkie na najkrótszych trasach
 
-Nic nie jest wybrane. **Cztery ostatnie wydania wzięły się z przemiatania**, nie z tej listy —
-v0.63.0 z pola `.name` duplikującego tabele locale, v0.64.0, v0.65.0 i v0.66.0 z **podręcznika
-czytanego wiersz po wierszu** — i to jest dziś najskuteczniejsza metoda dla agenta.
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-18)
+
+Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej trzy pozycje
+ułożone tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo
+w tym repo wydanie zaczyna się od liczby, nie od pomysłu.
+
+**1. Wioski stemplują gotową nazwę do zapisywanego dziennika** *(defekt, wąski,
+gotowy do wzięcia)*. `village.log_trade` i `village.log_war_party` wołają
+`t(\`village.${key}.name\`)` i wkładają **wynik** do `vars` wpisu, który idzie do
+zapisu — czyli defekt z v0.63.0 wciąż żywy, bo `NAME_KEY` w `I18n.ts` obejmuje
+tylko `port|faction|item|ship`. Przełączenie języka nie przepisuje tych wpisów,
+a odmienić ich (v0.69.0) też się nie da. **Pomiar na wejściu:** ile wpisów
+dziennika w typowej karierze niesie taką nazwę i ile jeszcze miejsc omija
+`NAME_KEY`. **Robota:** poszerzyć `NAME_KEY` o `village`, podać klucz, dopisać
+wioskom wiersz w `plForms.ts`. Przy okazji leżą obok dwie drobnice tej samej
+rodziny: **`romance.opt_propose_blocked` drukuje „ranga 2”** surową liczbą, choć
+gra ma 24 nazwane rangi, i **`village.war_party_already`** przypisuje wiosce
+każdy `native_raid` na to miasto, także wylosowany przez świat.
+
+**2. Ekran przeładunku między kadłubami** *(brakująca połowa v0.77.0)*. Eskadra ma
+jedną ładownię, `stowInSquadron` napełnia flagowca, potem konsorty po kolei —
+i **kapitan nie ma żadnego wpływu na to, który kadłub co wiezie**. Skutek jest
+dotykalny, bo konsorta sprzedana w stoczni odchodzi z ładunkiem: sprzedaje ten,
+który akurat w niej wylądował. **Pomiar na wejściu:** w ilu procentach typowych
+eskadr podział ładunku w ogóle się różni od „wszystko u flagowca” (jeśli rzadko,
+to zamiast ekranu wystarczy **wyładunek przed sprzedażą** i ostrzeżenie).
+W tej samej gałęzi: **`sellFleetShip` nie dolicza nic za tony**, które odchodzą
+z kadłubem — kupiec w stoczni dostaje je darmo.
+
+**3. Zgoda czasownika i imiesłowu** *(największa z otwartych, dwie pozycje naraz)*.
+`plurals.ts` odmienia **rzeczownik**, ale zdanie, w którym czasownik albo
+przymiotnik musi się zgodzić z liczbą („3 działa **zbite**” kontra „5 dział
+**zbitych**”), dalej trzeba przeredagować — **szesnaście zdań obeszło problem**
+i to jest **obejście**, dokładnie jak rodzaj zostawiony przez v0.69.0.
+Rozwiązaniem jest mechanizm wybierający **wariant zdania**, a nie formę zmiennej,
+i zamyka **obie** pozycje naraz. **Pomiar na wejściu:** ile polskich zdań
+naprawdę tego potrzebuje (policzyć te z liczbą **i** czasownikiem/imiesłowem) —
+jeśli wyjdzie kilkanaście, mechanizm jest droższy od przeredagowania i to jest
+uczciwy wynik, który należy zapisać zamiast pisać mechanizm.
+
+**Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
+decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),
+przegranie halsowania z v0.54.0 i wiek startowy kapitana (sekcja 4). To są
+pozycje **na rozmowę**, nie na autonomiczny release.
+
+---
+
+Nic nie jest wybrane odgórnie. **Większość ostatnich wydań wzięła się
+z przemiatania**, nie z tej listy — v0.63.0 z pola `.name` duplikującego tabele
+locale, v0.64.0–v0.66.0 z **podręcznika czytanego wiersz po wierszu**, v0.71.0–v0.72.0
+z drzew dialogowych i nagłówków, a v0.77.0 i v0.78.0 z **czytania własnych notatek
+poprzedniego wydania i sprawdzania ich pomiarem** (obie okazały się celować nie
+tam, gdzie trzeba). To jest dziś najskuteczniejsza metoda dla agenta.
 
 **Podręcznik jest przeczytany do końca.** Wszystkie 130 kluczy `help.*` i cały `battle.help_*`
 skonfrontowane z kodem; dziesięć fałszywych zdań w trzech wydaniach, a ostatnie z nich
@@ -2845,6 +2905,15 @@ wiadomości** (`news.*`). Co zostało do przemiecenia poza tym:
 - **`LANDMASSES` ładuje `loadLandmassesFromCache()`** (`src/game/world/GeoLoader.ts`). `MainMapScene.create()` robi to normalnie, ale każdy świat debugowy budowany w `PreloadScene`, który pyta o wodę, musi zawołać to sam — inaczej `getPortWaterPos` odpowiada pozycją nabrzeża i kapitan „stojący pod portem" stoi na kei.
 - **W commitach i PR-ach nie wymieniamy Claude'a.** Żadnego `Co-Authored-By`, żadnej stopki „Generated with". Ustalone 2026-09-04.
 - Skill `/task` i jego playbooki są częścią repozytorium (`.claude/skills/`). Jeśli któraś procedura się zdezaktualizuje — popraw ją w tym samym commicie, w którym to zauważyłeś.
+
+---
+
+- **Ładownię czyta ściśle `HoldSystem`** (v0.77.0). Eskadra ma **jedną** ładownię: pojemność to `squadronCap`, zawartość `squadronHeld`/`squadronManifest`, zapis wyłącznie przez `stowInSquadron` / `drawFromSquadron` / `detachConsort`. Sumowanie `ship.cargo` w ekranie albo w systemie jest **błędem** — pomija konsorty, które od tego wydania wożą towar. Tak właśnie przeżył jedno wydanie wynajęty magazyn: v0.77.0 przeniosła rodzinny i zostawiła ten obok (v0.78.0).
+- **Nie buduj własnej bramki na naciśnięcie** (v0.78.0). Naciśnięcie z wciśniętym modyfikatorem docierało do handlera **trzy razy** (samo `Enter` — raz), bo `KeyboardManager` przechodzi kolejkę dwa razy, a strażnik duplikatów w Phaserze pamięta **jedno** zdarzenie. `InputGate` jest zakładany raz w `GameApp` na wszystkie sceny; `PortScene` miała własną (`tradePending`) i została skasowana. Mierzy to `scripts/keycount.mjs`.
+- **`game.scene.scenes` jest puste zaraz po `new Phaser.Game(config)`** — sceny z konfiguracji czekają w liście oczekujących do startu gry. Cokolwiek po nich iterujesz, rób to w `game.events.once("ready", ...)` (v0.78.0).
+- **Ekran opisuje to, co się stało — nie liczy tego drugi raz** (v0.78.0). `showBattleResult` wołało `computePrize` powtórnie i uchodziło mu to, dopóki wejścia były te same; po v0.77.0 drugie wywołanie wypisałoby jako utopiony ładunek, który jest na pokładzie. Wynik rozliczenia się **trzyma** (`lastPrize`, `defeatFate` z v0.59.0).
+- **Strażnik widzi jeden kształt.** Przemiatanie po polskich literach (v0.60.0) nie widzi ekranu po angielsku; przemiatanie po trzecim argumencie `add.text` (v0.76.0) nie widzi **szablonu** ani `setText` (v0.78.0); żaden z trzech nie widzi szablonu przypisanego najpierw do zmiennej — to znalazło oko na ekranie. **Tekstowi jest wszystko jedno, którym kształtem przyjechał.**
+- **Objaw zapisuj razem z warunkiem, w którym go zobaczyłeś.** Notatka z v0.76.0 opisała objaw poprawnie i **zgadła zasięg** („to samo dotyczy każdego ekranu z akcją na Enter"); zgadnięty zasięg trafił do tego pliku jako **zadanie** i był nieprawdziwy. Dwa wydania z rzędu (v0.77.0, v0.78.0) zaczęły się od sprawdzenia własnej notatki pomiarem i obie razy notatka celowała nie tam, gdzie trzeba — **to jest dziś druga najskuteczniejsza metoda po przemiataniu**.
 
 ---
 
