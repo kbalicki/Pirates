@@ -39,8 +39,8 @@
  * destroy something of his own by winning a battle.
  */
 
-import type { WorldState } from "../model/WorldState.ts";
-import { SHIP_CLASSES } from "../data/ships.ts";
+import type { WorldState } from "../model/WorldState.ts";
+import { squadronRoom, squadronHeld, stowInSquadron, drawFromSquadron } from "./HoldSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { CITIES } from "../data/cities.ts";
@@ -145,13 +145,9 @@ export function warehouseFree(world: WorldState): number {
   return Math.max(0, WAREHOUSE_CAP - warehouseUsed(world));
 }
 
-/** Hold space aboard the flagship, which is the only ship that carries cargo. */
+/** Hold space across the squadron — the consorts carry cargo too (v0.77.0). */
 export function holdFree(world: WorldState): number {
-  const ship = world.entities[world.player.shipId as string]?.ship;
-  if (!ship) return 0;
-  const cap = ship.cargoCap ?? SHIP_CLASSES[ship.classId as string]?.cargoCap ?? 0;
-  const aboard = Object.values(ship.cargo ?? {}).reduce((a, b) => a + b, 0);
-  return Math.max(0, cap - aboard);
+  return squadronRoom(world);
 }
 
 export type TransferResult = {
@@ -171,23 +167,17 @@ export function storeGoods(world: WorldState, itemId: string, qty: number): Tran
   const entity = world.entities[shipId];
   if (!entity?.ship) return { world, moved: 0 };
 
-  const aboard = entity.ship.cargo?.[itemId] ?? 0;
+  const aboard = squadronHeld(world, itemId);
   const moved = Math.max(0, Math.min(Math.floor(qty), aboard, warehouseFree(world)));
   if (moved <= 0) return { world, moved: 0 };
 
-  const cargo = { ...entity.ship.cargo };
-  cargo[itemId] = aboard - moved;
-  if (cargo[itemId] <= 0) delete cargo[itemId];
+  const unloaded = drawFromSquadron(world, itemId, moved).world;
 
   const store = { ...warehouseOf(world) };
   store[itemId] = (store[itemId] ?? 0) + moved;
 
   return {
-    world: {
-      ...world,
-      player: { ...world.player, warehouse: store },
-      entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
-    },
+    world: { ...unloaded, player: { ...unloaded.player, warehouse: store } },
     moved,
   };
 }
@@ -206,15 +196,10 @@ export function withdrawGoods(world: WorldState, itemId: string, qty: number): T
   store[itemId] = stored - moved;
   if (store[itemId] <= 0) delete store[itemId];
 
-  const cargo = { ...entity.ship.cargo };
-  cargo[itemId] = (cargo[itemId] ?? 0) + moved;
+  const loaded = stowInSquadron(world, { [itemId]: moved }).world;
 
   return {
-    world: {
-      ...world,
-      player: { ...world.player, warehouse: store },
-      entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
-    },
+    world: { ...loaded, player: { ...loaded.player, warehouse: store } },
     moved,
   };
 }

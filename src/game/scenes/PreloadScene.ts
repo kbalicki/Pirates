@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { t } from "../../core/i18n/index.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
+import { addToFleet } from "../../core/systems/FleetSystem.ts";
 import { MusicManager } from "../audio/MusicManager.ts";
 import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -397,6 +398,10 @@ export class PreloadScene extends Phaser.Scene {
         Math.max(0, Number(params.get("days") ?? 0) || 0),
         Math.max(0, Number(params.get("aged") ?? 0) || 0),
       );
+      // `&ship=`, `&crew=`, `&fleet=` and the rest work here too (v0.77.0):
+      // this is the only debug entrance that lands the captain ashore, so it
+      // is the only one a counter or a cabin can be looked at through.
+      world = this.applyDebugCrewState(world, params);
       this.registry.set("worldState", world);
       if (params.has("ashore")) {
         // In front of the noticeboard rather than on the water outside it: the
@@ -652,6 +657,26 @@ export class PreloadScene extends Phaser.Scene {
           },
         };
       }
+    }
+
+    // ?fleet=<class>[,<class>] — those hulls astern (v0.77.0).
+    //
+    // Same lesson as `?ship=` and `?crew=`: the squadron's hold is the whole
+    // mechanic and a captain does not have a second hull in the first minute
+    // of a debug world. A consort joins loaded to a third, so the header, the
+    // cabin's manifest and the counter's `Own` column all have something to
+    // disagree about if they ever go back to reading the flagship alone.
+    const astern = (params.get("fleet") ?? "").split(",").map(x => x.trim()).filter(Boolean);
+    for (const classId of astern) {
+      const cls = SHIP_CLASSES[classId];
+      if (!cls) continue;
+      const staple = Math.floor(cls.cargoCap / 3);
+      const joined = addToFleet(
+        w.player.fleet ?? [], classId, w.captain?.training ?? 0.3,
+        { crew: Math.round(cls.crewMax * 0.8), morale: 0.8 },
+        staple > 0 ? { sugar_cane: staple } : undefined,
+      );
+      if (joined) w = { ...w, player: { ...w.player, fleet: joined } };
     }
 
     w = this.applyOwedShare(w, params);

@@ -516,6 +516,7 @@ export const EN: LocaleData = {
   "battle.defeat_flag_shifted": "Your flag shifts to the {{ship}}. {{count}} {{count:man}} came across in the boats.",
   "battle.defeat_ransomed": "A king's ship lands you at {{port}}. Ransom and the yard take {{gold}} gold; you have a pinnace and {{count}} {{count:man}}.",
   "battle.defeat_castaway": "The boats make {{port}}. {{gold}} gold gone on a pinnace out of the wreck; you are left with {{count}} {{count:man}}.",
+  "battle.prize_keeps": "The prize carries her own: {{cargo}}",
   "battle.hold_full": "No room in the hold — left behind: {{cargo}}",
 
   // -- Blockade (v0.22.0) --
@@ -807,6 +808,7 @@ export const EN: LocaleData = {
   "shipyard.current": "(current)",
   "event.bought_ship": "Purchased a {{ship}} for {{cost}} Gold.",
   "event.bought_escort": "Added {{ship}} to fleet for {{cost}} Gold.",
+  "event.escort_cargo_lost": "Her cargo went with her: {{tons}} {{tons:ton}}.",
   "event.sold_escort": "Sold {{ship}} for {{price}} Gold.",
   "event.abandoned_ship": "Abandoned {{ship}} at sea.",
   "fleet.title": "Fleet",

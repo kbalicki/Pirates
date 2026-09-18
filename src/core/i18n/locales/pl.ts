@@ -515,6 +515,7 @@ export const PL: LocaleData = {
   "battle.defeat_flag_shifted": "Bandera przechodzi na {{ship}}. łodziami na jej pokład przechodzi {{count}} {{count:man}}.",
   "battle.defeat_ransomed": "Królewski okręt wysadza cię {{port:in}}. Okup i stocznia biorą {{gold}} złota; zostaje ci pinasa i {{count}} {{count:man}}.",
   "battle.defeat_castaway": "Łodzie dobijają {{port:to}}. {{gold}} złota poszło na pinasę z resztek wraku; zostaje ci {{count}} {{count:man}}.",
+  "battle.prize_keeps": "Pryz zabiera swoje: {{cargo}}",
   "battle.hold_full": "Brak miejsca w ładowni — zostawiono: {{cargo}}",
 
   // -- Blokada (v0.22.0) --
@@ -806,6 +807,7 @@ export const PL: LocaleData = {
   "shipyard.current": "(obecny)",
   "event.bought_ship": "Zakupiono {{ship}} za {{cost}} Złoto.",
   "event.bought_escort": "Dodano {{ship}} do floty za {{cost}} Złoto.",
+  "event.escort_cargo_lost": "Ładunek poszedł z nią: {{tons}} {{tons:ton}}.",
   "event.sold_escort": "Sprzedano {{ship}} za {{price}} Złoto.",
   "event.abandoned_ship": "Porzucono {{ship}} na morzu.",
   "fleet.title": "Flota",

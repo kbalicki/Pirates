@@ -7,7 +7,8 @@ import { baselineConsumptionRate, inventoryCap } from "../data/economyBaselines.
 import { repriceItem } from "./PricingSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
-import { canAddToFleet, addToFleet, removeFromFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
+import { canAddToFleet, addToFleet, fleetMinCrew, consortBerthsFree, manConsorts } from "./FleetSystem.ts";
+import { detachConsort, stowedIn } from "./HoldSystem.ts";
 import { manPrize } from "./CrewSystem.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import { changeReputation, getReputationLevel } from "./ReputationSystem.ts";
@@ -613,6 +614,13 @@ export type FleetSellResult = {
   world: WorldState;
   sold: boolean;
   goldReceived: number;
+  /**
+   * Tons that went with her (v0.77.0) — what the remaining hulls had no room
+   * for. A consort carries cargo now, so selling one at a yard sells what is in
+   * her, and the counter has to say so before the captain wonders where his
+   * cocoa went.
+   */
+  cargoLost?: Record<string, number>;
   error?: string;
 };
 
@@ -630,20 +638,29 @@ export function sellFleetShip(
   const classDef = SHIP_CLASSES[escort.classId];
   const sellPrice = classDef ? Math.floor(classDef.buyPrice * 0.4) : 0;
 
-  const newWorld = addLogEntry(
+  // Her cargo comes ashore into the hulls that remain, as much of it as they
+  // will take; the rest is sold with her.
+  const detached = detachConsort(world, fleetIndex);
+
+  let newWorld = addLogEntry(
     {
-      ...world,
+      ...detached.world,
       player: {
-        ...world.player,
+        ...detached.world.player,
         gold: world.player.gold + sellPrice,
-        fleet: removeFromFleet(fleet, fleetIndex),
       },
     },
     "event.sold_escort",
     { ship: shipNameKey(escort.classId), price: sellPrice },
   );
+  if (stowedIn(detached.lost) > 0) {
+    newWorld = addLogEntry(newWorld, "event.escort_cargo_lost", { tons: Math.round(stowedIn(detached.lost)) });
+  }
 
-  return { world: newWorld, sold: true, goldReceived: sellPrice };
+  return {
+    world: newWorld, sold: true, goldReceived: sellPrice,
+    ...(stowedIn(detached.lost) > 0 ? { cargoLost: detached.lost } : {}),
+  };
 }
 
 /** Abandon an escort ship at sea (no gold received). */
@@ -656,17 +673,17 @@ export function abandonFleetShip(
 
   const escort = fleet[fleetIndex];
 
-  return addLogEntry(
-    {
-      ...world,
-      player: {
-        ...world.player,
-        fleet: removeFromFleet(fleet, fleetIndex),
-      },
-    },
+  // Whatever is in her goes into the hulls that stay, and what will not fit
+  // goes down with her (v0.77.0).
+  const detached = detachConsort(world, fleetIndex);
+  const w = addLogEntry(
+    detached.world,
     "event.abandoned_ship",
     { ship: shipNameKey(escort.classId) },
   );
+  return stowedIn(detached.lost) > 0
+    ? addLogEntry(w, "event.escort_cargo_lost", { tons: Math.round(stowedIn(detached.lost)) })
+    : w;
 }
 
 // ── Rumors ────────────────────────────────────────────────

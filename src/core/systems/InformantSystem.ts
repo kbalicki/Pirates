@@ -35,6 +35,7 @@
  */
 
 import type { WorldState } from "../model/WorldState.ts";
+import { squadronCap } from "./HoldSystem.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
 import { CITIES } from "../data/cities.ts";
@@ -415,8 +416,9 @@ export function supplyShortfall(world: WorldState, portKey: string, item: string
 
 /** Tons this hold could lift for the job, whatever is in it at the moment. */
 function reliefSize(world: WorldState): number {
-  const cap = world.entities[world.player.shipId as string]?.ship?.cargoCap ?? 0;
-  return Math.min(RELIEF_MAX_TONS, Math.floor(cap * 0.6));
+  // The squadron's, not the flagship's (v0.77.0): a captain with a merchantman
+  // astern can lift a relief order that would not go in his own hold.
+  return Math.min(RELIEF_MAX_TONS, Math.floor(squadronCap(world) * 0.6));
 }
 
 /**

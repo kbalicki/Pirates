@@ -29,7 +29,8 @@ import { woundedFrom } from "../../core/systems/SurgeonSystem.ts";
 import { rescueSurvivors } from "../../core/systems/ShipRepairSystem.ts";
 import { manPrize, workingMinimum } from "../../core/systems/CrewSystem.ts";
 import { canBoard } from "../../core/systems/BoardingSystem.ts";
-import { computePrize, applyPrize } from "../../core/systems/PrizeSystem.ts";
+import { applyPrize } from "../../core/systems/PrizeSystem.ts";
+import type { Prize } from "../../core/systems/PrizeSystem.ts";
 import { settleNamedShip, namedShipFateFlag, harryNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { settlePlatePrize } from "../../core/systems/TreasureFleetSystem.ts";
 import { settleHostileAct } from "../../core/systems/PrivateerSystem.ts";
@@ -1170,6 +1171,20 @@ export class SeaBattleScene extends Phaser.Scene {
    */
   private defeatFate: DefeatFate | null = null;
 
+  /**
+   * What the prize actually came to, written where it was settled (v0.77.0).
+   *
+   * The result screen used to call `computePrize` a second time, off
+   * `this.worldState`, and get away with it because the settled world is
+   * returned rather than assigned. It stopped being safe the moment the hold
+   * grew past the flagship: the second call knew nothing about the consorts'
+   * room and would have printed cargo left in the water that was aboard.
+   */
+  private lastPrize: Prize | null = null;
+
+  /** Cargo a taken hull keeps in her own hold, because she joined the fleet. */
+  private prizeKept: Record<string, number> = {};
+
   private showBattleResult(outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"): void {
     // Settled here rather than in `finish`, because the lines below have to
     // describe what happened, and for a defeat that is a decision, not a tally.
@@ -1205,11 +1220,7 @@ export class SeaBattleScene extends Phaser.Scene {
     // such — leaving a fortune in the water is a decision, not a bug.
     let resultLine = this.cameras.main.height / 2 + 30;
     if (outcome === "win" || outcome === "surrender" || outcome === "captured") {
-      const prize = computePrize(
-        this.worldState.entities[this.combatState.enemyShipId as string]?.ship,
-        this.worldState.entities[this.worldState.player.shipId as string]?.ship,
-        outcome,
-      );
+      const prize = this.lastPrize ?? { taken: {}, spilled: {}, gold: 0, cargoValue: 0 };
       const note = outcome === "captured" ? ` + ${t("battle.capture_note")}` : "";
       this.add.text(
         this.cameras.main.width / 2, resultLine,
@@ -1223,6 +1234,15 @@ export class SeaBattleScene extends Phaser.Scene {
         this.add.text(
           this.cameras.main.width / 2, resultLine, taken,
           { ...txt(14, { color: "#cceeaa" }) },
+        ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
+        resultLine += 22;
+      }
+      const kept = this.describeCargo(this.prizeKept);
+      if (kept) {
+        this.add.text(
+          this.cameras.main.width / 2, resultLine,
+          t("battle.prize_keeps", { cargo: kept }),
+          { ...txt(13, { color: "#cceeaa" }) },
         ).setOrigin(0.5).setDepth(10000).setScrollFactor(0);
         resultLine += 22;
       }
@@ -1418,6 +1438,7 @@ export class SeaBattleScene extends Phaser.Scene {
       // the shippers' ledger that this lane just lost a hull.
       const prize = applyPrize(w, enemyWorldEntity, outcome);
       w = prize.world;
+      this.lastPrize = prize.prize;
       // If she had a name, the world has to lose it (v0.32.0). Same rule as the
       // prize above: it reads her off the world, so it runs before she leaves it.
       w = this.settleNamed(w, enemyWorldEntity, outcome === "win" ? "sunk" : "taken");
@@ -1439,6 +1460,7 @@ export class SeaBattleScene extends Phaser.Scene {
       // Loot + add ship to fleet if slot available
       const prize = applyPrize(w, enemyWorldEntity, outcome);
       w = prize.world;
+      this.lastPrize = prize.prize;
       w = this.settleNamed(w, enemyWorldEntity, "taken");
       w = settlePlatePrize(w, enemyWorldEntity);
       const { [enemyId]: _captured, ...remaining } = w.entities;
@@ -1461,15 +1483,24 @@ export class SeaBattleScene extends Phaser.Scene {
             flagAfterBattle.crew.morale,
           )
         : null;
+      // She is yours, hold and all (v0.77.0). `SALVAGE_TAKEN = 1` has carried
+      // that comment since v0.22.0 while the code emptied her into the water:
+      // what would not fit in the hulls the captain already had was `spilled`,
+      // and for a deep-laden merchantman taken by a sloop that was 185 tons of
+      // the 225 she carried. Now it stays where it is, because she is one of
+      // his hulls.
       const newFleet = enemyWorldEntity?.ship && canAddToFleet(player) && manning?.manned
         ? addToFleet(
             player.fleet ?? [],
             enemyWorldEntity.ship.classId as string,
             w.captain?.training ?? 0.3,
             { crew: manning.prizeCrew, morale: manning.prizeMorale },
+            prize.prize.spilled,
           )
         : null;
       if (newFleet && manning) {
+        this.prizeKept = prize.prize.spilled;
+        this.lastPrize = { ...prize.prize, spilled: {} };
         player = { ...player, fleet: newFleet };
         w = { ...w, entities: remaining, player };
         // The boat's crew leaves the flagship's muster roll for good.

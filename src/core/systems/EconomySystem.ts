@@ -23,6 +23,7 @@ import {
   portAccess, buyPrice, sellPrice, askExact, bidExact, tradeCost, tradeProceeds,
 } from "./PortAccessSystem.ts";
 import { repriceItem } from "./PricingSystem.ts";
+import { squadronRoom, squadronHeld, stowInSquadron, drawFromSquadron } from "./HoldSystem.ts";
 import { creditTrade } from "./TradeLedgerSystem.ts";
 
 export type TradeResult = {
@@ -99,15 +100,16 @@ export function executeBuy(
     return { world, events: [], error: "Not enough stock" };
   }
 
-  // Check cargo capacity
-  const currentCargo = Object.values(playerEntity.ship.cargo).reduce<number>((s, q) => s + q, 0);
-  const addedWeight = item.weight * qty;
-  if (currentCargo + addedWeight > playerEntity.ship.cargoCap) {
+  // Room enough across the squadron, and in tons (v0.77.0). This check used to
+  // read `item.weight * qty` against a sum of tons already stowed — two units
+  // in one comparison, and the only place in the game that weighed anything.
+  // What it produced was not a capacity rule but a throttle on a single
+  // transaction: an empty forty-ton sloop took twenty tons of cane, then ten,
+  // then five, two, one and one, so "everything the hold will take" had to be
+  // pressed six times and stopped at thirty-nine. `ItemDef.weight` is gone.
+  if (squadronRoom(world) < qty) {
     return { world, events: [], error: "Not enough cargo space" };
   }
-
-  const newCargo = { ...playerEntity.ship.cargo };
-  newCargo[itemId as string] = (newCargo[itemId as string] ?? 0) + qty;
 
   const newPortInventory = { ...port.inventory };
   newPortInventory[itemId as string] = portStock - qty;
@@ -124,21 +126,15 @@ export function executeBuy(
   };
   const repriced = repriceItem(stocked, portKey, itemId as string) ?? stocked.ports[portKey];
 
-  const newWorld: WorldState = {
+  const paid: WorldState = {
     ...stocked,
     player: {
       ...world.player,
       gold: world.player.gold - totalCost,
     },
-    entities: {
-      ...world.entities,
-      [world.player.shipId as string]: {
-        ...playerEntity,
-        ship: { ...playerEntity.ship, cargo: newCargo },
-      },
-    },
     ports: { ...stocked.ports, [portKey]: repriced },
   };
+  const newWorld = stowInSquadron(paid, { [itemId as string]: qty }).world;
 
   const events: WorldEvent[] = [
     { type: "Trade", itemId, qty, goldDelta: -totalCost },
@@ -163,24 +159,23 @@ export function executeSell(
   const item = ITEMS[itemId as string];
   if (!item) return { world, events: [], error: "Unknown item" };
 
-  const owned = playerEntity.ship.cargo[itemId as string] ?? 0;
+  // Sold out of the squadron, not out of the flagship (v0.77.0).
+  const owned = squadronHeld(world, itemId as string);
   if (owned < qty) {
     return { world, events: [], error: "Not enough goods" };
   }
 
   const totalEarned = playerSellTake(world, portKey, itemId as string, qty);
 
-  const newCargo = { ...playerEntity.ship.cargo };
-  newCargo[itemId as string] = owned - qty;
-  if (newCargo[itemId as string] === 0) delete newCargo[itemId as string];
+  const unloaded = drawFromSquadron(world, itemId as string, qty).world;
 
   const newPortInventory = { ...port.inventory };
   newPortInventory[itemId as string] = (newPortInventory[itemId as string] ?? 0) + qty;
 
   const stocked: WorldState = {
-    ...world,
+    ...unloaded,
     ports: {
-      ...world.ports,
+      ...unloaded.ports,
       [portKey]: creditTrade({ ...port, inventory: newPortInventory }, -totalEarned),
     },
   };
@@ -189,15 +184,8 @@ export function executeSell(
   const newWorld: WorldState = {
     ...stocked,
     player: {
-      ...world.player,
+      ...stocked.player,
       gold: world.player.gold + totalEarned,
-    },
-    entities: {
-      ...world.entities,
-      [world.player.shipId as string]: {
-        ...playerEntity,
-        ship: { ...playerEntity.ship, cargo: newCargo },
-      },
     },
     ports: { ...stocked.ports, [portKey]: repriced },
   };

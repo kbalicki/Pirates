@@ -21,6 +21,7 @@ import { ITEMS } from "../../core/data/items.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { getRankNameKey } from "../../core/data/ranks.ts";
 import { executeBuy, executeSell } from "../../core/systems/EconomySystem.ts";
+import { squadronCap, squadronStowed, squadronRoom, squadronHeld } from "../../core/systems/HoldSystem.ts";
 import {
   requestLetterOfMarque,
   recruitCrew,
@@ -378,9 +379,12 @@ export class PortScene extends Phaser.Scene {
     // walked in with.
     this.goldText = this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(12, { bold: true }));
     if (playerShip?.ship) {
-      const totalCargo = Math.floor(Object.values(playerShip.ship.cargo).reduce<number>((s, q) => s + q, 0));
+      // The squadron's hold, not the flagship's (v0.77.0).
       this.cargoText = this.add.text(this.infoX + 120, y,
-        t("hud.cargo", { current: totalCargo, max: playerShip.ship.cargoCap }), txt(11));
+        t("hud.cargo", {
+          current: Math.floor(squadronStowed(this.worldState)),
+          max: squadronCap(this.worldState),
+        }), txt(11));
       this.add.text(this.infoX + 270, y,
         t("hud.crew", { current: playerShip.ship.crew.current, max: playerShip.ship.crew.max }), txt(11));
     }
@@ -1998,7 +2002,6 @@ export class PortScene extends Phaser.Scene {
   private renderMerchant(): void {
     const portKey = this.currentPortId as string;
     const portState = this.worldState.ports[portKey];
-    const playerShip = this.worldState.entities[this.worldState.player.shipId as string];
     let y = this.contentStartY;
 
     // Trade goods header
@@ -2041,7 +2044,7 @@ export class PortScene extends Phaser.Scene {
       // the Caribbean and find no counter that would take it off him.
       return (portState?.bonusProduces.includes(key) ?? false)
         || (portState?.inventory[key] ?? 0) > 0
-        || (playerShip?.ship?.cargo[key] ?? 0) > 0;
+        || squadronHeld(this.worldState, key) > 0;
     });
     const barW = DLG_W - PAD * 2;
 
@@ -2062,7 +2065,7 @@ export class PortScene extends Phaser.Scene {
       const ask = playerBuyPrice(this.worldState, portKey, key);
       const bid = playerSellPrice(this.worldState, portKey, key);
       const stock = portState?.inventory[key] ?? 0;
-      const owned = playerShip?.ship?.cargo[key] ?? 0;
+      const owned = squadronHeld(this.worldState, key);
       const isFocused = ri === this.selectedIndex;
       const rowColor = isFocused ? "#000000" : "#1a1a1a";
 
@@ -2644,10 +2647,8 @@ export class PortScene extends Phaser.Scene {
     const port = this.worldState.ports[portKey];
     const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
     if (!port || !ship) return 0;
-    const item = ITEMS[itemKey];
     const stock = Math.floor(port.inventory[itemKey] ?? 0);
-    const hold = Object.values(ship.cargo).reduce<number>((a, b) => a + b, 0);
-    const room = item.weight > 0 ? Math.floor((ship.cargoCap - hold) / item.weight) : 0;
+    const room = Math.floor(squadronRoom(this.worldState));
     // The purse is searched by halving rather than by dividing, because the
     // bill is rounded once and is not the ton price times the tons.
     let afford = 0;
@@ -2680,8 +2681,7 @@ export class PortScene extends Phaser.Scene {
 
   private handleSell(itemKey: string, lot: number | "all" = 1): void {
     if (this.tradePending) return;
-    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
-    const owned = Math.floor(ship?.cargo[itemKey] ?? 0);
+    const owned = Math.floor(squadronHeld(this.worldState, itemKey));
     const qty = lot === "all" ? owned : Math.min(lot, owned);
     if (qty <= 0) { this.showTradeMessage(t("port.trade_refused")); return; }
     const before = this.worldState.player.gold;
@@ -2703,12 +2703,11 @@ export class PortScene extends Phaser.Scene {
    * numbers a trade moves are held and refreshed here instead.
    */
   private afterTrade(): void {
-    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
     this.goldText?.setText(`${t("hud.gold")}: ${this.worldState.player.gold}`);
-    if (ship) {
-      const total = Math.floor(Object.values(ship.cargo).reduce<number>((a, b) => a + b, 0));
-      this.cargoText?.setText(t("hud.cargo", { current: total, max: ship.cargoCap }));
-    }
+    this.cargoText?.setText(t("hud.cargo", {
+      current: Math.floor(squadronStowed(this.worldState)),
+      max: squadronCap(this.worldState),
+    }));
     // Next tick, not this one: `switchView` unbinds the key handlers and binds
     // fresh ones, and rebinding from inside one of them is asking for trouble.
     // It is also where the one-press gate opens again.

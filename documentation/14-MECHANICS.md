@@ -357,6 +357,43 @@ misja jezuicka „lecząca wszystkich" została odłożona: warta jest około
 - **Wzrok floty = najwyższy maszt.**
 - Konsorty mają własną załogę, morale i wyszkolenie (`FleetShip.crew/morale/training`),
   ważone ludźmi przy oblężeniach.
+- **Ładownia jest własnością eskadry, nie flagowca** (v0.77.0).
+
+### Jedna ładownia na eskadrę
+
+`HoldSystem` jest jedynym miejscem, które wie, ile eskadra uniesie. Flagowiec
+**napełnia się pierwszy i opróżnia pierwszy**, więc kapitan pływający sam widzi
+dokładnie to, co widział zawsze.
+
+| funkcja | co mówi |
+|---|---|
+| `squadronCap` | suma `cargoCap` flagowca i wszystkich konsort |
+| `squadronStowed` | tony na wszystkich pokładach |
+| `squadronRoom` | ile jeszcze wejdzie |
+| `squadronHeld` | ile danego towaru wiezie eskadra, gdziekolwiek leży |
+| `stowInSquadron` | ładuje flagowiec, potem konsorty; oddaje to, co się nie zmieściło |
+| `drawFromSquadron` | zdejmuje z flagowca, potem z konsort |
+| `detachConsort` | hull odchodzi — ładunek przechodzi do pozostałych, reszta idzie z nią |
+
+Czytają to: nagłówek portu, manifest w kajucie, kolumna **Masz** na ladzie,
+magazyn (rodzinny i wynajęty), kantor frachtowy, rozmiar zlecenia odsieczy
+i pryz.
+
+**`FleetShip.cargo` jest opcjonalne** i czytane przez `consortCargo()`, które
+odpowiada `{}` — zapis sprzed v0.77.0 ma puste konsorty, bo nie było gdzie nic
+włożyć, więc migracja nie ma czego wymyślać.
+
+**Pryz jest twój z ładownią.** `SALVAGE_TAKEN = 1` nosi komentarz *„she is
+yours, hold and all"* od v0.22.0, a kod wyrzucał do wody wszystko, co nie
+mieściło się u flagowca. Zmierzone na pospolitym czterdziestotonowym slupie:
+**54% ładunku każdego pryzu szło za burtę**, a przy pełnym statku handlowym
+**185 z 225 ton (82%)**. Kadłub, który dołącza do floty, wiezie teraz to, co
+by przepadło.
+
+**A co wiezie konsorta, idzie tam, gdzie ona.** Sprzedana w stoczni sprzedaje
+się z ładunkiem, porzucona na morzu idzie z nim na dno; do pozostałych kadłubów
+przechodzi tyle, ile się w nich zmieści, a dziennik nazywa tony, które przepadły
+(`event.escort_cargo_lost`).
 
 ---
 
@@ -829,15 +866,28 @@ magazyn, nie napełnia go.
 
 ### Siedem towarów
 
-| towar | cena bazowa | waga | kategoria |
-|---|---|---|---|
-| sugar_cane | 10 | 2 | trade |
-| tobacco | 15 | 1 | trade |
-| cocoa | 20 | 1 | trade |
-| rum | 12 | 1 | trade |
-| food | 5 | 1 | supply |
-| water | 3 | 1 | supply |
-| **gold** | 80 | 1 | trade, `rare` |
+| towar | cena bazowa | kategoria |
+|---|---|---|
+| sugar_cane | 10 | trade |
+| tobacco | 15 | trade |
+| cocoa | 20 | trade |
+| rum | 12 | trade |
+| food | 5 | supply |
+| water | 3 | supply |
+| **gold** | 80 | trade, `rare` |
+
+**Towar nie ma wagi** (v0.77.0). `ItemDef.weight` istniał od pierwszej wersji,
+miał **dwóch** czytelników i żaden nie był regułą pojemności: oba porównywały
+`weight × ilość` z sumą **ton** już załadowanych. Wychodziła z tego nie
+pojemność, tylko dławik na pojedynczą transakcję — pusty czterdziestotonowy slup
+brał 20 ton trzciny, potem 10, 5, 2, 1 i 1, czyli **sześć naciśnięć „wszystko"
+i 39 z 40**. Trzcina (`weight: 2`) jest uprawiana w **23 z 45** portów.
+Odwrotna droga — żeby waga zaczęła znaczyć — została **odrzucona po pomiarze**:
+zysk na jednostkę ładowni na osiadłej mapie wynosi wtedy 3 dla cukru przy 9 dla
+tytoniu, 12 dla rumu i 13 dla kakao, a cukier jest już najsłabszy na tonę
+(6 przy 13 kakao). Najczęściej uprawiany towar mapy stałby się towarem, którego
+nikt nigdy nie wozi. **Ładownia liczy tony** — tę samą jednostkę, którą liczyły
+już `Validation`, `PrizeSystem` i proporczyk ładunku.
 
 Złota **nie trzyma żadna lada** — pojawia się wyłącznie po odkryciu złoża
 (`gold_discovery` dopisuje je do `bonusProduces`).

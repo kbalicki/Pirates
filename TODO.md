@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-18 · **Wersja:** v0.76.0.0 · **Branch:** `main`
-**Kod:** 247 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2194 przechodzi, 0 failuje, 0 `todo`** w 68 plikach
+**Stan na:** 2026-09-18 · **Wersja:** v0.77.0.0 · **Branch:** `main`
+**Kod:** 249 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2216 przechodzi, 0 failuje, 0 `todo`** w 69 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2350,7 +2350,7 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.77.0 — co dalej
+### v0.78.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
@@ -2401,14 +2401,37 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   teraz bramkę `tradePending` szerokości klatki, ale **to samo dotyczy każdego innego
   ekranu z akcją na Enter** — po prostu nigdzie indziej nie widać różnicy, bo akcja jest
   idempotentna albo zmienia widok. Warto sprawdzić stocznię, werbunek i podział łupów
-- **`cargoCap` liczy wagę, a nagłówek sumuje tony.** `executeBuy` sprawdza
-  `currentCargo + item.weight * qty > cargoCap`, a linia „Ładunek: 36/40” sumuje same
-  ilości. Przy `weight ≠ 1` (a takich towarów jest kilka) te dwie liczby mówią o czym
-  innym — kapitan widzi 36/40 i nie może kupić czterech ton
+- ~~**`cargoCap` liczy wagę, a nagłówek sumuje tony.**~~ ✅ v0.77.0.0 — i notatka
+  celowała za nisko. `ItemDef.weight` miał **dwóch** czytelników i żaden nie był regułą
+  pojemności: to był **dławik na jedną transakcję**, przez który pusty slup brał trzcinę
+  sześcioma naciśnięciami „wszystko” i kończył na **39 z 40**. Pomiar odrzucił naprawę
+  „w górę” (zysk na miejsce w ładowni: cukier 3, tytoń 9, rum 12, kakao 13, a cukier jest
+  uprawiany w 23 z 45 portów), więc pole jest skasowane. Przy okazji wyszło, że
+  **konsorty nie miały ładowni w ogóle** i że pryz gubił **54%** ładunku za burtą
 - **Osiem zdań lady kupca przeczytane** (`port.spread`, `port.covering`, `port.hungry`,
   `port.trade_income`, `port.stock`, `port.own`, `port.closed_to_you`, `port.price`).
   Jedno było fałszywe i jest naprawione; reszta się broni. **To była ostatnia
   nieprzeczytana proza w grze** — pozostają teksty generowane (nazwy, kroniki)
+
+**Znalezione przy ładowni eskadry, nienaprawione** (v0.77.0.0):
+
+- **Gracz nie decyduje, który kadłub co wiezie.** `stowInSquadron` napełnia flagowca,
+  potem konsorty po kolei, a `drawFromSquadron` opróżnia w tej samej kolejności — bez
+  ekranu przeładunku. To jest **świadomy** poziom abstrakcji (prędkość floty = najwolniejszy,
+  wzrok = najwyższy maszt), ale ma widoczny skutek: sprzedając konsortę w stoczni kapitan
+  sprzedaje ten ładunek, który akurat w niej wylądował, a nie ten, który wybrał. Jeśli
+  kiedyś ma być ekran przeładunku, to jest jego miejsce
+- **Konsorta nie ma ceny za ładunek.** `sellFleetShip` płaci 40% ceny kadłuba i nie
+  dolicza nic za tony, które z nią odchodzą — kupiec w stoczni dostaje je darmo. Albo
+  ładunek ma być wyładowany przed sprzedażą (ekran, patrz wyżej), albo cena ma go
+  uwzględniać
+- **Pryz oddaje ładunek dwiema drogami i tylko jedna ma próg.** `computePrize` bierze
+  ułamek (`SALVAGE_SUNK 0.5`, `SALVAGE_STRUCK 0.85`, `SALVAGE_TAKEN 1`), a to, co zostaje,
+  wędruje do jej własnej ładowni **w całości** — więc kadłub zatopiony traci połowę,
+  a wzięty nie traci nic. Tak ma być, ale różnica między „poddała się” a „wzięta” jest
+  teraz **dużo** większa niż przed v0.77.0 i nie została zbalansowana pomiarem
+- **`?fleet=` obsadza konsortę, ale nie pyta flagowca o ludzi.** Debug, nie mechanika —
+  `manPrize` robi to poprawnie w bitwie. Warto pamiętać, oglądając obsadę z URL-a
 
 **Znalezione przy szopie producenta, nienaprawione** (v0.75.0.0):
 

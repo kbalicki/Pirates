@@ -20,6 +20,7 @@
 import type { WorldState } from "../model/WorldState.ts";
 import type { EntityState, ShipData } from "../model/EntityState.ts";
 import { ITEMS } from "../data/items.ts";
+import { squadronRoom, stowInSquadron } from "./HoldSystem.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { routesFrom, disruptRoute } from "./TradeRouteSystem.ts";
 
@@ -125,6 +126,13 @@ export function computePrize(
   enemy: ShipData | undefined,
   player: ShipData | undefined,
   outcome: PrizeOutcome,
+  /**
+   * Room in the consorts' holds (v0.77.0).
+   *
+   * Nought by default, which is what every hull in the fleet held before this
+   * release and what the two-argument callers in the tests still mean.
+   */
+  consortRoom = 0,
 ): Prize {
   const empty: Prize = { taken: {}, spilled: {}, gold: 0, cargoValue: 0 };
   if (!enemy) return empty;
@@ -134,9 +142,8 @@ export function computePrize(
   const spilled: Record<string, number> = {};
   let cargoValue = 0;
 
-  let room = player
-    ? Math.max(0, player.cargoCap - stowed(player.cargo ?? {}))
-    : 0;
+  let room = (player ? Math.max(0, player.cargoCap - stowed(player.cargo ?? {})) : 0)
+    + Math.max(0, consortRoom);
 
   // Biggest value first: a captain with three tons of room takes the cocoa and
   // leaves the water butts.
@@ -179,22 +186,20 @@ export function applyPrize(
 ): { world: WorldState; prize: Prize } {
   const playerId = world.player.shipId as string;
   const playerEntity = world.entities[playerId];
-  const prize = computePrize(enemy?.ship, playerEntity?.ship, outcome);
+  // The consorts have holds since v0.77.0, and an empty one takes the cocoa
+  // just as well as the flagship's.
+  const flagRoom = playerEntity?.ship
+    ? Math.max(0, playerEntity.ship.cargoCap - stowed(playerEntity.ship.cargo ?? {}))
+    : 0;
+  const prize = computePrize(
+    enemy?.ship, playerEntity?.ship, outcome,
+    Math.max(0, squadronRoom(world) - flagRoom),
+  );
 
   let w = world;
 
-  if (playerEntity?.ship && Object.keys(prize.taken).length > 0) {
-    const cargo = { ...playerEntity.ship.cargo };
-    for (const [item, qty] of Object.entries(prize.taken)) {
-      cargo[item] = (cargo[item] ?? 0) + qty;
-    }
-    w = {
-      ...w,
-      entities: {
-        ...w.entities,
-        [playerId]: { ...playerEntity, ship: { ...playerEntity.ship, cargo } },
-      },
-    };
+  if (Object.keys(prize.taken).length > 0) {
+    w = stowInSquadron(w, prize.taken).world;
   }
 
   w = { ...w, player: { ...w.player, gold: w.player.gold + prize.gold } };

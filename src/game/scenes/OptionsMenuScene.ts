@@ -28,6 +28,9 @@ import { CROWNS, enemiesOf, coBelligerentAgainst, alliedSince } from "../../core
 import { getSoundLevel, setSoundLevel, SOUND_MIN, SOUND_MAX, type SoundChannel } from "../settings/SoundSettings.ts";
 import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale, consortTraining, fleetManning } from "../../core/systems/FleetSystem.ts";
+import {
+  squadronStowed, squadronCap, squadronManifest, stowedIn, consortCargo, consortCargoCap,
+} from "../../core/systems/HoldSystem.ts";
 import { manningTier, workingMinimum } from "../../core/systems/CrewSystem.ts";
 import { activeQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
@@ -344,13 +347,17 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(cargoTitle);
     y += 20;
 
-    const totalCargo = Object.values(ship.cargo).reduce<number>((s, q) => s + q, 0);
+    // The whole squadron's hold (v0.77.0) — the consorts carry cargo now, and
+    // a manifest that named only the flagship's would be short by a hull.
     const cargoSummary = this.add.text(x + 10, y,
-      t("hud.cargo", { current: Math.round(totalCargo), max: ship.cargoCap }), txt(12, { color: "#555555" }));
+      t("hud.cargo", {
+        current: Math.round(squadronStowed(this.worldState)),
+        max: squadronCap(this.worldState),
+      }), txt(12, { color: "#555555" }));
     this.contentContainer.add(cargoSummary);
     y += 18;
 
-    const cargoEntries = Object.entries(ship.cargo).filter(([_, qty]) => qty > 0);
+    const cargoEntries = Object.entries(squadronManifest(this.worldState)).filter(([_, qty]) => qty > 0);
     if (cargoEntries.length === 0) {
       this.contentContainer.add(this.add.text(x + 10, y, t("cabin.no_cargo"), txt(11, { color: "#888888" })));
       y += 16;
@@ -403,7 +410,8 @@ export class OptionsMenuScene extends Phaser.Scene {
             : `  ${t(manningTier(consortCrew(fs), fs.classId).nameKey)}`) +
           ((fs.wounded ?? 0) > 0 ? `  |  ${t("cabin.wounded", { count: Math.round(fs.wounded ?? 0) })}` : "") +
           `  |  ${t("hud.morale", { pct: Math.round(consortMorale(fs) * 100) })}` +
-          `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}`,
+          `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}` +
+          `  |  ${t("hud.cargo", { current: Math.round(stowedIn(consortCargo(fs))), max: consortCargoCap(fs) })}`,
           { ...txt(11), lineSpacing: 4 });
         this.contentContainer.add(fsInfo);
 

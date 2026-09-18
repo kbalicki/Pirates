@@ -79,6 +79,7 @@ import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { cargoSurvivingSinking } from "./DamageSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale } from "./FleetSystem.ts";
+import { consortCargo, stowedIn } from "./HoldSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
@@ -234,7 +235,16 @@ export function settleDefeat(
     const cls = SHIP_CLASSES[consort.classId];
     const berths = consortCrewMax(consort);
     const aboard = Math.min(berths, consortCrew(consort) + survivors);
-    const cargo = salvagedCargo(lost, cls?.cargoCap ?? 0);
+    // She has a hold of her own since v0.77.0, and what she is already carrying
+    // is not thrown out to make room for what the boats saved: the salvage
+    // takes whatever room is left in her after her own cargo.
+    const carried = consortCargo(consort);
+    const cargo = { ...carried };
+    for (const [item, qty] of Object.entries(
+      salvagedCargo(lost, Math.max(0, (cls?.cargoCap ?? 0) - stowedIn(carried))),
+    )) {
+      cargo[item] = (cargo[item] ?? 0) + qty;
+    }
 
     const ship: ShipData = {
       classId: shipClassId(consort.classId),

@@ -1,4 +1,5 @@
 import type { WorldState } from "../model/WorldState.ts";
+import { SHIP_CLASSES } from "../data/ships.ts";
 
 export type ValidationError = {
   field: string;
@@ -28,6 +29,16 @@ export function validateWorldState(world: WorldState): ValidationError[] {
       errors.push({ field: "player.location.portId", message: "Port location references missing port" });
     }
   }
+
+  // A consort's hold is a hold too (v0.77.0) — same invariant, and it is the
+  // one the squadron's capacity is built on.
+  (world.player.fleet ?? []).forEach((consort, i) => {
+    const cap = SHIP_CLASSES[consort.classId]?.cargoCap ?? 0;
+    const stowed = Object.values(consort.cargo ?? {}).reduce<number>((sum, qty) => sum + qty, 0);
+    if (stowed > cap) {
+      errors.push({ field: `player.fleet[${i}].cargo`, message: "Cargo exceeds capacity" });
+    }
+  });
 
   // Validate entities
   for (const [key, entity] of Object.entries(world.entities)) {

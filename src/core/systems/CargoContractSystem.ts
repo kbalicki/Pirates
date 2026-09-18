@@ -28,6 +28,7 @@
  */
 
 import type { WorldState } from "../model/WorldState.ts";
+import { squadronRoom, squadronHeld, stowInSquadron, drawFromSquadron } from "./HoldSystem.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
 
@@ -104,12 +105,9 @@ export function activeCharters(world: WorldState): CargoContract[] {
   return out;
 }
 
-/** How much cargo the flagship could still stow. */
+/** How much cargo the squadron could still stow (v0.77.0 — was the flagship's). */
 export function holdRoom(world: WorldState): number {
-  const ship = world.entities[world.player.shipId as string]?.ship;
-  if (!ship) return 0;
-  const stowed = Object.values(ship.cargo ?? {}).reduce((sum, q) => sum + q, 0);
-  return Math.max(0, ship.cargoCap - stowed);
+  return squadronRoom(world);
 }
 
 /**
@@ -283,14 +281,13 @@ export function acceptCharter(world: WorldState, contract: CargoContract): Chart
 
   const inventory = { ...port.inventory };
   inventory[contract.item] = (inventory[contract.item] ?? 0) - contract.qty;
-  const cargo = { ...entity.ship.cargo };
-  cargo[contract.item] = (cargo[contract.item] ?? 0) + contract.qty;
 
-  const loaded: WorldState = {
-    ...world,
-    ports: { ...world.ports, [contract.from]: { ...port, inventory } },
-    entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
-  };
+  // Stowed wherever there is room in the squadron (v0.77.0) — a charter the
+  // flagship alone could not lift is one the merchantman astern can.
+  const loaded: WorldState = stowInSquadron(
+    { ...world, ports: { ...world.ports, [contract.from]: { ...port, inventory } } },
+    { [contract.item]: contract.qty },
+  ).world;
 
   return { world: startQuest(loaded, cargoQuest(contract), { contract }) };
 }
@@ -299,8 +296,7 @@ export function acceptCharter(world: WorldState, contract: CargoContract): Chart
 export function canDeliver(world: WorldState, contract: CargoContract): boolean {
   if (world.player.location.type !== "port") return false;
   if ((world.player.location.portId as string) !== contract.to) return false;
-  const cargo = world.entities[world.player.shipId as string]?.ship?.cargo ?? {};
-  return (cargo[contract.item] ?? 0) >= contract.qty;
+  return squadronHeld(world, contract.item) >= contract.qty;
 }
 
 /**
@@ -318,19 +314,16 @@ export function deliverCharter(world: WorldState, contract: CargoContract): Char
   const port = world.ports[contract.to];
   if (!entity?.ship || !port) return { world, error: "charter.not_here" };
 
-  const cargo = { ...entity.ship.cargo };
-  cargo[contract.item] = (cargo[contract.item] ?? 0) - contract.qty;
-  if (cargo[contract.item] <= 0) delete cargo[contract.item];
+  const unloaded = drawFromSquadron(world, contract.item, contract.qty).world;
 
   const inventory = { ...port.inventory };
   inventory[contract.item] = (inventory[contract.item] ?? 0) + contract.qty;
 
   return {
     world: {
-      ...world,
-      entities: { ...world.entities, [shipId]: { ...entity, ship: { ...entity.ship, cargo } } },
-      ports: { ...world.ports, [contract.to]: { ...port, inventory } },
-      worldFlags: { ...world.worldFlags, [cargoDeliveredFlag(contract)]: true },
+      ...unloaded,
+      ports: { ...unloaded.ports, [contract.to]: { ...port, inventory } },
+      worldFlags: { ...unloaded.worldFlags, [cargoDeliveredFlag(contract)]: true },
     },
   };
 }

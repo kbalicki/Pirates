@@ -275,6 +275,15 @@ export function addToFleet(
    * written before the field existed keeps answering.
    */
   manning?: { crew: number; morale: number },
+  /**
+   * What she is carrying as she joins (v0.77.0).
+   *
+   * A prize is taken hold and all: whatever would not fit in the hulls the
+   * captain already had stays in hers, because she is one of them now. Omitting
+   * it gives an empty hold, which is what every hull joined with before this
+   * release.
+   */
+  cargo?: Record<string, number>,
 ): FleetShip[] | null {
   if (fleet.length >= MAX_FLEET_SIZE - 1) return null; // -1 because flagship not in array
 
@@ -293,6 +302,7 @@ export function addToFleet(
       crew: manning ? Math.max(0, Math.round(manning.crew)) : Math.round(cls.crewMax * FLEET_CREW_FRACTION),
       morale: manning ? Math.max(0, Math.min(1, manning.morale)) : FLEET_DEFAULT_MORALE,
       ...(captainTraining === undefined ? {} : { training: greenCrewTraining(captainTraining) }),
+      ...(cargo && Object.keys(cargo).length > 0 ? { cargo: { ...cargo } } : {}),
     },
   ];
 }

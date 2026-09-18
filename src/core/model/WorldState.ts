@@ -76,6 +76,17 @@ export type FleetShip = {
    * the same day and by the same skill as the flagship's.
    */
   wounded?: number;
+  /**
+   * What she is carrying (v0.77.0).
+   *
+   * Until this release a consort had no hold at all: the shipyard's list
+   * printed her capacity in its own column, the captain paid for it, and it
+   * held nothing. Read through `consortCargo()` in `HoldSystem`, which answers
+   * `{}` when the field is absent — an old save has empty consorts because
+   * there was nowhere to put anything, so there is nothing for a migration
+   * step to invent.
+   */
+  cargo?: Record<string, number>;
 };
 
 export type PlayerState = {

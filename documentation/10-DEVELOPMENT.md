@@ -311,11 +311,40 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?event=reconquest\|campaign&aged=` | Od v0.73.0 te dwa światy stemplują też `vars.passage` (4 dni), więc tablica ma **pięć** faz, nie trzy: `aged=0` → „Hiszpania zbroi wyprawę w Gibraltarze, by odbić Hawanę — desant za 18 dni”, `aged=14` → „idzie odbić Hawanę — 4 dni drogi”, `aged=17` → „dzień drogi”, `aged=18` → „desant dziś”. Bez stempla świat chodzi ścieżką starego zapisu i faza uzbrajania jest nieosiągalna z URL-a |
 | `?owed=200` | Podział łupu spóźniony o tyle dni (v0.71.0). Sześćdziesiąt dni żeglugi dzieli każdy świeży start od tego ekranu, więc bez tego nie da się go zobaczyć na żądanie. Łącz z `?famine=<port>`, który stawia kapitana w porcie: `?famine=havana&owed=200` daje sufit morale na 0,2 i tawernę, która **odmawia kolejki** i mówi dlaczego |
 | `?crew=16` | Tylu ludzi na flagowcu (v0.49.0). Każdy kadłub w grze jest obsadzony na 2-3× swojego minimum, więc braku rąk nie da się dosięgnąć ze zwykłego startu. `?skip&ship=galleon&crew=16` to przypadek podręcznikowy |
+| `?fleet=merchantman` (v0.77.0) | Ten kadłub (albo kilka po przecinku) **za rufą**, obsadzony i załadowany w jednej trzeciej. Ładownia eskadry jest całą mechaniką wydania, a drugiego kadłuba nie ma się w pierwszej minucie świata debugowego. Od tego wydania `?ship=`, `?crew=`, `?fleet=`, `?skills=` i `?wounded=` działają też na ścieżce `?event=...&ashore=1`, czyli na **jedynym** wejściu, które stawia kapitana w mieście — bez tego nie dało się obejrzeć przez nie ani lady, ani kajuty |
 | `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |
 | `?famine=<port>` (v0.64.0) | Od tego wydania harness stawia w tym mieście **prawdziwe zdarzenie `famine`** i przelicza ceny portu, więc lada pokaże drogą żywność i wodę przy normalnym tytoniu. Wcześniej opróżniał półki i stemplował `hunger`, ale zdarzenia nie było — czyli jedyna rzecz, którą głód robi z cenami, była niewidoczna w harnessie zbudowanym po to |
 | `?hail=cartagena` | Przyjaźny kupiec w zasięgu zawołania, niosący tablicę ogłoszeń tego miasta (v0.62.0). Ze zwykłej gry nie da się tego dosięgnąć na żądanie: nośnik musi być przyjazny, musi jeszcze trzymać wieść, której kapitan nie zna, i musi być w `HAIL_RANGE` w chwili, gdy chodzi kontrola. Jej tablica jest dopełniana z innych miast do trzech pozycji, bo jednopozycyjna nie pokazałaby podziału |
 | `?pardon=cartagena` | Kapitan, którego ta korona chce powiesić (–80 u Hiszpanii, sława 60), stoi w mieście, którego gubernator objął rezydencję wczoraj (v0.61.0). Ze zwykłej gry nie da się tam trafić na żądanie: trzeba spalonej kariery **i** jednej z ośmiu rocznych nominacji, która wypadnie na mieście tej samej korony w zasięgu żaglowania |
 | `?event=hurricane&port=havana` | Dowolne z 15 zdarzeń świata na dowolnym mieście, statek postawiony tak, że dialog zbliżania otwiera się sam. Od v0.30.0 zdarzenie **i wszystkie zasiane** trafiają do `knownEventIds`, więc widać też znaki na mapie. **Od v0.70.0 `?event=treasure_fleet&port=` stempluje też port zbiórki** (`vars.muster`) — bez niego harness budował flotę skarbową, której żaden czytelnik nie widział, bo wszystko idzie przez `musterPortFor`: kurs, kadłuby i plotka w tawernie |
+
+### Jedna jednostka, i to tona
+
+`ItemDef.weight` miał **dwóch** czytelników i żaden nie był regułą pojemności:
+oba porównywały `weight × ilość` z sumą **ton** już załadowanych. To nie jest
+literówka, tylko dwie jednostki w jednym porównaniu — i wychodził z tego dławik
+na **jedną transakcję**, a nie limit ładowni. Kapitan naciskał „wszystko" sześć
+razy i kończył na 39 z 40.
+
+Lekcja jest ta sama co przy `productionMul` z v0.75.0: **pole, które ma jednego
+albo dwóch czytelników, jest hipotezą, nie mechaniką** — i zanim się je naprawi,
+trzeba zmierzyć, którą stronę naprawiać. Tutaj pomiar (zysk na jednostkę
+ładowni: cukier 3, tytoń 9, rum 12, kakao 13) odrzucił naprawę „w górę" i kazał
+skasować pole. Odrzucenie po pomiarze jest wynikiem, tak samo jak przemyt
+z v0.50.0.
+
+### Ekran, który liczy drugi raz to samo
+
+`SeaBattleScene` wołał `computePrize` **powtórnie**, żeby narysować swoje
+linijki — na świecie, w którym pryz był już rozliczony. Uchodziło mu to na sucho
+dokładnie tak długo, jak ładownia była flagowca: rozliczenie zwraca nowy świat
+zamiast przypisywać, więc drugie liczenie dostawało te same wejścia. W chwili,
+w której ładownia urosła o konsorty, drugie wywołanie nic o nich nie wiedziało
+i wypisałoby **jako utopiony ładunek, który jest na pokładzie**.
+
+Reguła: **wynik rozliczenia się trzyma, nie przelicza.** Tak samo jak
+`defeatFate` z v0.59.0, i z tego samego powodu — ekran opisuje to, co się stało,
+a nie liczy tego jeszcze raz.
 
 ## Deploy produkcyjny
 
