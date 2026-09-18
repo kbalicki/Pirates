@@ -387,6 +387,38 @@ lądzie i błędne dla każdej wyspy.
 Dokładasz polskie zdanie z nazwą? Nie pisz `w {{port}}` — jest na to test, który
 czyta całą tabelę i szuka dokładnie tego kształtu.
 
+### Przemiatanie szukało **złego języka** (v0.76.0)
+
+`no_hardcoded_text.test.ts` czyta źródło każdej sceny od v0.60.0 i wywala się na
+**polskiej literze** w literale. To była dokładnie ta połowa problemu, którą
+v0.60.0 miała przed oczami — a angielskiego napisu na ekranie ten test **nie
+może zobaczyć z definicji**.
+
+Znalezionych przy dopisaniu drugiej połowy: **siedemnaście**, w tym **siedem
+linii podpowiedzi klawiszy** (tworzenie postaci, sloty zapisu, lista opcji,
+podejście do portu, kupiec, stocznia, spotkanie na morzu), trzy z czterech
+nagłówków kolumn na ladzie kupca, „Calm” na obu kompasach, „Loading…”, „Debug”,
+„ESC” i „zoom: ?”.
+
+**Lekcja z v0.60.0 odwrócona: nieprzetłumaczony ekran to ten, który wygląda
+poprawnie dla sprawdzającego.** Tam sprawdzającym był autor czytający po polsku;
+tu — test szukający polskich liter.
+
+Przemiatanie wywala się teraz na każdym literale podanym wprost jako trzeci
+argument `add.text`, który zawiera trzy litery ASCII pod rząd. Strzałka, kropka
+i myślnik przechodzą — to nie jest język.
+
+### Cena jednostkowa a rachunek (v0.76.0)
+
+`buyPrice` / `sellPrice` to **cena na ekranie**. Pieniądze liczą `tradeCost`
+i `tradeProceeds` — z ceny **niezaokrąglonej** (`askExact` / `bidExact`)
+i z zaokrągleniem **raz**, na sumie. Przed v0.76.0 zaokrąglenie biegło dwa razy
+i zjadało rozpiętość: na 90 z 315 notowań neutralny, przyjazny i sojusznik dawali
+te same dwie liczby.
+
+Dokładasz nowe miejsce, gdzie kapitan płaci za towar? **Nie mnóż ceny
+jednostkowej przez ilość** — to jest właśnie ten błąd.
+
 ### Liczebnik też zamawia formę: `{{n}} {{n:rzeczownik}}` (v0.74.0)
 
 Polski liczy w trzech kategoriach — `1 tona`, `2 tony`, `5 ton` — a gra znała

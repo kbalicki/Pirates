@@ -547,6 +547,36 @@ Reputacja jest **osobna dla każdej korony** i decyduje o pięciu ladach naraz.
 *Spread to połowa różnicy między ceną kupna a sprzedaży; round trip to jego
 podwojenie — 24% u neutralnego, 10% u sojusznika.*
 
+**Rachunek zaokrągla się raz, na pieniądzach** (v0.76.0). Do tego wydania cena
+jednostkowa była zaokrąglana **dwa razy** — w `spotPrice` i w `buyPrice` —
+a rozpiętość jest ułamkiem małej liczby całkowitej. Zmierzone na 315
+notowaniach osiadłego świata:
+
+| |  |
+|---|---|
+| notowań, gdzie `ask === bid` u neutralnego | **47 (14,9%)** |
+| notowań, gdzie **neutralny, przyjazny i sojusznik** dają te same dwie liczby | **90 (28,6%)** |
+| mediana straty na tonę: wrogi / nieprzyjazny | 8 / 4 |
+| …neutralny / przyjazny / sojusznik | **2 / 2 / 2** |
+
+Połowa drabiny, która **karze**, działała; ta, która **nagradza**, nie — i im
+lepszy standing, tym częściej lada nie umiała go wyrazić (zerowa rozpiętość na
+47 notowaniach u neutralnego, 80 u przyjaznego, **126 u sojusznika**).
+
+`askExact` / `bidExact` liczą cenę bez zaokrąglenia, a `tradeCost` /
+`tradeProceeds` zaokrąglają **rachunek**. Dziesięć ton przy notowaniu 4 zł:
+
+| standing | partia 10 t | tona po tonie |
+|---|---|---|
+| wrogi | **52** | 5 × 10 |
+| neutralny | **45** | 4 × 10 |
+| sojusznik | **42** | 4 × 10 |
+
+**Lada handluje partiami** (v0.76.0): Enter to tona, **Shift** dziesięć,
+**Ctrl** wszystko, co zniesie ładownia, kiesa i nabrzeże. Transakcja
+przerysowuje ladę zamiast restartować miasto, więc kursor zostaje na wierszu,
+a lada mówi, co zrobiła i za ile.
+
 **Standing poniżej neutralnego jest ulicą jednokierunkową**: list kaperski
 wymaga `friendly`, zlecenie obrony wymaga listu, córka wymaga `friendly`,
 a kantor **nie ma pracy poniżej neutralnego w ogóle**. Zostaje jedno wejście:

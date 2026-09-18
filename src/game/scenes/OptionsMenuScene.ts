@@ -789,7 +789,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Keyboard hint for save/load
     const hint = this.add.text(this.cameras.main.width / 2, y + 8,
-      "\u2191\u2193 \u2014 Select slot   Enter \u2014 Save   L \u2014 Load   Delete/X \u2014 Remove",
+      t("save.hint"),
       txt(10, { color: "#888888" }));
     hint.setOrigin(0.5, 0);
     this.contentContainer.add(hint);
@@ -1040,7 +1040,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Debug mode toggle
     this.contentContainer.add(
-      this.add.text(x, y, "Debug", txt(13, { bold: true })));
+      this.add.text(x, y, t("settings.debug"), txt(13, { bold: true })));
     y += 22;
 
     settingsItems.push({ type: "debug", y });
@@ -1139,7 +1139,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Keyboard hint for settings
     const settingsHint = this.add.text(cx, this.contentH - 4,
-      "\u2191\u2193 \u2014 Navigate   Enter \u2014 Toggle/Select",
+      t("options.hint"),
       txt(10, { color: "#888888" }));
     settingsHint.setOrigin(0.5, 1);
     this.contentContainer.add(settingsHint);

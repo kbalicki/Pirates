@@ -90,7 +90,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.versionText.setDepth(10);
 
     // Zoom label — bottom-left
-    this.zoomText = this.add.text(6, cam.height - 4, "zoom: ?", {
+    this.zoomText = this.add.text(6, cam.height - 4, t("hud.zoom", { level: "?" }), {
       ...txt(12, { color: "#888888" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -331,7 +331,7 @@ export class UIOverlayScene extends Phaser.Scene {
   updateZoom(zoom: number): void {
     if (this.zoomText) {
       // Show integer zoom level (1×–12×)
-      this.zoomText.setText(`zoom: ${Math.round(zoom)}×`);
+      this.zoomText.setText(t("hud.zoom", { level: Math.round(zoom) }));
     }
   }
 

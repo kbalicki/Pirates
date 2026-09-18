@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-18 · **Wersja:** v0.75.0.0 · **Branch:** `main`
-**Kod:** 247 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2191 przechodzi, 0 failuje, 0 `todo`** w 68 plikach
+**Stan na:** 2026-09-18 · **Wersja:** v0.76.0.0 · **Branch:** `main`
+**Kod:** 247 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2194 przechodzi, 0 failuje, 0 `todo`** w 68 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -18,9 +18,9 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 
 > **Szukasz opisu mechanik, a nie historii wydań?** [documentation/14-MECHANICS.md](documentation/14-MECHANICS.md) — **stan gry, nie delty**, ułożony według tego, co gracz robi, każda liczba wprost z kodu i **pilnowana testem** (`mechanics_doc.test.ts`: 244 wiersze `Moduł.STAŁA` z 49 modułów **plus wszystkie tabele strukturalne** — klasy statków, progi reputacji, obsady, kadłuba, takielunku, amunicji, żagli i cała tabela 45 portów). Reszta `documentation/` — a zwłaszcza 04-CORE-SYSTEMS, która ma 5500 linii — jest **archeologią wydań** i na instrukcję dla gracza się nie nadaje, bo opisuje różnice, a nie stan. **To jest źródło na instrukcję dla użytkownika.**
 
-> **Start sesji w jednym zdaniu:** v0.75.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2191/2191 zielone; **bunt niewolników nie zmieniał ceny cukru**. `inventoryCap` ma dwie gałęzie i v0.67.0 przepisała tylko importową — gałąź producenta została `marketLevel * 50`, czyli 150–250 ton przy producencie robiącym sześć ton dziennie. Zmierzone na osiadłych Karaibach: szopa stoi na suficie w **69 z 69** par (port, towar), **440 ton dziennie** idzie do kosza, **44 z 69** towarów nie zabiera **żaden** szlak, a **61 z 69** notowań leży przyklejonych do podłogi `RATIO_MIN` — zapas musiałby spaść poniżej **32,7%** sufitu, żeby cena w ogóle drgnęła. Skutek: produkcja ×0,3 przez sześćdziesiąt dni ruszała cenę własnego surowca miasta o **0,0%**, i tak samo żniwa, epidemia, boom handlowy oraz **jednorazowe uderzenia w magazyn, które już istniały** (najazd piracki −30% szopy, huragan −15%) — a podręcznik wymienia „produkcja ×0,3” jako rzecz, którą kapitan widzi. Teraz sufit to **osiem dni własnej produkcji** (podłoga 20 t, wartość wybrana przemiataniem 4/6/8/12/20/30 — osiem to ostatni próg, przy którym surowiec u źródła dalej kosztuje **3 złote**, i pierwszy, przy którym świat da się poczuć), a **roboczy** sufit schodzi razem z produkcją i zapas dochodzi do niego po dniu własnej produkcji dziennie. **Obie zmiany są konieczne** — cofnięcie każdej z osobna daje po cztery czerwone testy. Osiadły świat drgnął o **mniej niż 1,1% i tylko w górę**, identycznie w dniu 400 i 900 (czyli równowaga, nie stan otwarcia — lekcja z v0.67.0). Lista kandydatów na v0.76.0 jest niżej.
+> **Start sesji w jednym zdaniu:** v0.76.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2194/2194 zielone; **lada drukowała rozpiętość, której nie brała**. Ekran kupca mówi „to miasto jest NEUTRALNE: 24% między tym, czego żąda, a tym, co oferuje” — i kwotował **3 / 3**. Rozpiętość to ułamek, cena to mała liczba całkowita, a `Math.round` biegł **dwa razy** (w `spotPrice` i w `buyPrice`); dwunasta część czterech złotych to nie jest moneta, a cztery złote to najczęstsze notowanie na mapie. Zmierzone na 315 notowaniach osiadłego świata: `ask === bid` na **47 (14,9%)**, a **neutralny, przyjazny i sojusznik dają te same dwie liczby na 90 (28,6%)** — mediana straty na tonę to **2 / 2 / 2** przy 8 dla wrogiego i 4 dla nieprzyjaznego, czyli **połowa drabiny reputacji, która karze, działała, a ta, która nagradza, nie** (i im lepszy standing, tym częściej lada nie umiała go wyrazić: 126 zerowych rozpiętości u sojusznika). Rachunek jest teraz zaokrąglany **raz, na pieniądzach** (`askExact`/`bidExact` + `tradeCost`/`tradeProceeds`), a lada **handluje partiami** — Shift dziesięć, Ctrl wszystko — bo tona na naciśnięcie to sto dwadzieścia naciśnięć na merchantmana i po każdym restart całego miasta. Przy okazji zmierzone: jeden `keydown` docierał do handlera **trzy razy** (bramka `tradePending` szerokości klatki), a przemiatanie po źródle scen szukało od v0.60.0 **polskich liter** i dlatego nie widziało **siedemnastu angielskich napisów** na ekranach, w tym **siedmiu linii podpowiedzi klawiszy**. Lista kandydatów na v0.77.0 jest niżej.
 
-> **Poprzednie zdanie startowe (v0.74.0.0):** v0.74.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2179/2179 zielone; **jeden dzień, dwa dni, pięć dni**. Polski liczy w trzech kategoriach — `1 tona`, `2 tony`, `5 ton` — a gra znała jedną: **85 polskich zdań i 69 angielskich** przyszywało liczbę do rzeczownika w jednym kształcie. Pozycja leżała w TODO od v0.68.0 z gotowym projektem, v0.72.0 musiała ją **obejść** (dwa ostatnie dni wyprawy dostały własne zdania zamiast liczby), a v0.73.0 dołożyła trzeciego konsumenta. Zmierzone **na kodzie, który te liczby produkuje**, nie na stringach: `tendSickBay` bierze 30% lazaretu dziennie i **nigdy mniej niż jednego**, więc **55,5%** linii „wraca N rannych” mówi *jeden* (i 49,9% linii o zmarłych); zgony z głodu to `max(1, floor(…))`, czyli jedynka jest **wbudowana** — **67,1%** toastów; a wioska płaci 2, 3, 4 albo 5 ton złota, więc **trzy z czterech** jej zdań były niegramatyczne. Najczęstsza wartość liczby była tą, której zdanie nie umiało powiedzieć. Teraz rzeczownik jest **formą liczby** (`{{days}} {{days:day}}`, jedenaście rzeczowników w `plurals.ts`) — i inaczej niż tabela przypadków ta **odpowiada też po angielsku**, bo „1 days out” jest tak samo złe jak „1 dni”. Czego tabela nie zrobi, to zgoda **czasownika i imiesłowu** (ta sama pozycja, którą v0.69.0 zostawiła otwartą dla rodzaju): szesnaście polskich zdań jest przeredagowanych — czas teraźniejszy z liczbą na końcu, nieodmienne `mniej`, `jeszcze` zamiast `zostało`. Jedno zdanie zostaje z gołym rzeczownikiem i **jest poprawne** („2 z 3 dział potrzebnych” — po `z` dopełniacz mnogi pasuje do każdej liczby); przemiatanie ma dla niego nazwane odstępstwo i wywala się na każdym innym.
+> **Poprzednie zdanie startowe (v0.75.0.0):** v0.75.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2191/2191 zielone; **bunt niewolników nie zmieniał ceny cukru**. `inventoryCap` ma dwie gałęzie i v0.67.0 przepisała tylko importową — gałąź producenta została `marketLevel * 50`, czyli 150–250 ton przy producencie robiącym sześć ton dziennie. Zmierzone na osiadłych Karaibach: szopa stoi na suficie w **69 z 69** par (port, towar), **440 ton dziennie** idzie do kosza, **44 z 69** towarów nie zabiera **żaden** szlak, a **61 z 69** notowań leży przyklejonych do podłogi `RATIO_MIN` — zapas musiałby spaść poniżej **32,7%** sufitu, żeby cena w ogóle drgnęła. Skutek: produkcja ×0,3 przez sześćdziesiąt dni ruszała cenę własnego surowca miasta o **0,0%**, i tak samo żniwa, epidemia, boom handlowy oraz **jednorazowe uderzenia w magazyn, które już istniały** (najazd piracki −30% szopy, huragan −15%) — a podręcznik wymienia „produkcja ×0,3” jako rzecz, którą kapitan widzi. Teraz sufit to **osiem dni własnej produkcji** (podłoga 20 t, wartość wybrana przemiataniem 4/6/8/12/20/30 — osiem to ostatni próg, przy którym surowiec u źródła dalej kosztuje **3 złote**, i pierwszy, przy którym świat da się poczuć), a **roboczy** sufit schodzi razem z produkcją i zapas dochodzi do niego po dniu własnej produkcji dziennie. **Obie zmiany są konieczne** — cofnięcie każdej z osobna daje po cztery czerwone testy. Osiadły świat drgnął o **mniej niż 1,1% i tylko w górę**, identycznie w dniu 400 i 900 (czyli równowaga, nie stan otwarcia — lekcja z v0.67.0).
 
 > **Poprzednie zdanie startowe (v0.70.0.0):** v0.70.0.0 jest na `main` i **wdrożona** na pirates.k4.pl, testy 2103/2103 zielone; **pierwsza rzecz, jaką tawerna w ogóle mówi**. Od v0.28.0 tawerna relacjonuje świat, ale ośmioelementowa lista sprzed tamtego wydania wciąż siedzi w puli i dochodzi do głosu, gdy miasto ma mniej niż dwa prawdziwe fakty w zasięgu — co brzmi jak przypadek brzegowy, a **zmierzone okazało się regułą**: `rumorsAt` na świeżym świecie jest **puste we wszystkich 45 portach**, więc te osiem zdań to całość tego, co kapitan słyszy przy pierwszej kolejce. Trzy były sprawdzalnie nieprawdziwe. **„Ceny cukru w Barbados biją rekordy”** — Barbados uprawia cukier i jest **34. z 45** pod względem jego ceny (4 zł przy 27 w Port Royale), czyli jedyna darmowa porada handlowa w grze wysyłała ładownię do najgorszego kantoru na Karaibach. **Czarnobrody** nie występuje w żadnej innej linijce repozytorium, a jego kariera zaczyna się **36 lat po najpóźniejszej epoce**. A **flota skarbowa** jest od v0.46.0 prawdziwym zdarzeniem z prawdziwym kursem — tylko że `rumorsAt` **w ogóle o niej nie wiedział**, więc najcenniejsza rzecz w grze nie przechodziła przez kanał zbudowany po to, żeby relacjonować świat, a zmyślona wersja z niewłaściwą cieśniną przechodziła. Teraz jest faktem, razem z huraganem w zasięgu; reszta ósemki jest **bramkowana warunkiem** (sezon z `eventSeason`, wojna własnej flagi, gubernator z `offerFor`), a statek widmo zostaje bezwarunkowo, bo jako jedyny nic nie twierdzi. Lista kandydatów na v0.71.0 jest niżej.
 
@@ -2350,7 +2350,7 @@ Podział: `HAIL_ITEMS = 1` na `HAIL_RANGE = 30` z toastem, reszta na ekranie
 spotkania (`ENCOUNTER_RANGE = 18`), `AiData.hailed` żeby zawołanie zdarzyło się
 **raz**. Testy 2006 → 2021, sprawdzone cofnięciem poprawki (6 na czerwono).
 
-### v0.76.0 — co dalej
+### v0.77.0 — co dalej
 
 **Zrobione w v0.70.0** — osiem starych opowieści z tawerny jest przeczytane i bramkowane,
 flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce z sesji.
@@ -2394,6 +2394,22 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   wierszach, czytane przez nikogo (peace idzie przez `news.war_end` wpisane wprost
   w `checkHistoricalWars`). Kształt z v0.29.0, do skasowania
 
+**Znalezione przy ladzie kupca, nienaprawione** (v0.76.0.0):
+
+- **Jeden `keydown` z DOM-u dociera do handlera Phasera po kilka razy.** Zmierzone:
+  trzy wywołania w odstępie 1–2 ms przy `listenerCount("keydown-ENTER") === 1`. Lada ma
+  teraz bramkę `tradePending` szerokości klatki, ale **to samo dotyczy każdego innego
+  ekranu z akcją na Enter** — po prostu nigdzie indziej nie widać różnicy, bo akcja jest
+  idempotentna albo zmienia widok. Warto sprawdzić stocznię, werbunek i podział łupów
+- **`cargoCap` liczy wagę, a nagłówek sumuje tony.** `executeBuy` sprawdza
+  `currentCargo + item.weight * qty > cargoCap`, a linia „Ładunek: 36/40” sumuje same
+  ilości. Przy `weight ≠ 1` (a takich towarów jest kilka) te dwie liczby mówią o czym
+  innym — kapitan widzi 36/40 i nie może kupić czterech ton
+- **Osiem zdań lady kupca przeczytane** (`port.spread`, `port.covering`, `port.hungry`,
+  `port.trade_income`, `port.stock`, `port.own`, `port.closed_to_you`, `port.price`).
+  Jedno było fałszywe i jest naprawione; reszta się broni. **To była ostatnia
+  nieprzeczytana proza w grze** — pozostają teksty generowane (nazwy, kroniki)
+
 **Znalezione przy szopie producenta, nienaprawione** (v0.75.0.0):
 
 - **Dwie trzecie tego, co ta mapa uprawia, nie ma żadnego klienta szlakowego** — **44 z 69**
@@ -2401,11 +2417,12 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   **jedzą**; surowce, które miasto tylko wywozi, w dużej części nie jadą nigdzie. Jedynym
   odbiorcą jest kapitan. To jest pozycja projektowa (dorobienie szlaków eksportowych zmienia
   całą mapę handlu), ale bez niej „produkcja” połowy portów jest liczbą bez konsumenta
-- **Przy cenie 3 złote mnożnik zdarzenia ginie w zaokrągleniu.** `trade_boom` niesie
-  `priceMul` 0,8, a `round(3 × 0,8) = 2` tylko czasem: zmierzone na producencie boom ruszał
-  cenę o **0,0%**, bo `Math.round` zjadał 20%. Dotyczy każdego notowania stojącego przy
-  podłodze. Lekarstwem byłby grosz (cena ×10 wewnętrznie) albo mnożnik działający na ilorazie,
-  nie na wyniku
+- **Przy cenie 3 złote mnożnik zdarzenia ginie w zaokrągleniu.** Zmierzone w v0.76.0
+  **na całej mapie**, i okazało się węższe, niż ta notatka zakładała: `×0,8` wraca do tej
+  samej liczby tylko na **1 z 315** notowań (0,3%), `×2,32` na żadnym. Problem jest realny
+  wyłącznie przy samej podłodze (cena 3–4), gdzie trafił producenta z v0.75.0. Rozpiętość
+  lady, która ginęła na **90 z 315**, jest naprawiona osobno (v0.76.0) — tu zostaje sam
+  mnożnik zdarzenia i jest to pozycja **mała**, nie duża
 - **Sufit producenta nie rośnie przy dobrym roku** (świadomie). Magazyn jest budynkiem, więc
   żniwa ×1,8 i boom ×1,5 nie mają gdzie się zmieścić i są odczuwalne **wyłącznie** przez
   `priceMul` — a ten ginie w zaokrągleniu, patrz wyżej. Czyli dobre zdarzenia produkcyjne

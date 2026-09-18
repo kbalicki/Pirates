@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "../../core/i18n/index.ts";
 import { UI_FONT, TEXT_RES } from "../ui/textStyle.ts";
 
 const MARGIN_PX = 8;       // screen pixels from edge
@@ -29,7 +30,7 @@ export class WindCompassRenderer {
     this.needleSprite = scene.add.image(0, 0, "compass_needle");
     this.needleSprite.setDepth(9850);
 
-    this.windLabel = scene.add.text(0, 0, "Calm", {
+    this.windLabel = scene.add.text(0, 0, t("hud.wind_calm"), {
       fontFamily: UI_FONT,
       fontSize: "11px",
       color: "#cccccc",
@@ -77,7 +78,7 @@ export class WindCompassRenderer {
     this.windLabel.setScale(1 / zoom);
 
     const knots = strengthToKnots(windStrength);
-    this.windLabel.setText(knots === 0 ? "Calm" : `${knots} kn`);
+    this.windLabel.setText(knots === 0 ? t("hud.wind_calm") : t("hud.wind_knots", { knots }));
   }
 
   destroy(): void {

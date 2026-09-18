@@ -189,7 +189,7 @@ export class ShipEncounterScene extends Phaser.Scene {
 
     // Hint
     this.add.text(cx, dlgY + DLG_H - PAD - 4,
-      "W/S — Select   Enter — Confirm   Esc — Sail Away",
+      t("encounter.hint"),
       txt(10, { color: "#888888" })).setOrigin(0.5, 1);
 
     // Keyboard
@@ -362,7 +362,7 @@ export class ShipEncounterScene extends Phaser.Scene {
 
     // Hint
     this.add.text(cx, dlgY + newsH - PAD - 4,
-      "Enter / Esc — OK",
+      t("encounter.hint_ok"),
       txt(10, { color: "#888888" })).setOrigin(0.5, 1);
 
     // Keyboard

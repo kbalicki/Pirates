@@ -103,6 +103,9 @@ const NOUNS: Record<Lang, Record<string, PluralNoun>> = {
     hand: { one: "człowiek", few: "ludzi", many: "ludzi" },
     gun: { one: "działo", few: "działa", many: "dział" },
     ton: { one: "tona", few: "tony", many: "ton" },
+    // "Kupiono jedną tonę": the counter's own line wants the accusative,
+    // and the counting register cannot supply it.
+    ton_acc: { one: "tonę", few: "tony", many: "ton" },
     wounded: { one: "ranny", few: "rannych", many: "rannych" },
     member: { one: "członek załogi", few: "członków załogi", many: "członków załogi" },
     point: { one: "punkt", few: "punkty", many: "punktów" },
@@ -117,6 +120,7 @@ const NOUNS: Record<Lang, Record<string, PluralNoun>> = {
     hand: { one: "hand", many: "hands" },
     gun: { one: "gun", many: "guns" },
     ton: { one: "ton", many: "tons" },
+    ton_acc: { one: "ton", many: "tons" },
     wounded: { one: "wounded man", many: "wounded" },
     member: { one: "crew member", many: "crew members" },
     point: { one: "point", many: "points" },

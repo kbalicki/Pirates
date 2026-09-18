@@ -22,8 +22,12 @@ await page.setViewport({ width: 1280, height: 720 });
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 await new Promise(r => setTimeout(r, settleMs));
 
-for (const key of steps) {
+for (const step of steps) {
+  // "shift+Enter" / "ctrl+Enter" — the counter reads the modifiers (v0.76.0).
+  const [mod, key] = step.includes("+") ? step.split("+") : [null, step];
+  if (mod) await page.keyboard.down(mod === "ctrl" ? "Control" : "Shift");
   await page.keyboard.press(key);
+  if (mod) await page.keyboard.up(mod === "ctrl" ? "Control" : "Shift");
   await new Promise(r => setTimeout(r, 900));
 }
 

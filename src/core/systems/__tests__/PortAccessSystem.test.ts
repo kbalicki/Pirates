@@ -3,7 +3,9 @@ import { portAccess, buyPrice, sellPrice } from "../PortAccessSystem.ts";
 import { marqueFlag, patronBehind, alliesOfPatrons, coveringPatrons } from "../PrivateerSystem.ts";
 import { generateAvailableCrew, recruitCrew, repairRate, buyShip, buyShipToFleet } from "../PortInteractionSystem.ts";
 import { cargoOffers } from "../CargoContractSystem.ts";
-import { executeBuy, executeSell, playerBuyPrice, playerSellPrice } from "../EconomySystem.ts";
+import {
+  executeBuy, executeSell, playerBuyPrice, playerSellPrice, playerBuyCost, playerSellTake,
+} from "../EconomySystem.ts";
 import { CITIES } from "../../data/cities.ts";
 import { ITEMS } from "../../data/items.ts";
 import { initPortPrices } from "../../data/prices.ts";
@@ -210,7 +212,10 @@ describe("the merchant", () => {
     const w = makeWorld(HOSTILE);
     const out = executeBuy(w, portId(PORT), itemId(item), 4);
     const spent = w.player.gold - out.world.player.gold;
-    expect(spent).toBe(playerBuyPrice(w, PORT, item) * 4);
+    // The bill is the exact ask times the tons, rounded once (v0.76.0), so it
+    // is within half a coin of the ton price times four and need not equal it.
+    expect(spent).toBe(playerBuyCost(w, PORT, item, 4));
+    expect(Math.abs(spent - playerBuyPrice(w, PORT, item) * 4)).toBeLessThanOrEqual(2);
     expect(spent).toBeGreaterThan((w.ports[PORT].prices[item] ?? 0) * 4);
   });
 
@@ -227,7 +232,34 @@ describe("the merchant", () => {
     const bought = executeBuy(makeWorld(HOSTILE), portId(PORT), itemId(item), 10).world;
     const out = executeSell(bought, portId(PORT), itemId(item), 10);
     const earned = out.world.player.gold - bought.player.gold;
-    expect(earned).toBe(playerSellPrice(bought, PORT, item) * 10);
+    expect(earned).toBe(playerSellTake(bought, PORT, item, 10));
+    expect(earned).toBeLessThan(playerBuyCost(bought, PORT, item, 10));
+  });
+
+  it("never pays more for a lot than it charges for one", () => {
+    // The v0.24.0 guard, carried to the money: rounding once on the bill must
+    // not let a bid past an ask.
+    for (const rep of [HOSTILE, UNFRIENDLY, NEUTRAL, FRIENDLY, ALLIED]) {
+      const w = makeWorld(rep);
+      for (const qty of [1, 2, 5, 10, 40]) {
+        expect(playerSellTake(w, PORT, item, qty), `rep ${rep} qty ${qty}`)
+          .toBeLessThanOrEqual(playerBuyCost(w, PORT, item, qty));
+      }
+    }
+  });
+
+  it("charges the standing on a lot, where a ton at a time could not carry it", () => {
+    // The defect this release is about. At the commonest quote on the map a
+    // neutral counter asks 4.48 and offers 3.52 — four and four once they are
+    // counted into coins — so neutral, friendly and allied named the identical
+    // two numbers on 90 of 315 quotes. Ten tons at a time, they do not.
+    const lots = [HOSTILE, UNFRIENDLY, NEUTRAL, FRIENDLY, ALLIED].map(rep => {
+      const w = makeWorld(rep);
+      return playerBuyCost(w, PORT, item, 10);
+    });
+    for (let i = 1; i < lots.length; i++) {
+      expect(lots[i], `standing ${i}`).toBeLessThan(lots[i - 1]);
+    }
   });
 });
 

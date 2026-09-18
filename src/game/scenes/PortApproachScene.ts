@@ -200,7 +200,7 @@ export class PortApproachScene extends Phaser.Scene {
 
     // --- Keyboard hint at bottom ---
     const hintY = dlgY + DLG_H - PAD - 4;
-    const hint = this.add.text(cx, hintY, "W/S \u2014 Select   Enter \u2014 Confirm   Esc \u2014 Leave",
+    const hint = this.add.text(cx, hintY, t("approach.hint"),
       txt(10, { color: "#888888" }));
     hint.setOrigin(0.5, 1);
 

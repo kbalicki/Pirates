@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { t } from "../../core/i18n/index.ts";
 import { UI_FONT, TEXT_RES } from "../ui/textStyle.ts";
 
 // ---- Constants ---------------------------------------------------------- //
@@ -115,7 +116,7 @@ export class WindCompassWidget {
     this.needle.setScale(texScale);
     this.needle.setDepth(20);
 
-    this.windLabel = scene.add.text(x, y + size / 2 + 6, "Calm", {
+    this.windLabel = scene.add.text(x, y + size / 2 + 6, t("hud.wind_calm"), {
       fontFamily: UI_FONT,
       fontSize: "14px",
       color: "#cccccc",
@@ -144,7 +145,7 @@ export class WindCompassWidget {
 
     const knots = strengthToKnots(strength);
     if (knots === 0) {
-      this.windLabel.setText("Calm");
+      this.windLabel.setText(t("hud.wind_calm"));
     } else {
       const label = radToCompassLabel(dirRad);
       this.windLabel.setText(`${knots} kn ${label}`);

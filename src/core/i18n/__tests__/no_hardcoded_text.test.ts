@@ -56,6 +56,45 @@ function polishLiterals(src: string): string[] {
   return out;
 }
 
+/**
+ * A literal handed straight to `add.text` — the third argument, the one the
+ * player reads.
+ *
+ * The sweep above only knows how to see **Polish**, which is the language its
+ * author would notice. Seventeen screens' worth of **English** was therefore
+ * invisible to it: seven key-hint lines (character creation, the save slots,
+ * the options list, the port approach, the merchant, the shipyard, the
+ * encounter), three column headers on the merchant's counter, "Calm" on both
+ * compasses, "Loading...", "Debug", "ESC" and "zoom: ?".
+ *
+ * That is v0.60.0's own lesson turned round: the untranslated screen is the
+ * one that looks right to whoever is checking. A test that looks for Polish
+ * letters is a test that can only find a screen written in Polish.
+ */
+const DRAWN = /\badd\.text\(\s*[^,]+,\s*[^,]+,\s*("((?:[^"\n\\]|\\.)*)"|'((?:[^'\n\\]|\\.)*)')/g;
+
+describe("no screen is left in the language the code is written in", () => {
+  it("hands `add.text` no English words of its own", () => {
+    const offenders: string[] = [];
+    for (const [path, src] of Object.entries(SOURCES)) {
+      const code = src
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+      DRAWN.lastIndex = 0;
+      let m: RegExpExecArray | null;
+      while ((m = DRAWN.exec(code)) !== null) {
+        const literal = m[2] ?? m[3] ?? "";
+        // Words, not glyphs: an arrow, a bullet or a dash is not a language.
+        if (/[A-Za-z]{3}/.test(literal)) {
+          offenders.push(`${path.replace(/^.*\/game\//, "game/")}: ${literal.slice(0, 60)}`);
+        }
+      }
+    }
+    // Seventeen before v0.76.0.
+    expect(offenders).toEqual([]);
+  });
+});
+
 describe("no scene speaks one language on its own", () => {
   it("has no Polish string literal anywhere under src/game", () => {
     expect(Object.keys(SOURCES).length, "the glob found no sources").toBeGreaterThan(20);

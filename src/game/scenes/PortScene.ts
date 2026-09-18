@@ -34,7 +34,9 @@ import {
 import { canAddToFleet, fleetSize } from "../../core/systems/FleetSystem.ts";
 import { getPortNews } from "../../core/systems/WorldEventSystem.ts";
 import { portAccess } from "../../core/systems/PortAccessSystem.ts";
-import { playerBuyPrice, playerSellPrice } from "../../core/systems/EconomySystem.ts";
+import {
+  playerBuyPrice, playerSellPrice, playerBuyCost,
+} from "../../core/systems/EconomySystem.ts";
 import {
   repairRate,
   grainOffer,
@@ -144,7 +146,9 @@ import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
-import { factionNameKey, itemNameGen, portNameKey, shipClassName } from "../../core/i18n/names.ts";
+import {
+  factionNameKey, itemNameGen, itemNameKeyGen, portNameKey, shipClassName,
+} from "../../core/i18n/names.ts";
 const DLG_W = 470;
 const DLG_H = 420;
 const BORDER = 3;
@@ -178,6 +182,8 @@ export class PortScene extends Phaser.Scene {
 
   /** One-shot line under the tavern actions, e.g. "nothing to divide". */
   private tavernMessage: string | null = null;
+  /** What the counter just did, for the same reason the tavern keeps one. */
+  private merchantMessage: string | null = null;
 
   /** What the governor would buy out of the hold, held across the conversation. */
   private pendingGrainOffer: GrainOffer | null = null;
@@ -189,6 +195,22 @@ export class PortScene extends Phaser.Scene {
 
   /** The header's purse, kept so a sale inside a conversation can update it. */
   private goldText: Phaser.GameObjects.Text | null = null;
+  /** Held for the same reason as `goldText`: a trade moves it without leaving the view. */
+  private cargoText: Phaser.GameObjects.Text | null = null;
+  /**
+   * One press, one trade (v0.76.0).
+   *
+   * Measured with a counter in the handler: a single DOM `keydown` reached
+   * `buySelected` **three times**, one to two milliseconds apart, with
+   * `listenerCount("keydown-ENTER")` reporting exactly one listener. Phaser is
+   * emitting the queued key more than once per frame, and while one ton a
+   * press hid it, a lot of ten does not: the captain asked for ten and came
+   * away with the whole shelf.
+   *
+   * Cleared by the same `delayedCall(0, ...)` that redraws the counter, so the
+   * gate is a frame wide and nothing a human can press survives it.
+   */
+  private tradePending = false;
   /**
    * The standing line and the note under it, held for the same reason as the
    * purse: a pardon is bought without leaving the view, and a header drawn once
@@ -236,7 +258,7 @@ export class PortScene extends Phaser.Scene {
 
   init(data: {
     worldState: WorldState; portId: PortId; returnToView?: PortView;
-    isOnFoot?: boolean; tavernMessage?: string;
+    isOnFoot?: boolean; tavernMessage?: string; message?: string;
   }): void {
     this.worldState = data.worldState;
     this.currentPortId = data.portId;
@@ -247,6 +269,7 @@ export class PortScene extends Phaser.Scene {
     // player is not looking at. Dividing the plunder was exactly that: it took
     // two thirds of the crew and said nothing.
     this.tavernMessage = data.tavernMessage ?? null;
+    this.merchantMessage = data.message ?? null;
     // `returnToView` means we are coming back from the shipyard or the duel
     // screen, not walking through the gate. Only the walk counts as arriving.
     this.justArrived = data.returnToView === undefined;
@@ -356,7 +379,7 @@ export class PortScene extends Phaser.Scene {
     this.goldText = this.add.text(this.infoX, y, `${t("hud.gold")}: ${player.gold}`, txt(12, { bold: true }));
     if (playerShip?.ship) {
       const totalCargo = Math.floor(Object.values(playerShip.ship.cargo).reduce<number>((s, q) => s + q, 0));
-      this.add.text(this.infoX + 120, y,
+      this.cargoText = this.add.text(this.infoX + 120, y,
         t("hud.cargo", { current: totalCargo, max: playerShip.ship.cargoCap }), txt(11));
       this.add.text(this.infoX + 270, y,
         t("hud.crew", { current: playerShip.ship.crew.current, max: playerShip.ship.crew.max }), txt(11));
@@ -388,11 +411,20 @@ export class PortScene extends Phaser.Scene {
 
   // ===== VIEW SWITCHING =====
 
-  private switchView(view: PortView): void {
+  /**
+   * `keepSelection` is for a transaction made **inside** a view (v0.76.0).
+   *
+   * Buying used to restart the whole scene, which put the cursor back on the
+   * first row of the counter: forty tons of tobacco was forty trips down the
+   * list. A trade changes the table and the purse and nothing else, so it
+   * redraws the view and leaves the captain where he was standing.
+   */
+  private switchView(view: PortView, keepSelection = false): void {
+    const row = this.selectedIndex;
     this.currentView = view;
     this.contentContainer.removeAll(true);
     this.clearKeyboard();
-    this.selectedIndex = 0;
+    this.selectedIndex = keepSelection ? row : 0;
     this.actionTexts = [];
     this.actions = [];
     this.selectionBar = null;
@@ -417,10 +449,27 @@ export class PortScene extends Phaser.Scene {
     this.keyboardCleanup = [];
   }
 
-  private bindKey(event: string, handler: () => void): void {
+  private bindKey(event: string, handler: (ev?: KeyboardEvent) => void): void {
     if (!this.input.keyboard) return;
     this.input.keyboard.on(event, handler);
     this.keyboardCleanup.push(() => this.input.keyboard?.off(event, handler));
+  }
+
+  /**
+   * How many tons one press moves (v0.76.0).
+   *
+   * The counter traded a ton a press, which is a hundred and twenty presses to
+   * fill a merchantman — and worse, it is the reason the town's opinion of the
+   * captain was invisible: the spread is a twelfth of a four-gold quote, and a
+   * twelfth of four gold is not a coin. A lot is rounded once, on the money,
+   * so ten tons cost 52 from a town that hates him and 42 from an ally.
+   */
+  private static readonly LOT = 10;
+
+  private lotSize(ev?: { shiftKey?: boolean; ctrlKey?: boolean }): number | "all" {
+    if (ev?.ctrlKey) return "all";
+    if (ev?.shiftKey) return PortScene.LOT;
+    return 1;
   }
 
   // ===== ARROW-SELECTOR LIST =====
@@ -1974,10 +2023,10 @@ export class PortScene extends Phaser.Scene {
     // 30 put the two four pixels into each other, and the wider the label the
     // further it reached under the centred hint. Same on all three counters.
 
-    this.contentContainer.add(this.add.text(colName, y, "Item", txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colName, y, t("port.col_item"), txt(10, { bold: true, color: "#666666" })));
     this.contentContainer.add(this.add.text(colPrice, y, t("port.col_buy_sell"), txt(10, { bold: true, color: "#666666" })));
-    this.contentContainer.add(this.add.text(colStock, y, "Stock", txt(10, { bold: true, color: "#666666" })));
-    this.contentContainer.add(this.add.text(colOwn, y, "Own", txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colStock, y, t("port.col_stock"), txt(10, { bold: true, color: "#666666" })));
+    this.contentContainer.add(this.add.text(colOwn, y, t("port.col_own"), txt(10, { bold: true, color: "#666666" })));
     y += 16;
 
     // Table rows with keyboard navigation
@@ -2029,7 +2078,8 @@ export class PortScene extends Phaser.Scene {
       const buyBtn = this.add.text(0, y, t("port.buy"), txt(12, { bold: true, color: "#2a7a2a" }));
       buyBtn.setInteractive({ useHandCursor: true });
       buyBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
-      buyBtn.on("pointerdown", () => this.handleBuy(key));
+      buyBtn.on("pointerdown", (p: Phaser.Input.Pointer) =>
+        this.handleBuy(key, this.lotSize(p.event as MouseEvent)));
       this.contentContainer.add(buyBtn);
 
       // Sell button
@@ -2038,7 +2088,8 @@ export class PortScene extends Phaser.Scene {
       buyBtn.setX(sellBtn.x - buyBtn.width - 12);
       sellBtn.setInteractive({ useHandCursor: true });
       sellBtn.on("pointerover", () => { this.selectedIndex = ri; this.switchView("merchant"); });
-      sellBtn.on("pointerdown", () => this.handleSell(key));
+      sellBtn.on("pointerdown", (p: Phaser.Input.Pointer) =>
+        this.handleSell(key, this.lotSize(p.event as MouseEvent)));
       this.contentContainer.add(sellBtn);
 
       if (isFocused) {
@@ -2047,6 +2098,19 @@ export class PortScene extends Phaser.Scene {
       }
 
       y += 22;
+    }
+
+    // What the counter just did, and for how much (v0.76.0). A lot is rounded
+    // once on the money, so this line is the only place the captain can read
+    // what his standing was actually worth to him: ten tons of the same good
+    // at the same quote are 52 gold from a town that hates him and 42 from an
+    // ally, where a ton at a time both came to four.
+    if (this.merchantMessage) {
+      this.contentContainer.add(this.add.text(
+        this.infoX, this.dlgY + DLG_H - PAD - 96,
+        this.merchantMessage,
+        { ...txt(11, { color: "#2a5a2a" }), wordWrap: { width: DLG_W - PAD * 2 } },
+      ));
     }
 
     // And what that did to the town's table (v0.27.0). Above the covering line
@@ -2095,7 +2159,7 @@ export class PortScene extends Phaser.Scene {
     // Hint
     const hint = this.add.text(
       this.cx, this.dlgY + DLG_H - PAD - 4,
-      "\u2191\u2193 \u2014 Select   Enter \u2014 Buy   Backspace \u2014 Sell   Esc \u2014 Back",
+      t("port.hint_merchant"),
       txt(10, { color: "#888888" }),
     );
     hint.setOrigin(0.5, 1);
@@ -2126,13 +2190,13 @@ export class PortScene extends Phaser.Scene {
         this.switchView("merchant");
       }
     };
-    const buySelected = () => {
+    const buySelected = (ev?: KeyboardEvent) => {
       const key = itemKeys[this.selectedIndex];
-      if (key) this.handleBuy(key);
+      if (key) this.handleBuy(key, this.lotSize(ev));
     };
-    const sellSelected = () => {
+    const sellSelected = (ev?: KeyboardEvent) => {
       const key = itemKeys[this.selectedIndex];
-      if (key) this.handleSell(key);
+      if (key) this.handleSell(key, this.lotSize(ev));
     };
 
     this.bindKey("keydown-UP", moveUp);
@@ -2479,7 +2543,7 @@ export class PortScene extends Phaser.Scene {
     // Hint
     const hint = this.add.text(
       this.cx, this.dlgY + DLG_H - PAD - 4,
-      "\u2191\u2193 \u2014 Select   Enter \u2014 Buy   R \u2014 Repair   Esc \u2014 Back",
+      t("port.hint_shipyard"),
       txt(10, { color: "#888888" }),
     );
     hint.setOrigin(0.5, 1);
@@ -2574,22 +2638,95 @@ export class PortScene extends Phaser.Scene {
 
   // ===== Trade/Leave handlers =====
 
-  private handleBuy(itemKey: string): void {
-    const result = executeBuy(this.worldState, this.currentPortId, itemId(itemKey), 1);
-    if (!result.error) {
-      this.worldState = result.world;
-      this.registry.set("worldState", this.worldState);
-      this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "merchant" as PortView });
+  /** Every ton of `itemKey` this quay could sell him right now. */
+  private roomToBuy(itemKey: string): number {
+    const portKey = this.currentPortId as string;
+    const port = this.worldState.ports[portKey];
+    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
+    if (!port || !ship) return 0;
+    const item = ITEMS[itemKey];
+    const stock = Math.floor(port.inventory[itemKey] ?? 0);
+    const hold = Object.values(ship.cargo).reduce<number>((a, b) => a + b, 0);
+    const room = item.weight > 0 ? Math.floor((ship.cargoCap - hold) / item.weight) : 0;
+    // The purse is searched by halving rather than by dividing, because the
+    // bill is rounded once and is not the ton price times the tons.
+    let afford = 0;
+    let lo = 0, hi = Math.min(stock, room);
+    while (lo <= hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (mid > 0 && playerBuyCost(this.worldState, portKey, itemKey, mid) <= this.worldState.player.gold) {
+        afford = mid; lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
     }
+    return afford;
   }
 
-  private handleSell(itemKey: string): void {
-    const result = executeSell(this.worldState, this.currentPortId, itemId(itemKey), 1);
-    if (!result.error) {
-      this.worldState = result.world;
-      this.registry.set("worldState", this.worldState);
-      this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "merchant" as PortView });
+  private handleBuy(itemKey: string, lot: number | "all" = 1): void {
+    if (this.tradePending) return;
+    const qty = lot === "all" ? this.roomToBuy(itemKey) : Math.min(lot, this.roomToBuy(itemKey));
+    if (qty <= 0) { this.showTradeMessage(t("port.trade_refused")); return; }
+    const before = this.worldState.player.gold;
+    const result = executeBuy(this.worldState, this.currentPortId, itemId(itemKey), qty);
+    if (result.error) { this.showTradeMessage(t("port.trade_refused")); return; }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.merchantMessage = t("port.bought", {
+      qty, item: itemNameKeyGen(itemKey), gold: before - result.world.player.gold,
+    });
+    this.afterTrade();
+  }
+
+  private handleSell(itemKey: string, lot: number | "all" = 1): void {
+    if (this.tradePending) return;
+    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
+    const owned = Math.floor(ship?.cargo[itemKey] ?? 0);
+    const qty = lot === "all" ? owned : Math.min(lot, owned);
+    if (qty <= 0) { this.showTradeMessage(t("port.trade_refused")); return; }
+    const before = this.worldState.player.gold;
+    const result = executeSell(this.worldState, this.currentPortId, itemId(itemKey), qty);
+    if (result.error) { this.showTradeMessage(t("port.trade_refused")); return; }
+    this.worldState = result.world;
+    this.registry.set("worldState", this.worldState);
+    this.merchantMessage = t("port.sold", {
+      qty, item: itemNameKeyGen(itemKey), gold: result.world.player.gold - before,
+    });
+    this.afterTrade();
+  }
+
+  /**
+   * Redraw the counter, not the town.
+   *
+   * `scene.restart` for a trade was both slower than it needed to be and the
+   * reason the cursor jumped: the header is drawn once in `create`, so the two
+   * numbers a trade moves are held and refreshed here instead.
+   */
+  private afterTrade(): void {
+    const ship = this.worldState.entities[this.worldState.player.shipId as string]?.ship;
+    this.goldText?.setText(`${t("hud.gold")}: ${this.worldState.player.gold}`);
+    if (ship) {
+      const total = Math.floor(Object.values(ship.cargo).reduce<number>((a, b) => a + b, 0));
+      this.cargoText?.setText(t("hud.cargo", { current: total, max: ship.cargoCap }));
     }
+    // Next tick, not this one: `switchView` unbinds the key handlers and binds
+    // fresh ones, and rebinding from inside one of them is asking for trouble.
+    // It is also where the one-press gate opens again.
+    this.tradePending = true;
+    this.time.delayedCall(0, () => {
+      this.tradePending = false;
+      this.switchView("merchant", true);
+    });
+  }
+
+  /** A refusal needs no scene restart — the counter simply says why. */
+  private showTradeMessage(message: string): void {
+    this.merchantMessage = message;
+    this.tradePending = true;
+    this.time.delayedCall(0, () => {
+      this.tradePending = false;
+      this.switchView("merchant", true);
+    });
   }
 
   private leavePort(): void {

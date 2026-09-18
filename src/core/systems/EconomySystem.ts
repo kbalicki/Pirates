@@ -19,7 +19,9 @@ import type { WorldState } from "../model/WorldState.ts";
 import type { WorldEvent } from "../model/Events.ts";
 import type { PortId, ItemId } from "../model/ids.ts";
 import { ITEMS } from "../data/items.ts";
-import { portAccess, buyPrice, sellPrice } from "./PortAccessSystem.ts";
+import {
+  portAccess, buyPrice, sellPrice, askExact, bidExact, tradeCost, tradeProceeds,
+} from "./PortAccessSystem.ts";
 import { repriceItem } from "./PricingSystem.ts";
 import { creditTrade } from "./TradeLedgerSystem.ts";
 
@@ -29,16 +31,42 @@ export type TradeResult = {
   error?: string;
 };
 
+function posted(world: WorldState, portKey: string, itemKey: string): number {
+  return world.ports[portKey]?.prices[itemKey] ?? ITEMS[itemKey]?.basePrice ?? 1;
+}
+
 /** What this port asks the player for one unit today, standing included. */
 export function playerBuyPrice(world: WorldState, portKey: string, itemKey: string): number {
-  const posted = world.ports[portKey]?.prices[itemKey] ?? ITEMS[itemKey]?.basePrice ?? 1;
-  return buyPrice(posted, portAccess(world, portKey));
+  return buyPrice(posted(world, portKey, itemKey), portAccess(world, portKey));
 }
 
 /** What this port offers the player for one unit today, standing included. */
 export function playerSellPrice(world: WorldState, portKey: string, itemKey: string): number {
-  const posted = world.ports[portKey]?.prices[itemKey] ?? ITEMS[itemKey]?.basePrice ?? 1;
-  return sellPrice(posted, portAccess(world, portKey));
+  return sellPrice(posted(world, portKey, itemKey), portAccess(world, portKey));
+}
+
+/**
+ * The same two, unrounded — what the counter will print (v0.76.0).
+ *
+ * A quote of four gold at a neutral counter is 4.48 asked and 3.52 offered,
+ * and printing them as four and four told the captain his standing was worth
+ * nothing here. It is worth 0.96 a ton, and the screen says so.
+ */
+export function playerAskExact(world: WorldState, portKey: string, itemKey: string): number {
+  return askExact(posted(world, portKey, itemKey), portAccess(world, portKey));
+}
+
+export function playerBidExact(world: WorldState, portKey: string, itemKey: string): number {
+  return bidExact(posted(world, portKey, itemKey), portAccess(world, portKey));
+}
+
+/** What a lot of `qty` costs him, and what one fetches. Rounded once. */
+export function playerBuyCost(world: WorldState, portKey: string, itemKey: string, qty: number): number {
+  return tradeCost(posted(world, portKey, itemKey), portAccess(world, portKey), qty);
+}
+
+export function playerSellTake(world: WorldState, portKey: string, itemKey: string, qty: number): number {
+  return tradeProceeds(posted(world, portKey, itemKey), portAccess(world, portKey), qty);
 }
 
 export function executeBuy(
@@ -57,8 +85,10 @@ export function executeBuy(
   const item = ITEMS[itemId as string];
   if (!item) return { world, events: [], error: "Unknown item" };
 
-  const price = playerBuyPrice(world, portKey, itemId as string);
-  const totalCost = price * qty;
+  // Rounded once, on the bill (v0.76.0) — a twelfth of four gold is not a
+  // coin, and rounding it into one on every ton was where the town's opinion
+  // of the captain went.
+  const totalCost = playerBuyCost(world, portKey, itemId as string, qty);
 
   if (world.player.gold < totalCost) {
     return { world, events: [], error: "Not enough gold" };
@@ -138,8 +168,7 @@ export function executeSell(
     return { world, events: [], error: "Not enough goods" };
   }
 
-  const price = playerSellPrice(world, portKey, itemId as string);
-  const totalEarned = price * qty;
+  const totalEarned = playerSellTake(world, portKey, itemId as string, qty);
 
   const newCargo = { ...playerEntity.ship.cargo };
   newCargo[itemId as string] = owned - qty;

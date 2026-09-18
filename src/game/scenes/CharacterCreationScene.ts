@@ -391,7 +391,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Keyboard hint
     this.add.text(cx, y + 34,
-      "Tab \u2014 Next block   \u2191\u2193 \u2014 Navigate   \u2190\u2192 \u2014 Adjust skill   Enter \u2014 Select   Esc \u2014 Back",
+      t("creation.hint"),
       { fontSize: "10px", fontFamily: UI_FONT, color: "#aaaaaa", resolution: TEXT_RES },
     ).setOrigin(0.5, 0).setDepth(10);
 

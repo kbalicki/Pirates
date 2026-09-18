@@ -172,19 +172,68 @@ export function portAccess(world: WorldState, portKey: string): PortAccess {
   return { faction, reputation, level, viaAlly: lifted, viaPardon: pardoned, ...TIERS[level] };
 }
 
-/** What the counter asks for one unit of a good. */
-export function buyPrice(basePrice: number, access: PortAccess): number {
-  return Math.max(1, Math.round(basePrice * (1 + access.spread)));
+/**
+ * What the counter asks for one unit, before it is counted into coins.
+ *
+ * Exact, and that is the whole of v0.76.0. The spread is the town's opinion of
+ * the captain and it was being applied to a small integer and then rounded
+ * back to one: at the commonest quote on the map - four gold - a neutral
+ * counter asks 4.48 and offers 3.52, which is **four and four**. Measured over
+ * a settled Caribbean: on **90 of 315 quotes (28.6%)** neutral, friendly and
+ * allied name the identical two numbers, and the median round-trip loss per
+ * ton is 2, 2 and 2 against 8 for hostile and 4 for unfriendly. The half of
+ * the ladder that punishes worked; the half that rewards did not.
+ *
+ * The floor of one coin a unit is the old behaviour kept: nothing on a quay is
+ * free, however full the warehouse.
+ */
+export function askExact(basePrice: number, access: PortAccess): number {
+  return Math.max(1, basePrice * (1 + access.spread));
 }
 
 /**
- * What the counter offers for one unit of a good.
+ * What the counter offers for one unit, before it is counted into coins.
+ *
+ * Never more than the ask: a bid a penny over the ask is the money printer the
+ * spread design exists to rule out (v0.24.0).
+ */
+export function bidExact(basePrice: number, access: PortAccess): number {
+  return Math.min(askExact(basePrice, access), Math.max(0, basePrice * (1 - access.spread)));
+}
+
+/** What the counter asks for one unit of a good, in coins. */
+export function buyPrice(basePrice: number, access: PortAccess): number {
+  return Math.max(1, Math.round(askExact(basePrice, access)));
+}
+
+/**
+ * What the counter offers for one unit of a good, in coins.
  *
  * Never more than the ask, even after rounding: at a price of one or two
  * coins the two sides round together, and a bid a penny over the ask would be
  * the same money printer this design exists to rule out.
  */
 export function sellPrice(basePrice: number, access: PortAccess): number {
-  const bid = Math.max(1, Math.round(basePrice * (1 - access.spread)));
+  const bid = Math.max(1, Math.round(bidExact(basePrice, access)));
   return Math.min(bid, buyPrice(basePrice, access));
+}
+
+/**
+ * The bill for `qty` units - rounded **once**, on the money, not on the ton.
+ *
+ * This is where the spread stops disappearing. Ten tons at a posted four gold
+ * cost 52 from a town that hates him, 45 from one that does not mind him and
+ * 42 from an ally; a ton at a time they were 5, 4 and 4, because a twelfth of
+ * four gold is not a coin.
+ */
+export function tradeCost(basePrice: number, access: PortAccess, qty: number): number {
+  return Math.max(qty, Math.round(askExact(basePrice, access) * qty));
+}
+
+/** What `qty` units fetch, by the same arithmetic and never above the ask. */
+export function tradeProceeds(basePrice: number, access: PortAccess, qty: number): number {
+  return Math.min(
+    tradeCost(basePrice, access, qty),
+    Math.max(0, Math.round(bidExact(basePrice, access) * qty)),
+  );
 }

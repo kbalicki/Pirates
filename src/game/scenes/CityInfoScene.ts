@@ -232,7 +232,7 @@ export class CityInfoScene extends Phaser.Scene {
     addRow(t("cityinfo.last_visit"), visitText, "#888888");
 
     // ── Close hint ──
-    this.add.text(cx, cy + panelH / 2 - 16, "ESC", {
+    this.add.text(cx, cy + panelH / 2 - 16, t("cityinfo.hint_close"), {
       ...txt(10, { color: "#555555" }),
     }).setOrigin(0.5, 1).setDepth(5);
 
