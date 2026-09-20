@@ -21,7 +21,10 @@ import { ITEMS } from "../../core/data/items.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { getRankNameKey } from "../../core/data/ranks.ts";
 import { executeBuy, executeSell } from "../../core/systems/EconomySystem.ts";
-import { squadronCap, squadronStowed, squadronRoom, squadronHeld } from "../../core/systems/HoldSystem.ts";
+import {
+  squadronCap, squadronStowed, squadronRoom, squadronHeld,
+  consortCargo, consortCargoCap, stowedIn, spillIfDetached,
+} from "../../core/systems/HoldSystem.ts";
 import {
   requestLetterOfMarque,
   recruitCrew,
@@ -237,6 +240,17 @@ export class PortScene extends Phaser.Scene {
 
   // Arrow-selector state
   private selectedIndex = 0;
+
+  /**
+   * The consort the captain has asked to sell, waiting on a second press.
+   *
+   * Only ever set when tons would actually go with her — measured across all
+   * 81 pairings of flagship and consort, what she is carrying is worth **more
+   * than the yard pays for the hull** in every one of them (median 4x, worst
+   * 6.3x), and the row he clicks on did not say what was in her. A captain
+   * selling an empty hull is not asked anything.
+   */
+  private pendingSellIndex: number | null = null;
   private selectionBar: Phaser.GameObjects.Rectangle | null = null;
   private arrow: Phaser.GameObjects.Text | null = null;
   private actionTexts: Phaser.GameObjects.Text[] = [];
@@ -407,14 +421,30 @@ export class PortScene extends Phaser.Scene {
   // ===== VIEW SWITCHING =====
 
   /**
-   * `keepSelection` is for a transaction made **inside** a view (v0.76.0).
+   * Redrawing the view the captain is already on never moves his cursor.
    *
-   * Buying used to restart the whole scene, which put the cursor back on the
-   * first row of the counter: forty tons of tobacco was forty trips down the
-   * list. A trade changes the table and the purse and nothing else, so it
-   * redraws the view and leaves the captain where he was standing.
+   * `keepSelection` arrived in v0.76.0 for a transaction made **inside** a
+   * view: buying used to restart the whole scene, which put the cursor back on
+   * the first row of the counter, and forty tons of tobacco was forty trips
+   * down the list. It was passed at the two call sites that release was
+   * looking at, and the default stayed `false`.
+   *
+   * The default was the defect. `selectedIndex = 0` has been in this method
+   * since the initial commit, and **the arrow keys on the counter and in the
+   * shipyard move the cursor by redrawing the same view** — so every press put
+   * it straight back on row one. Both screens print *"up/down - Select"* in
+   * their hint line; neither has ever selected anything, for the life of the
+   * project, which is why every action on them ended up on a mouse button.
+   * Verified on the running game, not read: three presses of Down on Havana's
+   * counter leave the cursor on sugar cane, while the port menu one screen
+   * back — which redraws through `updateActionSelection` and not through here
+   * — moves two rows on the same two presses.
+   *
+   * So the rule is the view, not the caller: coming **from** somewhere else
+   * starts at the top, staying put stays put. The explicit argument is kept
+   * for a caller that wants the old behaviour on purpose.
    */
-  private switchView(view: PortView, keepSelection = false): void {
+  private switchView(view: PortView, keepSelection = view === this.currentView): void {
     const row = this.selectedIndex;
     this.currentView = view;
     this.contentContainer.removeAll(true);
@@ -2485,7 +2515,57 @@ export class PortScene extends Phaser.Scene {
     const arrow = this.add.text(0, 0, "\u25B6", txt(9, { bold: true }));
     this.contentContainer.add(arrow);
 
-    for (let si = 0; si < availableShips.length; si++) {
+    // How many rows there is room for.
+    //
+    // The list outgrew the panel (v0.80.0). Nine classes at a first-rate yard
+    // is 180 pixels against the 269 this view has between its header and the
+    // back button, and the rest of the screen wanted more than the 89 that
+    // left: the last row was already being drawn under `[ BACK TO PORT ]`
+    // before this release, and the fleet section added to it below.
+    //
+    // The captain's own hulls are **never** windowed -- they carry the
+    // destructive action, and a button that scrolls out of sight is the same
+    // defect as a button drawn off the edge (v0.79.0). The yard's stock gives
+    // way instead, and the count is derived from the room that is actually
+    // left rather than from a number chosen when the list was shorter.
+    const SHIP_ROW_H = 20;
+    const fleetRows = (this.worldState.player.fleet ?? []).length;
+    const fleetBlockH = fleetRows > 0
+      ? 10 + 18 + fleetRows * 18 + (this.pendingSellIndex !== null ? 16 : 0)
+      : 0;
+    const bottomLimit = this.dlgY + DLG_H - PAD - 34;
+    const fits = Math.max(2, Math.floor((bottomLimit - y - fleetBlockH) / SHIP_ROW_H));
+    const windowed = availableShips.length > fits;
+    const cursorInList = Math.min(this.selectedIndex, availableShips.length - 1);
+    // A "N more" marker costs a row, and how many markers there are depends on
+    // where the window sits, which depends on how many rows it holds. Settle
+    // it rather than assuming the worst: assuming two markers at the top of
+    // the list wastes the row the second one never used.
+    const windowAt = (cap: number) => {
+      const c = Math.max(1, Math.min(cap, availableShips.length));
+      const f = Math.max(0, Math.min(cursorInList - Math.floor(c / 2), availableShips.length - c));
+      return { first: f, last: Math.min(availableShips.length, f + c) };
+    };
+    let capacity = availableShips.length;
+    if (windowed) {
+      capacity = fits;
+      for (let pass = 0; pass < 3; pass++) {
+        const { first: f, last: l } = windowAt(capacity);
+        const markers = (f > 0 ? 1 : 0) + (l < availableShips.length ? 1 : 0);
+        const next = Math.max(1, fits - markers);
+        if (next === capacity) break;
+        capacity = next;
+      }
+    }
+    const { first, last } = windowAt(capacity);
+
+    if (windowed && first > 0) {
+      this.contentContainer.add(this.add.text(
+        colName, y, t("shipyard.more_above", { count: first }), txt(10, { color: "#888888" })));
+      y += SHIP_ROW_H;
+    }
+
+    for (let si = first; si < last; si++) {
       const classKey = availableShips[si];
       const cls = SHIP_CLASSES[classKey];
       if (!cls) continue;
@@ -2540,10 +2620,18 @@ export class PortScene extends Phaser.Scene {
         arrow.setPosition(colName - 14, y + 1);
       }
 
-      y += 20;
+      y += SHIP_ROW_H;
     }
 
-    // Fleet section — show escort ships with sell buttons
+    if (windowed && last < availableShips.length) {
+      this.contentContainer.add(this.add.text(
+        colName, y, t("shipyard.more_below", { count: availableShips.length - last }),
+        txt(10, { color: "#888888" })));
+      y += SHIP_ROW_H;
+    }
+
+    // Fleet section — the captain's own hulls, under the same cursor as the
+    // list above (v0.80.0). The rows below index `availableShips.length`.
     const fleet = this.worldState.player.fleet ?? [];
     if (fleet.length > 0) {
       y += 10;
@@ -2553,23 +2641,60 @@ export class PortScene extends Phaser.Scene {
         const esc = fleet[fi];
         const escCls = SHIP_CLASSES[esc.classId];
         if (!escCls) continue;
+        const rowIndex = availableShips.length + fi;
+        const isFocused = rowIndex === this.selectedIndex;
         const hullPct = Math.round((esc.hullHp / esc.hullMax) * 100);
         const sellPrice = Math.floor(escCls.buyPrice * 0.4);
-        this.contentContainer.add(this.add.text(colName, y, `${t("fleet.escort")}: ${shipClassName(esc.classId)}`, txt(11, { color: "#336699" })));
-        this.contentContainer.add(this.add.text(colHull, y, `${hullPct}%`, txt(11, { color: hullPct > 50 ? "#555555" : "#aa3333" })));
-        const sellBtn = this.add.text(colPrice, y, `${t("fleet.sell")} (${sellPrice}g)`, txt(10, { bold: true, color: "#aa3333" }));
+        const aboard = Math.round(stowedIn(consortCargo(esc)));
+        // The class alone: the section header above already says these are his,
+        // and "Fleet ship: Merchantman" ran into the hull column in Polish.
+        this.contentContainer.add(this.add.text(
+          colName, y, shipClassName(esc.classId),
+          txt(11, { color: isFocused ? "#000000" : "#336699", bold: isFocused })));
+        this.contentContainer.add(this.add.text(
+          colHull, y, `${hullPct}%`, txt(11, { color: hullPct > 50 ? "#555555" : "#aa3333" })));
+        // What is in her, on the row where she is sold. The cabin has printed
+        // this since v0.77.0; the screen that disposes of her did not.
+        this.contentContainer.add(this.add.text(
+          colCargo, y, t("hud.cargo", { current: aboard, max: consortCargoCap(esc) }),
+          txt(10, { color: aboard > 0 ? "#1a1a1a" : "#999999" })));
+
+        const armed = this.pendingSellIndex === fi;
+        // The button stays short and the warning gets its own line. Putting
+        // the sentence in the label ran it off the panel — v0.79.0's defect,
+        // one release later and committed by the release that fixed it.
+        const sellText = armed ? t("fleet.sell_confirm") : `${t("fleet.sell")} (${sellPrice}g)`;
+        const sellBtn = this.add.text(
+          colPrice, y, sellText, txt(10, { bold: true, color: "#aa3333" }));
         sellBtn.setInteractive({ useHandCursor: true });
         const fleetIdx = fi;
-        sellBtn.on("pointerdown", () => this.handleSellFleetShip(fleetIdx));
+        sellBtn.on("pointerdown", () => this.askSellFleetShip(fleetIdx));
         this.contentContainer.add(sellBtn);
+
+        if (isFocused) {
+          selBar.setPosition(this.cx, y + 8);
+          arrow.setPosition(colName - 14, y + 1);
+        }
         y += 18;
+      }
+
+      if (this.pendingSellIndex !== null) {
+        this.contentContainer.add(this.add.text(
+          colName, y,
+          t("fleet.sell_warning", { tons: this.tonsLostSelling(this.pendingSellIndex) }),
+          txt(10, { bold: true, color: "#aa3333" })));
+        y += 16;
       }
     }
 
     // Hint
     const hint = this.add.text(
       this.cx, this.dlgY + DLG_H - PAD - 4,
-      t("port.hint_shipyard"),
+      // The cursor spans two lists, so `Enter` does not mean one thing. The
+      // line says which.
+      t(this.selectedIndex >= availableShips.length && fleet.length > 0
+        ? "port.hint_shipyard_fleet"
+        : "port.hint_shipyard"),
       txt(10, { color: "#888888" }),
     );
     hint.setOrigin(0.5, 1);
@@ -2587,20 +2712,32 @@ export class PortScene extends Phaser.Scene {
     backBtn.on("pointerdown", () => this.switchView("menu"));
     this.contentContainer.add(backBtn);
 
-    // Keyboard navigation
+    // Keyboard navigation. One cursor over two lists: the hulls for sale, then
+    // the captain's own. `Enter` means the thing the row is for.
+    const rows = availableShips.length + fleet.length;
+    // Moving the cursor puts down an armed sale. A confirmation that survives
+    // the captain looking at something else is not a confirmation.
     const moveUp = () => {
       if (this.selectedIndex > 0) {
         this.selectedIndex--;
+        this.pendingSellIndex = null;
         this.switchView("shipyard");
       }
     };
     const moveDown = () => {
-      if (this.selectedIndex < availableShips.length - 1) {
+      if (this.selectedIndex < rows - 1) {
         this.selectedIndex++;
+        this.pendingSellIndex = null;
         this.switchView("shipyard");
       }
     };
-    const buySelected = () => {
+    const consortAt = (i: number) => (i >= availableShips.length ? i - availableShips.length : -1);
+    const actSelected = () => {
+      const fi = consortAt(this.selectedIndex);
+      if (fi >= 0) {
+        this.askSellFleetShip(fi);
+        return;
+      }
       const classKey = availableShips[this.selectedIndex];
       if (classKey && classKey !== currentClassId) {
         this.handleBuyShip(classKey);
@@ -2610,12 +2747,14 @@ export class PortScene extends Phaser.Scene {
     this.bindKey("keydown-UP", moveUp);
     this.bindKey("keydown-W", moveUp);
     this.bindKey("keydown-DOWN", moveDown);
-    this.bindKey("keydown-ENTER", buySelected);
-    this.bindKey("keydown-B", buySelected);
+    this.bindKey("keydown-S", moveDown);
+    this.bindKey("keydown-ENTER", actSelected);
+    this.bindKey("keydown-B", actSelected);
     // F, because there was no keyboard route at all: buying a consort was the
     // one transaction in the game reachable only with a mouse, on a button
     // that was being drawn outside the panel it belonged to.
     this.bindKey("keydown-F", () => {
+      if (consortAt(this.selectedIndex) >= 0) return;
       const classKey = availableShips[this.selectedIndex];
       if (classKey && classKey !== currentClassId && canAddToFleet(this.worldState.player)) {
         this.handleBuyToFleet(classKey);
@@ -2624,7 +2763,15 @@ export class PortScene extends Phaser.Scene {
     if (hasDamage) {
       this.bindKey("keydown-R", () => this.handleShipyardRepair());
     }
-    this.bindKey("keydown-ESC", () => this.switchView("menu"));
+    this.bindKey("keydown-ESC", () => {
+      // Esc puts down an armed sale before it leaves the screen.
+      if (this.pendingSellIndex !== null) {
+        this.pendingSellIndex = null;
+        this.switchView("shipyard");
+        return;
+      }
+      this.switchView("menu");
+    });
   }
 
   private handleShipyardRepair(): void {
@@ -2660,6 +2807,42 @@ export class PortScene extends Phaser.Scene {
       this.registry.set("worldState", this.worldState);
       this.scene.restart({ worldState: this.worldState, portId: this.currentPortId, returnToView: "shipyard" as PortView });
     }
+  }
+
+  /** Tons that would go with her, by the rule that will actually move them. */
+  private tonsLostSelling(fleetIndex: number): number {
+    return Math.round(stowedIn(spillIfDetached(this.worldState, fleetIndex)));
+  }
+
+  /**
+   * Sell a consort — after asking, if anything would be lost with her.
+   *
+   * One unconfirmed press used to do it, on a row that did not say she was
+   * carrying anything. Measured on the 81 pairings: her cargo is worth more
+   * than the yard pays for the hull in **every** one, median four times over,
+   * and a sloop with a merchantman alongside keeps **86%** of the squadron's
+   * hold in the hull being sold.
+   *
+   * An empty hull is sold on the first press. A confirmation that fires when
+   * there is nothing to lose is a confirmation the captain learns to press
+   * through.
+   */
+  private askSellFleetShip(fleetIndex: number): void {
+    if (this.tonsLostSelling(fleetIndex) <= 0 || this.pendingSellIndex === fleetIndex) {
+      this.pendingSellIndex = null;
+      this.handleSellFleetShip(fleetIndex);
+      return;
+    }
+    this.pendingSellIndex = fleetIndex;
+    this.selectedIndex = this.shipyardRowOfConsort(fleetIndex);
+    this.switchView("shipyard");
+  }
+
+  /** Where this consort sits in the shipyard's single cursor. */
+  private shipyardRowOfConsort(fleetIndex: number): number {
+    const portDef = PORTS[this.currentPortId as string];
+    const tier = SHIPYARD_TIERS[portDef?.shipyardLevel ?? 1] ?? SHIPYARD_TIERS[1];
+    return tier.length + fleetIndex;
   }
 
   private handleSellFleetShip(fleetIndex: number): void {

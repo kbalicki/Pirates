@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   squadronCap, squadronStowed, squadronRoom, squadronHeld, squadronManifest,
   stowInSquadron, drawFromSquadron, detachConsort, consortCargo, stowedIn,
+  spillIfDetached, consortCargoCap,
 } from "../HoldSystem.ts";
 import { computePrize } from "../PrizeSystem.ts";
 import { executeBuy, executeSell } from "../EconomySystem.ts";
@@ -323,6 +324,116 @@ describe("what a consort carries goes where she goes", () => {
     const cargo = beaten.world.entities.player_ship.ship?.cargo ?? {};
     expect(cargo.rum).toBe(40);
     expect(stowedIn(cargo)).toBeLessThanOrEqual(SHIP_CLASSES.fluyt.cargoCap);
+  });
+});
+
+// ===========================================================================
+// She sails with what is in her, and the screen says so first (v0.80.0)
+// ===========================================================================
+
+/**
+ * v0.77.0 gave a consort a hold and left the two screens that dispose of her
+ * saying nothing about it. `[Sell]` in the yard and `[Abandon]` in the cabin
+ * were each **one unconfirmed press**, and the yard's row printed her class and
+ * her hull and not one word about her cargo — the cabin's row had printed it
+ * since v0.77.0, which is the screen the captain is *not* on when he sells her.
+ *
+ * Measured across all 81 pairings of flagship and consort, at a full squadron
+ * and cocoa at its base price: what goes with her is worth **more than the yard
+ * pays for the hull in every single pairing** — median four times over, worst
+ * 6.3 (any flagship with a merchantman alongside: 250 tons against 800 gold).
+ * A sloop with a merchantman keeps **86%** of the squadron's hold in the hull
+ * being sold.
+ *
+ * The same measurement is why there is **no transfer screen**. Which hull
+ * carries what has exactly two consequences in the whole codebase — a consort
+ * leaving, and the flag shifting to her when the flagship goes down — and
+ * neither is something a captain can plan around. Everything else reads the
+ * squadron. So the cure is to be told and to be asked, not to be given a
+ * screenful of arrows.
+ */
+
+describe("a forecast made by the rule that will do the moving", () => {
+  it("names the tons the sale would cost, before the sale", () => {
+    const w = makeWorld(makeShipData({ cargo: { cocoa: 35 } }), [consort("fluyt", { cocoa: 100 })]);
+    // Five tons of room in the sloop, a hundred in the hull being sold.
+    expect(stowedIn(spillIfDetached(w, 0))).toBe(95);
+    // And it is a forecast: nothing has moved.
+    expect(squadronHeld(w, "cocoa")).toBe(135);
+    expect(w.player.fleet).toHaveLength(1);
+  });
+
+  it("agrees with what the sale actually does, every time", () => {
+    // The screen must not answer with its own arithmetic (v0.77.0's lesson
+    // from `showBattleResult`, pointing forwards instead of back).
+    for (const cls of Object.keys(SHIP_CLASSES)) {
+      for (const aboard of [0, 10, SHIP_CLASSES[cls].cargoCap]) {
+        const w = makeWorld(makeShipData({ cargo: { cocoa: 30 } }), [consort(cls, { cocoa: aboard })]);
+        const forecast = stowedIn(spillIfDetached(w, 0));
+        const sold = sellFleetShip(w, 0);
+        expect(stowedIn(sold.cargoLost ?? {}), `${cls} with ${aboard}t`).toBe(forecast);
+      }
+    }
+  });
+
+  it("forecasts nothing for a hull sailing empty", () => {
+    const w = makeWorld(makeShipData(), [consort("merchantman")]);
+    expect(spillIfDetached(w, 0)).toEqual({});
+  });
+
+  it("forecasts nothing when the hulls that stay can take it all", () => {
+    const w = makeWorld(makeShipData(), [consort("pinnace", { cocoa: 15 })]);
+    expect(spillIfDetached(w, 0)).toEqual({});
+  });
+
+  it("answers for an index that is not a hull", () => {
+    const w = makeWorld(makeShipData(), [consort("fluyt", { cocoa: 100 })]);
+    expect(spillIfDetached(w, 7)).toEqual({});
+    expect(spillIfDetached(w, -1)).toEqual({});
+  });
+});
+
+describe("the measurement that decided against a transfer screen", () => {
+  it("puts the larger half of the squadron's hold in the consort, in most pairings", () => {
+    // Not a rare case: across the 81 pairings the consort holds half the
+    // squadron's capacity on average, and a merchantman alongside anything
+    // holds 63-93% of it.
+    const ids = Object.keys(SHIP_CLASSES);
+    let sum = 0;
+    for (const f of ids) {
+      for (const c of ids) {
+        sum += SHIP_CLASSES[c].cargoCap / (SHIP_CLASSES[f].cargoCap + SHIP_CLASSES[c].cargoCap);
+      }
+    }
+    expect(sum / (ids.length * ids.length)).toBeCloseTo(0.5, 2);
+
+    const sloopAndMerchantman =
+      SHIP_CLASSES.merchantman.cargoCap / (SHIP_CLASSES.sloop.cargoCap + SHIP_CLASSES.merchantman.cargoCap);
+    expect(sloopAndMerchantman).toBeGreaterThan(0.85);
+  });
+
+  it("is worth more than the yard pays for the hull, in every pairing", () => {
+    // Cocoa at its base price of 20, which is the middling good of the six.
+    const PER_TON = 20;
+    for (const c of Object.keys(SHIP_CLASSES)) {
+      const worth = SHIP_CLASSES[c].cargoCap * PER_TON;
+      const yardPays = Math.floor(SHIP_CLASSES[c].buyPrice * 0.4);
+      expect(worth, `${c}`).toBeGreaterThan(yardPays);
+    }
+  });
+
+  it("gives a consort's hold exactly two consequences, and a screen cannot help with either", () => {
+    // If a third reader of a *particular* hull's cargo ever appears, this
+    // release's conclusion stops holding and the transfer screen comes back on
+    // the table. Both of these are events, not decisions.
+    const w = makeWorld(makeShipData({ cargo: { cocoa: 30 } }), [consort("fluyt", { rum: 40 })]);
+    // 1. She leaves.
+    expect(stowedIn(spillIfDetached(w, 0))).toBeGreaterThan(0);
+    // 2. The flag shifts to her, and her own cargo limits the salvage.
+    expect(consortCargoCap(w.player.fleet![0])).toBe(SHIP_CLASSES.fluyt.cargoCap);
+    // Everything else asks the squadron, which does not care where a ton lies.
+    expect(squadronHeld(w, "rum")).toBe(40);
+    expect(squadronHeld(w, "cocoa")).toBe(30);
   });
 });
 

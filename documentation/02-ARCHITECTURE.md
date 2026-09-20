@@ -130,6 +130,7 @@ czytelnikiem swojego faktu:
 | `core/services/InputGate.ts` | czy to naciśnięcie już zostało obsłużone | `PortScene` miał własną bramkę na jedną klatkę, reszta gry żadnej (v0.78.0) |
 | `core/i18n/plForms.ts` + `plurals.ts` | jak odmienić nazwę i liczebnik | zdanie po zdaniu, ręcznie (v0.69.0, v0.74.0) |
 | `core/i18n/names.ts` | pod jakim kluczem zapisana jest nazwa | każdy system stemplował gotowe słowo do zapisu (v0.63.0, dokończone v0.79.0) |
+| `core/systems/HoldSystem.ts` → `spillIfDetached` | ile stracisz, gdy kadłub odejdzie | ekran nie liczył tego wcale, a od v0.80.0 nie liczy tego **po swojemu** |
 
 `game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
 **wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran
@@ -185,6 +186,13 @@ kilkoma kształtami i każdy strażnik widzi jeden:
 Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele nie
 mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
 przypisany najpierw do zmiennej.
+
+**Piąty strażnik — `cursor_survives_redraw.test.ts`** (v0.80.0) — nie o tekst,
+o to samo czytanie źródła: scena nie da się zbudować bez Phasera, więc reguła
+*„przerysowanie widoku, na którym stoisz, nie rusza kursora"* jest pilnowana
+skanem `switchView` i `switchTab` na bezwarunkowe zerowanie indeksu. Trzy listy
+w grze nie dawały się przewijać **od pierwszego commita**, bo tak właśnie
+przesuwa się kursor: zwiększ indeks i przerysuj.
 
 **Czwarty strażnik — `stamped_names.test.ts`** (v0.79.0) — patrzy w drugą stronę:
 czyta źródło **każdego z 75 wywołań `addLogEntry`** i przewraca się na `t()`

@@ -1495,6 +1495,12 @@ pełne), `A`/`D` ster, `Q` lewa burta, `E` prawa burta, `1`/`2`/`3` amunicja,
 W magazynie dodatkowo `Q` na brzeg, `E` na statek.
 W **stoczni** dodatkowo `F` — kup wybrany kadłub **do floty**, nie jako flagowca
 (v0.79.0; przedtem tylko myszą, przyciskiem rysowanym poza panelem), `R` naprawa.
+Kursor obejmuje też **własne kadłuby** pod listą: na takim wierszu `Enter` znaczy
+*sprzedaj* (v0.80.0). W **kajucie** `↑↓` wybiera konsortę, `X` ją porzuca.
+
+**Sprzedaż i porzucenie konsorty pytają o potwierdzenie**, jeśli coś z nią odejdzie
+— wiersz mówi, ile ton, i trzeba nacisnąć drugi raz. Kadłub, którego ładunek
+w całości mieści się w pozostałych, odchodzi za pierwszym naciśnięciem.
 
 **Menu (`Spacja`)** — `1`–`6` i strzałki po zakładkach, `Esc` zamyka.
 Zakładki: Kajuta · Kapitan · Dziennik · Kalendarz · Ustawienia · Zapis · Mapa.

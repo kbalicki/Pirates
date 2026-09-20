@@ -30,6 +30,7 @@ import { abandonFleetShip } from "../../core/systems/PortInteractionSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale, consortTraining, fleetManning } from "../../core/systems/FleetSystem.ts";
 import {
   squadronStowed, squadronCap, squadronManifest, stowedIn, consortCargo, consortCargoCap,
+  spillIfDetached,
 } from "../../core/systems/HoldSystem.ts";
 import { manningTier, workingMinimum } from "../../core/systems/CrewSystem.ts";
 import { activeQuests } from "../../core/systems/QuestSystem.ts";
@@ -61,6 +62,12 @@ export class OptionsMenuScene extends Phaser.Scene {
 
   // Save/Load slot data cache for keyboard actions
   private saveSlotData: { slotId: string; hasData: boolean }[] = [];
+
+  /**
+   * The consort the captain has asked to put over the side, waiting on a
+   * second press. Only ever set when something would go down with her.
+   */
+  private pendingAbandonIndex: number | null = null;
 
   constructor() {
     super({ key: "OptionsMenuScene" });
@@ -214,9 +221,22 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.tabKeyCleanup.push(() => this.input.keyboard?.off(event, handler));
   }
 
+  /**
+   * Redrawing the tab the captain is already on never moves his cursor.
+   *
+   * The same defect as `PortScene.switchView`, in a second scene and found the
+   * same way (v0.80.0): the save slots and the quartermaster's settings move
+   * their cursor by incrementing `selectedItemIndex` and redrawing the tab,
+   * and the redraw put it straight back on the first row. Verified on the
+   * running game: two presses of Down on the settings tab leave the arrow on
+   * *Game speed*, which is where it started.
+   *
+   * Leaving the tab still starts the next one at the top, which is right.
+   */
   private switchTab(tab: TabId): void {
+    const sameTab = ALL_TABS[this.activeTabIndex] === tab;
     this.activeTabIndex = ALL_TABS.indexOf(tab);
-    this.selectedItemIndex = 0;
+    if (!sameTab) this.selectedItemIndex = 0;
     this.clearTabKeyboard();
 
     for (let i = 0; i < this.tabButtons.length; i++) {
@@ -318,7 +338,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     barBorder.lineStyle(1, 0x999999, 1);
     barBorder.strokeRect(x + 10, y - 5, 200, 10);
     this.contentContainer.add(barBorder);
-    y += 20;
+    y += 16;
 
     // Training bar — crew experience under this captain's command (0..1).
     const training = Math.max(0, Math.min(1, this.worldState.captain?.training ?? 0.3));
@@ -340,7 +360,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     tBorder.lineStyle(1, 0x999999, 1);
     tBorder.strokeRect(x + 10, y - 5, 200, 10);
     this.contentContainer.add(tBorder);
-    y += 20;
+    y += 16;
 
     // Cargo manifest
     const cargoTitle = this.add.text(x, y, t("cabin.cargo_title"), txt(14, { bold: true }));
@@ -362,11 +382,20 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.contentContainer.add(this.add.text(x + 10, y, t("cabin.no_cargo"), txt(11, { color: "#888888" })));
       y += 16;
     } else {
-      for (const [itemKey, qty] of cargoEntries) {
+      // Two columns. The manifest is one of three lists on this tab whose
+      // length is a fact about the game rather than about the layout, and with
+      // six goods aboard and two consorts astern the block ran off the bottom
+      // of the panel and under `[ CLOSE ]` (v0.80.0). Seven goods exist, so
+      // four rows is the most this can ever be.
+      const rows = Math.ceil(cargoEntries.length / 2);
+      for (let i = 0; i < cargoEntries.length; i++) {
+        const [itemKey, qty] = cargoEntries[i];
         const name = t("item." + itemKey + ".name");
-        this.contentContainer.add(this.add.text(x + 10, y, `${name}: ${Math.round(qty)}`, txt(11)));
-        y += 16;
+        this.contentContainer.add(this.add.text(
+          x + 10 + (i < rows ? 0 : 200), y + (i % rows) * 16,
+          `${name}: ${Math.round(qty)}`, txt(11)));
       }
+      y += rows * 16;
     }
     y += 12;
 
@@ -408,22 +437,62 @@ export class OptionsMenuScene extends Phaser.Scene {
           (manningTier(consortCrew(fs), fs.classId).id === "full"
             ? ""
             : `  ${t(manningTier(consortCrew(fs), fs.classId).nameKey)}`) +
-          ((fs.wounded ?? 0) > 0 ? `  |  ${t("cabin.wounded", { count: Math.round(fs.wounded ?? 0) })}` : "") +
+          // Second line. v0.77.0 put the hold on the end of a row that was
+          // already the full width of the panel, and the last reading was
+          // being drawn on the map behind it -- the same defect as the
+          // shipyard's button in v0.79.0, in a string instead of a position.
+          `
+   ${t("hud.cargo", { current: Math.round(stowedIn(consortCargo(fs))), max: consortCargoCap(fs) })}` +
           `  |  ${t("hud.morale", { pct: Math.round(consortMorale(fs) * 100) })}` +
           `  |  ${t("cabin.training", { pct: Math.round(consortTraining(fs, captainTraining) * 100) })}` +
-          `  |  ${t("hud.cargo", { current: Math.round(stowedIn(consortCargo(fs))), max: consortCargoCap(fs) })}`,
+          ((fs.wounded ?? 0) > 0 ? `  |  ${t("cabin.wounded", { count: Math.round(fs.wounded ?? 0) })}` : ""),
           { ...txt(11), lineSpacing: 4 });
         this.contentContainer.add(fsInfo);
 
         const fsIdx = i;
-        const abandonBtn = this.add.text(x + 320, y, t("fleet.abandon"),
+        const armed = this.pendingAbandonIndex === i;
+        const focused = this.selectedItemIndex === i;
+        if (focused) {
+          this.contentContainer.add(this.add.text(x - 2, y, "▶", txt(10, { bold: true })));
+        }
+        const abandonBtn = this.add.text(x + 320, y,
+          armed ? t("fleet.abandon_confirm") : t("fleet.abandon"),
           txt(11, { bold: true, color: "#aa3333" }));
         abandonBtn.setInteractive({ useHandCursor: true });
-        abandonBtn.on("pointerdown", () => this.doAbandonFleet(fsIdx));
+        abandonBtn.on("pointerdown", () => this.askAbandonFleet(fsIdx));
         this.contentContainer.add(abandonBtn);
 
-        y += 38;
+        y += 56;
       }
+
+      if (this.pendingAbandonIndex !== null) {
+        // Its own line, full width: the sentence does not fit in the button,
+        // and a label that runs off the panel is the defect v0.79.0 removed
+        // from the screen next door.
+        this.contentContainer.add(this.add.text(x + 10, y,
+          t("fleet.abandon_warning", {
+            tons: Math.round(stowedIn(spillIfDetached(this.worldState, this.pendingAbandonIndex))),
+          }),
+          txt(11, { bold: true, color: "#aa3333" })));
+        y += 18;
+      }
+
+      // Keyboard. `[Abandon]` was a mouse button and nothing else — the last
+      // transaction in the game with no key behind it after v0.79.0 gave the
+      // shipyard its `F`, and the one that throws cargo into the sea.
+      const cabinTab = ALL_TABS[this.activeTabIndex];
+      this.bindTabKey("keydown-UP", () => {
+        if (this.selectedItemIndex > 0) { this.selectedItemIndex--; this.switchTab(cabinTab); }
+      });
+      this.bindTabKey("keydown-DOWN", () => {
+        if (this.selectedItemIndex < fleet.length - 1) {
+          this.selectedItemIndex++;
+          this.switchTab(cabinTab);
+        }
+      });
+      this.bindTabKey("keydown-X", () => this.askAbandonFleet(this.selectedItemIndex));
+
+
 
       // One line for the whole squadron (v0.49.0): a captain with three hulls
       // and one ship's worth of people should be able to read that off a
@@ -433,7 +502,13 @@ export class OptionsMenuScene extends Phaser.Scene {
         t("cabin.fleet_hands", { men: squadron.men, need: squadron.min }),
         txt(11, { color: squadron.short ? "#aa3333" : "#666666" }));
       this.contentContainer.add(squadronLine);
-      y += squadronLine.height + 8;
+      // The keys share the squadron's line rather than taking one of their
+      // own: this tab carries three lists whose length is a fact about the
+      // game, and every row it does not have to spend is a row the fleet block
+      // can.
+      this.contentContainer.add(this.add.text(
+        x + 340, y, t("cabin.fleet_keys"), txt(10, { color: "#888888" })));
+      y += squadronLine.height + 6;
     }
 
     // Gold
@@ -451,7 +526,29 @@ export class OptionsMenuScene extends Phaser.Scene {
     // seagulls: applied at next cry interval (≤30s)
   }
 
+  /**
+   * Put a hull over the side — after asking, if anything goes down with her.
+   *
+   * Same rule and same reason as the yard's `[Sell]` (v0.80.0): a consort has
+   * carried cargo since v0.77.0, this was one unconfirmed click, and what she
+   * is holding is the larger half of a squadron's hold in most pairings. An
+   * empty hull still goes on the first press — a confirmation that fires when
+   * nothing is at stake teaches the captain to press through it.
+   */
+  private askAbandonFleet(index: number): void {
+    const goesDown = stowedIn(spillIfDetached(this.worldState, index));
+    if (goesDown <= 0 || this.pendingAbandonIndex === index) {
+      this.pendingAbandonIndex = null;
+      this.doAbandonFleet(index);
+      return;
+    }
+    this.pendingAbandonIndex = index;
+    this.selectedItemIndex = index;
+    this.switchTab("cabin");
+  }
+
   private doAbandonFleet(index: number): void {
+    this.pendingAbandonIndex = null;
     this.worldState = abandonFleetShip(this.worldState, index);
     this.registry.set("worldState", this.worldState);
     this.switchTab("cabin");

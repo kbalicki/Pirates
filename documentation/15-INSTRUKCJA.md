@@ -479,6 +479,13 @@ Konsorty mają własną załogę, morale i wyszkolenie. Ludzie zabici na konsorc
 Kadłub do floty kupuje się w stoczni klawiszem **`F`** — `Enter` kupuje go na
 flagowca, czyli **przesiadasz się**, a stary statek zostaje w porcie.
 
+Konsortę sprzedajesz w tej samej stoczni: zjedź kursorem pod listę, na swoje
+kadłuby, i naciśnij `Enter`. Porzucasz ją na morzu w kajucie (`Spacja`), klawiszem
+`X`. **Jeśli coś z nią odejdzie, ekran zapyta i powie ile** — a wiersz przez cały
+czas pokazuje, ile ma w ładowni. Chcesz jej ładunek zatrzymać? Sprzedaj go najpierw
+u kupca albo złóż w magazynie: lada wybiera **od flagowca**, więc opróżnia się ją
+na końcu.
+
 ### Eskadra ma jedną ładownię
 
 Każdy kadłub w Twojej flocie **wozi towar**, a liczby, które widzisz w porcie

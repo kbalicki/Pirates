@@ -124,8 +124,11 @@ Menu port:
    szlak ucichnie
 3. **Kupiec** — kupno/sprzedaż 6 towarów
 4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do
-   floty. Klawisze: `Enter`/`B` — kup jako flagowiec, **`F` — dokup do floty**
-   (v0.79.0), `R` — napraw, `Esc` — wróć
+   floty, **sprzedaż konsorty**. Jeden kursor obejmuje dwie listy: kadłuby na
+   sprzedaż i własne. Klawisze: `Enter`/`B` — kup jako flagowiec albo **sprzedaj
+   wybraną konsortę** (zależnie od wiersza), **`F` — dokup do floty** (v0.79.0),
+   `R` — napraw, `Esc` — wróć. Linia podpowiedzi mówi, co znaczy `Enter` na tym
+   wierszu
 5. **Załoga miasta** — tylko w mieście, które zmieniło właściciela (v0.15.0)
 6. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
 
@@ -398,3 +401,47 @@ i `R` — tak jak działa każda inna akcja na tym ekranie — a `[Kup]` stoi za
 
 Reguła ogólna: **odstęp policzony od tekstu, który przed nim stoi**. Cena jest
 tłumaczeniem, a „6000 Gold" i „6000 złota" to nie ta sama liczba pikseli.
+
+## Kursor przeżywa przerysowanie ekranu (v0.80.0)
+
+**Trzy listy w tej grze nie dawały się przewijać w ogóle.** Lada kupca, lista
+kadłubów w stoczni i ustawienia kwatermistrza — każda drukuje w podpowiedzi
+`↑↓ — Wybór` i żadna nigdy niczego nie wybrała.
+
+Lista przesuwa kursor tak: zwiększa indeks i **przerysowuje ekran**. Obie metody
+przerysowujące — `PortScene.switchView` i `OptionsMenuScene.switchTab` — ustawiały
+kursor z powrotem na pierwszym wierszu, więc każde naciśnięcie odkładało go tam,
+skąd wyszedł. `selectedIndex = 0` siedzi w `switchView` **od pierwszego commita**.
+
+Znalezione na **działającej grze**, nie przez czytanie: trzy naciśnięcia strzałki
+w dół na ladzie w Hawanie zostawiają kursor na cukrze trzcinowym, a menu portu
+jeden ekran wcześniej — które przerysowuje się przez `updateActionSelection`, nie
+przez `switchView` — przesuwa się o dwa wiersze na te same dwa naciśnięcia.
+To dlatego menu portu zawsze działało dobrze, a **każdy ekran z listą skończył
+na przyciskach myszy**.
+
+Reguła: **przerysowanie widoku, na którym stoisz, nie rusza kursora.** Wyjście
+gdzie indziej dalej zaczyna od góry. Pilnowane przez
+`cursor_survives_redraw.test.ts`, który czyta źródło (sceny nie da się zbudować
+bez Phasera) i przewraca się na bezwarunkowe zerowanie.
+
+## Lista, która przerosła panel (v0.80.0)
+
+Dziewięć klas w stoczni pierwszej klasy to **180 pikseli** przy **269**, jakie ten
+widok ma między nagłówkiem a przyciskiem powrotu. Ostatni wiersz był rysowany pod
+`[ WRÓĆ DO PORTU ]` **przed** tym wydaniem, a sekcja floty dołożyła do tego.
+
+Dwie reguły:
+
+1. **Okno liczone z miejsca, które naprawdę zostało** — nie ze stałej dobranej,
+   gdy lista była krótsza. Znacznik `wyżej/niżej jeszcze N` kosztuje wiersz, więc
+   ile ich jest, ustala się iteracyjnie (zakładanie dwóch na górze listy marnuje
+   wiersz, którego drugi nigdy nie użył).
+2. **Własne kadłuby kapitana nie są nigdy chowane w oknie** — niosą akcję
+   niszczącą, a przycisk, który wyjeżdża poza widok, to ten sam defekt co
+   przycisk rysowany poza krawędzią (v0.79.0).
+
+Kajuta miała to samo z drugiej strony: v0.77.0 dopisało ładownię na koniec
+wiersza konsorty, który już był szerokości panelu, i po polsku ostatni odczyt
+lądował na mapie za oknem. Teraz dwa wiersze, manifest w dwóch kolumnach,
+a podpowiedź klawiszy dzieli linię z odczytem eskadry.

@@ -202,3 +202,20 @@ export function detachConsort(
   const moved = stowInSquadron(w, leaving);
   return { world: moved.world, lost: moved.spilled };
 }
+
+/**
+ * What would go with her, if she left now (v0.80.0).
+ *
+ * The same rule as `detachConsort`, run and thrown away, because the screen
+ * that is about to ask the captain a question must not answer it with its own
+ * arithmetic — that is v0.77.0's lesson from `showBattleResult`, one release
+ * later and pointing forwards instead of back.
+ *
+ * Measured across all 81 pairings of flagship and consort: what a laden
+ * consort carries is worth **more than the yard pays for her hull** in every
+ * one of them, median four times over, and the shipyard row the captain clicks
+ * did not say she was carrying anything at all.
+ */
+export function spillIfDetached(world: WorldState, index: number): Record<string, number> {
+  return detachConsort(world, index).lost;
+}
