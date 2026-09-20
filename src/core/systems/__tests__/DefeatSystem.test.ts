@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest";
+import { t, setLang, getLang } from "../../i18n/I18n.ts";
 import {
   settleDefeat,
   heirToTheFlag,
@@ -185,11 +186,30 @@ describe("a captain who sailed in company", () => {
     expect(res.world.player.gold).toBe(4000);
   });
 
-  /** The v0.37.0 trap: what goes into `vars` is printed, so it is a name. */
-  it("writes a ship's name into the log, not a translation key", () => {
+  /**
+   * This test used to assert the opposite, and it is why the defect lived.
+   *
+   * It was written against the v0.37.0 trap — "what goes into `vars` is
+   * printed, so it is a name" — which v0.63.0 overturned: `t()` resolves a
+   * name-shaped key when it substitutes a variable, so the **key** is what
+   * survives a language switch. Pinning the baked word made the system look
+   * correct to every later review. What the entry has to do is read in the
+   * reader's language, so that is what is checked now.
+   */
+  it("writes a ship's key into the log, and it reads in both languages", () => {
     const res = settleDefeat(makeWorld({ fleet: [consort("frigate")] }));
     const entry = res.world.eventLog.find(e => e.key === "defeat.log_flag_shifted");
-    expect(String(entry?.vars?.ship)).not.toContain("ship.");
+    expect(entry?.vars?.ship).toBe("ship.frigate.name");
+
+    const vars = entry!.vars as Record<string, string | number>;
+    const before = getLang();
+    setLang("en");
+    expect(t("defeat.log_flag_shifted", vars)).toContain("Frigate");
+    setLang("pl");
+    // And the accusative the Polish sentence asks for: "Bandera przechodzi na
+    // Fregatę", which a word resolved at the stamp could never have given.
+    expect(t("defeat.log_flag_shifted", vars)).toContain("na Fregatę");
+    setLang(before as "en" | "pl");
   });
 });
 

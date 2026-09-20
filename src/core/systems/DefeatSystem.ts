@@ -75,7 +75,6 @@ import type { ShipData } from "../model/EntityState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { PORTS } from "../data/ports.ts";
 import { shipClassId } from "../model/ids.ts";
-import { t } from "../i18n/index.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { cargoSurvivingSinking } from "./DamageSystem.ts";
 import { consortCrew, consortCrewMax, consortMorale } from "./FleetSystem.ts";
@@ -83,7 +82,7 @@ import { consortCargo, stowedIn } from "./HoldSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
 import { portFaction } from "./SiegeSystem.ts";
 
-import { portNameKey } from "../i18n/names.ts";
+import { portNameKey, shipNameKey } from "../i18n/names.ts";
 /**
  * Share of the men still on the roll who reach a boat.
  *
@@ -288,10 +287,12 @@ export function settleDefeat(
     };
 
     const logged = addLogEntry(w, "defeat.log_flag_shifted", {
-      // The printed name, never the key. `vars` goes into the save and is
-      // rendered wherever the log is read — the v0.37.0 trap, and the one
-      // thing review caught in v0.58.0.
-      ship: t(`ship.${consort.classId}.name`),
+      // The key, never the printed name. The comment that stood here said the
+      // opposite, cited v0.37.0 for it, and was overtaken by v0.63.0 without
+      // anyone noticing: `vars` goes into the save, so a baked word freezes the
+      // entry into the language it was written in, and `t()` has resolved a
+      // name-shaped key at substitution time ever since.
+      ship: shipNameKey(consort.classId),
       count: broughtAcross,
     });
     return {

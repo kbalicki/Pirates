@@ -69,12 +69,15 @@ import { VILLAGES, villageList, type VillageDef } from "../data/villages.ts";
 import { portFaction } from "./SiegeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { clamp } from "../services/Geometry.ts";
-// A log entry keeps its `vars` and renders them verbatim a long time later, so
-// a raw key would reach the journal as "village.darien.name" (the v0.37.0
-// lesson). Names are baked where the entry is made.
-import { t } from "../i18n/index.ts";
 
-import { factionNameKey, portNameKey } from "../i18n/names.ts";
+// A log entry keeps its `vars` and renders them verbatim a long time later.
+// Until v0.79.0 the two entries below read that as an instruction to bake the
+// finished word, quoting the v0.37.0 lesson - and they were the only two left
+// in the game doing it, because v0.63.0 moved the resolution into `t()` and
+// `NAME_KEY` simply did not list `village`. The stamp carries the key now;
+// a save written before this release keeps its English word, which is exactly
+// what it showed then.
+import { factionNameKey, portNameKey, villageNameKey } from "../i18n/names.ts";
 // ── The numbers ───────────────────────────────────────────
 
 /**
@@ -293,7 +296,7 @@ export function barter(world: WorldState, key: string): TradeResult {
     traded: w.time.day,
   });
   w = addLogEntry(w, "village.log_trade", {
-    village: t(`village.${key}.name`),
+    village: villageNameKey(key),
     gold: offer.gold,
     rum: offer.rum,
   });
@@ -314,6 +317,18 @@ export type WarPartyOffer = {
 };
 
 /** Is a raid this village started still running on its neighbour? */
+/**
+ * Is a raid already burning on this town?
+ *
+ * Deliberately blind to who sent it. The guard is about the **town** — two
+ * raids on one colony would stack two lots of minus forty defence on a place
+ * that has fifteen — and a raid the world rolled is as much a raid as one that
+ * was bought. What was wrong until v0.79.0 was the *sentence*: the disabled
+ * option said "their warriors are already out", crediting these people with
+ * every `native_raid` the event table happened to put on their neighbour. The
+ * guard stayed; the line now says what is true, which is that a raid is loose
+ * and they will not send a second.
+ */
 function raidStanding(world: WorldState, target: string): boolean {
   return world.worldEvents.some(
     ev => ev.type === "native_raid" && ev.endDay >= world.time.day && ev.ports.includes(target),
@@ -386,7 +401,7 @@ export function sendWarParty(world: WorldState, key: string): { world: WorldStat
     knownEventIds: [...(w.knownEventIds ?? []), event.id],
   };
   w = addLogEntry(w, "village.log_war_party", {
-    village: t(`village.${key}.name`),
+    village: villageNameKey(key),
     port: portNameKey(target),
   });
   return { world: w, ok: true };

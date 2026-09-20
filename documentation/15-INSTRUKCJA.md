@@ -476,6 +476,9 @@ Do **trzech kadłubów**: flagowiec i dwie konsorty.
 Konsorty mają własną załogę, morale i wyszkolenie. Ludzie zabici na konsorcie
 **zostają zabici**.
 
+Kadłub do floty kupuje się w stoczni klawiszem **`F`** — `Enter` kupuje go na
+flagowca, czyli **przesiadasz się**, a stary statek zostaje w porcie.
+
 ### Eskadra ma jedną ładownię
 
 Każdy kadłub w Twojej flocie **wozi towar**, a liczby, które widzisz w porcie

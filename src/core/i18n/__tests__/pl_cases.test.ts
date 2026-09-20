@@ -6,7 +6,7 @@ import { EN } from "../locales/en.ts";
 import { PL } from "../locales/pl.ts";
 import { CITIES } from "../../data/cities.ts";
 import { FACTIONS } from "../../data/factions.ts";
-import { portNameKey, factionNameKey } from "../names.ts";
+import { portNameKey, factionNameKey, shipNameKey, villageNameKey } from "../names.ts";
 
 // ===========================================================================
 // Polish has seven cases, and the game knew one (v0.69.0)
@@ -265,6 +265,11 @@ describe("every sentence still fills every hole", () => {
       holder: factionNameKey("france"), ally: factionNameKey("netherlands"),
       enemy: factionNameKey("spain"), target: portNameKey("havana"),
       rendezvous: portNameKey("havana"),
+      // The three families that reached this sweep in v0.79.0: a ship class in
+      // the accusative, a village in the locative, and the two crowns the
+      // predation entries name.
+      ship: shipNameKey("frigate"), village: villageNameKey("darien"),
+      hunter: factionNameKey("england"), prey: factionNameKey("spain"),
     };
     // Every variable a sentence counts with gets a number, or the noun form
     // beside it is a hole this sweep would report (v0.74.0). Three is on
@@ -284,7 +289,9 @@ describe("every sentence still fills every hole", () => {
       // could not read - which prints on the screen exactly as it is written.
       if (/\{\{\w+:[a-z_]+\}\}/.test(out)) left.push(key);
       // And a name key that reached the screen raw (v0.63.0's defect).
-      if (/\b(?:port|faction)\.[a-z0-9_]+\.name\b/.test(out)) left.push(key + " (raw key)");
+      if (/\b(?:port|faction|ship|village|item)\.[a-z0-9_]+\.name\b/.test(out)) {
+        left.push(key + " (raw key)");
+      }
     }
     setLang("en");
     expect(left).toEqual([]);

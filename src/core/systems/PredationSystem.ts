@@ -268,6 +268,7 @@ import { rngNext } from "../services/RNG.ts";
 import { tickBoundaryCrossed } from "./TimeSystem.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 import { disruptRoute } from "./TradeRouteSystem.ts";
+import { factionNameKey } from "../i18n/names.ts";
 
 /** Ticks between predation decisions. Slower than the AI's own cadence: a hull
  *  picks a quarry once and then keeps after her, rather than re-choosing every
@@ -417,9 +418,15 @@ function settleHunt(
   const near = playerPos
     && Math.hypot(playerPos.x - loser.pos.x, playerPos.y - loser.pos.y) < WITNESS_RANGE;
   if (near) {
+    // The key, not the raw `factionId`. These two entries were the only ones
+    // left in the game stamping a bare id, and the journal printed it: *"A
+    // england man-of-war has run down a rover"*, *"Okręt (england) dopadł
+    // korsarza"* — wrong in **both** languages, which is why no locale test
+    // could see it. Every other var of this shape has gone through a `*NameKey`
+    // helper since v0.63.0.
     w = addLogEntry(w, kind === "plunder" ? "event.npc_plundered" : "event.npc_policed", {
-      hunter: crownOfEntity(winner) || "?",
-      prey: crownOfEntity(loser) || "?",
+      hunter: factionNameKey(crownOfEntity(winner)) || "?",
+      prey: factionNameKey(crownOfEntity(loser)) || "?",
       taken: outcome.taken ? 1 : 0,
     });
   }

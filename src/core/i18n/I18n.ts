@@ -89,7 +89,12 @@ export function hasKey(key: string): boolean {
  * as it printed then.
  */
 // `.gen` is the form a quantity takes - see `itemNameKeyGen` (v0.68.0).
-const NAME_KEY = /^(?:port|faction|item|ship)\.[a-z0-9_]+\.(?:name|gen)$/;
+// `village` joined the list in v0.79.0: it was the one family with a `.name`
+// row in both locale tables and no prefix here, so `VillageSystem` baked the
+// finished word into the save instead - the defect this pattern exists to end,
+// surviving four releases inside the comment that described it. `names.ts`
+// exports `NAME_PREFIXES` and `names.test.ts` holds the two lists together.
+const NAME_KEY = /^(?:port|faction|item|ship|village)\.[a-z0-9_]+\.(?:name|gen)$/;
 
 /**
  * A placeholder, with the grammatical form the sentence around it wants.

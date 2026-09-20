@@ -159,6 +159,76 @@ const PORTS: Record<string, Declension> = {
 };
 
 /**
+ * The nine ship classes (v0.79.0).
+ *
+ * Six Polish sentences put a class name after *na*, *Zakupiono*, *Sprzedano*
+ * or *Porzucono* — every one of them an accusative — and printed the
+ * nominative: *"Bandera przechodzi na Fregata"*, *"Sprzedano Brygantyna"*.
+ * Three of the nine names are feminine and are the three that show it; the
+ * other six are masculine inanimate, where the accusative and the nominative
+ * are the same word, which is why this went unnoticed for the life of the
+ * project. A class is not a place, so no preposition is baked in here.
+ *
+ * It became reachable in this release: until `DefeatSystem` and
+ * `SeaBattleScene` stopped resolving the name at the call site, the sentence
+ * was handed a finished word and there was nothing left to decline.
+ */
+const SHIPS: Record<string, Declension> = {
+  pinnace: { dat: "Pinasowi", gen: "Pinasu", acc: "Pinas", ins: "Pinasem", loc: "Pinasie" },
+  sloop: { dat: "Slupowi", gen: "Slupa", acc: "Slup", ins: "Slupem", loc: "Slupie" },
+  barque: { dat: "Barce", gen: "Barki", acc: "Barkę", ins: "Barką", loc: "Barce" },
+  brigantine: {
+    dat: "Brygantynie", gen: "Brygantyny", acc: "Brygantynę", ins: "Brygantyną",
+    loc: "Brygantynie",
+  },
+  fluyt: { dat: "Fluitowi", gen: "Fluitu", acc: "Fluit", ins: "Fluitem", loc: "Fluicie" },
+  frigate: { dat: "Fregacie", gen: "Fregaty", acc: "Fregatę", ins: "Fregatą", loc: "Fregacie" },
+  fast_galleon: {
+    dat: "Szybkiemu Galeonowi", gen: "Szybkiego Galeonu", acc: "Szybki Galeon",
+    ins: "Szybkim Galeonem", loc: "Szybkim Galeonie",
+  },
+  galleon: { dat: "Galeonowi", gen: "Galeonu", acc: "Galeon", ins: "Galeonem", loc: "Galeonie" },
+  merchantman: {
+    dat: "Statkowi handlowemu", gen: "Statku handlowego", acc: "Statek handlowy",
+    ins: "Statkiem handlowym", loc: "Statku handlowym",
+  },
+};
+
+/**
+ * The eight villages (v0.79.0).
+ *
+ * The same table as the ports, for the same reason and with the same rule: a
+ * row with no forms is a name Polish leaves alone, and all the row says is
+ * whether the place takes `w` or `na`. Five of the eight do not move - *Cabo
+ * de la Vela* and *Guayo* are Spanish, *Waitukubuli* and *Calos* are neither
+ * Spanish nor Polish, and none of them has an ending Polish knows what to do
+ * with. Three do: two masculine towns on the main and one feminine name in
+ * `-a`.
+ *
+ * Two are islands: Waitukubuli is Dominica, and the Calusa sat on the Florida
+ * keys' own shore - `village.calusa`'s neighbour is `florida_keys`, which this
+ * file already calls an island. The other six are on the main.
+ */
+const VILLAGES: Record<string, Declension> = {
+  cimatan: {
+    dat: "Cimatanowi", gen: "Cimatanu", acc: "Cimatan", ins: "Cimatanem", loc: "Cimatanie",
+  },
+  champoton: {
+    dat: "Champotonowi", gen: "Champotonu", acc: "Champoton", ins: "Champotonem",
+    loc: "Champotonie",
+  },
+  // Kaurkira, feminine in `-a`, so it declines like Hawana does.
+  miskito: {
+    dat: "Kaurkirze", gen: "Kaurkiry", acc: "Kaurkirę", ins: "Kaurkirą", loc: "Kaurkirze",
+  },
+  darien: { dat: "Darienowi", gen: "Darienu", acc: "Darien", ins: "Darienem", loc: "Darienie" },
+  guajira: {},
+  warao: {},
+  waitukubuli: { island: true },
+  calusa: { island: true },
+};
+
+/**
  * The four crowns and the black flag.
  *
  * Only the bare cases: a crown is never a place, so nothing here needs a
@@ -193,7 +263,11 @@ export function plNameForm(
   form: string,
 ): string | undefined {
   if (!isPlForm(form)) return undefined;
-  const table = kind === "port" ? PORTS : kind === "faction" ? FACTIONS : undefined;
+  const table = kind === "port" ? PORTS
+    : kind === "faction" ? FACTIONS
+    : kind === "village" ? VILLAGES
+    : kind === "ship" ? SHIPS
+    : undefined;
   if (!table) return undefined;
   const d: Declined | undefined = table[id];
   if (!d) return undefined;
@@ -231,7 +305,11 @@ export function plPhraseFallback(form: string, text: string): string | undefined
   }
 }
 
-/** Every port and crown this table claims to know. Read by the tests. */
-export function plDeclinedKeys(kind: "port" | "faction"): string[] {
-  return Object.keys(kind === "port" ? PORTS : FACTIONS);
+/** Every name this table claims to know, by family. Read by the tests. */
+export function plDeclinedKeys(kind: "port" | "faction" | "village" | "ship"): string[] {
+  const table = kind === "port" ? PORTS
+    : kind === "faction" ? FACTIONS
+    : kind === "village" ? VILLAGES
+    : SHIPS;
+  return Object.keys(table);
 }

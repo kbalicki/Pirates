@@ -123,7 +123,9 @@ Menu port:
    zostało 18 dni". Naciśnięcie nic nie kosztuje: pieniądze idą dopiero, gdy
    szlak ucichnie
 3. **Kupiec** — kupno/sprzedaż 6 towarów
-4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do floty
+4. **Stocznia** — naprawa (kadłub/żagle), kupno statku, dokupienie jednostki do
+   floty. Klawisze: `Enter`/`B` — kup jako flagowiec, **`F` — dokup do floty**
+   (v0.79.0), `R` — napraw, `Esc` — wróć
 5. **Załoga miasta** — tylko w mieście, które zmieniło właściciela (v0.15.0)
 6. **Wyjdź na ląd** — zwiedzanie pieszo (flaga `isOnFoot` propagowana z `MainMapScene`)
 
@@ -380,3 +382,19 @@ linijki. Uchodziło mu to, dopóki ładownia była flagowca; po v0.77.0 drugie
 wywołanie nic nie wiedziałoby o konsortach i wypisałoby **jako utopiony ładunek,
 który jest na pokładzie**. Wynik rozliczenia jest trzymany (`lastPrize`,
 `prizeKept`) — tak samo jak `defeatFate` z v0.59.0 i z tego samego powodu.
+
+## Wiersz, który nie mieści dwóch przycisków (v0.79.0)
+
+Lista statków w stoczni niosła `[Dodaj do floty]` na stałym odstępie
+`colPrice + 100`. Panel ma w środku **438 pikseli**, a ten przycisk zaczynał się
+na 445 — **siedem pikseli za krawędzią**, całą etykietą na mapie za oknem. Był
+przy tym **jedyną transakcją w grze bez drogi z klawiatury**.
+
+Wiersz nie pomieści obu: kolumna nazwy, pięć liczb, cena i dwa przyciski nie
+mieszczą się w 438 pikselach, gdy słowa są polskie (policzone: 462). Dlatego
+zakup konsorty jest **klawiszem `F`**, wpisanym w linię podpowiedzi obok `Enter`
+i `R` — tak jak działa każda inna akcja na tym ekranie — a `[Kup]` stoi za ceną
+**na jej zmierzonej szerokości**, nie na stałej dobranej pod jeden język.
+
+Reguła ogólna: **odstęp policzony od tekstu, który przed nim stoi**. Cena jest
+tłumaczeniem, a „6000 Gold" i „6000 złota" to nie ta sama liczba pikseli.

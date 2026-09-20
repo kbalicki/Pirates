@@ -1398,6 +1398,13 @@ Osiem wiosek na czarcie, **żadna nie nosi bandery**.
 **Sześć ton rumu kupuje złoto** — jedyne dobro `rare`, którego żaden port nie
 trzyma na ladzie — i kupuje zaufanie. Zaufanie przy 60 kupuje **najazd na
 sąsiednią kolonię** (`native_raid`: −40 obrony, −15% ludzi, −150 bogactwa).
+
+Wyprawy nie kupisz, dopóki na tym mieście **trwa jakikolwiek** `native_raid` —
+także wylosowany przez świat, nie tylko twój. Strażnik dotyczy **miasta**: dwa
+najazdy naraz zdjęłyby osiemdziesiąt punktów obrony z placówki, która ma
+piętnaście. Do v0.79.0 zablokowana pozycja przypisywała wiosce cudzy najazd
+(*„ich wojownicy są już w drodze"*); mówi teraz to, co jest prawdą — najazd
+trwa, drugiego nie wyślą.
 **Nikt się nigdy nie dowiaduje, że to byłeś ty.**
 
 Cztery metry wody nad lądowiskiem: pinasa, slup, barka i brygantyna wchodzą;
@@ -1486,6 +1493,8 @@ pełne), `A`/`D` ster, `Q` lewa burta, `E` prawa burta, `1`/`2`/`3` amunicja,
 
 **Lada w porcie** — `W`/`S` wybór, `Enter` potwierdzenie, `Esc` powrót.
 W magazynie dodatkowo `Q` na brzeg, `E` na statek.
+W **stoczni** dodatkowo `F` — kup wybrany kadłub **do floty**, nie jako flagowca
+(v0.79.0; przedtem tylko myszą, przyciskiem rysowanym poza panelem), `R` naprawa.
 
 **Menu (`Spacja`)** — `1`–`6` i strzałki po zakładkach, `Esc` zamyka.
 Zakładki: Kajuta · Kapitan · Dziennik · Kalendarz · Ustawienia · Zapis · Mapa.

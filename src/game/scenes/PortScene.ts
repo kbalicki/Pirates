@@ -1648,7 +1648,16 @@ export class PortScene extends Phaser.Scene {
     if (level >= MARRIAGE_THRESHOLD) {
       actions.push(rank >= MARRIAGE_MIN_RANK
         ? { label: t("romance.opt_propose"), key: "propose" }
-        : { label: t("romance.opt_propose_blocked", { rank: MARRIAGE_MIN_RANK }), key: "blocked" });
+        // The rank her father wants has a name in every one of the five
+        // services — *Major*, *Mayor*, *Commandeur* — and this line printed the
+        // index: *"her father wants rank 2"*. A number the player is never
+        // shown anywhere else in the game.
+        : {
+            label: t("romance.opt_propose_blocked", {
+              rank: t(getRankNameKey(daughter.factionKey, MARRIAGE_MIN_RANK)),
+            }),
+            key: "blocked",
+          });
     } else if (level >= SHARES_A_LEAD) {
       const hint = this.add.text(this.infoX, y, t("romance.hint_marriage", { need: MARRIAGE_THRESHOLD }),
         txt(11, { color: "#777777" }));
@@ -2494,13 +2503,21 @@ export class PortScene extends Phaser.Scene {
       this.contentContainer.add(this.add.text(colCannons, y, String(cls.cannons), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colCargo, y, String(cls.cargoCap), txt(11, { color: "#555555" })));
       this.contentContainer.add(this.add.text(colCrew, y, `${cls.crewMin}-${cls.crewMax}`, txt(11, { color: "#555555" })));
-      this.contentContainer.add(this.add.text(colPrice, y, t("port.price", { price: cls.buyPrice }), txt(11, { bold: true })));
+      const priceText = this.add.text(
+        colPrice, y, t("port.price", { price: cls.buyPrice }), txt(11, { bold: true }));
+      this.contentContainer.add(priceText);
 
       if (!isCurrent) {
         const welcome = portAccess(this.worldState, portKey).canBuyShips;
         const canAfford = welcome && this.worldState.player.gold >= cls.buyPrice;
         const buyBtnColor = canAfford ? "#2a7a2a" : "#999999";
-        const buyBtn = this.add.text(colPrice + 55, y, t("shipyard.buy"), txt(11, { bold: true, color: buyBtnColor }));
+        // From the width of the price, not from a constant. The price is the
+        // one cell on this row whose width is a translation: "6000 Gold" and
+        // "6000 zlotych" are not the same number of pixels, and a fixed offset
+        // has to be right for the longest of them in every language.
+        const buyBtn = this.add.text(
+          colPrice + priceText.width + 8, y, t("shipyard.buy"),
+          txt(11, { bold: true, color: buyBtnColor }));
         if (canAfford) {
           buyBtn.setInteractive({ useHandCursor: true });
           buyBtn.on("pointerover", () => { this.selectedIndex = si; this.switchView("shipyard"); });
@@ -2508,13 +2525,14 @@ export class PortScene extends Phaser.Scene {
         }
         this.contentContainer.add(buyBtn);
 
-        // Add to Fleet button (if fleet not full)
-        if (canAddToFleet(this.worldState.player) && canAfford) {
-          const fleetBtn = this.add.text(colPrice + 100, y, t("fleet.add_to_fleet"), txt(10, { bold: true, color: "#2255aa" }));
-          fleetBtn.setInteractive({ useHandCursor: true });
-          fleetBtn.on("pointerdown", () => this.handleBuyToFleet(classKey));
-          this.contentContainer.add(fleetBtn);
-        }
+        // No second button. Buying a consort used to be a `[Add to Fleet]`
+        // drawn at `colPrice + 100` — seven pixels **past** the panel's right
+        // edge, so the whole label lay on the map behind it, and it was the
+        // only transaction in the game with no keyboard route at all. The row
+        // cannot hold it: a name column, five numbers, a price and two buttons
+        // do not fit in 438 pixels once the words are Polish. It is `F` now,
+        // in the hint line with Enter and R, which is how every other action
+        // on this screen already works.
       }
 
       if (isFocused) {
@@ -2594,6 +2612,15 @@ export class PortScene extends Phaser.Scene {
     this.bindKey("keydown-DOWN", moveDown);
     this.bindKey("keydown-ENTER", buySelected);
     this.bindKey("keydown-B", buySelected);
+    // F, because there was no keyboard route at all: buying a consort was the
+    // one transaction in the game reachable only with a mouse, on a button
+    // that was being drawn outside the panel it belonged to.
+    this.bindKey("keydown-F", () => {
+      const classKey = availableShips[this.selectedIndex];
+      if (classKey && classKey !== currentClassId && canAddToFleet(this.worldState.player)) {
+        this.handleBuyToFleet(classKey);
+      }
+    });
     if (hasDamage) {
       this.bindKey("keydown-R", () => this.handleShipyardRepair());
     }

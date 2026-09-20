@@ -1314,8 +1314,12 @@ export class MainMapScene extends Phaser.Scene {
     // One line in the log the moment she takes the ground, not every frame she
     // spends on it.
     if (aground && !this.wasAground) {
-      const cls = psc ? t("ship." + pe3!.ship!.classId + ".name") : "";
-      this.worldState = addLogEntry(this.worldState, "event.ran_aground", { ship: cls });
+      // No `vars`. This entry carried a `ship` variable that **neither** locale
+      // string prints — a class name resolved at the call site, baked into the
+      // save and read by nobody, found in the v0.79.0 sweep of what goes into a
+      // journal entry. Only the flagship can take the ground, so there was
+      // never a second hull for the sentence to have to name.
+      this.worldState = addLogEntry(this.worldState, "event.ran_aground");
       this.registry.set("worldState", this.worldState);
     }
     this.wasAground = aground;

@@ -50,7 +50,7 @@ import {
   damageSpeedMultiplier,
 } from "../../core/systems/DamageSystem.ts";
 
-import { itemName, portNameKey } from "../../core/i18n/names.ts";
+import { itemName, portNameKey, shipNameKey } from "../../core/i18n/names.ts";
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
 /** How long a hull takes to go under once its hull hits zero (v0.9.9). */
@@ -1264,7 +1264,9 @@ export class SeaBattleScene extends Phaser.Scene {
       const fate = this.defeatFate;
       const line = fate.kind === "flag_shifted"
         ? t("battle.defeat_flag_shifted", {
-            ship: t(`ship.${fate.classId}.name`),
+            // The key, not the name: the Polish sentence puts the class in the
+            // accusative, and a word resolved here arrives already finished.
+            ship: shipNameKey(fate.classId),
             count: fate.survivors,
           })
         : t(fate.prisoner ? "battle.defeat_ransomed" : "battle.defeat_castaway", {

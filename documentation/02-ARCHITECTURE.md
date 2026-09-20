@@ -129,6 +129,7 @@ czytelnikiem swojego faktu:
 | `core/systems/HoldSystem.ts` | ile eskadra uniesie i co wiezie | każdy ekran sumował `ship.cargo` sam, a konsorty nie miały ładowni (v0.77.0) |
 | `core/services/InputGate.ts` | czy to naciśnięcie już zostało obsłużone | `PortScene` miał własną bramkę na jedną klatkę, reszta gry żadnej (v0.78.0) |
 | `core/i18n/plForms.ts` + `plurals.ts` | jak odmienić nazwę i liczebnik | zdanie po zdaniu, ręcznie (v0.69.0, v0.74.0) |
+| `core/i18n/names.ts` | pod jakim kluczem zapisana jest nazwa | każdy system stemplował gotowe słowo do zapisu (v0.63.0, dokończone v0.79.0) |
 
 `game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
 **wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran
@@ -160,6 +161,13 @@ napisany za rok dostanie ją za darmo.
   formy w `i18n/plForms.ts`; angielski ignoruje sufiks
 - `{{n:rzeczownik}}` — zgoda liczebnika (v0.74.0), formy w `i18n/plurals.ts`;
   tę **angielski czyta razem z polskim**, bo „1 days” jest tak samo złe jak „1 dni”
+- **Nazwa w `vars` to klucz, nigdy słowo** (v0.63.0). `vars` wpisu dziennika
+  **idzie do zapisu** i jest renderowane przy każdym odczycie, więc nazwa
+  rozwiązana w miejscu stemplowania zamraża wpis w języku, w którym powstał —
+  i od v0.69.0 jest słowem, którego żadne polskie zdanie nie odmieni.
+  `t()` rozwija klucz w kształcie `<rodzina>.<id>.name` przy podstawianiu;
+  rodziny wylicza `NAME_KEY` w `I18n.ts`, a klucze robią helpery z `names.ts`
+  (`NAME_PREFIXES` trzyma obie listy razem)
 - Fallback na angielski przy brakujących kluczach
 - Wybór języka w localStorage (`pc_lang`)
 - 400+ kluczy tłumaczeń
@@ -177,3 +185,9 @@ kilkoma kształtami i każdy strażnik widzi jeden:
 Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele nie
 mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
 przypisany najpierw do zmiennej.
+
+**Czwarty strażnik — `stamped_names.test.ts`** (v0.79.0) — patrzy w drugą stronę:
+czyta źródło **każdego z 75 wywołań `addLogEntry`** i przewraca się na `t()`
+wewnątrz `vars` albo na gołym `factionId` tam, gdzie zdanie drukuje koronę.
+Dwie zgodne tabele nie widzą też zdania złego **w obu** kolumnach — a takie
+właśnie było *„A england man-of-war has run down a rover"*.

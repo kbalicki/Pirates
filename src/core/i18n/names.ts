@@ -69,6 +69,20 @@ export function shipNameKey(classId: string): string {
 }
 
 /**
+ * Key for a village's name.
+ *
+ * Added in v0.79.0, four releases after the rule it belongs to. `VillageSystem`
+ * was written with the *pre*-v0.63.0 rule in its head - bake the name, because
+ * a raw key would reach the journal as "village.darien.name" - and that was
+ * true of villages and only of villages, because `NAME_KEY` in `I18n.ts` listed
+ * four prefixes and this was not one of them. The comment was right about the
+ * symptom and wrong about the cure: the cure is the prefix, not the baking.
+ */
+export function villageNameKey(villageId: string): string {
+  return nameKey("village", villageId);
+}
+
+/**
  * The name itself, for a screen drawing it right now.
  *
  * Only for text that is not stored. Anything that goes into `vars` takes the
@@ -97,3 +111,18 @@ export function itemNameGen(itemId: string): string {
 export function shipClassName(classId: string): string {
   return t(shipNameKey(classId));
 }
+
+/** @see portName */
+export function villageName(villageId: string): string {
+  return t(villageNameKey(villageId));
+}
+
+/**
+ * Every prefix this module can put into a `vars` value.
+ *
+ * Read by `names.test.ts` against `NAME_KEY`: a helper here whose prefix that
+ * pattern does not know produces a variable that prints as the key itself, and
+ * that is exactly the shape of the defect v0.79.0 found in the villages. One
+ * list, so adding the sixth family cannot forget the other half of the change.
+ */
+export const NAME_PREFIXES = ["port", "faction", "item", "ship", "village"] as const;

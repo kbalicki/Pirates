@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-18 · **Wersja:** v0.78.0.0 · **Branch:** `main`
-**Kod:** 252 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2226 przechodzi, 0 failuje, 0 `todo`** w 70 plikach
+**Stan na:** 2026-09-20 · **Wersja:** v0.79.0.0 · **Branch:** `main`
+**Kod:** 253 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2236 przechodzi, 0 failuje, 0 `todo`** w 71 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -187,10 +187,11 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Pogoda ma miejsce na mapie | ✅ | `WeatherFieldSystem`: `weatherAt(world, pos)` — strefy wiatru mapy wreszcie ciągną pasat, a huragan ze zdarzenia świata jest prawdziwym sztormem z krążącym wiatrem, kadłubem i podłogami na progach, które HUD już nazywa |
 | Przegrana coś kosztuje | ✅ | `DefeatSystem`: zatopiony flagowiec **przepada** — bandera przechodzi na największą konsortę albo kapitan ląduje w porcie z pinasą i połową kiesy; a kadłub, który mapa jeszcze niesie, nigdy nie stoi w zerze (`MIN_AFLOAT_HULL`) |
 | Wioski Indian | ✅ | `VillageSystem` + `VillageScene` + `VillageMarkerRenderer`: osiem wiosek na czarcie, które nie noszą żadnej bandery; rum za złoto, stosunek z dwiema połowami (wyprowadzaną z reputacji u sąsiedniej korony i stemplowaną), a przy zaufaniu 60 — **wyprawa wojenna, która łamie mury sąsiedniej kolonii** |
-| Gra mówi dwoma językami **naprawdę** | ✅ | `plForms.ts` (przypadek zamawiany przez zdanie, v0.69.0) + `plurals.ts` (zgoda liczebnika, czytana **też po angielsku**, v0.74.0) + `names.ts` (stempel niesie **klucz**, nie nazwę, v0.63.0). Trzech strażników czyta **źródło scen**: polska litera (v0.60.0), angielskie słowo w `add.text` (v0.76.0), słowa w szablonie i `setText` (v0.78.0) |
+| Gra mówi dwoma językami **naprawdę** | ✅ | `plForms.ts` (przypadek zamawiany przez zdanie, v0.69.0; od v0.79.0 także **wioski i klasy statków**) + `plurals.ts` (zgoda liczebnika, czytana **też po angielsku**, v0.74.0) + `names.ts` (stempel niesie **klucz**, nie nazwę, v0.63.0, dokończone v0.79.0). Czterech strażników: polska litera w źródle scen (v0.60.0), angielskie słowo w `add.text` (v0.76.0), słowa w szablonie i `setText` (v0.78.0) oraz **`vars` każdego z 75 `addLogEntry`** (v0.79.0) |
 | Cała proza w grze przeczytana | ✅ | 130 kluczy `help.*` i `battle.help_*` (v0.64–v0.66), drzewo gubernatora (v0.68.0), `RumorSystem` (v0.70.0), tawerna/wioski/romans (v0.71.0), 22 nagłówki `news.*` (v0.72.0), osiem zdań lady kupca (v0.76.0). **Zostały teksty generowane** (nazwy, kroniki) |
 | Eskadra ma jedną ładownię | ✅ | `HoldSystem` (v0.77.0): konsorty wiozą towar, pryz zatrzymuje to, co by przepadło (przedtem **54%** za burtę), kadłub odchodzący zabiera ładunek; jedna jednostka — tona, `ItemDef.weight` skasowane |
 | Jedno naciśnięcie, jedna akcja | ✅ | `InputGate` + `game/ui/keys.ts` (v0.78.0): naciśnięcie z modyfikatorem docierało **trzy razy**; bramka zakładana raz w `GameApp` na wszystkie sceny i 78 wiązań. Lada i magazyn handlują partiami (tona / `Shift` 10 / `Ctrl` wszystko) |
+| Nazwa w zapisie to klucz | ✅ | `NAME_PREFIXES` + `stamped_names.test.ts` (v0.79.0): przemiecione **75 wywołań `addLogEntry`**, sześć defektów — w tym dwa stemplujące goły `factionId` (*„A england man-of-war…"*, źle w **obu** językach). Kwota to słowo, nie nazwa towaru: **50 zdań** pisało `{{gold}} Gold` / `{{gold}} Złoto` |
 
 ### Nietknięte
 
@@ -2510,45 +2511,53 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-18)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-20)
 
-Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej trzy pozycje
-ułożone tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo
-w tym repo wydanie zaczyna się od liczby, nie od pomysłu.
+Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
+tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
+repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-**1. Wioski stemplują gotową nazwę do zapisywanego dziennika** *(defekt, wąski,
-gotowy do wzięcia)*. `village.log_trade` i `village.log_war_party` wołają
-`t(\`village.${key}.name\`)` i wkładają **wynik** do `vars` wpisu, który idzie do
-zapisu — czyli defekt z v0.63.0 wciąż żywy, bo `NAME_KEY` w `I18n.ts` obejmuje
-tylko `port|faction|item|ship`. Przełączenie języka nie przepisuje tych wpisów,
-a odmienić ich (v0.69.0) też się nie da. **Pomiar na wejściu:** ile wpisów
-dziennika w typowej karierze niesie taką nazwę i ile jeszcze miejsc omija
-`NAME_KEY`. **Robota:** poszerzyć `NAME_KEY` o `village`, podać klucz, dopisać
-wioskom wiersz w `plForms.ts`. Przy okazji leżą obok dwie drobnice tej samej
-rodziny: **`romance.opt_propose_blocked` drukuje „ranga 2”** surową liczbą, choć
-gra ma 24 nazwane rangi, i **`village.war_party_already`** przypisuje wiosce
-każdy `native_raid` na to miasto, także wylosowany przez świat.
+> ~~**1. Wioski stemplują gotową nazwę do zapisywanego dziennika.**~~ ✅ v0.79.0.0 —
+> i było tego **sześć**, nie dwa. Pomiar przemiótł wszystkie **75 wywołań
+> `addLogEntry`**: cztery piekły słowo przez `t()`, **dwa stemplowały goły
+> `factionId`** (*„A england man-of-war has run down a rover"* — źle w **obu**
+> językach, dlatego żaden test locale tego nie widział), jedno wkładało do zapisu
+> zmienną, której **żadne** zdanie nie drukuje. Obie drobnice z tej notatki
+> zrobione. Komentarz w `VillageSystem` opisywał **objaw** brakującego prefiksu
+> i przez cztery wydania był czytany jak reguła — szczegóły w
+> [SESSION-2026-09-20.md](documentation/SESSION-2026-09-20.md).
 
-**2. Ekran przeładunku między kadłubami** *(brakująca połowa v0.77.0)*. Eskadra ma
+**1. Ekran przeładunku między kadłubami** *(brakująca połowa v0.77.0)*. Eskadra ma
 jedną ładownię, `stowInSquadron` napełnia flagowca, potem konsorty po kolei —
 i **kapitan nie ma żadnego wpływu na to, który kadłub co wiezie**. Skutek jest
 dotykalny, bo konsorta sprzedana w stoczni odchodzi z ładunkiem: sprzedaje ten,
 który akurat w niej wylądował. **Pomiar na wejściu:** w ilu procentach typowych
-eskadr podział ładunku w ogóle się różni od „wszystko u flagowca” (jeśli rzadko,
+eskadr podział ładunku w ogóle się różni od „wszystko u flagowca" (jeśli rzadko,
 to zamiast ekranu wystarczy **wyładunek przed sprzedażą** i ostrzeżenie).
 W tej samej gałęzi: **`sellFleetShip` nie dolicza nic za tony**, które odchodzą
 z kadłubem — kupiec w stoczni dostaje je darmo.
 
-**3. Zgoda czasownika i imiesłowu** *(największa z otwartych, dwie pozycje naraz)*.
+**2. Zgoda czasownika i imiesłowu** *(największa z otwartych, dwie pozycje naraz)*.
 `plurals.ts` odmienia **rzeczownik**, ale zdanie, w którym czasownik albo
-przymiotnik musi się zgodzić z liczbą („3 działa **zbite**” kontra „5 dział
-**zbitych**”), dalej trzeba przeredagować — **szesnaście zdań obeszło problem**
+przymiotnik musi się zgodzić z liczbą („3 działa **zbite**" kontra „5 dział
+**zbitych**"), dalej trzeba przeredagować — **szesnaście zdań obeszło problem**
 i to jest **obejście**, dokładnie jak rodzaj zostawiony przez v0.69.0.
 Rozwiązaniem jest mechanizm wybierający **wariant zdania**, a nie formę zmiennej,
 i zamyka **obie** pozycje naraz. **Pomiar na wejściu:** ile polskich zdań
 naprawdę tego potrzebuje (policzyć te z liczbą **i** czasownikiem/imiesłowem) —
 jeśli wyjdzie kilkanaście, mechanizm jest droższy od przeredagowania i to jest
 uczciwy wynik, który należy zapisać zamiast pisać mechanizm.
+
+**3. Układ wierszy w listach, które urosły** *(nowe, znalezione na zrzucie w v0.79.0)*.
+Lista statków w stoczni ma dziewięć klas po 20 pikseli i **ostatni wiersz wchodzi
+pod `[ WRÓĆ DO PORTU ]`** — widać to na każdym zrzucie tego ekranu. To ta sama
+rodzina, co przycisk rysowany siedem pikseli za krawędzią panelu, który v0.79.0
+usunęła: **odstęp dobrany pod listę, która była krótsza**. **Pomiar na wejściu:**
+które jeszcze ekrany rysują listę o zmiennej długości w polu o stałej wysokości
+(kandydaci: lada kupca przy sześciu towarach, tablica newsów, lista zapisów) —
+i czy da się to zamknąć jedną regułą (pozycja przycisku liczona **po** pętli,
+z `y`), czy każdy ekran osobno. Pilnowanie testem jest trudne, ale **jeden
+zrzut na ekran** już by to znalazł.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),
@@ -2563,6 +2572,13 @@ locale, v0.64.0–v0.66.0 z **podręcznika czytanego wiersz po wierszu**, v0.71.
 z drzew dialogowych i nagłówków, a v0.77.0 i v0.78.0 z **czytania własnych notatek
 poprzedniego wydania i sprawdzania ich pomiarem** (obie okazały się celować nie
 tam, gdzie trzeba). To jest dziś najskuteczniejsza metoda dla agenta.
+
+**v0.79.0 dołożyła do niej drugą, tańszą: weź pozycję z listy i przemieć całą
+rodzinę, do której należy.** Notatka mówiła o dwóch wywołaniach; było ich sześć,
+a najgorsze nie było na liście. Kosztowało to jeden skaner na trzydzieści linii.
+I trzecią: **zrób zrzut ekranu, który zmieniasz.** Przycisk rysowany poza
+panelem, bez drogi z klawiatury, przeżył całą historię projektu i został
+znaleziony w dwie minuty przez spojrzenie na obrazek.
 
 **Podręcznik jest przeczytany do końca.** Wszystkie 130 kluczy `help.*` i cały `battle.help_*`
 skonfrontowane z kodem; dziesięć fałszywych zdań w trzech wydaniach, a ostatnie z nich
