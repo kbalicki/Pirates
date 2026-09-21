@@ -5,6 +5,7 @@ import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
 import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
+import type { PanelBox } from "../ui/panelBox.ts";
 import type { AttackForce } from "../../core/systems/SiegeSystem.ts";
 import type { PendingDefense } from "../../core/systems/ReconquestSystem.ts";
 import { DEFENSE_HELD_FLAG, DEFENSE_LOST_FLAG } from "../../core/systems/ReconquestSystem.ts";
@@ -52,6 +53,8 @@ export class CityDefenseScene extends Phaser.Scene {
   private state!: DefenseState;
   /** The fleet as it stood before the first shot, for splitting the bill. */
   private initialForce!: AttackForce;
+  /** The panel the squadron silhouette is laid out inside. */
+  private fortPanel!: PanelBox;
   /** Hands aboard at the start, the divisor for how well the ships still shoot. */
   private crewStart = 1;
   private phase: "bombard" | "assault" | "done" | "closed" = "bombard";
@@ -128,7 +131,9 @@ export class CityDefenseScene extends Phaser.Scene {
     this.panel(cw / 2, 152, 700, 78);
     this.squadronText = this.add.text(cw / 2 - 330, 126, "", txt(14, { color: "#ffcccc" })).setDepth(2);
 
-    this.panel(cw / 2, 262, 700, 108);
+    // Kept, because the silhouette beside the numbers is laid out from the
+    // panel's own top edge rather than from a centre and a guessed offset.
+    this.fortPanel = this.panel(cw / 2, 262, 700, 108);
     this.fortText = this.add.text(cw / 2 - 330, 220, "", txt(14, { color: "#ccffcc" })).setDepth(2);
 
     this.panel(cw / 2, 372, 700, 86);
@@ -160,10 +165,11 @@ export class CityDefenseScene extends Phaser.Scene {
     this.redraw();
   }
 
-  private panel(cx: number, cy: number, w: number, h: number): void {
+  private panel(cx: number, cy: number, w: number, h: number): PanelBox {
     const g = this.add.graphics().setDepth(0);
     g.fillStyle(0x0d1a2a, 0.96).fillRoundedRect(cx - w / 2, cy - h / 2, w, h, 10);
     g.lineStyle(1, 0x2b3a52, 0.9).strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, 10);
+    return { x: cx - w / 2, y: cy - h / 2, w, h };
   }
 
   // ── The bombardment ─────────────────────────────────────
@@ -386,7 +392,7 @@ export class CityDefenseScene extends Phaser.Scene {
       t("siege.fleet_crew", { now: force.crew, guns: fleetGuns(this.state, this.crewStart) }),
     ].join("\n"));
 
-    this.drawScene(cw / 2 + 275, 262);
+    this.drawScene(cw / 2 + 275, this.fortPanel);
     this.drawBar(cw / 2 + 20, 132, squadron.soldiers / Math.max(1, squadron.soldiersMax), 0xcc7744);
     this.drawBar(cw / 2 + 20, 152, squadron.guns / Math.max(1, squadron.gunsMax), 0xcc5544);
     this.drawBar(cw / 2 + 20, 228, fort.walls / Math.max(1, fort.wallsMax), 0xbb8855);
@@ -423,27 +429,37 @@ export class CityDefenseScene extends Phaser.Scene {
    * come down, and here the hulls offshore thin out as the escort is silenced —
    * so the silhouette alone says which way the exchange is going.
    */
-  private drawScene(x: number, y: number): void {
+  private drawScene(x: number, panel: PanelBox): void {
     const { fort, squadron } = this.state;
     const intact = Math.max(0, Math.min(1, fort.walls / Math.max(1, fort.wallsMax)));
     const g = this.sceneGfx;
     g.clear();
+
+    // The horizon is the panel's own top edge, one border in (v0.84.0).
+    // It used to be `centre - 60` against a panel whose half-height is 54, so
+    // every mast in the squadron was drawn **six pixels above the frame**, on
+    // the black behind it. The mirror screen (`CityAssaultScene.drawFort`) has
+    // no sails and so never showed it. Measured by `scripts/audit-layout.mjs`,
+    // which walks a scene's Graphics command buffer and compares every filled
+    // shape with the panel under it.
+    const horizon = panel.y + 6;
+    const waterline = horizon + 20;
 
     // Sails on the horizon, one per handful of surviving escort guns.
     const sails = Math.min(6, Math.max(squadron.soldiers > 0 ? 1 : 0, Math.ceil(squadron.guns / 6)));
     g.fillStyle(0xd8d8d0, 0.9);
     for (let i = 0; i < sails; i++) {
       const sx = x - 66 + i * 24;
-      g.fillTriangle(sx, y - 60, sx - 7, y - 40, sx + 7, y - 40);
+      g.fillTriangle(sx, horizon, sx - 7, waterline, sx + 7, waterline);
     }
     g.fillStyle(0x3a3a34, 0.9);
     for (let i = 0; i < sails; i++) {
-      g.fillRect(x - 66 + (i * 24) - 9, y - 40, 18, 5);
+      g.fillRect(x - 66 + (i * 24) - 9, waterline, 18, 5);
     }
 
     const w = 120;
     const h = 48;
-    const top = y - h / 2 + 16;
+    const top = waterline + 20;
     g.fillStyle(0x6a6a62, 0.95).fillRect(x - w / 2, top, w, h);
     const merlons = 8;
     g.fillStyle(0x7d7d73, 0.95);

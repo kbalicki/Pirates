@@ -616,10 +616,15 @@ Siedem zakładek: **Kajuta** (stan statku i załogi) · **Kapitan** (umiejętno�
 notowania, stan koron) · **Dziennik** (aktywne zlecenia) · **Kalendarz** (data
 i ostatnie zdarzenia) · **Ustawienia** · **Zapis** (pięć slotów) · **Mapa**.
 
-`←` / `→` przewracają zakładkę, `↑` / `↓` chodzą po wierszach, `Enter` przełącza.
-Na wierszach głośności strzelki lewo/prawo należą do suwaka, nie do zakładki.
+`1`-`7` otwierają zakładkę wprost, `←` / `→` przewracają na sąsiednią, `↑` / `↓`
+chodzą po wierszach, `Enter` przełącza, `Esc` albo `Spacja` zamyka. Na wierszach
+głośności strzelki lewo/prawo należą do suwaka, nie do zakładki.
 **Zakładka Ustawień jest dłuższa niż okno** — nie trzeba nic z tym robić, okno jedzie
 za kursorem; kółkiem myszy albo `PgUp`/`PgDn` można przewijać samemu.
+
+Każda zakładka ma teraz swój wiersz klawiszy u dołu panelu (v0.84.0). Do tego
+wydania stał tam jeden — i tylko na zakładce Ustawień. **Cyfry też się zmieniły:
+do v0.84.0 `3` otwierało Kalendarz, a Dziennika nie otwierała żadna.**
 
 ### W podręczniku (H)
 

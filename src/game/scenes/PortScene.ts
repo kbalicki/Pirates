@@ -868,6 +868,15 @@ export class PortScene extends Phaser.Scene {
       y += label.height + 8;
     });
 
+    // The one counter in the port with no legend on it until v0.84.0. The
+    // options carry their own numbers, but nothing said the door was `Esc` —
+    // and the option list is the only thing on the screen, so there is room.
+    const hint = this.add.text(
+      this.cx, this.dlgY + DLG_H - PAD - 4, t("governor.hint"),
+      txt(10, { color: HINT_ON_LIGHT }));
+    hint.setOrigin(0.5, 1);
+    this.contentContainer.add(hint);
+
     this.bindKey("keydown-ESC", () => this.leaveGovernor());
   }
 

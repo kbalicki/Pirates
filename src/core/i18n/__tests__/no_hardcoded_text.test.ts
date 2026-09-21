@@ -26,9 +26,20 @@ import {
  * translation layer at all.
  */
 
-const SOURCES = import.meta.glob("../../../game/**/*.ts", {
+const ALL = import.meta.glob("../../../game/**/*.ts", {
   query: "?raw", import: "default", eager: true,
 }) as Record<string, string>;
+
+/**
+ * The scenes, not the tests that read them.
+ *
+ * `scene_legend.test.ts` (v0.84.0) quotes Polish hint lines on purpose — it
+ * exists to check how they are written — and a sweep that counts those as
+ * untranslated screen text is measuring itself.
+ */
+const SOURCES = Object.fromEntries(
+  Object.entries(ALL).filter(([path]) => !path.includes("/__tests__/")),
+) as Record<string, string>;
 
 /** Letters that exist in Polish and not in English. */
 const POLISH = /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/;

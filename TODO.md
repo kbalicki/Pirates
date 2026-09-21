@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-21 · **Wersja:** v0.83.0.0 · **Branch:** `main`
-**Kod:** 263 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2293 przechodzi, 0 failuje, 0 `todo`** w 78 plikach
+**Stan na:** 2026-09-21 · **Wersja:** v0.84.0.0 · **Branch:** `main`
+**Kod:** 267 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2310 przechodzi, 0 failuje, 0 `todo`** w 80 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2519,55 +2519,68 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.83.0)
+**Znalezione przy legendach klawiszy, nienaprawione** (v0.84.0.0):
+
+- **`A` i `D` są na ekranie bitwy sterem, a w podręczniku przewracają stronę.** Obie
+  decyzje są dobre osobno; razem znaczą, że ten sam klawisz robi co innego na dwóch
+  ekranach, między którymi przechodzi się jednym `H`. Nic tego nie mierzy — **pozycja
+  na rozmowę**, nie na cichą zmianę
+- **`MainMapScene` nie ma legendy i mieć nie może** — czarta nie ma panelu, na którym
+  by ją postawić, a wiąże **dziesięć** klawiszy. Cała jej legenda to pierwsza karta
+  `HelpScene`, którą otwiera `H`. Zapisane w `UNNAMED` jako decyzja; ale to jedyny
+  ekran w grze, na którym gracz musi **pamiętać**, zamiast przeczytać
+- **Strzałki i `E` są synonimami `W/S` i `Enter` na czterech ekranach brzegowych**
+  i żadna legenda ich nie wymienia. To jest **decyzja** (wiersz, który wypisuje każdy
+  synonim, jest gorszy dla kapitana niż rzecz, którą opisuje) i stoi w tabeli
+  `SYNONYM` w teście — ale stoi tam **raz**, zamiast siedem razy w locale
+- **`retire.line_towns`, `_family` i `_marriage` nie mają `({{amount}})`**, a sześć
+  pierwszych wierszy księgi ma. Drobiazg, ale to ten sam kształt: tabela dopisywana
+  później niż jej pierwsze wiersze
+- **`?fleet=` nie wchodzi do `?encounter=` ani `?approach=`.** Nowe flagi budują swój
+  świat wprost z `createNewWorldState`, więc `?ship=`, `?crew=`, `?skills=` na nich
+  nie działają — tak samo jak nie działały na `?hail=`. Warto by ścieżka debugowa
+  miała **jedno** miejsce, w którym dokłada się kapitana do gotowego świata
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.84.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-**1. Przemieść resztę scen klawiaturą** *(metoda, nie zadanie — **pięć** wydań
-z rzędu znalazła coś, czego żadne czytanie kodu nie znalazło)*. v0.79.0:
-przycisk siedem pikseli za krawędzią. v0.80.0: kursor nieruszający się na trzech
-listach od pierwszego commita. v0.81.0: strzałka przewracająca zakładkę.
-v0.82.0: okno, które nie nadąża za kursorem, i wioska odpowiadająca na handel
-desantem. v0.83.0: **połowa podręcznika bitwy pod dolną krawędzią panelu**.
+**1. Arena bitwy jest trzy razy większa od ekranu** — i na zrzucie z v0.84.0
+(`?battle=navy`, pierwsza klatka) przeciwnika **nie ma w kadrze ani jego pasków
+przy krawędzi**. To jest projekt, nie usterka: arena ma być większa. Ale nie ma
+**wskaźnika kierunku**, a zasada timeoutu kończy bitwę po 120 s rozdziału.
+**Pomiar na wejściu:** jak często bitwa kończy się `disengaged` i w ilu z tych
+przypadków przeciwnik nie był na ekranie ani przez chwilę przez ostatnie 60 s.
+Jeśli blisko zera — nie ma sprawy i to jest wynik.
 
-**Przejechane (11 z 18):** `OptionsMenuScene`, `PortScene`, `VillageScene`,
-`HelpScene`, `MainMapScene`, `CharacterCreationScene`, `SeaBattleScene`,
-`BattleHelpScene`, `CityAssaultScene`, `CityInfoScene`, `RetirementScene`.
-**Zostały cztery** — `DuelScene`, `CityDefenseScene`, `PortApproachScene`,
-`ShipEncounterScene` — przeczytane pod kątem „czy klawisz z podpowiedzi jest
-związany" (czyste), ale **nieprzejechane**, bo do żadnej nie ma flagi, która by
-w nią wchodziła. `?hail=havana` stawia kupca w zasięgu wołania, ale ekranu
-spotkania nie otwiera. **Robota:** dodać flagi albo wchodzić przez
-`--scene=ShipEncounterScene:{...}`, wcisnąć wszystko, co obiecuje linia
-podpowiedzi, i zrobić zrzut — po polsku.
+**2. Dzieląca się ładownia — `sellFleetShip` nie dolicza nic za tony**
+*(zostawione świadomie **cztery** wydania z rzędu)*. Stocznia nie kupuje kakao,
+kupuje kadłub, więc „zapłać za ładunek” jest złą odpowiedzią — ale kapitan,
+który **chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw
+flagowca, bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć
+dzieli kapitana od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako
+jedno), i czy istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie
+„da się, tylko długo” — to jest wynik, a nie zadanie.
 
-**2. Dzieląca się ladownia — `sellFleetShip` nie dolicza nic za tony**
-*(zostawione świadomie trzy wydania z rzędu)*. Stocznia nie kupuje kakao, kupuje
-kadłub, więc „zapłać za ładunek" jest złą odpowiedzią — ale kapitan, który
-**chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca,
-bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli
-kapitana od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno),
-i czy istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie
-„da się, tylko długo" — to jest wynik, a nie zadanie.
+**3. Reguly layoutu: policzyć, ile scen stosuje każdą.** v0.84.0 zrobiła to dla
+**jednej** — „nic nie wychodzi poza panel” — i odpowiedź brzmiała: jeden ekran
+na szesnaście jej łamał. Zostały trzy nazwane osobno w tym repo: **odstęp liczony
+od tekstu, który przed nim stoi** (v0.27.0), **okno liczone z miejsca, które
+zostało** (v0.80.0), **jedna tabela pozycji zamiast dwóch** (v0.82.0 — i v0.84.0
+znalazła drugi przypadek tej samej, w cyfrach zakładek). **Robota:** dodać
+`audit-layout.mjs` pytania o te trzy, tak jak już pyta o panel. Trzecia jest
+najbliżej: w każdej scenie da się policzyć pozycje wpisane **dwa razy**.
 
-**3. Reguła zastosowana na jednym ekranie nie jest regułą.** v0.83.0 znalazła,
-że `HelpScene` mierzy swoje kolumny względem `contentBottom` od **v0.61.0**,
-a `BattleHelpScene` tego nigdy nie dostał — dwadzieścia dwa wydania obok siebie.
-**Pomiar na wejściu:** wypisać reguły layoutu, które w tym repo zostały już raz
-nazwane (odstęp liczony od tekstu, który przed nim stoi — v0.27.0; okno liczone
-z miejsca, które zostało — v0.80.0; kolumna mierzona do stopy panelu — v0.61.0;
-jedna tabela pozycji zamiast dwóch — v0.82.0), i dla każdej policzyć, **ile scen
-ją stosuje, a ile nie**. Jeśli wyjdzie, że każda żyje w jednym pliku — to jest
-wynik i zarazem najważniejsze znalezisko o tym kodzie.
-
-**4. Arena bitwy jest trzy razy większa od ekranu**, więc przeciwnik potrafi być
-całkowicie poza widokiem — jedyne, co widać, to jego paski przy krawędzi. To jest
-projekt, nie usterka, ale nie ma **wskaźnika kierunku**, a zasada timeoutu kończy
-bitwę po 120 s rozdziału. **Pomiar na wejściu:** jak często bitwa kończy się
-`disengaged` i ile z tych przypadków to sytuacja, w której przeciwnik nie był na
-ekranie ani przez chwilę przez ostatnie 60 s. Jeśli blisko zera — nie ma sprawy.
+**4. Przemieść resztę scen klawiaturą — zrobione.** **16 z 18**: zostały
+`BootScene` i `PreloadScene`, które nic nie rysują. Metoda zostaje: sześć wydań
+z rzędu znalazło nią coś, czego żadne czytanie kodu nie znalazło. Od v0.84.0 jest
+na to narzędzie — `node scripts/audit-layout.mjs` — które przechodzi wszystkie
+naraz i wypisuje **liczby**, a nie wrażenia. Warto puszczać je przed każdym
+wydaniem dotykającym ekranu.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

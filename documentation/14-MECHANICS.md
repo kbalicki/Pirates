@@ -1556,6 +1556,9 @@ sprawdzaniu mechanik opisanych wyżej:
 | `?era=merchants_smugglers` | era otwierająca się **wewnątrz wojny** |
 | `?famine=<port>` | miasto pod żywym zdarzeniem głodu, z przeliczonymi cenami |
 | `?hail=<port>` | przyjazny kupiec w zasięgu zawołania |
+| `?encounter=<port>` | ten sam kupiec w zasięgu spotkania — ekran otwiera się sam |
+| `?approach=<port>` | statek na redzie, dialog zbliżania otwiera się sam |
+| `?duel=7&foe=4` | pojedynek kapitanów wprost |
 | `?pardon=<port>` | ułaskawienie na ladzie |
 | `?battle=1\|trader\|navy\|pirate\|hunter` | bitwa morska wprost |
 | `?defeat=alone\|consort` | ostatnia minuta przegranej bitwy |

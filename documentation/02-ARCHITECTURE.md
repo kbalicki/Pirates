@@ -135,6 +135,8 @@ czytelnikiem swojego faktu:
 | `UIOverlayScene.HUD_ROW` | gdzie stoi która linia pod kompasem | ustawiane w **dwóch** miejscach, które się rozjechały (v0.82.0) |
 | `game/ui/textStyle.ts` → `HINT_ON_DARK` / `HINT_ON_LIGHT` | jakim kolorem pisze się podpowiedź | **20 linii w 9 scenach** niosło szarość dobraną na oko, najgorsza **1.82 : 1** (v0.83.0) |
 | `core/services/columnFlow.ts` | ile tekstu mieści się w kolumnie | podział sekcji wpisany ręcznie, bez pomiaru: **1475 px w oknie 600** (v0.83.0) |
+| `game/ui/panelBox.ts` | gdzie kończy się panel i o ile coś z niego wystaje | **pięć wydań nazwało tę samą regułę osobno**, każde dla jednego ekranu; maszty eskadry stały **6 px nad ramką** (v0.84.0) |
+| `core/services/legendKeys.ts` | które klawisze obiecuje wiersz na ekranie | ekran kwatermistrza odpowiadał na **12** klawiszy i nazywał **2**, a linia bitwy była pisana notacją, której nie umiał przeczytać nikt (v0.84.0) |
 
 `game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
 **wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran

@@ -632,3 +632,69 @@ Napisany w v0.47.0 o linii, którą wprowadzał — a druga gałąź **tego same
 wyrażenia** i legenda klawiszy czterdzieści linii niżej zostały przy starym
 kolorze. **Komentarz stwierdzający znalezisko nie jest naprawą**, trzeci raz
 w pięciu wydaniach: `VillageSystem` (v0.79.0), `sound.hint` (v0.81.0), ten.
+
+## Legenda jest obietnicą, którą da się sprawdzić maszynowo (v0.84.0)
+
+Każdy wiersz sterowania w tej grze jest pisany tak samo: **klawisz, myślnik,
+co robi**, powtórzone wzdłuż linii.
+
+```
+T — ognia do szalup    G — ognia do eskorty    ESC — ciąć liny
+W/S — Wybór   Enter — Zatwierdź   Esc — Odpłyń
+A/← — poprzednia   D/→ — następna   1-5 — karta   H / ESC — zamknij
+```
+
+`core/services/legendKeys.ts` czyta z tego listę klawiszy, a
+`scene_legend.test.ts` konfrontuje ją z tym, co scena **wiąże**. Czytanie jest
+celowo wąskie: liczy się wyłącznie **token stojący bezpośrednio przed
+myślnikiem**, i tylko gdy jest zbudowany z nazw klawiszy. Szersza wersja
+uznawała polskie jednoliterowe przyimki (`w`, `z`, `i`, `o`, `u`) za klawisze
+i naliczyła **66 legend tam, gdzie gra ma 23**.
+
+Ubocznym skutkiem jest to, że wiersz pisany inaczej zwraca **zero** klawiszy —
+i to jest poprawna odpowiedź. Tak wyglądał do v0.84.0 najruchliwszy ekran gry:
+
+```
+WSAD: Żagle/Ster  |  Q/E: Ogień L/P  |  1/2/3: Amunicja  |  B: Abordaż
+```
+
+Dwukropki zamiast myślników, `WSAD` jako jedno słowo i `L/P` (lewa/prawa burta)
+tam, gdzie reszta gry czyta dwie nazwy klawiszy. **Obietnicy napisanej prywatną
+notacją nie sprawdzi nic** — i nie sprawdzało.
+
+Co z tego wyszło poza samą notacją:
+
+| ekran | klawiszy wiązanych | nazwanych przed v0.84.0 |
+|---|---|---|
+| kwatermistrz (`OptionsMenuScene`) | 12 globalnych + 8 w zakładkach | 3, i tylko na **jednej zakładce z siedmiu** |
+| gubernator (`PortScene`) | `Esc` + `1`-`9` | 0 — jedyna lada w porcie bez legendy |
+| obrona miasta | `T`, `G`, `SPACJA`, `L`, `ESC` | 4 (`SPACJA` powtarza ostatni cel) |
+| łupy po szturmie | `W/S`, `Enter`, `1`-`4` | 2 |
+
+Do tego `hud.controls` i `hud.controls_land` — po legendzie każdy, w tej samej
+prywatnej notacji, **bez jednego czytelnika w projekcie**. Skasowane.
+
+### Jedna rzecz ustawiona w dwóch miejscach, znowu
+
+Klawisze cyfr na ekranie kwatermistrza były **sześcioma linijkami wpisanymi
+ręcznie** przy `ALL_TABS`, które ma **siedem** pozycji. Kopia się rozjechała:
+Dziennika nie dało się otworzyć cyfrą w ogóle, a od trzeciej zakładki każda
+cyfra otwierała tę **następną** po nazwanej — `3` na pasku, którego trzecia
+zakładka to *Dziennik*, otwierało *Kalendarz*. Teraz cyfry czytają `ALL_TABS`,
+czyli tę samą listę, z której rysowany jest pasek. Ten sam kształt, co dwie
+tabele pozycji HUD w v0.82.0.
+
+### `panelBox` — gdzie kończy się panel
+
+Pięć wydań nazwało tę samą regułę osobno, każde dla jednego ekranu:
+
+| wydanie | co było poza ramką | o ile |
+|---|---|---|
+| v0.79.0 | przycisk w kajucie | 7 px |
+| v0.83.0 | prawa kolumna podręcznika bitwy | 875 px |
+| v0.84.0 | maszty eskadry na ekranie obrony | 6 px |
+
+`game/ui/panelBox.ts` (`panelAt`, `insideOf`, `outsideBy`, `fitsIn`) jest
+miejscem, w którym ta reguła wreszcie mieszka, a `scripts/audit-layout.mjs`
+zadaje to samo pytanie **działającej** grze: chodzi po `commandBuffer` każdego
+`Graphics` w scenie i porównuje każdą wypełnioną figurę z panelem pod nią.

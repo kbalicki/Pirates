@@ -42,6 +42,24 @@ import { offsetRevealing } from "../../core/services/menuCursor.ts";
 type TabId = "cabin" | "captain" | "journal" | "calendar" | "settings" | "save" | "map";
 
 const ALL_TABS: TabId[] = ["cabin", "captain", "journal", "calendar", "settings", "save", "map"];
+
+/** Phaser's names for the number row, in the order the tabs are drawn. */
+const NUMBER_KEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN"];
+
+/**
+ * What the open tab does with the keyboard, one line per tab.
+ *
+ * Until v0.84.0 this was `tab === "settings" ? t("options.hint") : ""` — a
+ * legend on one tab of seven, on the screen that answers to more keys than any
+ * other in the game. The keys that work on **every** tab (the numbers, the
+ * arrows, PgUp/PgDn, Esc) are named once, on `menu.close_hint`, which is drawn
+ * below this line and does not change.
+ */
+const TAB_HINT: Partial<Record<TabId, string>> = {
+  cabin: "cabin.fleet_keys",
+  settings: "options.hint",
+  save: "save.hint",
+};
 const DLG_W = 672;
 const DLG_H = 528;
 const BORDER = 3;
@@ -206,12 +224,18 @@ export class OptionsMenuScene extends Phaser.Scene {
     if (this.input.keyboard) {
       this.input.keyboard.on("keydown-ESC", () => this.closeMenu());
       this.input.keyboard.on("keydown-SPACE", () => this.closeMenu());
-      this.input.keyboard.on("keydown-ONE", () => this.switchTab("cabin"));
-      this.input.keyboard.on("keydown-TWO", () => this.switchTab("captain"));
-      this.input.keyboard.on("keydown-THREE", () => this.switchTab("calendar"));
-      this.input.keyboard.on("keydown-FOUR", () => this.switchTab("settings"));
-      this.input.keyboard.on("keydown-FIVE", () => this.switchTab("save"));
-      this.input.keyboard.on("keydown-SIX", () => this.switchTab("map"));
+      // The number keys read `ALL_TABS`, which is the list the tab bar itself
+      // is drawn from (v0.84.0). They used to be six lines naming tabs by hand
+      // against a list of seven, and the hand-written copy had drifted: there
+      // was no key for the journal at all, and from the third tab on every
+      // number opened the tab **after** the one it named — `3` on a bar whose
+      // third tab reads *Dziennik* opened *Kalendarz*. The same shape as the
+      // HUD's two tables of row positions in v0.82.0, and found the same way:
+      // by asking the running scene which keys it answers to.
+      NUMBER_KEYS.forEach((name, i) => {
+        const tab = ALL_TABS[i];
+        if (tab) this.input.keyboard?.on("keydown-" + name, () => this.switchTab(tab));
+      });
 
       // Left/Right arrow for tab switching -- unless the tab showing has asked
       // for them. The quartermaster's volume rows had, in a comment, since
@@ -259,6 +283,22 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.tabKeyCleanup = [];
   }
 
+  /**
+   * The open tab's own line of keys.
+   *
+   * The cabin's two are gated on there being a consort to move the cursor over
+   * — the list is one row long without one, and a legend that names a key
+   * nothing binds is the defect v0.81.0 removed from the other end of this
+   * screen. Everything else is the same line every time the tab is open.
+   */
+  private tabHintFor(tab: TabId): string {
+    if (tab === "cabin") {
+      return (this.worldState.player.fleet ?? []).length > 0 ? t("cabin.fleet_keys") : "";
+    }
+    const key = TAB_HINT[tab];
+    return key ? t(key) : "";
+  }
+
   private bindTabKey(event: string, handler: () => void): void {
     if (!this.input.keyboard) return;
     this.input.keyboard.on(event, handler);
@@ -300,7 +340,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     this.contentContainer.removeAll(true);
     this.contentContainer.y = keptScroll;
-    this.tabHint.setText(tab === "settings" ? t("options.hint") : "");
+    this.tabHint.setText(this.tabHintFor(tab));
 
     switch (tab) {
       case "cabin": this.renderCabin(); break;
@@ -554,12 +594,10 @@ export class OptionsMenuScene extends Phaser.Scene {
         t("cabin.fleet_hands", { men: squadron.men, need: squadron.min }),
         txt(11, { color: squadron.short ? "#aa3333" : "#666666" }));
       this.contentContainer.add(squadronLine);
-      // The keys share the squadron's line rather than taking one of their
-      // own: this tab carries three lists whose length is a fact about the
-      // game, and every row it does not have to spend is a row the fleet block
-      // can.
-      this.contentContainer.add(this.add.text(
-        x + 340, y, t("cabin.fleet_keys"), txt(10, { color: "#888888" })));
+      // The squadron's two keys are named on the hint line at the foot of the
+      // panel (v0.84.0), with every other key this screen answers to. They used
+      // to be drawn here, inside the scrolling container — so they rode up out
+      // of sight with the list they describe — in a grey nobody had measured.
       y += squadronLine.height + 6;
     }
 

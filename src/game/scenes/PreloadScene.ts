@@ -522,9 +522,43 @@ export class PreloadScene extends Phaser.Scene {
       return;
     }
     if (params.has("hail")) {
-      const world = this.createHailWorld(params.get("hail") || "havana");
+      const world = this.createHailWorld(params.get("hail") || "havana", false);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    // The same trader, inside `ENCOUNTER_RANGE` instead of outside it, so the
+    // encounter screen opens by itself (v0.84.0). `?hail=` puts her at 24 and
+    // the screen opens at 18, which is why that scene went five releases
+    // without ever being driven: there was no way into it.
+    if (params.has("encounter")) {
+      const world = this.createHailWorld(params.get("encounter") || "havana", true);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    // Standing on a town's own anchorage, which is what opens
+    // `PortApproachScene` (v0.84.0).
+    if (params.has("approach")) {
+      const world = this.createApproachWorld(params.get("approach") || "havana");
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
+    // A duel with nothing in front of it (v0.84.0). `?duel=6` is the captain's
+    // fencing, `&foe=` the other man's; reaching one in play means finding a
+    // ship, beating her down and boarding, which is twenty minutes.
+    if (params.has("duel")) {
+      const world = createNewWorldState(Date.now());
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      const mine = Number(params.get("duel"));
+      const foe = Number(params.get("foe"));
+      this.scene.launch("DuelScene", {
+        playerFencing: Number.isFinite(mine) && mine > 0 ? mine : 6,
+        enemyFencing: Number.isFinite(foe) && foe > 0 ? foe : 5,
+        seed: 1,
+      });
       return;
     }
     if (params.has("pardon")) {
@@ -2153,7 +2187,10 @@ export class PreloadScene extends Phaser.Scene {
    * left there, so the toast fires on the first pass of the news step and the
    * encounter screen is one keypress away with the rest of her board still on it.
    */
-  private createHailWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+  private createHailWorld(
+    portKey: string,
+    close: boolean,
+  ): import("../../core/model/WorldState.ts").WorldState {
     const world = createNewWorldState(Date.now());
     const playerEntity = world.entities[world.player.shipId as string];
     const def = CITIES[portKey];
@@ -2183,7 +2220,11 @@ export class PreloadScene extends Phaser.Scene {
     const trader: import("../../core/model/EntityState.ts").EntityState = {
       id: "hail_trader" as import("../../core/model/ids.ts").EntityId,
       kind: "ship",
-      pos: { x: water.x + 24, y: water.y },
+      // 24 is inside `HAIL_RANGE` (30) and outside `ENCOUNTER_RANGE` (18):
+      // she shouts across the water and the screen stays shut. `?encounter=`
+      // asks for 14, where the screen opens on the first pass of the map's
+      // update.
+      pos: { x: water.x + (close ? 14 : 24), y: water.y },
       vel: { x: 0, y: 0 },
       heading: Math.PI,
       sailLevel: 0.4,
@@ -2196,7 +2237,11 @@ export class PreloadScene extends Phaser.Scene {
         sailsHp: brig.sailsMax, sailsMax: brig.sailsMax,
         cannons: brig.cannons,
         cargoCap: brig.cargoCap,
-        cargo: {},
+        // Laden, so the manifest line on the encounter screen — the one that
+        // turns "worth chasing" into "worth chasing for the cocoa" (v0.25.0) —
+        // has something to say. In ballast it reads as one sentence and the
+        // three lines behind it were never seen.
+        cargo: { sugar_cane: 40, cocoa: 22, tobacco: 9 },
         crew: { current: 30, max: brig.crewMax, morale: 0.7 },
       },
       ai: {
@@ -2213,6 +2258,39 @@ export class PreloadScene extends Phaser.Scene {
       // Nothing known yet: the point is to watch it arrive.
       knownEventIds: [],
       entities: { ...world.entities, [trader.id as string]: trader },
+    };
+  }
+
+  /**
+   * The player standing on a town's anchorage — `?approach=` (v0.84.0).
+   *
+   * `MainMapScene.updatePortPrompt` opens the approach dialogue the first frame
+   * the ship is inside a port's radius, so putting her on the water position is
+   * the whole of it. Landmasses have to be loaded first or `getPortWaterPos`
+   * answers the quay rather than the water beside it.
+   */
+  private createApproachWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
+    const world = createNewWorldState(Date.now());
+    const shipId = world.player.shipId as string;
+    const entity = world.entities[shipId];
+    if (!entity || !CITIES[portKey]) return world;
+    loadLandmassesFromCache(this);
+    // Four units off the town itself, on the side the water is.
+    // `getPortWaterPos` alone is not close enough: the map measures the
+    // approach against the **coast-snapped** position with a radius of six,
+    // and a station chosen for blockading a harbour is forty units out.
+    const quay = CITIES[portKey].pos;
+    const water = getPortWaterPos(portKey);
+    const dx = water.x - quay.x;
+    const dy = water.y - quay.y;
+    const len = Math.hypot(dx, dy) || 1;
+    const pos = { x: quay.x + (dx / len) * 4, y: quay.y + (dy / len) * 4 };
+    return {
+      ...world,
+      entities: {
+        ...world.entities,
+        [shipId]: { ...entity, pos, vel: { x: 0, y: 0 }, sailLevel: 0 },
+      },
     };
   }
 
