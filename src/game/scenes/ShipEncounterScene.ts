@@ -9,7 +9,7 @@ import type { EntityState } from "../../core/model/EntityState.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { namedShipById, reportNamedShip } from "../../core/systems/NamedShipSystem.ts";
 import { freshNews, takeNpcNews } from "../../core/systems/NpcNewsSystem.ts";
 import { holdTons, manifest } from "../../core/systems/PrizeSystem.ts";
@@ -190,7 +190,7 @@ export class ShipEncounterScene extends Phaser.Scene {
     // Hint
     this.add.text(cx, dlgY + DLG_H - PAD - 4,
       t("encounter.hint"),
-      txt(10, { color: "#888888" })).setOrigin(0.5, 1);
+      txt(10, { color: HINT_ON_LIGHT })).setOrigin(0.5, 1);
 
     // Keyboard
     if (this.input.keyboard) {
@@ -363,7 +363,7 @@ export class ShipEncounterScene extends Phaser.Scene {
     // Hint
     this.add.text(cx, dlgY + newsH - PAD - 4,
       t("encounter.hint_ok"),
-      txt(10, { color: "#888888" })).setOrigin(0.5, 1);
+      txt(10, { color: HINT_ON_LIGHT })).setOrigin(0.5, 1);
 
     // Keyboard
     if (this.input.keyboard) {

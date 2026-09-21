@@ -564,3 +564,71 @@ którą według własnego komentarza stoi.
 więc żaden test zachowania nie mógł tego zobaczyć. Jedna tabela `HUD_ROW`,
 czytana przez oba miejsca, i `hud_rows.test.ts`, który trzyma jej kolejność
 (blokada pod eskadrą, pogoda pod blokadą) i minimalny odstęp.
+
+## Kolumna ma dno i ktoś musi je zmierzyć (v0.83.0)
+
+`BattleHelpScene` to **specyfikacja całego modelu walki dla gracza** — nie
+ozdoba, tylko dokument, który reszta kodu ma honorować. Był rysowany jako dwie
+kolumny z podziałem wpisanym ręcznie (cztery sekcje po lewej, pięć po prawej),
+i **nic nigdzie nie mierzyło ich względem panelu**.
+
+Zmierzone na działającej grze przy 1280×720:
+
+| | px |
+|---|---|
+| panel daje kolumnie | **600** |
+| lewa kolumna (4 sekcje) | 563 |
+| **prawa kolumna (5 sekcji)** | **1475** |
+
+*Szybkość reloadu*, *Abordaż*, *Zasada timeoutu* i **wszystkie przykłady
+liczbowe** były rysowane pod dolną krawędzią panelu, na morzu. Żaden układ
+dwóch kolumn tego nie pomieści — tekst potrzebuje trzech i pół.
+
+Podręcznik ma więc strony, a strony są **wypełniane pomiarem**: `packColumns`
+(`core/services/columnFlow.ts`) idzie sekcjami w kolejności czytania i zaczyna
+nową kolumnę, gdy następna przekroczyłaby stopę panelu; `paginate` składa
+kolumny po dwie na stronę. Wyszły trzy strony, przewracane strzałkami i `A`/`D`.
+*Model obrażeń* (643 px) nie mieścił się nawet sam — rozdzielony na wzór
+z tabelami i osobną sekcję przykładów, bo to zawsze były dwie rzeczy.
+
+**Reguła zastosowana na jednym ekranie nie jest regułą.** `HelpScene` mierzy
+swoje kolumny względem `contentBottom` od **v0.61.0**; ten ekran tego nigdy nie
+dostał, i przez dwadzieścia dwa wydania nikt tego nie zobaczył, bo nikt nie
+otworzył podręcznika bitwy i nie spojrzał na dół panelu.
+
+## Podpowiedź, której nie da się przeczytać (v0.83.0)
+
+Trzy wydania pytały o podpowiedzi: czy mówią prawdę (v0.81.0), czy klawisz,
+który wymieniają, jest związany (v0.81.0), czy wiersz, który opisują, jest na
+ekranie (v0.82.0). Pod tym wszystkim siedziało pytanie prostsze.
+
+Zmierzone (WCAG 2.x), przy podłodze **4.5 : 1**:
+
+| linia | panel | stosunek |
+|---|---|---|
+| `#aaaaaa` — karta kapitana, trzy linie | pergamin | **1.82 : 1** |
+| `#555555` — panel miasta, podręcznik | `#0a0a1a` | **2.63 : 1** |
+| `#888888` — lada, karczma, magazyn, spotkanie | biały | 3.54 : 1 |
+| `#9a8a60` — wioska | jej pergamin | 2.84 : 1 |
+
+**Dwadzieścia linii w dziewięciu scenach.** Dwa kolory zamiast nich, w
+`game/ui/textStyle.ts`: `HINT_ON_DARK` = `#9a8a6a` (5.80 na ciemnym) i
+`HINT_ON_LIGHT` = `#6a5a42` (5.22 na pergaminie, 6.66 na białym).
+`hint_contrast.test.ts` te stosunki **liczy** (`core/services/contrast.ts`),
+a nie przyjmuje na słowo, i pilnuje, żeby żadna podpowiedź nie niosła
+**szarości** wpisanej na miejscu. Linie sterowania w pojedynku zostają złote
+i zielone: cios i zasłona są kodowane kolorem, a to jest decyzja — skan patrzy
+tylko na szarości (różnica kanałów ≤ 24).
+
+I rzecz, którą warto zapamiętać osobno. Dwadzieścia linii **nad** najgorszą
+z tych podpowiedzi stoi komentarz mówiący dokładnie to samo:
+
+```ts
+// … and #aaaaaa on parchment is barely there.
+color: this.focusArea === "skills" ? "#7a6248" : "#aaaaaa",
+```
+
+Napisany w v0.47.0 o linii, którą wprowadzał — a druga gałąź **tego samego
+wyrażenia** i legenda klawiszy czterdzieści linii niżej zostały przy starym
+kolorze. **Komentarz stwierdzający znalezisko nie jest naprawą**, trzeci raz
+w pięciu wydaniach: `VillageSystem` (v0.79.0), `sound.hint` (v0.81.0), ten.

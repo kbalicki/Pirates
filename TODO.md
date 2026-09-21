@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-21 · **Wersja:** v0.82.0.0 · **Branch:** `main`
-**Kod:** 259 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2273 przechodzi, 0 failuje, 0 `todo`** w 76 plikach
+**Stan na:** 2026-09-21 · **Wersja:** v0.83.0.0 · **Branch:** `main`
+**Kod:** 263 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2293 przechodzi, 0 failuje, 0 `todo`** w 78 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -191,6 +191,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Cała proza w grze przeczytana | ✅ | 130 kluczy `help.*` i `battle.help_*` (v0.64–v0.66), drzewo gubernatora (v0.68.0), `RumorSystem` (v0.70.0), tawerna/wioski/romans (v0.71.0), 22 nagłówki `news.*` (v0.72.0), osiem zdań lady kupca (v0.76.0). **Zostały teksty generowane** (nazwy, kroniki) |
 | Eskadra ma jedną ładownię | ✅ | `HoldSystem` (v0.77.0): konsorty wiozą towar, pryz zatrzymuje to, co by przepadło (przedtem **54%** za burtę), kadłub odchodzący zabiera ładunek; jedna jednostka — tona, `ItemDef.weight` skasowane |
 | Jedno naciśnięcie, jedna akcja | ✅ | `InputGate` + `game/ui/keys.ts` (v0.78.0): naciśnięcie z modyfikatorem docierało **trzy razy**; bramka zakładana raz w `GameApp` na wszystkie sceny i 78 wiązań. Lada i magazyn handlują partiami (tona / `Shift` 10 / `Ctrl` wszystko) |
+| Kolumna ma dno | ✅ | `column_flow.test.ts` (v0.83.0): podręcznik bitwy dzielił sekcje liczbą wpisaną ręcznie, a prawa kolumna miała **1475 px w oknie 600** — połowa specyfikacji walki nigdy nie była na ekranie. `packColumns` wypełnia strony pomiarem |
+| Podpowiedź da się przeczytać | ✅ | `hint_contrast.test.ts` (v0.83.0): **20 linii w 9 scenach** niosło szarość dobraną na oko, najgorsza **1.82 : 1**. Dwa kolory w `textStyle.ts`, stosunki **liczone**, nie przyjmowane na słowo |
 | Okno nadąża za kursorem | ✅ | `menu_cursor.test.ts` (v0.82.0): przerysowanie nie rusza **ani kursora, ani okna**, a menu nie odpowiada na transakcję inną transakcją. Czysta część w `core/services/menuCursor.ts` — `restoreCursor`, `offsetRevealing` |
 | Jedna rzecz umieszczana w jednym miejscu | ✅ | `hud_rows.test.ts` (v0.82.0): siedem linii pod kompasem było pozycjonowanych **dwa razy**, a kopie się rozjechały co do pogody (`sailY + 104` kontra `+ 72`). **Żadna liczba nie jest zła sama w sobie — defektem jest niezgoda**, więc żaden test zachowania tego nie zobaczy |
 | Podpowiedź jest twierdzeniem o kodzie | ✅ | `screen_promises.test.ts` (v0.81.0): klawisz wymieniony w podpowiedzi musi być w tej scenie związany, i żadne `.then` nie rysuje ekranu, z którego już wyszedł. **Zmierzone przy okazji: skan źródła NIE złapałby v0.80.0** — tamte listy wiązały strzałki poprawnie |
@@ -2517,42 +2519,32 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.82.0)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.83.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-> ~~**Ekrany, które przerosły swój panel.**~~ ✅ v0.82.0.0 — zakładka Ustawień
-> domknięta, i okazało się, że nie chodziło o przycięcie. **Ma dwadzieścia pięć
-> wierszy, okno mieści siedemnaście**, a okno za kursorem nie jechało; do tego
-> `switchTab` zerował przewinięcie przy każdym przerysowaniu i `getContentHeight`
-> mierzył treść względem **nieprzewiniętej** pozycji kontenera, więc changelogu na
-> dole tej zakładki nie dało się dojechać w ogóle.
+**1. Przemieść resztę scen klawiaturą** *(metoda, nie zadanie — **pięć** wydań
+z rzędu znalazła coś, czego żadne czytanie kodu nie znalazło)*. v0.79.0:
+przycisk siedem pikseli za krawędzią. v0.80.0: kursor nieruszający się na trzech
+listach od pierwszego commita. v0.81.0: strzałka przewracająca zakładkę.
+v0.82.0: okno, które nie nadąża za kursorem, i wioska odpowiadająca na handel
+desantem. v0.83.0: **połowa podręcznika bitwy pod dolną krawędzią panelu**.
 
-**1. Przemieść ekrany klawiaturą, jeden po drugim** *(metoda, nie zadanie —
-**cztery** wydania z rzędu znalazła coś, czego żadne czytanie kodu nie
-znalazło)*. v0.79.0: przycisk rysowany siedem pikseli za krawędzią. v0.80.0:
-kursor nieruszający się na trzech listach, **od pierwszego commita**. v0.81.0:
-strzałka przewracająca zakładkę i sloty zapisu na wierzchu mapy. v0.82.0: okno,
-które nie nadąża za kursorem, wioska odpowiadająca na handel desantem
-i podręcznik czytelny tylko myszą. **Za każdym razem kod wyglądał poprawnie.**
-
-**Pomiar już zrobiony** — przejechane klawiaturą: `OptionsMenuScene`,
-`PortScene`, `VillageScene`, `HelpScene`, `MainMapScene`. **Nietknięte (dziesięć):**
-`SeaBattleScene`, `DuelScene`, `CityAssaultScene`, `CityDefenseScene`,
-`CityInfoScene`, `ShipEncounterScene`, `PortApproachScene`,
-`CharacterCreationScene`, `RetirementScene`, `BattleHelpScene`.
-
-**Robota:** dla każdej po kolei wcisnąć wszystko, co obiecuje jej linia
-podpowiedzi, i zrobić zrzut — po polsku, bo polski jest dłuższy. Do sceny, do
-której trudno dopłynąć, wchodzi się `--scene=VillageScene:{"villageKey":"darien"}`;
-tak właśnie złapano wioskę w v0.82.0. **Czego szukać przede wszystkim:** czy
-kursor widać po każdym naciśnięciu, czy po akcji stoi tam, gdzie kapitan go
-zostawił, i czy w scenie jest cokolwiek osiągalnego **tylko myszą**.
+**Przejechane (11 z 18):** `OptionsMenuScene`, `PortScene`, `VillageScene`,
+`HelpScene`, `MainMapScene`, `CharacterCreationScene`, `SeaBattleScene`,
+`BattleHelpScene`, `CityAssaultScene`, `CityInfoScene`, `RetirementScene`.
+**Zostały cztery** — `DuelScene`, `CityDefenseScene`, `PortApproachScene`,
+`ShipEncounterScene` — przeczytane pod kątem „czy klawisz z podpowiedzi jest
+związany" (czyste), ale **nieprzejechane**, bo do żadnej nie ma flagi, która by
+w nią wchodziła. `?hail=havana` stawia kupca w zasięgu wołania, ale ekranu
+spotkania nie otwiera. **Robota:** dodać flagi albo wchodzić przez
+`--scene=ShipEncounterScene:{...}`, wcisnąć wszystko, co obiecuje linia
+podpowiedzi, i zrobić zrzut — po polsku.
 
 **2. Dzieląca się ladownia — `sellFleetShip` nie dolicza nic za tony**
-*(zostawione świadomie w v0.80.0 i v0.82.0)*. Stocznia nie kupuje kakao, kupuje
+*(zostawione świadomie trzy wydania z rzędu)*. Stocznia nie kupuje kakao, kupuje
 kadłub, więc „zapłać za ładunek" jest złą odpowiedzią — ale kapitan, który
 **chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca,
 bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli
@@ -2560,13 +2552,22 @@ kapitana od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako je
 i czy istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie
 „da się, tylko długo" — to jest wynik, a nie zadanie.
 
-**3. Co jeszcze jest umieszczane w dwóch miejscach?** v0.82.0 złapała siedem
-linii HUD pozycjonowanych raz przy tworzeniu i raz przy zmianie rozmiaru okna;
-kopie rozjechały się o 32 piksele i **żadna z liczb nie jest sama w sobie zła**,
-więc żaden test zachowania tego nie zobaczył. **Pomiar na wejściu:** ile scen ma
-w ogóle drugie miejsce, które coś pozycjonuje — czyli obsługę `resize` albo
-własną metodę `reposition*` — i czy którakolwiek z nich powtarza liczby
-z `create()`. Jeśli wyjdzie zero poza `UIOverlayScene`, to jest wynik.
+**3. Reguła zastosowana na jednym ekranie nie jest regułą.** v0.83.0 znalazła,
+że `HelpScene` mierzy swoje kolumny względem `contentBottom` od **v0.61.0**,
+a `BattleHelpScene` tego nigdy nie dostał — dwadzieścia dwa wydania obok siebie.
+**Pomiar na wejściu:** wypisać reguły layoutu, które w tym repo zostały już raz
+nazwane (odstęp liczony od tekstu, który przed nim stoi — v0.27.0; okno liczone
+z miejsca, które zostało — v0.80.0; kolumna mierzona do stopy panelu — v0.61.0;
+jedna tabela pozycji zamiast dwóch — v0.82.0), i dla każdej policzyć, **ile scen
+ją stosuje, a ile nie**. Jeśli wyjdzie, że każda żyje w jednym pliku — to jest
+wynik i zarazem najważniejsze znalezisko o tym kodzie.
+
+**4. Arena bitwy jest trzy razy większa od ekranu**, więc przeciwnik potrafi być
+całkowicie poza widokiem — jedyne, co widać, to jego paski przy krawędzi. To jest
+projekt, nie usterka, ale nie ma **wskaźnika kierunku**, a zasada timeoutu kończy
+bitwę po 120 s rozdziału. **Pomiar na wejściu:** jak często bitwa kończy się
+`disengaged` i ile z tych przypadków to sytuacja, w której przeciwnik nie był na
+ekranie ani przez chwilę przez ostatnie 60 s. Jeśli blisko zera — nie ma sprawy.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

@@ -1,6 +1,6 @@
 import Phaser from "phaser";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { createRng } from "../../core/services/RNG.ts";
 import {
   createDuel,
@@ -101,7 +101,7 @@ export class DuelScene extends Phaser.Scene {
       .setOrigin(0.5).setDepth(1);
     this.add.text(cw / 2, ch - 68, t("duel.controls_parry"), txt(14, { color: "#88ddcc" }))
       .setOrigin(0.5).setDepth(1);
-    this.add.text(cw / 2, ch - 34, t("duel.controls_hint"), txt(12, { color: "#778088" }))
+    this.add.text(cw / 2, ch - 34, t("duel.controls_hint"), txt(12, { color: HINT_ON_DARK }))
       .setOrigin(0.5).setDepth(1);
 
     const bind: Record<string, DuelAction> = {

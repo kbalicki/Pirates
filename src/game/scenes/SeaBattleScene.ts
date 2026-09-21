@@ -9,7 +9,7 @@ import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
 import { ShipDamageOverlay } from "../render/ShipDamageOverlay.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
 import type { AiArchetype } from "../../core/engine/CombatEngine.ts";
@@ -421,7 +421,7 @@ export class SeaBattleScene extends Phaser.Scene {
     // Controls info — single thin line bottom-center
     this.add.text(cam.width / 2, cam.height - 14,
       t("battle.controls"),
-      txt(10, { color: "#888888" }),
+      txt(10, { color: HINT_ON_DARK }),
     ).setOrigin(0.5, 1).setScrollFactor(0).setDepth(9000);
 
     // Ammo selector buttons (Phase B)

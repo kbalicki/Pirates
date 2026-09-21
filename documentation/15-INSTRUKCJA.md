@@ -626,6 +626,14 @@ za kursorem; kółkiem myszy albo `PgUp`/`PgDn` można przewijać samemu.
 Pięć kart: **Sterowanie** · **Statki** · **Żeglowanie** · **Świat** · **Ekonomia**.
 Kartę przewracają `←` / `→`, `A` / `D` albo `1`-`5`; `H` lub `Esc` zamyka.
 
+### W podręczniku bitwy (H w czasie bitwy)
+
+To jest pełna specyfikacja modelu walki — wzór na obrażenia, mnożniki amunicji,
+pancerz każdej klasy, przykłady liczbowe, zasady reloadu, abordażu i timeoutu.
+**Trzy strony**, przewracane `←` / `→` albo `A` / `D`; `H`, `Esc` lub `Spacja`
+zamyka. (Do v0.83.0 większość tego tekstu była rysowana pod dolną krawędzią
+panelu i nie dawało się jej zobaczyć wcale.)
+
 ### W wiosce
 
 `W`/`S` wybiera, `Enter` potwierdza, `Esc` odchodzi. Po każdej transakcji ekran

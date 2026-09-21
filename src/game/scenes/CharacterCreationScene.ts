@@ -3,7 +3,7 @@ import { ERAS, DEFAULT_ERA } from "../../core/data/eras.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { createNewWorldState } from "../GameApp.ts";
 import { t } from "../../core/i18n/index.ts";
-import { UI_FONT, TEXT_RES, txt } from "../ui/textStyle.ts";
+import { UI_FONT, TEXT_RES, txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
 import type { MusicManager } from "../audio/MusicManager.ts";
 import { listSaves, loadGame } from "../../persistence/SaveRepository.ts";
@@ -187,7 +187,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     // Era hint
     this.add.text(cx, y, t("creation.era_hint"), {
-      fontSize: "12px", fontFamily: UI_FONT, color: "#aaaaaa", resolution: TEXT_RES,
+      fontSize: "12px", fontFamily: UI_FONT, color: HINT_ON_LIGHT, resolution: TEXT_RES,
     }).setOrigin(0.5, 0).setDepth(10);
     y += 20;
 
@@ -354,8 +354,13 @@ export class CharacterCreationScene extends Phaser.Scene {
     this.add.text(cx, y, t(hintKey), {
       // Darker than the old generic hint: this line is now something to read,
       // not a control legend, and #aaaaaa on parchment is barely there.
+      //
+      // Which it went on being, in the *other* branch of this very ternary and
+      // in the key legend forty lines down, for four releases: measured at
+      // **1.82 : 1**, the worst contrast in the game. A comment that states a
+      // finding is not a fix (v0.83.0).
       fontSize: "12px", fontFamily: UI_FONT,
-      color: this.focusArea === "skills" ? "#7a6248" : "#aaaaaa",
+      color: this.focusArea === "skills" ? "#7a6248" : HINT_ON_LIGHT,
       resolution: TEXT_RES,
     }).setOrigin(0.5, 0).setDepth(10);
     y += 26;
@@ -392,7 +397,7 @@ export class CharacterCreationScene extends Phaser.Scene {
     // Keyboard hint
     this.add.text(cx, y + 34,
       t("creation.hint"),
-      { fontSize: "10px", fontFamily: UI_FONT, color: "#aaaaaa", resolution: TEXT_RES },
+      { fontSize: "11px", fontFamily: UI_FONT, color: HINT_ON_LIGHT, resolution: TEXT_RES },
     ).setOrigin(0.5, 0).setDepth(10);
 
     // Dynamic resize

@@ -147,7 +147,7 @@ import {
 import { CITIES } from "../../core/data/cities.ts";
 import { rngNextInt } from "../../core/services/RNG.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
 import {
@@ -673,7 +673,7 @@ export class PortScene extends Phaser.Scene {
       const hint = this.add.text(
         this.cx, this.dlgY + DLG_H - PAD - 4,
         t("port.menu_hint"),
-        txt(10, { color: "#888888" }),
+        txt(10, { color: HINT_ON_LIGHT }),
       );
       hint.setOrigin(0.5, 1);
       this.contentContainer.add(hint);
@@ -1157,7 +1157,7 @@ export class PortScene extends Phaser.Scene {
       const hint = this.add.text(
         this.cx, this.dlgY + DLG_H - PAD - 4,
         t("tavern.hint"),
-        txt(10, { color: "#888888" }),
+        txt(10, { color: HINT_ON_LIGHT }),
       );
       hint.setOrigin(0.5, 1);
       this.contentContainer.add(hint);
@@ -1690,7 +1690,7 @@ export class PortScene extends Phaser.Scene {
           });
     } else if (level >= SHARES_A_LEAD) {
       const hint = this.add.text(this.infoX, y, t("romance.hint_marriage", { need: MARRIAGE_THRESHOLD }),
-        txt(11, { color: "#777777" }));
+        txt(11, { color: HINT_ON_LIGHT }));
       this.contentContainer.add(hint);
       y += 18;
     }
@@ -1704,7 +1704,7 @@ export class PortScene extends Phaser.Scene {
     });
 
     const hint = this.add.text(this.cx, this.dlgY + DLG_H - PAD - 4, t("tavern.hint"),
-      txt(10, { color: "#888888" }));
+      txt(10, { color: HINT_ON_LIGHT }));
     hint.setOrigin(0.5, 1);
     this.contentContainer.add(hint);
 
@@ -1941,7 +1941,7 @@ export class PortScene extends Phaser.Scene {
     }
 
     const hint = this.add.text(
-      this.cx, this.dlgY + DLG_H - PAD - 4, t("warehouse.hint"), txt(10, { color: "#888888" }));
+      this.cx, this.dlgY + DLG_H - PAD - 4, t("warehouse.hint"), txt(10, { color: HINT_ON_LIGHT }));
     hint.setOrigin(0.5, 1);
     this.contentContainer.add(hint);
 
@@ -2207,7 +2207,7 @@ export class PortScene extends Phaser.Scene {
     const hint = this.add.text(
       this.cx, this.dlgY + DLG_H - PAD - 4,
       t("port.hint_merchant"),
-      txt(10, { color: "#888888" }),
+      txt(10, { color: HINT_ON_LIGHT }),
     );
     hint.setOrigin(0.5, 1);
     this.contentContainer.add(hint);

@@ -133,6 +133,8 @@ czytelnikiem swojego faktu:
 | `core/systems/HoldSystem.ts` → `spillIfDetached` | ile stracisz, gdy kadłub odejdzie | ekran nie liczył tego wcale, a od v0.80.0 nie liczy tego **po swojemu** |
 | `core/services/menuCursor.ts` | gdzie ma stać kursor po przerysowaniu i gdzie okno, gdy kursor z niego wyszedł | dwa ekrany odpowiadały na to same, i oba źle (v0.82.0) |
 | `UIOverlayScene.HUD_ROW` | gdzie stoi która linia pod kompasem | ustawiane w **dwóch** miejscach, które się rozjechały (v0.82.0) |
+| `game/ui/textStyle.ts` → `HINT_ON_DARK` / `HINT_ON_LIGHT` | jakim kolorem pisze się podpowiedź | **20 linii w 9 scenach** niosło szarość dobraną na oko, najgorsza **1.82 : 1** (v0.83.0) |
+| `core/services/columnFlow.ts` | ile tekstu mieści się w kolumnie | podział sekcji wpisany ręcznie, bez pomiaru: **1475 px w oknie 600** (v0.83.0) |
 
 `game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
 **wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran
@@ -188,6 +190,20 @@ kilkoma kształtami i każdy strażnik widzi jeden:
 Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele nie
 mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
 przypisany najpierw do zmiennej.
+
+**Dziesiąty strażnik — `hint_contrast.test.ts`** (v0.83.0) — czwarte pytanie
+o podpowiedź, po „czy mówi prawdę", „czy klawisz jest związany" i „czy wiersz jest
+na ekranie": **czy da się ją przeczytać**. Liczy stosunek kontrastu (WCAG 2.x,
+`core/services/contrast.ts`) zamiast mu ufać, i skanuje sceny na **szarość
+wpisaną na miejscu**. Na `HEAD` przed zmianą: **20 trafień w 9 scenach**,
+najgorsze `#aaaaaa` na pergaminie — **1.82 : 1** przy podłodze 4.5.
+
+**Dziewiąty strażnik — `column_flow.test.ts`** (v0.83.0) — o tym, że **kolumna
+ma dno**. Podręcznik bitwy dzielił sekcje na dwie kolumny liczbą wpisaną ręcznie,
+a prawa miała **1475 px w oknie 600**: połowa specyfikacji walki nigdy nie była
+na ekranie. Część czysta (`packColumns`, `paginate`) testowana zachowaniem —
+w tym na **zmierzonych** wysokościach dziesięciu sekcji — plus skan, że scena
+nie rozdaje sekcji liczbą i zna stopę swojego panelu.
 
 **Ósmy strażnik — `hud_rows.test.ts`** (v0.82.0) — o najbardziej niewidzialnym
 kształcie, jaki dotąd tu złapano: **jedna rzecz umieszczana w dwóch miejscach**.

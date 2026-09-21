@@ -20,7 +20,7 @@
 import Phaser from "phaser";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 
 import {
   villageDef, villageStanding, villageTier, tradeOffer, tradeCooldownLeft,
@@ -155,7 +155,7 @@ export class VillageScene extends Phaser.Scene {
       });
     } else {
       this.add.text(cx, dlgY + DLG_H - PAD - 2, t("village.hint"),
-        txt(10, { color: "#9a8a60" })).setOrigin(0.5, 1);
+        txt(10, { color: HINT_ON_LIGHT })).setOrigin(0.5, 1);
     }
 
     if (this.input.keyboard) {

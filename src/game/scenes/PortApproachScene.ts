@@ -10,7 +10,7 @@ import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { isPortClosed } from "../../core/systems/EventEffectsSystem.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
 type PortAction = "enter" | "sneak" | "attack" | "leave";
@@ -201,7 +201,7 @@ export class PortApproachScene extends Phaser.Scene {
     // --- Keyboard hint at bottom ---
     const hintY = dlgY + DLG_H - PAD - 4;
     const hint = this.add.text(cx, hintY, t("approach.hint"),
-      txt(10, { color: "#888888" }));
+      txt(10, { color: HINT_ON_LIGHT }));
     hint.setOrigin(0.5, 1);
 
     // Dynamic resize — restart scene to recenter dialog

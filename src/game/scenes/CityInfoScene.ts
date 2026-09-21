@@ -8,7 +8,7 @@ import { PORTS, type PortDef } from "../../core/data/ports.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import { t } from "../../core/i18n/index.ts";
 import { portNameKey } from "../../core/i18n/names.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { liveNews } from "../../core/systems/NewsPhaseSystem.ts";
@@ -233,7 +233,7 @@ export class CityInfoScene extends Phaser.Scene {
 
     // ── Close hint ──
     this.add.text(cx, cy + panelH / 2 - 16, t("cityinfo.hint_close"), {
-      ...txt(10, { color: "#555555" }),
+      ...txt(11, { color: HINT_ON_DARK }),
     }).setOrigin(0.5, 1).setDepth(5);
 
     this.input.keyboard?.on("keydown-ESC", () => this.closePanel());

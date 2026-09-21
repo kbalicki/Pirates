@@ -26,7 +26,7 @@ import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
 import { visionRangeForMast } from "../render/WorldRenderer.ts";
 import { bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
 import { t } from "../../core/i18n/index.ts";
-import { txt } from "../ui/textStyle.ts";
+import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import {
   HELP_SAILING_TOPICS, HELP_WORLD_TOPICS, HELP_EVENT_ROWS, HELP_SEVERITY_COLOUR,
 } from "../../core/data/helpTopics.ts";
@@ -153,7 +153,7 @@ export class HelpScene extends Phaser.Scene {
     // this dark was barely there when the line only said *press ESC*; now that
     // it is the only place the five pages are advertised, it has to be read.
     this.add.text(cx, cy + ph / 2 - 14, t("help.close_hint"), {
-      ...txt(12, { color: "#b8a878" }),
+      ...txt(12, { color: HINT_ON_DARK }),
     }).setOrigin(0.5, 1).setDepth(5);
 
     this.input.keyboard?.on("keydown-ESC", () => this.close());

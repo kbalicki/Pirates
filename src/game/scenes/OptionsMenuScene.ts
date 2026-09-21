@@ -18,7 +18,7 @@ import {
 } from "../../persistence/SaveRepository.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
 import type { SavePayload } from "../../persistence/SaveSchema.ts";
-import { txt, PIRATE_ICONS_FONT, TEXT_RES } from "../ui/textStyle.ts";
+import { txt, PIRATE_ICONS_FONT, TEXT_RES, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
 import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
@@ -182,7 +182,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Close hint (bottom)
     this.add.text(cx, this.dlgY + DLG_H - PAD + 2,
-      t("menu.close_hint"), txt(10, { color: "#888888" })).setOrigin(0.5, 1);
+      t("menu.close_hint"), txt(10, { color: HINT_ON_LIGHT })).setOrigin(0.5, 1);
 
     // What the open tab does with the keyboard. It used to be drawn *inside*
     // the scrolling container at its bottom edge, which put it on top of the
@@ -190,7 +190,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     // scroll. `[ ZAMKNIJ ]` is centred and narrow, so the hint shares its line
     // from the left — the same answer as the squadron line in v0.80.0.
     this.tabHint = this.add.text(this.dlgX + PAD + 8, this.dlgY + DLG_H - PAD - 14,
-      "", txt(10, { color: "#888888" }));
+      "", txt(10, { color: HINT_ON_LIGHT }));
     this.tabHint.setOrigin(0, 1);
 
     // Close button
@@ -956,7 +956,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     // Keyboard hint for save/load
     const hint = this.add.text(this.cameras.main.width / 2, y + 8,
       t("save.hint"),
-      txt(10, { color: "#888888" }));
+      txt(10, { color: HINT_ON_LIGHT }));
     hint.setOrigin(0.5, 0);
     this.contentContainer.add(hint);
     y += 28;
@@ -1132,7 +1132,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
 
     this.contentContainer.add(
-      this.add.text(x + 10, y, t("sound.hint"), txt(10, { color: "#888888" })));
+      this.add.text(x + 10, y, t("sound.hint"), txt(10, { color: HINT_ON_LIGHT })));
     y += 22;
 
     // Visual Style (asset pack) — numbered radio list
@@ -1161,7 +1161,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       y += 20;
     }
 
-    const hint = this.add.text(x + 10, y, t("settings.style_hint"), txt(10, { color: "#888888" }));
+    const hint = this.add.text(x + 10, y, t("settings.style_hint"), txt(10, { color: HINT_ON_LIGHT }));
     this.contentContainer.add(hint);
     y += 32;
 
@@ -1196,7 +1196,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       y += 20;
     }
 
-    const zoomHint = this.add.text(x + 10, y, t("settings.zoom_hint"), txt(10, { color: "#888888" }));
+    const zoomHint = this.add.text(x + 10, y, t("settings.zoom_hint"), txt(10, { color: HINT_ON_LIGHT }));
     this.contentContainer.add(zoomHint);
     y += 32;
 
