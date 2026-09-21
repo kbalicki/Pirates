@@ -481,3 +481,86 @@ narysowane.
 
 To jedyne rysowanie po `await` w grze; sprawdza teraz zakładkę, a test trzyma przy
 tej regule **każde** `.then` w każdej scenie.
+
+## Okno nadąża za kursorem (v0.82.0)
+
+v0.80.0 naprawiła kursor, który przerysowanie cofało na wiersz zerowy. To jest
+druga połowa tego samego ekranu: **kursor się rusza, a nic poza nim nie**.
+
+Zakładka Ustawienia ma **dwadzieścia pięć wierszy**, jej okno mieści
+siedemnaście. Dziesięć naciśnięć strzałki w dół i znacznika `▶` nie ma nigdzie
+na ekranie — kapitan naciska Enter na ślepo. Trzy rzeczy, wszystkie w jednym
+ekranie:
+
+| | było | jest |
+|---|---|---|
+| ruch kursora | nie przewijał niczego | `revealRow` (`offsetRevealing` z `core/services/menuCursor.ts`) |
+| `switchTab` | `contentContainer.y = contentBaseY` przy **każdym** przerysowaniu | zachowuje przewinięcie, gdy zakładka się nie zmienia |
+| `getContentHeight` | `b.y + b.height - contentBaseY` | `… - contentContainer.y` |
+
+Trzecia jest najbardziej pouczająca. `getBounds()` odpowiada we współrzędnych
+świata, więc **już niesie w sobie przewinięcie**; odjęcie **nieprzewiniętej**
+pozycji kontenera było poprawne tylko przy pierwszym pomiarze. Każde kółko myszy
+skracało zmierzoną treść dokładnie o tyle, o ile kapitan zjechał, i podłoga
+w `scrollContent` podnosiła się mu pod nogi — **changelogu na dole tej zakładki
+nie dało się dojechać w ogóle**.
+
+Reguła: **przerysowanie nie jest powodem, żeby ruszyć kursor — ani żeby ruszyć
+okno.** Jedno i drugie należy do kapitana, dopóki sam ich nie ruszy.
+
+Przy okazji dwie drobne rzeczy z tego samego zrzutu:
+
+- Linia podpowiedzi zakładki była rysowana **wewnątrz przewijanego kontenera**,
+  przy jego dolnej krawędzi — czyli na ostatnich wierszach listy lunety, i po
+  włączeniu przewijania jeździłaby razem z nimi. Stoi teraz w stopce, po lewej
+  stronie `[ ZAMKNIJ ]`, który jest wąski i wyśrodkowany.
+- Wiersz, który był **jednocześnie** ustawieniem obowiązującym (`▸`) i wierszem
+  pod kursorem (`▶`), drukował tylko pierwszy znacznik. Przechodzenie kursorem
+  po czternastu poziomach lunety sprawiało więc, że kursor znikał na dokładnie
+  jednym wierszu — tym, którego kapitan szukał. `rowMarker()` drukuje oba, w tej
+  samej szerokości dwóch znaków.
+
+## Menu nie odpowiada na transakcję inną transakcją (v0.82.0)
+
+`VillageScene` przerysowuje cały ekran po każdej transakcji i ustawiała kursor
+tak: `findIndex(a => !a.disabled)` — **pierwszy wiersz, którego da się użyć**.
+
+Na wejściu to jest poprawne. Potem nie: udany barter zakłada swojemu własnemu
+wierszowi dziesięciodniową karencję, więc pierwszym używalnym wierszem staje się
+**„Poproś o wyprawę na Panamę"**. Kapitan, który nacisnął Enter, żeby wymienić
+rum na złoto, zostawał z kursorem na desancie, jedno naciśnięcie dalej.
+
+Reguła w `restoreCursor()` (`core/services/menuCursor.ts`), wspólna dla każdego
+menu, które przerysowuje się po akcji:
+
+1. **Kapitan zostaje na swoim wierszu.**
+2. Jeśli to, co właśnie zrobił, ten wiersz zamknęło — spada na **ostatni**,
+   który z konwencji jest wyjściem i jedynym, co nie może zrobić światu nic.
+3. Dopiero gdy nie ma czego pamiętać (pierwsze rysowanie), wybiera pierwszy
+   używalny wiersz.
+
+## Instrukcja jest sceną klawiaturową (v0.82.0)
+
+`HelpScene` rysuje pięć kart, a całą jej klawiaturą było `H` i `ESC` — karty
+były pudełkami z `pointerdown`. W grze prowadzonej dwiema rękami na klawiaturze
+naciśnięcie `H` pokazywało pierwszą stronę i żadnej drogi dalej.
+
+Kartę przewracają teraz `←`/`→`, `A`/`D` i `1`-`5`; podpowiedź w stopce to mówi,
+a `screen_promises.test.ts` (v0.81.0) trzyma jedno przy drugim. Strzałki nie mają
+glifów w Dancing Script, więc renderują się cienkim fallbackiem — w podpowiedzi
+stoją przy nich `A/` i `D/`, tak jak tabela sterowania w tej samej scenie pisze
+`"A / ←"`.
+
+## Jedna linia ustawiana w dwóch miejscach (v0.82.0)
+
+Siedem linii pod kompasem (`UIOverlayScene`: żagle, prędkość, ostrość na wiatr,
+znos, eskadra, blokada, pogoda) było ustawianych raz tam, gdzie powstają, i drugi
+raz w `repositionAll()` przy zmianie rozmiaru okna. Kopie się rozjechały:
+ostrzeżenie o pogodzie stało na `sailY + 104` przy tworzeniu i na `sailY + 72`
+po zmianie rozmiaru — cztery piksele pod linią eskadry i **nad** blokadą, pod
+którą według własnego komentarza stoi.
+
+Żadna z tych liczb nie jest sama w sobie zła; defektem jest ich **niezgoda**,
+więc żaden test zachowania nie mógł tego zobaczyć. Jedna tabela `HUD_ROW`,
+czytana przez oba miejsca, i `hud_rows.test.ts`, który trzyma jej kolejność
+(blokada pod eskadrą, pogoda pod blokadą) i minimalny odstęp.

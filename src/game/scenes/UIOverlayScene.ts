@@ -25,6 +25,26 @@ const STORM_VEIL_EASE = 0.04;
  * Has its own camera that NEVER zooms or scrolls.
  * Used for: wind compass, and future fixed UI elements.
  */
+/**
+ * The stack under the compass, top to bottom, as offsets from `sailY`.
+ *
+ * It used to be written out twice — once when the lines were made and once
+ * when the window was resized — and the two disagreed about the weather
+ * warning: 104 on the way in, 72 on a resize, which is four pixels under the
+ * squadron line and *above* the blockade line it is documented as following.
+ * Resize the window in a squall and the warning landed on top of the fleet
+ * (v0.82.0). One table, read by both.
+ */
+const HUD_ROW = {
+  sail: 0,
+  speed: 18,
+  windward: 36,
+  drift: 52,
+  fleet: 68,
+  blockade: 86,
+  storm: 104,
+} as const;
+
 export class UIOverlayScene extends Phaser.Scene {
   private compass!: WindCompassWidget;
   private versionText!: Phaser.GameObjects.Text;
@@ -101,7 +121,7 @@ export class UIOverlayScene extends Phaser.Scene {
 
     // Sail level — below compass, text only
     const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
-    this.sailText = this.add.text(cam.width - MARGIN, sailY, "", {
+    this.sailText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.sail, "", {
       ...txt(13, { color: "#ffdd88" }),
       stroke: "#000000",
       strokeThickness: 3,
@@ -110,7 +130,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.sailText.setDepth(30);
 
     // Ship speed — below sail text
-    this.speedText = this.add.text(cam.width - MARGIN, sailY + 18, "", {
+    this.speedText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.speed, "", {
       ...txt(12, { color: "#aaccee" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -120,7 +140,7 @@ export class UIOverlayScene extends Phaser.Scene {
 
     // Working to windward — below speed (v0.54.0). Only drawn when she is
     // actually on the wind, so it costs nothing on a reach.
-    this.windwardText = this.add.text(cam.width - MARGIN, sailY + 36, "", {
+    this.windwardText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.windward, "", {
       ...txt(11, { color: "#88cc88" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -129,7 +149,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.windwardText.setDepth(30);
 
     // What the water is doing to her, when it is doing enough to matter.
-    this.driftText = this.add.text(cam.width - MARGIN, sailY + 52, "", {
+    this.driftText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.drift, "", {
       ...txt(11, { color: "#66aacc" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -138,7 +158,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.driftText.setDepth(30);
 
     // Fleet info — below speed
-    this.fleetText = this.add.text(cam.width - MARGIN, sailY + 68, "", {
+    this.fleetText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.fleet, "", {
       ...txt(11, { color: "#6699cc" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -148,7 +168,7 @@ export class UIOverlayScene extends Phaser.Scene {
 
     // Blockade — under the fleet line. Silent unless the player is actually
     // standing off a harbour, which is the only time it has anything to say.
-    this.blockadeText = this.add.text(cam.width - MARGIN, sailY + 86, "", {
+    this.blockadeText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.blockade, "", {
       ...txt(11, { color: "#cc8844" }),
       stroke: "#000000",
       strokeThickness: 2,
@@ -162,7 +182,7 @@ export class UIOverlayScene extends Phaser.Scene {
     this.stormVeil.setDepth(-10);
 
     // Weather warning — under the blockade line, and silent in fair weather.
-    this.stormText = this.add.text(cam.width - MARGIN, sailY + 104, "", {
+    this.stormText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.storm, "", {
       ...txt(12, { bold: true, color: "#88aacc" }),
       stroke: "#000000",
       strokeThickness: 3,
@@ -186,13 +206,13 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.versionText) this.versionText.setPosition(width - 6, height - 4);
     if (this.zoomText) this.zoomText.setPosition(6, height - 4);
     const sailY = MARGIN + 18 + COMPASS_SIZE + 28;
-    if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY);
-    if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + 18);
-    if (this.windwardText) this.windwardText.setPosition(width - MARGIN, sailY + 36);
-    if (this.driftText) this.driftText.setPosition(width - MARGIN, sailY + 52);
-    if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + 68);
-    if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + 86);
-    if (this.stormText) this.stormText.setPosition(width - MARGIN, sailY + 72);
+    if (this.sailText) this.sailText.setPosition(width - MARGIN, sailY + HUD_ROW.sail);
+    if (this.speedText) this.speedText.setPosition(width - MARGIN, sailY + HUD_ROW.speed);
+    if (this.windwardText) this.windwardText.setPosition(width - MARGIN, sailY + HUD_ROW.windward);
+    if (this.driftText) this.driftText.setPosition(width - MARGIN, sailY + HUD_ROW.drift);
+    if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + HUD_ROW.fleet);
+    if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + HUD_ROW.blockade);
+    if (this.stormText) this.stormText.setPosition(width - MARGIN, sailY + HUD_ROW.storm);
     if (this.stormVeil) this.stormVeil.setSize(width, height);
   }
 

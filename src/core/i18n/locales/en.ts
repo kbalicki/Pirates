@@ -358,7 +358,7 @@ export const EN: LocaleData = {
   "help.tab_sailing": "Sailing",
   "help.tab_world": "World",
   "help.tab_economy": "Economy",
-  "help.close_hint": "H or ESC to close",
+  "help.close_hint": "A/←  D/→  or 1-5 — page       H / ESC — close",
   "help.ctrl_sails_up": "Make sail (next level)",
   "help.ctrl_sails_down": "Take in sail (previous level)",
   "help.ctrl_turn_left": "Turn to port (hold)",

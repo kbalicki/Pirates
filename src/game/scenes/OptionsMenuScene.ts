@@ -37,6 +37,7 @@ import { activeQuests } from "../../core/systems/QuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
 import { CHANGELOG } from "../../changelog.ts";
+import { offsetRevealing } from "../../core/services/menuCursor.ts";
 
 type TabId = "cabin" | "captain" | "journal" | "calendar" | "settings" | "save" | "map";
 
@@ -46,6 +47,22 @@ const DLG_H = 528;
 const BORDER = 3;
 const PAD = 14;
 
+/**
+ * The two glyphs a radio row can carry, in one column.
+ *
+ * `\u25b8` says *this is the setting in force*, `\u25B6` says *this is where the
+ * cursor is*, and the row that was both printed only the first -- so walking
+ * the cursor down the fourteen zoom levels made it vanish for exactly one
+ * row, the one the captain was most likely looking for (v0.82.0). Both now,
+ * in the same two character widths as before.
+ */
+function rowMarker(focused: boolean, active: boolean): string {
+  if (focused && active) return "\u25B6\u25b8";
+  if (focused) return "\u25B6 ";
+  if (active) return "\u25b8 ";
+  return "  ";
+}
+
 export class OptionsMenuScene extends Phaser.Scene {
   private worldState!: WorldState;
   private tabButtons: Phaser.GameObjects.Text[] = [];
@@ -54,6 +71,8 @@ export class OptionsMenuScene extends Phaser.Scene {
   private dlgY = 0;
   private contentBaseY = 0;
   private contentH = 0;
+  /** Footer line saying what the open tab does with the keyboard. */
+  private tabHint!: Phaser.GameObjects.Text;
 
   // Keyboard navigation state
   private activeTabIndex = 0;
@@ -165,6 +184,15 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.add.text(cx, this.dlgY + DLG_H - PAD + 2,
       t("menu.close_hint"), txt(10, { color: "#888888" })).setOrigin(0.5, 1);
 
+    // What the open tab does with the keyboard. It used to be drawn *inside*
+    // the scrolling container at its bottom edge, which put it on top of the
+    // last two rows of the zoom list and would now ride up and down with the
+    // scroll. `[ ZAMKNIJ ]` is centred and narrow, so the hint shares its line
+    // from the left — the same answer as the squadron line in v0.80.0.
+    this.tabHint = this.add.text(this.dlgX + PAD + 8, this.dlgY + DLG_H - PAD - 14,
+      "", txt(10, { color: "#888888" }));
+    this.tabHint.setOrigin(0, 1);
+
     // Close button
     const closeBtn = this.add.text(cx, this.dlgY + DLG_H - PAD - 14,
       t("menu.close"), txt(13, { bold: true }));
@@ -248,9 +276,15 @@ export class OptionsMenuScene extends Phaser.Scene {
    * *Game speed*, which is where it started.
    *
    * Leaving the tab still starts the next one at the top, which is right.
+   *
+   * The scroll position follows the same rule for the same reason (v0.82.0):
+   * every cursor move redraws the tab, so snapping the container back to the
+   * top on a redraw meant the captain could scroll the settings list down and
+   * lose it again on his next press of Down.
    */
   private switchTab(tab: TabId): void {
     const sameTab = ALL_TABS[this.activeTabIndex] === tab;
+    const keptScroll = sameTab ? this.contentContainer.y : this.contentBaseY;
     this.activeTabIndex = ALL_TABS.indexOf(tab);
     this.arrowsClaimed = false;
     if (!sameTab) this.selectedItemIndex = 0;
@@ -265,7 +299,8 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
 
     this.contentContainer.removeAll(true);
-    this.contentContainer.y = this.contentBaseY;
+    this.contentContainer.y = keptScroll;
+    this.tabHint.setText(tab === "settings" ? t("options.hint") : "");
 
     switch (tab) {
       case "cabin": this.renderCabin(); break;
@@ -1111,7 +1146,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       settingsItems.push({ type: "pack:" + packId, y });
       const isActive = packId === currentPack;
       const isItemFocused = this.selectedItemIndex === packIdx;
-      const marker = isActive ? "\u25b8 " : isItemFocused ? "\u25B6 " : "  ";
+      const marker = rowMarker(isItemFocused, isActive);
       const color = isItemFocused ? "#000000" : isActive ? "#1a1a1a" : "#888888";
       const label = marker + t("settings.pack." + packId);
       const packBtn = this.add.text(x + 10, y, label, txt(12, { bold: isActive || isItemFocused, color }));
@@ -1143,11 +1178,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       settingsItems.push({ type: "zoom:" + level, y });
       const isActive = level === currentZoom;
       const isItemFocused = this.selectedItemIndex === zoomIdx;
-      const label = isActive
-        ? `\u25B8 ${t("settings.zoom." + level)}`
-        : isItemFocused
-          ? `\u25B6 ${t("settings.zoom." + level)}`
-          : `  ${t("settings.zoom." + level)}`;
+      const label = rowMarker(isItemFocused, isActive) + t("settings.zoom." + level);
       const color = isItemFocused ? "#000000" : isActive ? "#1a1a1a" : "#888888";
       const zoomBtn = this.add.text(x + 10, y, label, txt(12, { bold: isActive || isItemFocused, color }));
       if (!isActive) {
@@ -1268,12 +1299,11 @@ export class OptionsMenuScene extends Phaser.Scene {
       y += 6;
     }
 
-    // Keyboard hint for settings
-    const settingsHint = this.add.text(cx, this.contentH - 4,
-      t("options.hint"),
-      txt(10, { color: "#888888" }));
-    settingsHint.setOrigin(0.5, 1);
-    this.contentContainer.add(settingsHint);
+    // The list is longer than the window, so the window follows the cursor.
+    // Drawn last, because the row positions are only known once the whole tab
+    // has been laid out.
+    const focusedRow = settingsItems[this.selectedItemIndex];
+    if (focusedRow) this.revealRow(focusedRow.y);
 
     // Keyboard navigation for settings
     const maxIdx = settingsItems.length - 1;
@@ -1474,17 +1504,49 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * How tall the drawn tab is, in the container's own coordinates.
+   *
+   * `getBounds()` answers in world coordinates, so it already carries whatever
+   * the container has been scrolled by. Subtracting `contentBaseY` — the
+   * container's *unscrolled* position — was therefore only correct on the
+   * first measurement: every notch of scroll made the content measure shorter
+   * by exactly as much as the captain had scrolled, and `scrollContent`'s
+   * floor rose to meet him. The settings tab ends in the whole changelog and
+   * could not be scrolled to the end of it (v0.82.0).
+   */
   private getContentHeight(): number {
     let maxY = 0;
     this.contentContainer.each((child: Phaser.GameObjects.GameObject) => {
       const go = child as unknown as { getBounds?: () => Phaser.Geom.Rectangle };
       if (go.getBounds) {
         const b = go.getBounds();
-        const localBottom = b.y + b.height - this.contentBaseY;
+        const localBottom = b.y + b.height - this.contentContainer.y;
         if (localBottom > maxY) maxY = localBottom;
       }
     });
     return maxY + 10;
+  }
+
+  /**
+   * Bring the focused row into the window.
+   *
+   * A cursor that moves and a window that does not is a list the captain
+   * navigates blind: the settings tab is twenty-five rows long, the window
+   * holds seventeen, and ten presses of Down put the marker somewhere below
+   * the mask with nothing on the screen to say where. Seen on a screenshot —
+   * the same way as v0.80.0's cursor and v0.81.0's arrows (v0.82.0).
+   *
+   * `rowY` is the row's own y inside the container, as the render loop
+   * recorded it.
+   */
+  private revealRow(rowY: number, rowH = 24): void {
+    const wanted = offsetRevealing(
+      this.contentContainer.y, rowY, rowH, this.contentBaseY, this.contentH);
+    if (wanted === this.contentContainer.y) return;
+
+    const minY = this.contentBaseY - Math.max(0, this.getContentHeight() - this.contentH);
+    this.contentContainer.y = Phaser.Math.Clamp(wanted, minY, this.contentBaseY);
   }
 
   private closeMenu(): void {

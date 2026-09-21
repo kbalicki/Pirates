@@ -131,6 +131,8 @@ czytelnikiem swojego faktu:
 | `core/i18n/plForms.ts` + `plurals.ts` | jak odmienić nazwę i liczebnik | zdanie po zdaniu, ręcznie (v0.69.0, v0.74.0) |
 | `core/i18n/names.ts` | pod jakim kluczem zapisana jest nazwa | każdy system stemplował gotowe słowo do zapisu (v0.63.0, dokończone v0.79.0) |
 | `core/systems/HoldSystem.ts` → `spillIfDetached` | ile stracisz, gdy kadłub odejdzie | ekran nie liczył tego wcale, a od v0.80.0 nie liczy tego **po swojemu** |
+| `core/services/menuCursor.ts` | gdzie ma stać kursor po przerysowaniu i gdzie okno, gdy kursor z niego wyszedł | dwa ekrany odpowiadały na to same, i oba źle (v0.82.0) |
+| `UIOverlayScene.HUD_ROW` | gdzie stoi która linia pod kompasem | ustawiane w **dwóch** miejscach, które się rozjechały (v0.82.0) |
 
 `game/ui/keys.ts` owija `emit` wtyczki klawiatury, a `GameApp` zakłada to raz na
 **wszystkie sceny** — ekran nie musi wiedzieć, że bramka istnieje, i ekran
@@ -186,6 +188,22 @@ kilkoma kształtami i każdy strażnik widzi jeden:
 Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele nie
 mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
 przypisany najpierw do zmiennej.
+
+**Ósmy strażnik — `hud_rows.test.ts`** (v0.82.0) — o najbardziej niewidzialnym
+kształcie, jaki dotąd tu złapano: **jedna rzecz umieszczana w dwóch miejscach**.
+Siedem linii pod kompasem było pozycjonowanych raz tam, gdzie powstają, i drugi raz
+przy zmianie rozmiaru okna — i kopie się rozjechały co do ostrzeżenia o pogodzie
+(`sailY + 104` kontra `sailY + 72`, cztery piksele pod linią eskadry). **Żadna
+z tych liczb nie jest sama w sobie zła; defektem jest ich niezgoda**, więc żaden
+test zachowania nie mógłby tego zobaczyć. Test trzyma tabelę `HUD_ROW`, jej
+kolejność i minimalny odstęp, i pilnuje, że **żadna linia nie niesie własnej
+arytmetyki**.
+
+**Siódmy strażnik — `menu_cursor.test.ts`** (v0.82.0) — domyka regułę piątego
+z drugiej strony: przerysowanie nie rusza kursora **ani okna**, i menu nie
+odpowiada na transakcję inną transakcją. Część czysta (`restoreCursor`,
+`offsetRevealing`) jest testowana zachowaniem, a nie skanem; reszta to skan
+źródła na `switchTab`, `getContentHeight`, `renderSettings` i `VillageScene`.
 
 **Szósty strażnik — `screen_promises.test.ts`** (v0.81.0) — linia podpowiedzi
 jest **twierdzeniem o kodzie**: klawisz, który wymienia, musi być w tej scenie

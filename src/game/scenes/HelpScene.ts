@@ -103,6 +103,20 @@ export class HelpScene extends Phaser.Scene {
     ];
     const tabY = cy - ph / 2 + 50;
     const tabW = (pw - 60) / tabs.length;
+    // The manual is five tabs wide and every one of them could only be
+    // reached with a mouse: `pointerdown` on the tab box, and the whole of the
+    // scene's keyboard was `H` and `ESC` to close it (v0.82.0). In a game
+    // played with two hands on the keys, a captain pressing `H` could read the
+    // first page and nothing else. The hint line says so now, and the test in
+    // `screen_promises.test.ts` holds the two to each other.
+    const goTo = (index: number) => {
+      const next = tabs[Phaser.Math.Clamp(index, 0, tabs.length - 1)];
+      if (!next || next.key === this.currentSection) return;
+      this.currentSection = next.key;
+      this.scene.restart();
+    };
+    const here = tabs.findIndex(tab => tab.key === this.currentSection);
+
     tabs.forEach((tab, i) => {
       const tx = cx - pw / 2 + 30 + i * tabW + tabW / 2;
       const isActive = tab.key === this.currentSection;
@@ -135,13 +149,23 @@ export class HelpScene extends Phaser.Scene {
       case "economy": this.renderEconomy(left, contentY, right); break;
     }
 
-    // Close hint
+    // What the keyboard does, at the foot of the panel. `#555555` on a panel
+    // this dark was barely there when the line only said *press ESC*; now that
+    // it is the only place the five pages are advertised, it has to be read.
     this.add.text(cx, cy + ph / 2 - 14, t("help.close_hint"), {
-      ...txt(10, { color: "#555555" }),
+      ...txt(12, { color: "#b8a878" }),
     }).setOrigin(0.5, 1).setDepth(5);
 
     this.input.keyboard?.on("keydown-ESC", () => this.close());
     this.input.keyboard?.on("keydown-H", () => this.close());
+    this.input.keyboard?.on("keydown-LEFT", () => goTo(here - 1));
+    this.input.keyboard?.on("keydown-RIGHT", () => goTo(here + 1));
+    this.input.keyboard?.on("keydown-A", () => goTo(here - 1));
+    this.input.keyboard?.on("keydown-D", () => goTo(here + 1));
+    const NUMBER_KEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE"];
+    NUMBER_KEYS.forEach((name, i) => {
+      this.input.keyboard?.on("keydown-" + name, () => goTo(i));
+    });
   }
 
   private close(): void {

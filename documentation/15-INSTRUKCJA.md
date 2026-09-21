@@ -616,6 +616,23 @@ Siedem zakładek: **Kajuta** (stan statku i załogi) · **Kapitan** (umiejętno�
 notowania, stan koron) · **Dziennik** (aktywne zlecenia) · **Kalendarz** (data
 i ostatnie zdarzenia) · **Ustawienia** · **Zapis** (pięć slotów) · **Mapa**.
 
+`←` / `→` przewracają zakładkę, `↑` / `↓` chodzą po wierszach, `Enter` przełącza.
+Na wierszach głośności strzelki lewo/prawo należą do suwaka, nie do zakładki.
+**Zakładka Ustawień jest dłuższa niż okno** — nie trzeba nic z tym robić, okno jedzie
+za kursorem; kółkiem myszy albo `PgUp`/`PgDn` można przewijać samemu.
+
+### W podręczniku (H)
+
+Pięć kart: **Sterowanie** · **Statki** · **Żeglowanie** · **Świat** · **Ekonomia**.
+Kartę przewracają `←` / `→`, `A` / `D` albo `1`-`5`; `H` lub `Esc` zamyka.
+
+### W wiosce
+
+`W`/`S` wybiera, `Enter` potwierdza, `Esc` odchodzi. Po każdej transakcji ekran
+rysuje się od nowa, ale **kursor zostaje na Twoim wierszu** — a jeśli to, co
+właśnie zrobiłeś, ten wiersz zamknęło (barter ma dziesięciodniową karencję),
+spada na *Wracaj do szalupy*, nigdy na wyprawę wojenną.
+
 ### Na ladzie
 
 `W`/`S` wybiera, `Enter` kupuje, `Backspace` sprzedaje, `Esc` cofa.

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-21 · **Wersja:** v0.81.0.0 · **Branch:** `main`
-**Kod:** 256 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2255 przechodzi, 0 failuje, 0 `todo`** w 74 plikach
+**Stan na:** 2026-09-21 · **Wersja:** v0.82.0.0 · **Branch:** `main`
+**Kod:** 259 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2273 przechodzi, 0 failuje, 0 `todo`** w 76 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -191,6 +191,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Cała proza w grze przeczytana | ✅ | 130 kluczy `help.*` i `battle.help_*` (v0.64–v0.66), drzewo gubernatora (v0.68.0), `RumorSystem` (v0.70.0), tawerna/wioski/romans (v0.71.0), 22 nagłówki `news.*` (v0.72.0), osiem zdań lady kupca (v0.76.0). **Zostały teksty generowane** (nazwy, kroniki) |
 | Eskadra ma jedną ładownię | ✅ | `HoldSystem` (v0.77.0): konsorty wiozą towar, pryz zatrzymuje to, co by przepadło (przedtem **54%** za burtę), kadłub odchodzący zabiera ładunek; jedna jednostka — tona, `ItemDef.weight` skasowane |
 | Jedno naciśnięcie, jedna akcja | ✅ | `InputGate` + `game/ui/keys.ts` (v0.78.0): naciśnięcie z modyfikatorem docierało **trzy razy**; bramka zakładana raz w `GameApp` na wszystkie sceny i 78 wiązań. Lada i magazyn handlują partiami (tona / `Shift` 10 / `Ctrl` wszystko) |
+| Okno nadąża za kursorem | ✅ | `menu_cursor.test.ts` (v0.82.0): przerysowanie nie rusza **ani kursora, ani okna**, a menu nie odpowiada na transakcję inną transakcją. Czysta część w `core/services/menuCursor.ts` — `restoreCursor`, `offsetRevealing` |
+| Jedna rzecz umieszczana w jednym miejscu | ✅ | `hud_rows.test.ts` (v0.82.0): siedem linii pod kompasem było pozycjonowanych **dwa razy**, a kopie się rozjechały co do pogody (`sailY + 104` kontra `+ 72`). **Żadna liczba nie jest zła sama w sobie — defektem jest niezgoda**, więc żaden test zachowania tego nie zobaczy |
 | Podpowiedź jest twierdzeniem o kodzie | ✅ | `screen_promises.test.ts` (v0.81.0): klawisz wymieniony w podpowiedzi musi być w tej scenie związany, i żadne `.then` nie rysuje ekranu, z którego już wyszedł. **Zmierzone przy okazji: skan źródła NIE złapałby v0.80.0** — tamte listy wiązały strzałki poprawnie |
 | Liczba nie bywa podmiotem | ✅ | `plural_agreement.test.ts` (v0.81.0): zgody czasownika z liczbą potrzebują **3 zdania z 89** — mechanizm droższy niż trzy przeredagowania, reguła wpisana w `plurals.ts` |
 | Kursor przeżywa przerysowanie | ✅ | `switchView` / `switchTab` (v0.80.0): **trzy listy nie dawały się przewijać od pierwszego commita** — lada, stocznia i ustawienia drukują `↑↓ — Wybór`, a przerysowanie zerowało indeks, którym kursor się przesuwa. Dlatego każdy ekran z listą skończył na myszy. Pilnowane `cursor_survives_redraw.test.ts` |
@@ -2515,54 +2517,56 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.81.0)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.82.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-> ~~**Zgoda czasownika i imiesłowu.**~~ ✅ v0.81.0.0 — **zamknięta pomiarem, bez
-> mechanizmu.** Potrzebują jej **3 zdania z 89**: 48 liczy rzeczownik
-> męskoosobowy, który bierze dopełniacz od dwóch w górę i zostawia czasownik
-> w spokoju przy 1, 3 i 5, a z pozostałych 53 prawie każde jest urywkiem albo ma
-> czasownik należący do czegoś innego. Trzy przeredagowane, reguła w `plurals.ts`.
-> **Dwa z trzech napisałem dzień wcześniej** i były złe także po angielsku.
-> ~~**Podpowiedź obiecuje klawisz, którego nie ma.**~~ ✅ v0.81.0.0 — **prawdziwych
-> zero**, wszystkie cztery trafienia skanu to źle przeczytany angielski; skan
-> źródła nie złapałby v0.80.0, bo tam wiązanie istniało i nic nie robiło. Ale
-> węższy kształt był żywy: `sound.hint` obiecywał strzałki nad wiązaniami `A`/`D`.
+> ~~**Ekrany, które przerosły swój panel.**~~ ✅ v0.82.0.0 — zakładka Ustawień
+> domknięta, i okazało się, że nie chodziło o przycięcie. **Ma dwadzieścia pięć
+> wierszy, okno mieści siedemnaście**, a okno za kursorem nie jechało; do tego
+> `switchTab` zerował przewinięcie przy każdym przerysowaniu i `getContentHeight`
+> mierzył treść względem **nieprzewiniętej** pozycji kontenera, więc changelogu na
+> dole tej zakładki nie dało się dojechać w ogóle.
 
-**1. Ekrany, które przerosły swój panel** *(częściowo zrobione, został co najmniej
-jeden pewny)*. v0.80.0 zamknęła stocznię (okno na liście liczone z miejsca, które
-zostało) i kajutę (dwa wiersze na konsortę, manifest w dwóch kolumnach).
-**Zakładka Ustawienia dalej wychodzi poza panel** — „5 — Normalnie" ucięte,
-`[ ZAMKNIJ ]` nachodzi — i nie wiadomo, ile jeszcze ekranów tak ma. **Pomiar na
-wejściu:** zrzut każdego ekranu z listą o zmiennej długości, przy **najdłuższym**
-możliwym stanie (sześć towarów, trzy kadłuby, pięć slotów zapisu, najdłuższa
-tablica newsów), **po polsku**, bo polski jest dłuższy. **Reguły, które już
-działają:** odstęp liczony od tekstu, który przed nim stoi, i okno liczone
-z miejsca, które naprawdę zostało.
+**1. Przemieść ekrany klawiaturą, jeden po drugim** *(metoda, nie zadanie —
+**cztery** wydania z rzędu znalazła coś, czego żadne czytanie kodu nie
+znalazło)*. v0.79.0: przycisk rysowany siedem pikseli za krawędzią. v0.80.0:
+kursor nieruszający się na trzech listach, **od pierwszego commita**. v0.81.0:
+strzałka przewracająca zakładkę i sloty zapisu na wierzchu mapy. v0.82.0: okno,
+które nie nadąża za kursorem, wioska odpowiadająca na handel desantem
+i podręcznik czytelny tylko myszą. **Za każdym razem kod wyglądał poprawnie.**
 
-**2. Przemieść ekrany klawiaturą, jeden po drugim** *(metoda, nie zadanie — trzy
-wydania z rzędu znalazła coś, czego żadne czytanie kodu nie znalazło)*.
-v0.79.0: przycisk rysowany siedem pikseli za krawędzią, bez drogi z klawiatury.
-v0.80.0: kursor nieruszający się na trzech listach, **od pierwszego commita**.
-v0.81.0: strzałka przewracająca zakładkę zamiast zmieniać głośność, i pięć
-slotów zapisu narysowanych na wierzchu mapy. **Za każdym razem kod wyglądał
-poprawnie.** **Pomiar na wejściu:** lista wszystkich scen (`src/game/scenes`) i
-tego, które z nich były już przejechane `scripts/drive.mjs` — zostało ich
-większość. **Robota:** dla każdej po kolei wcisnąć wszystko, co obiecuje jej
-linia podpowiedzi, i zrobić zrzut. To jest dziś najskuteczniejsza znana metoda
-w tym repo.
+**Pomiar już zrobiony** — przejechane klawiaturą: `OptionsMenuScene`,
+`PortScene`, `VillageScene`, `HelpScene`, `MainMapScene`. **Nietknięte (dziesięć):**
+`SeaBattleScene`, `DuelScene`, `CityAssaultScene`, `CityDefenseScene`,
+`CityInfoScene`, `ShipEncounterScene`, `PortApproachScene`,
+`CharacterCreationScene`, `RetirementScene`, `BattleHelpScene`.
 
-**3. Dzieląca się ladownia — `sellFleetShip` nie dolicza nic za tony**
-*(zostawione świadomie w v0.80.0)*. Stocznia nie kupuje kakao, kupuje kadłub,
-więc „zapłać za ładunek" jest złą odpowiedzią — ale kapitan, który **chce**
-sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca, bo lada
-czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli kapitana od
-opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno), i czy
-istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie „da się,
-tylko długo" — to jest wynik, a nie zadanie.
+**Robota:** dla każdej po kolei wcisnąć wszystko, co obiecuje jej linia
+podpowiedzi, i zrobić zrzut — po polsku, bo polski jest dłuższy. Do sceny, do
+której trudno dopłynąć, wchodzi się `--scene=VillageScene:{"villageKey":"darien"}`;
+tak właśnie złapano wioskę w v0.82.0. **Czego szukać przede wszystkim:** czy
+kursor widać po każdym naciśnięciu, czy po akcji stoi tam, gdzie kapitan go
+zostawił, i czy w scenie jest cokolwiek osiągalnego **tylko myszą**.
+
+**2. Dzieląca się ladownia — `sellFleetShip` nie dolicza nic za tony**
+*(zostawione świadomie w v0.80.0 i v0.82.0)*. Stocznia nie kupuje kakao, kupuje
+kadłub, więc „zapłać za ładunek" jest złą odpowiedzią — ale kapitan, który
+**chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca,
+bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli
+kapitana od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno),
+i czy istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie
+„da się, tylko długo" — to jest wynik, a nie zadanie.
+
+**3. Co jeszcze jest umieszczane w dwóch miejscach?** v0.82.0 złapała siedem
+linii HUD pozycjonowanych raz przy tworzeniu i raz przy zmianie rozmiaru okna;
+kopie rozjechały się o 32 piksele i **żadna z liczb nie jest sama w sobie zła**,
+więc żaden test zachowania tego nie zobaczył. **Pomiar na wejściu:** ile scen ma
+w ogóle drugie miejsce, które coś pozycjonuje — czyli obsługę `resize` albo
+własną metodę `reposition*` — i czy którakolwiek z nich powtarza liczby
+z `create()`. Jeśli wyjdzie zero poza `UIOverlayScene`, to jest wynik.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

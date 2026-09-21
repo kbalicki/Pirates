@@ -357,7 +357,7 @@ export const PL: LocaleData = {
   "help.tab_sailing": "Żeglowanie",
   "help.tab_world": "Świat",
   "help.tab_economy": "Ekonomia",
-  "help.close_hint": "H lub ESC aby zamknąć",
+  "help.close_hint": "A/←  D/→  lub 1-5 — karta       H / ESC — zamknij",
   "help.ctrl_sails_up": "Podnieś żagle (następny poziom)",
   "help.ctrl_sails_down": "Zwiń żagle (poprzedni poziom)",
   "help.ctrl_turn_left": "Skręć w lewo (przytrzymaj)",

@@ -29,6 +29,7 @@ import {
 
 import { portNameKey } from "../../core/i18n/names.ts";
 import { factionNameKey } from "../../core/i18n/names.ts";
+import { restoreCursor } from "../../core/services/menuCursor.ts";
 type VillageAction = "trade" | "war" | "leave";
 
 const DLG_W = 440;
@@ -44,6 +45,13 @@ export class VillageScene extends Phaser.Scene {
   private selectionBar!: Phaser.GameObjects.Rectangle;
   private arrow!: Phaser.GameObjects.Text;
   private message = "";
+  /**
+   * The row the captain was standing on, so a redraw can put him back.
+   *
+   * Null on the way in, which is what makes the first draw pick the first row
+   * he can actually use.
+   */
+  private selectedAction: VillageAction | null = null;
 
   constructor() {
     super({ key: "VillageScene" });
@@ -115,8 +123,7 @@ export class VillageScene extends Phaser.Scene {
 
     const listX = dlgX + PAD + 18;
     this.actionTexts = [];
-    this.selectedIndex = this.actions.findIndex(a => !a.disabled);
-    if (this.selectedIndex < 0) this.selectedIndex = this.actions.length - 1;
+    this.selectedIndex = this.restoreSelection();
 
     for (let i = 0; i < this.actions.length; i++) {
       const act = this.actions[i];
@@ -124,7 +131,11 @@ export class VillageScene extends Phaser.Scene {
       const text = this.add.text(listX, y, act.label, txt(14, { bold: !act.disabled, color }));
       if (!act.disabled) {
         text.setInteractive({ useHandCursor: true });
-        text.on("pointerover", () => { this.selectedIndex = i; this.updateSelection(); });
+        text.on("pointerover", () => {
+          this.selectedIndex = i;
+          this.selectedAction = act.action;
+          this.updateSelection();
+        });
         text.on("pointerdown", () => this.execute(act.action));
       }
       this.actionTexts.push(text);
@@ -205,11 +216,32 @@ export class VillageScene extends Phaser.Scene {
     return out;
   }
 
+  /**
+   * Where the cursor goes on a redraw.
+   *
+   * Every transaction redraws the whole screen, and the screen used to answer
+   * this with *the first row he can use*. That is right on the way in and
+   * wrong afterwards: a successful barter puts its own row on a cooldown, so
+   * the first usable row becomes **send a war party against the neighbouring
+   * town** — and the captain who had just pressed Enter to trade was left one
+   * press away from putting a raid ashore he never asked for (v0.82.0).
+   *
+   * So he keeps his row. If the transaction he just made closed it, he falls
+   * to *leave*, which is the last row and the only one that can never do
+   * anything to the world.
+   */
+  private restoreSelection(): number {
+    const landed = restoreCursor(this.actions, this.selectedAction);
+    this.selectedAction = this.actions[landed]?.action ?? null;
+    return landed;
+  }
+
   private move(delta: number): void {
     let next = this.selectedIndex + delta;
     while (next >= 0 && next < this.actions.length && this.actions[next].disabled) next += delta;
     if (next >= 0 && next < this.actions.length) {
       this.selectedIndex = next;
+      this.selectedAction = this.actions[next].action;
       this.updateSelection();
     }
   }
