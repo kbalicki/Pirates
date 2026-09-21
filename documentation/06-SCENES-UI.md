@@ -445,3 +445,39 @@ Kajuta miała to samo z drugiej strony: v0.77.0 dopisało ładownię na koniec
 wiersza konsorty, który już był szerokości panelu, i po polsku ostatni odczyt
 lądował na mapie za oknem. Teraz dwa wiersze, manifest w dwóch kolumnach,
 a podpowiedź klawiszy dzieli linię z odczytem eskadry.
+
+## Podpowiedź jest twierdzeniem o kodzie (v0.81.0)
+
+v0.80.0 znalazła trzy listy drukujące `↑↓ — Wybór`, które niczego nie wybierały,
+i zostawiła pytanie: czy dałoby się to złapać skanem źródła, porównując linie
+podpowiedzi z wiązaniami klawiszy?
+
+**Zmierzone: nie.** Trzydzieści pięć napisów w tabeli to podpowiedzi, czternaście
+wymienia klawisz. Po zestawieniu z wiązaniami w scenie, która je rysuje, cztery
+wyszły jako „obiecane, nie związane" — i wszystkie cztery to skaner źle czytający
+angielski (*„Enter your name, Captain"*, *„Fire L/R broadside"*). Prawdziwa liczba
+to **zero**, i zawsze była: tamte trzy listy wiązały strzałki poprawnie.
+**Wiązanie istniało i nic nie robiło.**
+
+Skan źródła łapie jednak **węższy kształt**, i ten był żywy: klawisz obiecany,
+a związany **do czegoś innego**. `sound.hint` obiecywał `← →` na głośność, a nad
+`adjustVolume` stały wiązania `A` i `D` — z komentarzem *„← / → adjust volume when
+a vol: item is focused"*. Komentarz opisywał **zamiar** i był czytany jak opis
+kodu; dokładnie ta sama pułapka, co `VillageSystem` w v0.79.0. Strzałka na
+wierszu głośności przewracała zakładkę.
+
+Dwa słuchacze jednego klawisza nie mogą się nawzajem zatrzymać, więc zakładka
+**zgłasza roszczenie** (`arrowsClaimed`), a globalne wiązanie zakładek je sprawdza.
+Roszczenie kasuje `switchTab`, żeby żadna zakładka nie trzymała strzałek po tym,
+jak przestała być rysowana.
+
+## Żaden ekran nie rysuje się po tym, jak go opuszczono (v0.81.0)
+
+Zakładka Zapis czyta pięć slotów z IndexedDB i rysowała je, **kiedy odczyt
+wrócił** — niezależnie od tego, czy kapitan dalej na nią patrzył. Sloty i ich
+linia podpowiedzi lądowały **na wierzchu mapy**. `switchTab` czyści kontener przed
+rysowaniem i nie jest w stanie wyczyścić czegoś, co jeszcze nie zostało
+narysowane.
+
+To jedyne rysowanie po `await` w grze; sprawdza teraz zakładkę, a test trzyma przy
+tej regule **każde** `.then` w każdej scenie.

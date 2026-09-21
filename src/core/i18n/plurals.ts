@@ -40,9 +40,44 @@
  * mechanism. Three sentences need that; a case × number table for all ten
  * nouns would be thirty rows to serve three.
  *
- * **Gender agreement on the verb or the adjective.** Still open, still the
- * same shape as the note v0.69.0 left: the sentence would have to choose a
- * variant, not just a form of a variable.
+ * **Agreement on the verb or the participle.** Measured in v0.81.0 and
+ * **decided against a mechanism**, which is the answer this note was waiting
+ * for since v0.74.0.
+ *
+ * Polish makes a numeral phrase take three shapes: `1 działo zostało zbite`,
+ * `3 działa zostały zbite`, `5 dział zostało zbitych`. A variable cannot carry
+ * that; the sentence would have to choose a variant. So the question is how
+ * many sentences actually need one.
+ *
+ * **Three, out of eighty-nine.** The sweep is in two halves and the second one
+ * is what makes the answer small:
+ *
+ *   - **Eighty-nine** Polish strings print a counted noun.
+ *   - Of those, the ones whose noun is **masculine-personal** (`man`, `hand`,
+ *     `soldier`, `member`, `wounded`) take the genitive from two upwards, and
+ *     the verb stays third-person singular at one, at three and at five. Forty
+ *     eight sentences, none of which has a problem.
+ *   - Of the remaining fifty-three, almost every one is a **fragment** - `- 5
+ *     dni`, `jeszcze 3 dni`, `za 6 ton` - or has a verb belonging to something
+ *     else in the sentence (`Bateria otwiera ogień:`, `Tutejszy kupiec ma`).
+ *     Counted: twenty-seven distinct words stand in front of a counted
+ *     non-personal noun in this table, and all but one of them are a
+ *     preposition, a punctuation mark or an imperative.
+ *
+ * The three that needed it are reworded so the **count is never the subject**
+ * of a verb: the cargo goes with her, and how much it is follows the colon.
+ * `plural_agreement.test.ts` renders them at one, three and five.
+ *
+ * Two of the three were written **the day before this measurement**, in
+ * v0.80.0, and were wrong in **English as well** ("1 ton go with her"). That
+ * is the finding worth carrying: this is not a historical defect being cleaned
+ * up, it is one still being introduced, and it is invisible to a parity test
+ * because both columns say it wrong.
+ *
+ * **The rule, for whoever writes the next sentence:** a count may be an
+ * object, an apposition or a bare reading. It may not be a subject. If the
+ * sentence wants to say that something happened to N of a thing, name the
+ * thing and put N after a colon.
  */
 
 import type { Lang } from "./types.ts";

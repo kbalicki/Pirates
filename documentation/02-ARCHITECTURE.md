@@ -187,6 +187,15 @@ Wszyscy trzej czytają **źródło scen**, nie tabele locale: dwie zgodne tabele
 mówią nic o ekranie, który nie pyta żadnej z nich. Wciąż poza zasięgiem: szablon
 przypisany najpierw do zmiennej.
 
+**Szósty strażnik — `screen_promises.test.ts`** (v0.81.0) — linia podpowiedzi
+jest **twierdzeniem o kodzie**: klawisz, który wymienia, musi być w tej scenie
+związany. Zmierzone przy okazji i warte zapisania: **pytanie z v0.80.0 („czy
+skan źródła złapałby trzy listy obiecujące ↑↓?") ma odpowiedź NIE** — one wiązały
+strzałki poprawnie, wiązanie istniało i nic nie robiło. Skan źródła łapie węższy
+kształt: klawisz obiecany, a związany **do czegoś innego** (`sound.hint` obiecywał
+←→ nad wiązaniami `A`/`D`). Ten sam plik pilnuje też, żeby żadne `.then` w scenie
+nie rysowało ekranu, z którego kapitan już wyszedł.
+
 **Piąty strażnik — `cursor_survives_redraw.test.ts`** (v0.80.0) — nie o tekst,
 o to samo czytanie źródła: scena nie da się zbudować bez Phasera, więc reguła
 *„przerysowanie widoku, na którym stoisz, nie rusza kursora"* jest pilnowana

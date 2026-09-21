@@ -69,6 +69,14 @@ export class OptionsMenuScene extends Phaser.Scene {
    */
   private pendingAbandonIndex: number | null = null;
 
+  /**
+   * The tab showing wants the left and right arrows for itself this frame.
+   *
+   * Set while a volume row is focused on the settings tab; cleared by
+   * `switchTab` so no tab can hold them after it stops being drawn.
+   */
+  private arrowsClaimed = false;
+
   constructor() {
     super({ key: "OptionsMenuScene" });
   }
@@ -177,13 +185,21 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-FIVE", () => this.switchTab("save"));
       this.input.keyboard.on("keydown-SIX", () => this.switchTab("map"));
 
-      // Left/Right arrow for tab switching
+      // Left/Right arrow for tab switching -- unless the tab showing has asked
+      // for them. The quartermaster's volume rows had, in a comment, since
+      // they were written: *"left/right adjust volume when a vol: item is
+      // focused"*, above a pair of bindings for `A` and `D`. `sound.hint` has
+      // promised the arrows all along, and pressing one moved the captain to
+      // the next tab (v0.81.0). Two listeners on one key cannot stop each
+      // other, so the question is asked here instead.
       this.input.keyboard.on("keydown-LEFT", () => {
+        if (this.arrowsClaimed) return;
         if (this.activeTabIndex > 0) {
           this.switchTab(ALL_TABS[this.activeTabIndex - 1]);
         }
       });
       this.input.keyboard.on("keydown-RIGHT", () => {
+        if (this.arrowsClaimed) return;
         if (this.activeTabIndex < ALL_TABS.length - 1) {
           this.switchTab(ALL_TABS[this.activeTabIndex + 1]);
         }
@@ -236,6 +252,7 @@ export class OptionsMenuScene extends Phaser.Scene {
   private switchTab(tab: TabId): void {
     const sameTab = ALL_TABS[this.activeTabIndex] === tab;
     this.activeTabIndex = ALL_TABS.indexOf(tab);
+    this.arrowsClaimed = false;
     if (!sameTab) this.selectedItemIndex = 0;
     this.clearTabKeyboard();
 
@@ -824,7 +841,16 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(saveTitle);
     y += 22;
 
+    // The slot list comes out of IndexedDB, so it arrives after this method
+    // has returned -- and by then the captain may have pressed the right arrow
+    // and be looking at another tab. `switchTab` empties the container before
+    // it draws, but it cannot empty something that has not been drawn yet, so
+    // the slots were painted **over** whatever tab was open when the read came
+    // back. Seen on the screen: the five save slots and their hint line
+    // standing on top of the chart (v0.81.0).
+    const tabAtRequest = ALL_TABS[this.activeTabIndex];
     listSaves().then((existingSaves) => {
+      if (ALL_TABS[this.activeTabIndex] !== tabAtRequest) return;
       this.renderSaveSlots(existingSaves, y);
     });
   }
@@ -1319,7 +1345,13 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.bindTabKey("keydown-DOWN", moveDown);
     this.bindTabKey("keydown-S", moveDown);
     this.bindTabKey("keydown-ENTER", confirmSetting);
-    // ← / → adjust volume when a vol: item is focused (Settings tab only)
+    // The arrows, which is what `sound.hint` has always said, and `A`/`D`
+    // beside them because that is what was bound instead. The claim is what
+    // keeps the arrow from also turning the page: see `create()`.
+    const focused = settingsItems[this.selectedItemIndex];
+    this.arrowsClaimed = !!focused?.type.startsWith("vol:");
+    this.bindTabKey("keydown-LEFT", () => adjustVolume(-1));
+    this.bindTabKey("keydown-RIGHT", () => adjustVolume(1));
     this.bindTabKey("keydown-A", () => adjustVolume(-1));
     this.bindTabKey("keydown-D", () => adjustVolume(1));
   }

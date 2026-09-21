@@ -1504,6 +1504,9 @@ w całości mieści się w pozostałych, odchodzi za pierwszym naciśnięciem.
 
 **Menu (`Spacja`)** — `1`–`6` i strzałki po zakładkach, `Esc` zamyka.
 Zakładki: Kajuta · Kapitan · Dziennik · Kalendarz · Ustawienia · Zapis · Mapa.
+Na **Ustawieniach**, gdy kursor stoi na wierszu głośności, `←` i `→` zmieniają ją
+zamiast przewracać zakładkę (v0.81.0 — podpowiedź obiecywała to od początku,
+a związane były `A` i `D`).
 
 **Oblegańsko-obronne** — `W`/`S` albo strzałki wybierają cel ostrzału,
 `Enter` potwierdza, `L` rozpoczyna desant, `Spacja` przyśpiesza rundę.

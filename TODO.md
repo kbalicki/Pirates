@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-20 · **Wersja:** v0.80.0.0 · **Branch:** `main`
-**Kod:** 254 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2247 przechodzi, 0 failuje, 0 `todo`** w 72 plikach
+**Stan na:** 2026-09-21 · **Wersja:** v0.81.0.0 · **Branch:** `main`
+**Kod:** 256 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2255 przechodzi, 0 failuje, 0 `todo`** w 74 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -191,6 +191,8 @@ Ten plik jest źródłem prawdy dla **kolejności prac**.
 | Cała proza w grze przeczytana | ✅ | 130 kluczy `help.*` i `battle.help_*` (v0.64–v0.66), drzewo gubernatora (v0.68.0), `RumorSystem` (v0.70.0), tawerna/wioski/romans (v0.71.0), 22 nagłówki `news.*` (v0.72.0), osiem zdań lady kupca (v0.76.0). **Zostały teksty generowane** (nazwy, kroniki) |
 | Eskadra ma jedną ładownię | ✅ | `HoldSystem` (v0.77.0): konsorty wiozą towar, pryz zatrzymuje to, co by przepadło (przedtem **54%** za burtę), kadłub odchodzący zabiera ładunek; jedna jednostka — tona, `ItemDef.weight` skasowane |
 | Jedno naciśnięcie, jedna akcja | ✅ | `InputGate` + `game/ui/keys.ts` (v0.78.0): naciśnięcie z modyfikatorem docierało **trzy razy**; bramka zakładana raz w `GameApp` na wszystkie sceny i 78 wiązań. Lada i magazyn handlują partiami (tona / `Shift` 10 / `Ctrl` wszystko) |
+| Podpowiedź jest twierdzeniem o kodzie | ✅ | `screen_promises.test.ts` (v0.81.0): klawisz wymieniony w podpowiedzi musi być w tej scenie związany, i żadne `.then` nie rysuje ekranu, z którego już wyszedł. **Zmierzone przy okazji: skan źródła NIE złapałby v0.80.0** — tamte listy wiązały strzałki poprawnie |
+| Liczba nie bywa podmiotem | ✅ | `plural_agreement.test.ts` (v0.81.0): zgody czasownika z liczbą potrzebują **3 zdania z 89** — mechanizm droższy niż trzy przeredagowania, reguła wpisana w `plurals.ts` |
 | Kursor przeżywa przerysowanie | ✅ | `switchView` / `switchTab` (v0.80.0): **trzy listy nie dawały się przewijać od pierwszego commita** — lada, stocznia i ustawienia drukują `↑↓ — Wybór`, a przerysowanie zerowało indeks, którym kursor się przesuwa. Dlatego każdy ekran z listą skończył na myszy. Pilnowane `cursor_survives_redraw.test.ts` |
 | Konsorta odchodzi z ładunkiem — i mówi o tym | ✅ | `spillIfDetached` + potwierdzenie w stoczni i kajucie (v0.80.0): jej ładunek wart **więcej niż stocznia płaci za kadłub w 81 na 81 par** (mediana 4×). **Ekranu przeładunku nie ma**: pojedyncza ładownia ma dwie konsekwencje, obie zdarzenia |
 | Nazwa w zapisie to klucz | ✅ | `NAME_PREFIXES` + `stamped_names.test.ts` (v0.79.0): przemiecione **75 wywołań `addLogEntry`**, sześć defektów — w tym dwa stemplujące goły `factionId` (*„A england man-of-war…"*, źle w **obu** językach). Kwota to słowo, nie nazwa towaru: **50 zdań** pisało `{{gold}} Gold` / `{{gold}} Złoto` |
@@ -2513,57 +2515,54 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-20, po v0.80.0)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.81.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-> ~~**Wioski stemplują gotową nazwę do dziennika.**~~ ✅ v0.79.0.0 — i było tego
-> **sześć miejsc, nie dwa**; najgorsze (goły `factionId`, *„A england
-> man-of-war"*) nie było na liście.
-> ~~**Ekran przeładunku między kadłubami.**~~ ✅ v0.80.0.0 — **i ekranu nie ma.**
-> Pomiar odpowiedział na właściwe pytanie: który kadłub co wiezie ma w całym
-> kodzie **dwie** konsekwencje (konsorta odchodzi; bandera przechodzi na nią przy
-> zatonięciu flagowca) i obie są **zdarzeniami, nie decyzjami**. Kapitan ma być
-> poinformowany i zapytany, a nie dostać drugą tabelę. Wniosek zapisany testem,
-> więc przestanie obowiązywać w dniu, w którym pojawi się trzeci czytelnik.
-> Przy okazji znalezione **na ekranie**: trzy listy w grze nie dawały się
-> przewijać **od pierwszego commita** — szczegóły w
-> [SESSION-2026-09-20b.md](documentation/SESSION-2026-09-20b.md).
+> ~~**Zgoda czasownika i imiesłowu.**~~ ✅ v0.81.0.0 — **zamknięta pomiarem, bez
+> mechanizmu.** Potrzebują jej **3 zdania z 89**: 48 liczy rzeczownik
+> męskoosobowy, który bierze dopełniacz od dwóch w górę i zostawia czasownik
+> w spokoju przy 1, 3 i 5, a z pozostałych 53 prawie każde jest urywkiem albo ma
+> czasownik należący do czegoś innego. Trzy przeredagowane, reguła w `plurals.ts`.
+> **Dwa z trzech napisałem dzień wcześniej** i były złe także po angielsku.
+> ~~**Podpowiedź obiecuje klawisz, którego nie ma.**~~ ✅ v0.81.0.0 — **prawdziwych
+> zero**, wszystkie cztery trafienia skanu to źle przeczytany angielski; skan
+> źródła nie złapałby v0.80.0, bo tam wiązanie istniało i nic nie robiło. Ale
+> węższy kształt był żywy: `sound.hint` obiecywał strzałki nad wiązaniami `A`/`D`.
 
-**1. Zgoda czasownika i imiesłowu** *(największa z otwartych, dwie pozycje naraz)*.
-`plurals.ts` odmienia **rzeczownik**, ale zdanie, w którym czasownik albo
-przymiotnik musi się zgodzić z liczbą („3 działa **zbite**" kontra „5 dział
-**zbitych**"), dalej trzeba przeredagować — **szesnaście zdań obeszło problem**
-i to jest **obejście**, dokładnie jak rodzaj zostawiony przez v0.69.0.
-Rozwiązaniem jest mechanizm wybierający **wariant zdania**, a nie formę zmiennej,
-i zamyka **obie** pozycje naraz. **Pomiar na wejściu:** ile polskich zdań
-naprawdę tego potrzebuje (policzyć te z liczbą **i** czasownikiem/imiesłowem) —
-jeśli wyjdzie kilkanaście, mechanizm jest droższy od przeredagowania i to jest
-uczciwy wynik, który należy zapisać zamiast pisać mechanizm.
+**1. Ekrany, które przerosły swój panel** *(częściowo zrobione, został co najmniej
+jeden pewny)*. v0.80.0 zamknęła stocznię (okno na liście liczone z miejsca, które
+zostało) i kajutę (dwa wiersze na konsortę, manifest w dwóch kolumnach).
+**Zakładka Ustawienia dalej wychodzi poza panel** — „5 — Normalnie" ucięte,
+`[ ZAMKNIJ ]` nachodzi — i nie wiadomo, ile jeszcze ekranów tak ma. **Pomiar na
+wejściu:** zrzut każdego ekranu z listą o zmiennej długości, przy **najdłuższym**
+możliwym stanie (sześć towarów, trzy kadłuby, pięć slotów zapisu, najdłuższa
+tablica newsów), **po polsku**, bo polski jest dłuższy. **Reguły, które już
+działają:** odstęp liczony od tekstu, który przed nim stoi, i okno liczone
+z miejsca, które naprawdę zostało.
 
-**2. Podpowiedź obiecuje klawisz, którego nie ma** *(nowe, v0.80.0 pokazała, ile
-to kosztuje)*. Trzy ekrany drukowały `↑↓ — Wybór` przez **całą historię
-projektu** i nie wybierały niczego. Żaden z czterech strażników tekstu tego nie
-widzi, bo napis był poprawnie przetłumaczony i poprawnie narysowany — **kłamał
-o kodzie**. **Pomiar na wejściu:** ile linii `*.hint*` w obu tabelach wymienia
-klawisz, i dla ilu z nich `bindKey`/`bindTabKey` w tym samym widoku naprawdę go
-wiąże. **Robota:** piąty strażnik czytający źródło sceny — nazwy klawiszy
-z podpowiedzi kontra wiązania w tej samej metodzie. Trudne miejsca: podpowiedzi
-współdzielone przez kilka widoków i klawisze wiązane warunkowo (`if (hasDamage)`),
-więc wynik może być listą wyjątków zamiast zera — i to też jest wynik.
+**2. Przemieść ekrany klawiaturą, jeden po drugim** *(metoda, nie zadanie — trzy
+wydania z rzędu znalazła coś, czego żadne czytanie kodu nie znalazło)*.
+v0.79.0: przycisk rysowany siedem pikseli za krawędzią, bez drogi z klawiatury.
+v0.80.0: kursor nieruszający się na trzech listach, **od pierwszego commita**.
+v0.81.0: strzałka przewracająca zakładkę zamiast zmieniać głośność, i pięć
+slotów zapisu narysowanych na wierzchu mapy. **Za każdym razem kod wyglądał
+poprawnie.** **Pomiar na wejściu:** lista wszystkich scen (`src/game/scenes`) i
+tego, które z nich były już przejechane `scripts/drive.mjs` — zostało ich
+większość. **Robota:** dla każdej po kolei wcisnąć wszystko, co obiecuje jej
+linia podpowiedzi, i zrobić zrzut. To jest dziś najskuteczniejsza znana metoda
+w tym repo.
 
-**3. Ekrany, które przerosły swój panel** *(częściowo zrobione, zostały dwa)*.
-v0.80.0 zamknęła stocznię (okno na liście, liczone z miejsca, które zostało)
-i kajutę (dwa wiersze na konsortę, manifest w dwóch kolumnach). **Zakładka
-Ustawienia dalej wychodzi poza panel** — „5 — Normalnie" ucięte, `[ ZAMKNIJ ]`
-nachodzi — i nie wiadomo, ile jeszcze ekranów tak ma. **Pomiar na wejściu:**
-zrzut każdego ekranu z listą o zmiennej długości, przy **najdłuższym** możliwym
-stanie (sześć towarów, trzy kadłuby, pięć slotów zapisu, najdłuższa tablica
-newsów), po polsku — bo polski jest dłuższy. **Reguła, która już działa:** odstęp
-liczony od tekstu, który przed nim stoi, i okno liczone z miejsca, które
-naprawdę zostało.
+**3. Dzieląca się ladownia — `sellFleetShip` nie dolicza nic za tony**
+*(zostawione świadomie w v0.80.0)*. Stocznia nie kupuje kakao, kupuje kadłub,
+więc „zapłać za ładunek" jest złą odpowiedzią — ale kapitan, który **chce**
+sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca, bo lada
+czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli kapitana od
+opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno), i czy
+istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie „da się,
+tylko długo" — to jest wynik, a nie zadanie.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),
@@ -2583,7 +2582,7 @@ tam, gdzie trzeba). To jest dziś najskuteczniejsza metoda dla agenta.
 rodzinę, do której należy.** Notatka mówiła o dwóch wywołaniach; było ich sześć,
 a najgorsze nie było na liście. Kosztowało to jeden skaner na trzydzieści linii.
 
-I trzecią, która w v0.80.0 okazała się najmocniejsza: **przejdź ekran
+I trzecią, która w v0.80.0 i v0.81.0 okazała się najmocniejsza: **przejdź ekran
 klawiaturą i zrób zrzut.** v0.79.0 znalazła tak przycisk rysowany poza panelem.
 v0.80.0, próbując zjechać kursorem na wiersz konsorty, znalazła, że **kursor się
 nie rusza — na trzech ekranach, od pierwszego commita**. Kod wygląda poprawnie,
