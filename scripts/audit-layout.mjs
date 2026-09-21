@@ -308,6 +308,18 @@ const report = [];
 
 for (const recipe of RECIPES) {
   if (only && recipe.key !== only) continue;
+  try {
+    await auditOne(recipe);
+  } catch (err) {
+    // One scene that throws used to take the whole report with it: there was no
+    // `catch` anywhere in this file, although the printer has always known how
+    // to show `row.error`. A run of sixteen scenes that dies on the fourth and
+    // prints nothing is worse than no tool at all (v0.85.0).
+    report.push({ scene: recipe.key, error: String(err?.message ?? err).split(String.fromCharCode(10))[0] });
+  }
+}
+
+async function auditOne(recipe) {
   await page.goto(BASE + recipe.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await new Promise(r => setTimeout(r, recipe.wait ?? 3800));
   await pump(60);
@@ -327,7 +339,7 @@ for (const recipe of RECIPES) {
   const probe = await page.evaluate(PROBE, recipe.key);
   if (probe.missing) {
     report.push({ scene: recipe.key, error: 'scene not active' });
-    continue;
+    return;
   }
 
   const findings = [];

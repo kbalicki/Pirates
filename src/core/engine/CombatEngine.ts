@@ -4,7 +4,7 @@ import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
-import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY } from "../systems/CombatSystem.ts";
+import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY, bearingSide } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
 import { damageSpeedMultiplier, damageTurnMultiplier, applyFlooding } from "../systems/DamageSystem.ts";
@@ -14,6 +14,21 @@ export type AiArchetype = "aggressive" | "defensive" | "tactical";
 
 /** Battle ships sail noticeably faster than world-map cruise speed for snappier tactics. */
 const COMBAT_SPEED_MUL = 10;
+
+/**
+ * How far out a captain may break off, as a fraction of cannon range.
+ *
+ * The same 0.9 the scene's far-distance timer has always used to decide that
+ * two ships have lost touch — one number, read in both places, so the order to
+ * withdraw is granted at exactly the distance the clock already calls "far".
+ */
+export const DISENGAGE_RANGE_MUL = 0.9;
+
+/**
+ * The closest station the enemy's helm will steer for, in arena pixels: the
+ * width of a drawn hull (a 256 px sprite at scale 0.3).
+ */
+export const HULL_CLEARANCE = 77;
 
 export class CombatEngine {
   /**
@@ -408,6 +423,10 @@ export class CombatEngine {
         return this.applyBoarding(state, shipId);
       }
 
+      case "AttemptDisengage": {
+        return this.applyDisengage(state, shipId);
+      }
+
       default:
         return { state, events };
     }
@@ -470,6 +489,37 @@ export class CombatEngine {
   }
 
   /** Resolve a broadside: cooldown check, ammo-modulated damage, FX events. */
+  /**
+   * Break off the action (v0.85.0).
+   *
+   * `SeaBattleScene` has pushed this command on `ESC` since the scene was
+   * written, and the screen has read `ESC: Wycofaj` for just as long. Nothing
+   * in this switch had a case for it: the command fell through to `default`
+   * and the state that came back was byte-identical to a tick with no command
+   * at all. The only way out of a sea fight without sinking somebody was the
+   * scene's own far-distance rule — two whole minutes beyond cannon range.
+   *
+   * She breaks off at the same distance that rule uses, which is the distance
+   * at which the guns have stopped mattering. Any closer and the answer is no,
+   * with a reason: a ship does not walk away from a broadside at fifty yards.
+   */
+  private applyDisengage(
+    state: CombatState,
+    shipId: string,
+  ): { state: CombatState; events: CombatEvent[] } {
+    const self = state.entities[shipId];
+    const otherId = shipId === (state.playerShipId as string) ? state.enemyShipId : state.playerShipId;
+    const other = state.entities[otherId as string];
+    if (!self || !other) return { state, events: [] };
+
+    const dist = vec2Dist(self.pos, other.pos);
+    const breakOff = (state.cannonRange ?? CANNON_RANGE) * DISENGAGE_RANGE_MUL;
+    if (dist < breakOff) {
+      return { state, events: [{ type: "DisengageRejected", reason: "too_close" }] };
+    }
+    return { state, events: [{ type: "BattleEnded", outcome: "disengaged" }] };
+  }
+
   private applyFire(
     state: CombatState,
     shipId: string,
@@ -488,28 +538,12 @@ export class CombatEngine {
     const targetId = shipId === (state.playerShipId as string) ? state.enemyShipId : state.playerShipId;
     const target = state.entities[targetId as string];
 
-    // Arc check: broadside cannons can only fire to the side that matches the requested cannon
-    // (left/right) AND within ±60° of perpendicular to the ship's heading. Bow/stern is a dead zone.
-    if (target?.ship) {
-      const dx = target.pos.x - entity.pos.x;
-      const dy = target.pos.y - entity.pos.y;
-      const d2 = Math.sqrt(dx * dx + dy * dy);
-      if (d2 > 0) {
-        const fx = Math.sin(entity.heading);
-        const fy = -Math.cos(entity.heading);
-        const rx = Math.cos(entity.heading);
-        const ry = Math.sin(entity.heading);
-        const fwdDot = (dx * fx + dy * fy) / d2;
-        const rightDot = (dx * rx + dy * ry) / d2;
-        const inDeadZone = Math.abs(fwdDot) > 0.5; // outside ±60° of perpendicular
-        const wrongSide =
-          (side === "right" && rightDot < 0) ||
-          (side === "left" && rightDot > 0);
-        if (inDeadZone || wrongSide) {
-          // Silently refuse — no cooldown, no fire event. Player must turn broadside-on.
-          return { state, events: [] };
-        }
-      }
+    // Arc check: broadside cannons only bear to one side, and only outside the
+    // bow/stern dead zone. `bearingSide` is the one reader of that rule since
+    // v0.85.0 — the enemy's guns used to carry a copy that had neither half.
+    if (target?.ship && bearingSide(entity.heading, entity.pos, target.pos) !== side) {
+      // Silently refuse — no cooldown, no fire event. Player must turn broadside-on.
+      return { state, events: [] };
     }
 
     const reloadTicks = effectiveReloadTicks(
@@ -681,8 +715,32 @@ export class CombatEngine {
       preferredAmmo = "chain"; // shred player sails to widen the gap
     }
 
-    // Broadside offset — keep enemy on our side
-    const broadSideOffset = Math.PI / 2;
+    // Two hulls do not share the same water. Nothing enforced this before
+    // v0.85.0 because nothing could: the enemy's helm never closed, so the
+    // boarder's 40 px station was a number no ship ever reached. It is half a
+    // hull — the sprites are 256 px drawn at 0.3, so 77 px of arena each — and
+    // two ships at 40 px are drawn one through the other. She lies alongside
+    // instead. The captain may still close to grapple: `canBoard` wants 30 px,
+    // and this is a rule for the helm the engine steers, not for his.
+    desiredDist = Math.max(HULL_CLEARANCE, desiredDist);
+
+    // Broadside offset — keep the target on one side.
+    //
+    // Before v0.85.0 this was the whole of the enemy's helm: `angleToPlayer +
+    // 90°`, a heading whose velocity has no component along the line between
+    // the two ships. `desiredDist` is worked out five ways above — three
+    // archetypes and two crew-ratio overrides — and the only thing that read it
+    // was the sail throttle, so the range never changed. Measured over 120 s at
+    // six starting distances against all three archetypes: it moved at most
+    // 16 px, and *outward*, because a ship sailing the tangent walks off her
+    // own circle. A hull that wanted 128 px and opened at 900 ended at 907.
+    //
+    // The offset closes as she goes off station. At the range she wants she
+    // lies beam-on, exactly as before; a third of that range too far and her
+    // bow comes round far enough that no gun bears, which is the price of
+    // closing and is paid by both sides of the fight.
+    const stationErr = clamp((dist - desiredDist) / Math.max(1, desiredDist), -1, 1);
+    const broadSideOffset = (Math.PI / 2) * (1 - stationErr);
     const desiredHeading = normalizeHeading(angleToPlayer + broadSideOffset);
     const shipClass = SHIP_CLASSES[enemy.ship.classId as string];
     const turnRate = shipClass?.turnRate ?? 0.08;
@@ -719,10 +777,15 @@ export class CombatEngine {
       return { entity: updated, events };
     }
 
-    // Fire if in range and cooldown ready
+    // Fire if a battery bears, the target is in range, and that battery is
+    // loaded. The arc is the captain's own (v0.85.0): before this the enemy
+    // fired from any angle at all, and always from her left battery — which
+    // was only ever the right answer because her helm could not point her
+    // anywhere but beam-on.
+    const bearing = bearingSide(updated.heading, updated.pos, player.pos);
     const def = AMMO_DEFS[preferredAmmo];
     const effectiveRange = cannonRange * def.rangeMul;
-    if (dist <= effectiveRange && updated.ship!.cooldown.left <= 0) {
+    if (bearing !== null && dist <= effectiveRange && updated.ship!.cooldown[bearing] <= 0) {
       const dRatio = dist / effectiveRange;
       let distFactor = Math.pow(1 - dRatio, 1.5);
       if (dRatio < 0.15) distFactor *= 1.6;
@@ -730,7 +793,7 @@ export class CombatEngine {
       const accuracy = gunneryAccuracy(dRatio, NEUTRAL_GUNNERY);
       const hit = Math.random() < accuracy;
 
-      events.push({ type: "CannonFired", side: "left", shipId: enemy.id, ammo: preferredAmmo, hit, fromPos: enemy.pos, targetPos: player.pos });
+      events.push({ type: "CannonFired", side: bearing, shipId: enemy.id, ammo: preferredAmmo, hit, fromPos: enemy.pos, targetPos: player.pos });
       events.push({ type: "Sound", id: "cannon_fire" });
 
       if (hit && player.ship) {
@@ -759,7 +822,7 @@ export class CombatEngine {
         ...updated,
         ship: {
           ...updated.ship!,
-          cooldown: { ...updated.ship!.cooldown, left: enemyReloadOnFire },
+          cooldown: { ...updated.ship!.cooldown, [bearing]: enemyReloadOnFire },
         },
       };
     }

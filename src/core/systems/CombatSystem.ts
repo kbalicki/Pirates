@@ -102,3 +102,33 @@ export function gunneryAccuracy(dRatio: number, gunnery: number = NEUTRAL_GUNNER
   const g = Math.max(0, Math.min(10, gunnery));
   return Math.max(0, Math.min(1, base * (0.85 + 0.03 * g)));
 }
+
+/**
+ * Cosine of the bow/stern dead zone: a target within ±60° of the ship's own
+ * heading (or of her stern) lies where no broadside gun can be trained.
+ */
+export const BROADSIDE_ARC_COS = 0.5;
+
+/**
+ * Which battery bears on a target, or `null` when it lies in the dead zone.
+ *
+ * Before v0.85.0 this rule was written twice. The captain's guns obeyed it in
+ * `CombatEngine.applyFire` — arc and side both, a broadside silently refused
+ * from the bow. The enemy's guns obeyed a **copy** in `runEnemyAI` that had
+ * neither: she fired from any angle, and always from her left battery, because
+ * her helm was hard-wired to keep the player there. One rule, one reader now.
+ */
+export function bearingSide(
+  heading: number,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+): "left" | "right" | null {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const d = Math.sqrt(dx * dx + dy * dy);
+  if (d === 0) return null;
+  const fwdDot = (dx * Math.sin(heading) + dy * -Math.cos(heading)) / d;
+  if (Math.abs(fwdDot) > BROADSIDE_ARC_COS) return null;
+  const rightDot = (dx * Math.cos(heading) + dy * Math.sin(heading)) / d;
+  return rightDot >= 0 ? "right" : "left";
+}

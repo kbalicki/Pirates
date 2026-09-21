@@ -3,7 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { CombatState, CombatEvent } from "../../core/model/CombatState.ts";
 import type { CombatCommand } from "../../core/model/Commands.ts";
 import type { EntityId } from "../../core/model/ids.ts";
-import { CombatEngine } from "../../core/engine/CombatEngine.ts";
+import { CombatEngine, DISENGAGE_RANGE_MUL } from "../../core/engine/CombatEngine.ts";
 import { FxManager } from "../render/FxManager.ts";
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
@@ -51,6 +51,9 @@ import {
 } from "../../core/systems/DamageSystem.ts";
 
 import { itemName, portNameKey, shipNameKey } from "../../core/i18n/names.ts";
+/** How long a passing message stays on the screen. */
+const BANNER_MS = 2000;
+
 const TICK_RATE = 20;
 const TICK_MS = 1000 / TICK_RATE;
 /** How long a hull takes to go under once its hull hits zero (v0.9.9). */
@@ -652,8 +655,9 @@ export class SeaBattleScene extends Phaser.Scene {
       const dy = enemyEntity.pos.y - playerEntity.pos.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
 
-      // "Very far" = beyond 90% of cannon range
-      const farThreshold = this.combatState.cannonRange * 0.9;
+      // "Very far" = the same distance the engine grants a break-off at, so the
+      // clock and the ESC key answer to one number (v0.85.0).
+      const farThreshold = this.combatState.cannonRange * DISENGAGE_RANGE_MUL;
       if (dist > farThreshold) {
         this.farDistanceMs += delta;
       } else {
@@ -1127,25 +1131,20 @@ export class SeaBattleScene extends Phaser.Scene {
       }
       case "Surrender":
         // Brief on-screen banner before BattleEnded triggers
-        this.add.text(this.cameras.main.width / 2, 60, t("battle.surrender"),
-          txt(18, { bold: true, color: "#ffee88" }))
-          .setOrigin(0.5, 0).setDepth(10000);
+        this.flashBanner(t("battle.surrender"), "#ffee88", 18, 60);
         break;
       case "BoardingRejected": {
         const msg = event.reason === "too_far" ? t("battle.cannot_board") : t("battle.enemy_too_strong");
-        this.add.text(this.cameras.main.width / 2, 100, msg,
-          txt(13, { bold: true, color: "#ff8888" }))
-          .setOrigin(0.5, 0).setDepth(10000)
-          .setAlpha(1);
-        // fade out after 2s
-        this.time.delayedCall(2000, () => {});
+        this.flashBanner(msg, "#ff8888", 13);
         break;
       }
+      case "DisengageRejected":
+        this.flashBanner(t("battle.disengage_too_close"), "#ff8888", 13);
+        break;
       case "BoardingResolved":
-        this.add.text(this.cameras.main.width / 2, 100,
+        this.flashBanner(
           event.captured ? t("battle.boarding_won") : t("battle.boarding_lost"),
-          txt(16, { bold: true, color: event.captured ? "#ffee88" : "#ff8888" }))
-          .setOrigin(0.5, 0).setDepth(10000);
+          event.captured ? "#ffee88" : "#ff8888", 16);
         break;
       case "BattleEnded": {
         this.battleOver = true;
@@ -1185,6 +1184,28 @@ export class SeaBattleScene extends Phaser.Scene {
   /** Cargo a taken hull keeps in her own hold, because she joined the fleet. */
   private prizeKept: Record<string, number> = {};
 
+  /**
+   * A line the fight says to the captain, in screen space, gone in two seconds.
+   *
+   * Four messages used to write themselves out by hand at `cameras.main.width
+   * / 2` with the default scroll factor of 1 — a *screen* number used as a
+   * *world* position, the defect v0.59.0 fixed in the result banner and
+   * nowhere else. The arena is three screens across and the camera opens
+   * centred on the player at (1920, 1080), so every one of them was drawn
+   * 1280 px off the left edge of the view: the refusal to board, the
+   * boarding's outcome and the enemy's surrender have never been on the
+   * screen, in any battle, since the scene was written.
+   *
+   * The refusal also carried a two-second timer with an empty callback where
+   * the fade was meant to be, so the lines piled up instead of clearing.
+   */
+  private flashBanner(msg: string, color: string, size: number, y = 100): void {
+    const banner = this.add.text(this.cameras.main.width / 2, y, msg,
+      txt(size, { bold: true, color }))
+      .setOrigin(0.5, 0).setDepth(10000).setScrollFactor(0);
+    this.time.delayedCall(BANNER_MS, () => banner.destroy());
+  }
+
   private showBattleResult(outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"): void {
     // Settled here rather than in `finish`, because the lines below have to
     // describe what happened, and for a defeat that is a decision, not a tally.
@@ -1196,6 +1217,18 @@ export class SeaBattleScene extends Phaser.Scene {
       surrender: t("battle.surrender"),
       captured: t("battle.captured"),
     };
+
+    // A curtain behind the tally (v0.85.0). The camera follows the player, so
+    // the player is always at the centre of the screen — which is exactly
+    // where this banner is drawn. His name, his crew and his hull bars used to
+    // read straight through the black box behind the result and the line that
+    // says how to leave. Nobody saw it while the two ships stood apart at the
+    // arena's origin; they never did after v0.59.0 put the banner in screen
+    // space, and never will again now that they close.
+    this.add.rectangle(
+      this.cameras.main.width / 2, this.cameras.main.height / 2,
+      this.cameras.main.width, this.cameras.main.height, 0x000000, 0.88,
+    ).setScrollFactor(0).setDepth(9990);
 
     const text = this.add.text(
       this.cameras.main.width / 2,

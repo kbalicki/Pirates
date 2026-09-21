@@ -1136,7 +1136,10 @@ konsorta, a po drugim strachu inny szlak.
 
 ## 13. Bitwa morska
 
-Arena, trzy typy amunicji, łuki ostrzału ±60°.
+Arena trzy razy większa od ekranu, trzy typy amunicji, łuki ostrzału ±60°
+— **te same dla obu burt i dla obu stron walki** (`CombatSystem.bearingSide`,
+v0.85.0; wcześniej działa przeciwnika miały własną kopię tej reguły, która nie
+miała ani łuku, ani burty).
 
 | stała | wartość | znaczenie |
 |---|---|---|
@@ -1146,6 +1149,9 @@ Arena, trzy typy amunicji, łuki ostrzału ±60°.
 | `CombatSystem.CANNON_DAMAGE_SAILS` | 3.0 | obrażenia w takielunek |
 | `CombatSystem.CANNON_DAMAGE_CREW` | 4.5 | straty w ludziach |
 | `CombatSystem.NEUTRAL_GUNNERY` | 5 | kanonierka, przy której celność jest nominalna |
+| `CombatSystem.BROADSIDE_ARC_COS` | 0.5 | martwa strefa dziobu i rufy: ±60° |
+| `CombatEngine.DISENGAGE_RANGE_MUL` | 0.9 | ułamek zasięgu dział, od którego wolno zerwać kontakt — i od którego liczy zegar |
+| `CombatEngine.HULL_CLEARANCE` | 77 | najbliższe stanowisko, na jakie wchodzi sternik przeciwnika (szerokość rysowanego kadłuba) |
 
 ### Amunicja
 
@@ -1156,6 +1162,31 @@ Arena, trzy typy amunicji, łuki ostrzału ±60°.
 | grape (kartacz) | ×0.10 | ×0.0 | **×1.30** | ×0.5 |
 
 Kadencja przeładowania = f(załoga × morale × wyszkolenie).
+
+### Sternik przeciwnika
+
+Trzy archetypy i dwa nadpisania od stosunku załóg wyznaczają **stanowisko**,
+na którym przeciwnik chce się trzymać:
+
+| kto | stanowisko |
+|---|---|
+| napastniczy (pirat) | 0.45 × zasięg |
+| taktyczny (marynarka, łowca) | 0.40 × zasięg |
+| ostrożny (kupiec) | 0.70 × zasięg |
+| załoga ≥ 1,5× twojej | do zwarcia — ale nie bliżej niż `HULL_CLEARANCE` |
+| załoga ≤ 0,5× twojej | 1.1 × zasięg, czyli poza strzałem |
+
+Kurs jest **liniową mieszanką** namiaru na ciebie i namiaru ±90°: na swoim
+stanowisku płynie burtą, poza nim dziób schodzi ku tobie (albo od ciebie) tym
+bardziej, im dalej jest od stanowiska. Jedna trzecia poza stanowiskiem — i jest
+dziobem do ciebie, czyli **żadne jej działo nie ma kąta**. To cena zbliżania i
+płaci ją tak samo jak ty.
+
+> Do v0.85.0 kurs był **na sztywno** namiarem ±90°, czyli styczną do okręgu wokół
+> gracza. Stanowisko liczyło się pięcioma gałęziami i czytał je **wyłącznie**
+> przepustnica żagli. Zmierzone przez dwie minuty, z sześciu odległości
+> początkowych i we wszystkich trzech archetypach: dystans zmieniał się **o
+> najwyżej 16 px, i to na zewnątrz**.
 
 ### Abordaż
 
@@ -1559,6 +1590,10 @@ sprawdzaniu mechanik opisanych wyżej:
 | `?encounter=<port>` | ten sam kupiec w zasięgu spotkania — ekran otwiera się sam |
 | `?approach=<port>` | statek na redzie, dialog zbliżania otwiera się sam |
 | `?duel=7&foe=4` | pojedynek kapitanów wprost |
+
+> `?battle=` stawia przeciwnika **425 px** od gracza, a działa sięgają 320. Do
+> v0.85.0 znaczyło to bitwę, w której **nikt nie mógł strzelić i nikt nie
+> zamierzał się zbliżyć**: zero salw w 120 sekundach, koniec z zegara.
 | `?pardon=<port>` | ułaskawienie na ladzie |
 | `?battle=1\|trader\|navy\|pirate\|hunter` | bitwa morska wprost |
 | `?defeat=alone\|consort` | ostatnia minuta przegranej bitwy |

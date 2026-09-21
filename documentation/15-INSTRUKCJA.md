@@ -333,7 +333,7 @@ zmienia szlak. Informator w tawernie sprzeda Ci jej rozkład.
 | `E` | ognia z **prawej** burty |
 | `1` / `2` / `3` | kula / łańcuch / kartacz |
 | `B` | abordaż |
-| `Esc` | zerwij kontakt |
+| `Esc` | zerwij kontakt — **tylko poza zasięgiem dział** |
 | `H` | podręcznik bitwy |
 
 ### Łuki ognia
@@ -343,6 +343,12 @@ i za rufą **nie masz czym strzelać**. Cała bitwa morska polega na tym, żeby
 ustawić burtę i nie dać ustawić jej przeciwnikowi.
 
 Zasięg to **pół szerokości areny**. Dalej kule wpadają do wody.
+
+**Te same łuki obowiązują przeciwnika.** Kiedy zbliża się dziobem, nie ma czym
+strzelać — i odwrotnie: kiedy leży burtą na swoim stanowisku, strzela z tej,
+która akurat ma kąt. Sternik przeciwnika **trzyma odległość**, której chce: pirat
+i marynarka schodzą się blisko, kupiec trzyma dystans, a jeśli ma dwa razy mniej
+ludzi niż Ty — ucieka poza strzał i strzela łańcuchem w żagle.
 
 ### Amunicja
 
@@ -395,8 +401,15 @@ Abordaż wymaga **odległości poniżej trzydziestu** i osłabionego przeciwnika
 kadłub poniżej 35% **albo** załoga poniżej połowy. Rozstrzyga liczba ludzi
 razy morale razy Twoja szermierka.
 
-> **Jeśli oddalisz się poza zasięg dział na minutę**, zacznie lecieć odliczanie.
-> Druga minuta kończy bitwę jako zerwanie kontaktu. Zbliżenie zeruje oba zegary.
+> **`Esc` zrywa kontakt od razu**, jeśli jesteś dalej niż dziewięć dziesiątych
+> zasięgu dział. Bliżej — odmawia i mówi dlaczego: spod burty się nie odchodzi.
+>
+> **Jeśli po prostu oddalisz się poza zasięg dział na minutę**, zacznie lecieć
+> odliczanie i druga minuta kończy bitwę tak samo. Zbliżenie zeruje oba zegary.
+> To ten sam próg, co przy `Esc` — jedna liczba, nie dwie.
+>
+> Do v0.85.0 `Esc` **nie robił nic**, choć ta tabela i wiersz na dole ekranu
+> obiecywały inaczej. Zegar był jedynym wyjściem z bitwy bez rozstrzygnięcia.
 
 ---
 

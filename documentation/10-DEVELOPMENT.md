@@ -244,6 +244,34 @@ strumień audio gry trzymają otwarte żądanie tak długo, jak żyje strona, wi
 `networkidle0` zawsze wyczekiwał swój timeout i przerywał przebieg, zanim ten
 się zaczął. Boot pokrywa `--wait`.
 
+### measure-battle.mjs — czy przeciwnik jest w kadrze (v0.85.0)
+
+Arena bitwy ma **trzy ekrany** szerokości, a kamera chodzi za graczem. Ten skrypt
+przejeżdża bitwę i co 60 klatek pyta żywą scenę o odległość, o to, czy przeciwnik
+mieści się w `cameras.main.worldView`, oraz o oba zegary zrywania kontaktu.
+
+```bash
+node scripts/measure-battle.mjs 4 --policy=hold            # kapitan stoi
+node scripts/measure-battle.mjs 4 --policy=run             # kapitan ucieka
+node scripts/measure-battle.mjs 1 --kinds=navy --policy=hold
+```
+
+To on zamknął pozycję „arena jest za duża” z listy zadań. Przed v0.85.0, przy
+stojącym kapitanie: przeciwnika nie było w kadrze przez **11,3 %** klatek, dystans
+przez całe dwie minuty nie spadł poniżej 425 px, a zegar dalekiego dystansu
+chodził **przez całą bitwę** (119 988 ms). Po — **0 %**, także przy kapitanie
+uciekającym na pełnych żaglach we wszystkich czterech archetypach.
+
+**Uwaga:** nie edytuj plików w `src/` w trakcie przebiegu. HMR Vite przeładuje
+stronę i puppeteer przerwie z `Execution context was destroyed`.
+
+### audit-layout.mjs — jedna scena, która rzuci, nie zabiera raportu
+
+Od v0.85.0 każda scena jest w `try`/`catch`. Printer od początku umiał pokazać
+`row.error`, ale w pliku **nie było żadnego `catch`**, więc przebieg szesnastu
+scen kończył się bez jednej linijki, jeśli czwarta rzuciła. Narzędzie, które
+umie zaraportować błąd, ale nie umie go złapać, nie raportuje nic.
+
 ## Konwencje wydań
 
 ### Wersjonowanie
@@ -315,6 +343,7 @@ Kompresuj **przed** commitem — `sharp` dla PNG, ffmpeg dla JPEG. Oryginały ni
 | `?wounded=40` | Tylu ludzi już leży pod pokładem — lazaret widać dopiero przez kilkanaście dni po walce, więc bez tego nie da się go obejrzeć |
 | `?famine=<port>` (v0.64.0) | Od tego wydania harness stawia w tym mieście **prawdziwe zdarzenie `famine`** i przelicza ceny portu, więc lada pokaże drogą żywność i wodę przy normalnym tytoniu. Wcześniej opróżniał półki i stemplował `hunger`, ale zdarzenia nie było — czyli jedyna rzecz, którą głód robi z cenami, była niewidoczna w harnessie zbudowanym po to |
 | `?hail=cartagena` | Przyjaźny kupiec w zasięgu zawołania, niosący tablicę ogłoszeń tego miasta (v0.62.0). Ze zwykłej gry nie da się tego dosięgnąć na żądanie: nośnik musi być przyjazny, musi jeszcze trzymać wieść, której kapitan nie zna, i musi być w `HAIL_RANGE` w chwili, gdy chodzi kontrola. Jej tablica jest dopełniana z innych miast do trzech pozycji, bo jednopozycyjna nie pokazałaby podziału |
+| `?battle=1\|trader\|navy\|pirate\|hunter` | Bitwa morska wprost. **Uwaga na odległość startową:** przeciwnik pojawia się w losowym rogu ekranu, **425 px** od gracza, przy zasięgu dział 320 — czyli poza strzałem i za progiem zegara zrywającego kontakt. Do v0.85.0 była to bitwa, która nie mogła się zacząć |
 | `?encounter=<port>` (v0.84.0) | Ten sam kupiec, co `?hail=`, ale **14** jednostek od gracza zamiast 24 — czyli wewnątrz `ENCOUNTER_RANGE` (18), więc `ShipEncounterScene` otwiera się sama. Załadowana, żeby wiersz manifestu (v0.25.0) miał co powiedzieć. **Ta scena była nieprzejechana przez pięć wydań z jednego powodu: nie było do niej wejścia** |
 | `?approach=<port>` (v0.84.0) | Statek na redzie miasta, cztery jednostki od nabrzeża, więc `PortApproachScene` otwiera się sama. Sam `getPortWaterPos` nie wystarczy: mapa mierzy zbliżanie do pozycji **przyciągniętej do brzegu** z promieniem 6, a stanowisko do blokady leży czterdzieści jednostek dalej |
 | `?duel=7&foe=4` (v0.84.0) | Pojedynek bez niczego przed nim; pierwsza liczba to szermierka kapitana, druga przeciwnika (0-10, `createDuel` przycina). Dojście do niego w grze to znaleźć statek, zbić go i wejść na pokład |

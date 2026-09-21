@@ -55,5 +55,6 @@ export type CombatEvent =
   | { type: "ShipDamaged"; shipId: EntityId; hullDelta: number; sailsDelta: number; crewDelta?: number }
   | { type: "Surrender"; shipId: EntityId }
   | { type: "BoardingRejected"; reason: "too_far" | "enemy_too_strong" }
+  | { type: "DisengageRejected"; reason: "too_close" }
   | { type: "BoardingResolved"; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number }
   | { type: "BattleEnded"; outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"; loot?: Record<string, number> };

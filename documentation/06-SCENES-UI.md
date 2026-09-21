@@ -378,6 +378,32 @@ Dla piszącego scenę znaczy to tyle: **nie buduj własnej bramki**. `PortScene`
 miała taką (`tradePending`, v0.76.0) i została skasowana. Pomiar i mechanizm
 w [10-DEVELOPMENT.md](10-DEVELOPMENT.md), narzędzie w `scripts/keycount.mjs`.
 
+## Cztery zdania bitwy, których nigdy nie było na ekranie (v0.85.0)
+
+Arena bitwy ma **trzy ekrany szerokości**, a kamera chodzi za graczem, który
+startuje w jej środku — na (1920, 1080). Odmowa abordażu, wynik abordażu i
+kapitulacja przeciwnika były stawiane na `cameras.main.width / 2` **bez**
+`setScrollFactor(0)`: liczba **ekranowa** użyta jako pozycja **światowa**, czyli
+1280 px za lewą krawędzią widoku. W każdej bitwie, od kiedy scena istnieje.
+
+v0.59.0 znalazła dokładnie ten błąd i naprawiła **baner wyniku** — ekran, na
+którym go znalazła. Trzej sąsiedzi zostali z usterką, tak jak podręcznik bitwy
+został z nią o wydanie dłużej niż `HelpScene`.
+
+Rysuje je teraz jedno `flashBanner(tekst, kolor, rozmiar, y)`, które po dwóch
+sekundach **zdejmuje wiersz z ekranu**. Odmowa abordażu niosła wcześniej
+dwusekundowy zegar z **pustym callbackiem** w miejscu, gdzie miało być
+ściemnienie, więc wiersze się nawarstwiały.
+
+Baner wyniku dostał też **kurtynę**: kamera chodzi za graczem, więc gracz jest
+zawsze dokładnie tam, gdzie ten baner — jego nazwa, załoga i paski kadłuba
+czytały się przez czarne tło wyniku.
+
+Pilnuje tego `CombatEngine.test.ts`: każdy `add.text` / `add.rectangle` w tej
+scenie, który liczy pozycję z wymiarów kamery, musi mieć `setScrollFactor(0)`.
+
+---
+
 ## Ekran wyniku bitwy opisuje, a nie przelicza (v0.78.0)
 
 `showBattleResult` wołało `computePrize` **drugi raz**, żeby narysować swoje

@@ -519,6 +519,7 @@ export const EN: LocaleData = {
   "battle.captured": "SHIP CAPTURED!",
   "battle.cannot_board": "Get closer to board (≤30 px).",
   "battle.enemy_too_strong": "Enemy too strong — soften first (hull or crew).",
+  "battle.disengage_too_close": "Too close to break off — open the range beyond gunshot.",
   "battle.capture_note": "ship added to fleet (if slot available)",
   "battle.defeat_flag_shifted": "Your flag shifts to the {{ship}}. {{count}} {{count:man}} came across in the boats.",
   "battle.defeat_ransomed": "A king's ship lands you at {{port}}. Ransom and the yard take {{gold}} gold; you have a pinnace and {{count}} {{count:man}}.",
