@@ -16,8 +16,21 @@ import Phaser from "phaser";
 import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { t } from "../../core/i18n/index.ts";
 import { packColumns, paginate } from "../../core/services/columnFlow.ts";
+import { BOARDING_RANGE } from "../../core/systems/BoardingSystem.ts";
 
 /** Every section of the spec, in reading order. Pages are found, not chosen. */
+/**
+ * Numbers the manual states, taken from the code that holds them (v0.88.0).
+ *
+ * Every section is translated with these, whether it asks for them or not,
+ * because the alternative is a table of which key wants which variable — a
+ * second copy of the same kind that put the wrong number here to begin with.
+ * `battle.help_boarding_body` said the grapnel reaches thirty pixels; it has
+ * reached seventy-seven since v0.86.0, when `BOARDING_RANGE` became a hull's
+ * width. A number typed into a sentence is a copy nothing keeps.
+ */
+const MANUAL_VARS = { range: BOARDING_RANGE };
+
 const SECTIONS: Array<[string, string]> = [
   ["battle.help_controls_h", "battle.help_controls_body"],
   ["battle.help_sails_h", "battle.help_sails_body"],
@@ -75,7 +88,7 @@ export class BattleHelpScene extends Phaser.Scene {
     const drawn = SECTIONS.map(([headerKey, bodyKey]) => {
       const header = this.add.text(0, 0, t(headerKey),
         txt(13, { bold: true, color: "#ffdd88" })).setDepth(5).setVisible(false);
-      const body = this.add.text(0, 0, t(bodyKey),
+      const body = this.add.text(0, 0, t(bodyKey, MANUAL_VARS),
         { ...txt(11, { color: "#cccccc" }), wordWrap: { width: colW }, lineSpacing: 3 })
         .setDepth(5).setVisible(false);
       return { header, body };

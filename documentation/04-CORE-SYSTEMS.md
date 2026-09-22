@@ -956,7 +956,9 @@ Wartość ciosu = `(1 + fencing/10)`, przy kondycji poniżej 3 mnożone przez 0.
 
 ### Abordaż (`BoardingSystem.ts`)
 
-Warunek: dystans ≤ 30 px **oraz** wróg osłabiony (kadłub < 35% lub załoga < 50%).
+Warunek: dystans ≤ `BOARDING_RANGE` **oraz** wróg osłabiony (kadłub < 35% lub załoga < 50%).
+
+> **Poprawione w v0.88.0.** Stało tu „≤ 30 px”. Bosak sięga **szerokości kadłuba** (77) od v0.86.0 — i te same trzydzieści stało jeszcze w dwóch zdaniach, które czyta **gracz**: w komunikacie odmowy i w podręczniku bitewnym, po polsku i po angielsku. Liczba wpisana w zdanie to kopia, której nic nie pilnuje.
 
 ```
 playerStrength = crew × morale × (1 + szermierka/10)

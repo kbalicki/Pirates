@@ -244,6 +244,59 @@ strumień audio gry trzymają otwarte żądanie tak długo, jak żyje strona, wi
 `networkidle0` zawsze wyczekiwał swój timeout i przerywał przebieg, zanim ten
 się zaczął. Boot pokrywa `--wait`.
 
+### probe-keys.mjs — który klawisz nie robi nic (v0.88.0)
+
+```bash
+node scripts/probe-keys.mjs                  # wszystkie sceny
+node scripts/probe-keys.mjs --only=PortScene
+node scripts/probe-keys.mjs --json
+```
+
+Klawiatura stawia trzy pytania. Na dwa odpowiada już `audit-layout.mjs`: które
+klawisze ekran **obiecuje**, a nie wiąże (`OBIECANE-NIEZWIAZANE`), i które wiąże,
+nie mówiąc o tym (`ZWIAZANE-NIEZAPOWIEDZIANE`). Trzecie nie było tu zadane nigdy:
+**który klawisz jest związany, zapowiedziany — i nie zmienia niczego?**
+
+v0.85.0 znalazła taki: `ESC` w bitwie był związany, nazwany w linii podpowiedzi i
+**nie miał `case` w silniku**. Przemiatanie źródła z v0.81.0 pyta, czy obiecany
+klawisz ma handler; z v0.84.0 — czy związany jest nazwany. Handler, który nic nie
+robi, przechodzi oba. Widzi go **tylko naciśnięcie**.
+
+**Cztery kanały zmiany:** zbiór aktywnych scen, każdy `Text` sceny (pozycja, kolor,
+grubość, przezroczystość), skrót `worldState` i kamera.
+
+**Przebieg kontrolny.** Połowa tych scen żyje sama z siebie: fale idą, mewy krążą,
+zegar chodzi, baner gaśnie. Więc **każda scena jest mierzona dwa razy bez
+naciśnięcia czegokolwiek**, a to, co ruszyło się samo, odejmuje się od wyniku
+każdego klawisza.
+
+**Drugi przebieg.** `1` na podręczniku otwartym na pierwszej zakładce nie zmienia
+nic — i `LEFT` na pierwszym wierszu też. To nie są martwe klawisze, to są
+klawisze, które nie mają dokąd pójść. Każdy podejrzany jest więc naciskany
+**ponownie, po jednym z tych, które coś ruszyły**.
+
+**Pułapki, które to narzędzie ma wbudowane, bo się na nie nadziało:**
+
+- **Scena się pauzuje, nie zatrzymuje.** `audit-layout.mjs` robi `scene.stop()` na
+  wszystkim i mierzy jedną nieruchomą klatkę. Tu trzeba pompować klatki dalej —
+  a zatrzymany `MainMapScene` zostawia renderery z **zniszczoną kamerą** i następny
+  `g.loop.step` umiera na `cam.zoom`. Pauza, nie stop — tak zresztą robi sama gra.
+- **Scena z fazami wymaga dojścia, a dojście bywa losowe.** Dziewięć z dwunastu
+  klawiszy sceny szturmu należy do podziału łupów i jest bramkowane `phase`.
+  Pierwsza wersja tego narzędzia ogłosiła, że `UP` i `DOWN` są tam martwe —
+  **nie są**: każdy klawisz dostaje świeżą scenę, a ostrzał rzuca kośćmi, więc
+  kolejne przebudowy lądowały w różnych stanach i raport porównywał dwa różne
+  ekrany. Stąd `require` w recepturze: lista napisów, które **muszą** być na
+  ekranie, zanim cokolwiek się naciśnie. **Sonda, która przebudowuje świat dla
+  każdego klawisza, musi udowodnić, że przebudowała ten sam świat.**
+- **Kanał tekstowy nie widzi salwy.** `Q` i `E` w bitwie nie zmieniają żadnego
+  napisu — dym, kule i przeładowanie to grafika. Ten probe **nie orzeka** o
+  klawiszach czysto graficznych; od tego jest `measure-battle.mjs`.
+
+Uwaga: `scripts/_*.mjs` to pliki robocze i nie zostają w repo.
+
+---
+
 ### sweep-constants.mjs — dwie liczby o jednej rzeczy (v0.87.0)
 
 ```bash

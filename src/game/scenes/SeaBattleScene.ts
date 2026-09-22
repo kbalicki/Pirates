@@ -23,6 +23,7 @@ import {
 } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { cannonRangeFor } from "../../core/systems/CombatSystem.ts";
+import { BOARDING_RANGE } from "../../core/systems/BoardingSystem.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
 import { windSpeedModifier, navigatedWindModifier } from "../../core/systems/WeatherSystem.ts";
@@ -1188,7 +1189,9 @@ export class SeaBattleScene extends Phaser.Scene {
         this.flashBanner(t("battle.surrender"), "#ffee88", 18, 60);
         break;
       case "BoardingRejected": {
-        const msg = event.reason === "too_far" ? t("battle.cannot_board") : t("battle.enemy_too_strong");
+        const msg = event.reason === "too_far"
+          ? t("battle.cannot_board", { range: BOARDING_RANGE })
+          : t("battle.enemy_too_strong");
         this.flashBanner(msg, "#ff8888", 13);
         break;
       }

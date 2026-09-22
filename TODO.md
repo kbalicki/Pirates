@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-22 · **Wersja:** v0.87.0.0 · **Branch:** `main`
-**Kod:** 270 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2355 przechodzi, 0 failuje, 0 `todo`** w 82 plikach
+**Stan na:** 2026-09-22 · **Wersja:** v0.88.0.0 · **Branch:** `main`
+**Kod:** 271 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2360 przechodzi, 0 failuje, 0 `todo`** w 83 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2606,7 +2606,27 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.87.0)
+**Znalezione przy naciskaniu klawiszy, nienaprawione** (v0.88.0.0):
+
+- **`Q` i `E` w bitwie są dla sondy niewidoczne.** Salwa nie zmienia żadnego
+  napisu — dym, kule i przeładowanie to grafika. `probe-keys.mjs` nie orzeka
+  o klawiszach czysto graficznych, więc **nie wiadomo**, czy któryś z nich nie
+  jest martwy. Kanał „Graphics.commandBuffer”, który ma już `audit-layout.mjs`,
+  domknąłby to
+- **`UIOverlayScene` nie wiąże żadnego klawisza** — zgodnie z zamysłem (to nakładka),
+  ale warto to kiedyś zapisać jako regułę, a nie jako brak
+- **Sonda nie umie dojść do większości stanów z fazami.** Fazę łupów szturmu
+  udało się przypiąć (`require`), ale `CityDefenseScene`, `DuelScene` i druga
+  połowa `PortScene` (sześć lad) mają stany, do których żadna receptura nie
+  prowadzi. To jest ta sama praca co `audit-layout.mjs`: recept na scenę jest
+  więcej niż scen
+- **Liczba w zdaniu bywa też poza lokalami.** Naprawiony został `px`; procenty,
+  dni i tony w 31 zdaniach są dziś prawdziwe, ale nic ich nie pilnuje poza
+  licznikiem „nie więcej niż 31”
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.88.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2626,40 +2646,47 @@ repo wydanie zaczyna się od liczby, nie od pomysłu.
 
 ---
 
-**1. Którego jeszcze klawisza nikt nie nacisnął?** v0.85.0 znalazła `ESC`, który był
-związany, nazwany i **nie miał `case` w silniku** — czyli przechodził przez oba
-przemiatania źródła, z v0.81.0 i v0.84.0. Jedyne, co to widzi, to test, który
-**naciska klawisz i patrzy na stan**. **Robota:** dla każdej sceny wypisać, co każdy
-związany klawisz **zmienia** — i wypisać te, które nie zmieniają nic. `drive.mjs` już
-naciska klawisze i zrzuca stan; brakuje porównania stanu przed i po. Audyt layoutu
-wypisuje już `ZWIAZANE-NIEZAPOWIEDZIANE` i `OBIECANE-NIEZWIAZANE` — trzeciej
-kolumny, *nic nie robi*, nie ma.
+**Zamknięte w v0.88.0 — narzędzie istnieje, ale trzeba je uruchamiać:**
 
-**2. Czy reguła mieści się w świecie, w którym działa?** v0.87.0 znalazła regułę
-mówiącą o widzeniu z odległości dziesięciokrotnie większej niż wzrok — bo liczba
-opisująca wzrok leżała w innej warstwie. **Robota:** wziąć tabelę `px` z
-`sweep-constants.mjs` i przejść ją **pozycja po pozycji**, pytając o każdą: czy to
-jest odległość wzroku, zasięgu, czy obecności? Te trzy rządzą się różnymi
-prawami i dziś leżą w jednej kolumnie. Zacząć od `PRESENCE_RANGE` i
-`BLOCKADE_RADIUS`, bo obie decydują o czymś, czego gracz nie widzi.
+- **Którego klawisza nikt nie nacisnął.** `scripts/probe-keys.mjs`. Odpowiada na
+  trzecie pytanie o klawiaturę — który klawisz jest związany, zapowiedziany i nie
+  zmienia niczego. Ma przebieg kontrolny (sceny żyją same z siebie), drugi przebieg
+  („nie ma dokąd pójść” to nie „nie działa”) i warunek wstępny `require`
 
-**3. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane osobno
-w tym repo: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0), **okno
-liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast dwóch**
-(v0.82.0). Trzecia jest najbliżej i łączy się z pozycją 2 wyżej — to ten sam
-kształt w warstwie ekranu.
+---
 
-**4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** Sedno v0.87.0 nie
-brzmi „stałe się rozjechały”, tylko **„liczba, od której zależą reguły, leżała
-w warstwie, która rysuje”**. **Robota:** przemieść `src/game/` za stałymi i funkcjami
-czystymi, które rozstrzygają coś, a nie rysują — i przenieść je. Strażnik na
-`*_RANGE` już jest; po nim idą progi, ceny i każda funkcja, której wynik trafia
-do `WorldState`.
+**1. Czy reguła mieści się w świecie, w którym działa?** v0.87.0 znalazła regułę
+mówiącą o widzeniu z odległości dziesięciokrotnie większej niż wzrok. **Robota:**
+wziąć tabelę `px` z `sweep-constants.mjs` i przejść ją **pozycja po pozycji**,
+pytając o każdą: czy to jest odległość **wzroku**, **zasięgu** czy **obecności**?
+Te trzy rządzą się różnymi prawami i dziś leżą w jednej kolumnie. Zacząć od
+`PRESENCE_RANGE` (400) i `BLOCKADE_RADIUS` (320), bo obie decydują o czymś, czego
+gracz nie widzi.
+
+**2. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** Sedno v0.87.0 to
+„liczba, od której zależą reguły, leżała w warstwie, która rysuje”; sedno v0.88.0 to
+to samo o **zdaniu**: liczba wpisana w zdanie jest kopią, której nic nie pilnuje.
+**Robota:** przemieść `src/game/` za stałymi i funkcjami czystymi, które
+rozstrzygają coś, a nie rysują — i przenieść je. Strażnik na `*_RANGE` już jest;
+po nim idą progi, ceny i każda funkcja, której wynik trafia do `WorldState`.
+
+**3. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe
+(`audit-layout.mjs`, `probe-keys.mjs`) widzą każdą scenę w **jednym** stanie —
+tym, w którym się otwiera. v0.88.0 dopisała drugą recepturę dla szturmu (faza
+łupów) i to od razu zmieniło wynik dla dziewięciu klawiszy. **Robota:** wypisać
+dla każdej sceny jej **fazy** (`phase`, `view`, zakładka, tryb) i policzyć, ile
+z nich ma recepturę. Podejrzani od razu: `PortScene` (sześć lad), `CityDefenseScene`,
+`DuelScene`, `RetirementScene`.
+
+**4. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane
+osobno: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0), **okno
+liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast
+dwóch** (v0.82.0).
 
 **5. Przed każdym wydaniem.** Dotykającym ekranu: `node scripts/audit-layout.mjs`.
-Dotykającym bitwy: `node scripts/measure-battle.mjs 4 --policy=hold`. Dotykającym
-liczb: `node scripts/sweep-constants.mjs`. Od v0.86.0 bitwa potrafi sama otworzyć
-pojedynek, więc `endedAt: "scene gone"` nie znaczy już końca walki.
+Dotykającym klawiszy: `node scripts/probe-keys.mjs`. Dotykającym bitwy:
+`node scripts/measure-battle.mjs 4 --policy=hold`. Dotykającym liczb:
+`node scripts/sweep-constants.mjs`.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),
