@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-22 · **Wersja:** v0.88.0.0 · **Branch:** `main`
-**Kod:** 271 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2360 przechodzi, 0 failuje, 0 `todo`** w 83 plikach
+**Stan na:** 2026-09-22 · **Wersja:** v0.89.0.0 · **Branch:** `main`
+**Kod:** 271 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2367 przechodzi, 0 failuje, 0 `todo`** w 83 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2626,7 +2626,26 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.88.0)
+**Znalezione przy mgle, nienaprawione** (v0.89.0.0):
+
+- **Nikt nie sprawdza, czy generator pogody umie dać to, czego reguły żądają.**
+  Mgła była pierwsza; `StormSystem` i `WeatherFieldSystem` mają własne progi
+  (`STORM_SAFE_SAIL`, `HURRICANE_*`) i nikt ich nie zestawił z rozkładem, który
+  `updateWeather` faktycznie produkuje
+- **`fogCalmFactor` jest liniowy od zera do progu**, więc przy nowym progu 0,75
+  i typowym wietrze 0,54 daje 0,28 — czyli **typowa noc daje cienką mgłę**, a
+  gęstą tylko cisza. To jest do przyjęcia, ale nie zostało **wybrane**, tylko
+  wyszło z arytmetyki
+- **Pole szumu ma szczyt 0,837 i nikt tego nie wiedział.** `FOG_PATCH_CEIL = 0.8`
+  jest **zmierzone**, nie wyprowadzone — gdyby `hash3` albo `FOG_CELL` się
+  zmieniły, sufit trzeba przemierzyć ponownie. Strażnik pilnuje relacji, nie
+  źródła
+- **Mgła nadal nie robi nic ze statkiem.** To świadome (v0.40.0), ale teraz gdy
+  mgła **istnieje**, warto sprawdzić, czy nawigacja w niej ma jakąś cenę
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.89.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2655,38 +2674,37 @@ repo wydanie zaczyna się od liczby, nie od pomysłu.
 
 ---
 
-**1. Czy reguła mieści się w świecie, w którym działa?** v0.87.0 znalazła regułę
-mówiącą o widzeniu z odległości dziesięciokrotnie większej niż wzrok. **Robota:**
-wziąć tabelę `px` z `sweep-constants.mjs` i przejść ją **pozycja po pozycji**,
-pytając o każdą: czy to jest odległość **wzroku**, **zasięgu** czy **obecności**?
-Te trzy rządzą się różnymi prawami i dziś leżą w jednej kolumnie. Zacząć od
-`PRESENCE_RANGE` (400) i `BLOCKADE_RADIUS` (320), bo obie decydują o czymś, czego
-gracz nie widzi.
+**1. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?** v0.89.0 wzięła z niej
+pierwszą pozycję (mgła i czujność) i znalazła mechanikę, która **nie działała
+w ogóle**. Zostały dwie nazwane: **`PRESENCE_RANGE` (400)** — z jakiej odległości
+flota gracza „liczy się jako obecna” przy odbijaniu miasta, i **`BLOCKADE_RADIUS`
+(320)** — z jakiej stoi się pod portem. Obie decydują o czymś, czego gracz **nie
+widzi** (luneta sięga 36–65). Dla blokady to może być słuszne (patrol to nie
+wzrok), dla obecności — nie wiadomo. **Pomiar na wejściu:** jak często flota
+„jest obecna” przy mieście, którego kapitan nie ma na ekranie.
 
-**2. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** Sedno v0.87.0 to
-„liczba, od której zależą reguły, leżała w warstwie, która rysuje”; sedno v0.88.0 to
-to samo o **zdaniu**: liczba wpisana w zdanie jest kopią, której nic nie pilnuje.
-**Robota:** przemieść `src/game/` za stałymi i funkcjami czystymi, które
-rozstrzygają coś, a nie rysują — i przenieść je. Strażnik na `*_RANGE` już jest;
-po nim idą progi, ceny i każda funkcja, której wynik trafia do `WorldState`.
+**2. Czy generator daje to, czego próg żąda?** To jest ogólniejsza postać tego,
+co v0.89.0 znalazła w mgle, i da się to zadać każdemu progowi: **wypisać rozkład
+wielkości, którą bramkuje, i sprawdzić, po której stronie próg stoi**. Kandydaci
+od razu: `STORM_SAFE_SAIL`, `HURRICANE_*`, progi cen w `PricingSystem`
+(`RATIO_MIN`/`RATIO_MAX` — v0.67.0 już raz na to wpadła), `PREY_AGGRESSION_FLOOR`
+przeciwko tabeli agresji.
 
-**3. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe
-(`audit-layout.mjs`, `probe-keys.mjs`) widzą każdą scenę w **jednym** stanie —
-tym, w którym się otwiera. v0.88.0 dopisała drugą recepturę dla szturmu (faza
-łupów) i to od razu zmieniło wynik dla dziewięciu klawiszy. **Robota:** wypisać
-dla każdej sceny jej **fazy** (`phase`, `view`, zakładka, tryb) i policzyć, ile
-z nich ma recepturę. Podejrzani od razu: `PortScene` (sześć lad), `CityDefenseScene`,
-`DuelScene`, `RetirementScene`.
+**3. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe widzą
+każdą scenę w **jednym** stanie — tym, w którym się otwiera. v0.88.0 dopisała
+drugą recepturę dla szturmu i to od razu zmieniło wynik dla dziewięciu klawiszy.
+**Robota:** wypisać dla każdej sceny jej **fazy** i policzyć, ile z nich ma
+recepturę. Podejrzani: `PortScene` (sześć lad), `CityDefenseScene`, `DuelScene`.
 
-**4. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane
-osobno: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0), **okno
-liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast
-dwóch** (v0.82.0).
+**4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** v0.87.0: liczba
+w warstwie, która rysuje. v0.88.0: liczba w zdaniu. v0.89.0: reguła, która
+wymienia swoich czytelników w komentarzu, a dwaj najważniejsi są poza listą.
+**Robota:** przemieść komentarze w `core/`, które **wyliczają** czytelników albo
+twierdzą coś o zasięgu, i sprawdzić każde takie zdanie kodem.
 
-**5. Przed każdym wydaniem.** Dotykającym ekranu: `node scripts/audit-layout.mjs`.
-Dotykającym klawiszy: `node scripts/probe-keys.mjs`. Dotykającym bitwy:
-`node scripts/measure-battle.mjs 4 --policy=hold`. Dotykającym liczb:
-`node scripts/sweep-constants.mjs`.
+**5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs`. Klawisze:
+`node scripts/probe-keys.mjs`. Bitwa: `node scripts/measure-battle.mjs 4
+--policy=hold`. Liczby: `node scripts/sweep-constants.mjs`.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

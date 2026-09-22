@@ -79,8 +79,28 @@ function awarenessIn(world: WorldState, entity: EntityState): number {
 }
 
 const AI_UPDATE_INTERVAL = 20;       // ticks between AI decisions (~1s)
-const PIRATE_CHASE_RADIUS = 200;
-const HUNTER_CHASE_RADIUS = 250;
+
+/*
+ * `PIRATE_CHASE_RADIUS = 200` and `HUNTER_CHASE_RADIUS = 250` stood here until
+ * v0.89.0, and they were the second half of the fog defect.
+ *
+ * `awarenessIn` above says, in its own comment, that it is "deliberately the
+ * same field read four times rather than four separate rules: whatever 'she
+ * noticed him' means, it should mean the same thing to a merchantman, a navy
+ * sloop, an escort and a named ship's consort." The two hulls that hunt the
+ * captain were not on that list. They read a flat number instead, so fog took
+ * nothing off the eyes of the only ships fog is written to hide him from —
+ * and `FOG_AWARENESS_SHARE`'s own comment says he "is the one being hunted
+ * often enough for this to be the half he notices".
+ *
+ * `updatePirate` could not have read it: it was the one behaviour of the four
+ * never handed `world`. `updatePirateHunter` was handed it and read the flat
+ * number anyway.
+ *
+ * The numbers themselves were also a second copy: the spawn templates give a
+ * pirate an `awarenessRadius` of 250 and a hunter 300, and these 200 and 250
+ * overrode them. One number per hull now, in the table that describes her.
+ */
 const LOITER_TURN_CHANCE = 0.05;     // chance per AI tick to adjust heading when loitering
 const WAYPOINT_RADIUS = 70;          // how close counts as "rounded that corner"
 
@@ -216,7 +236,7 @@ function updateSingleNpc(
     case "navy":
       return updateNavy(entity, player, distToPlayer, world, rng);
     case "pirate":
-      return updatePirate(entity, player, distToPlayer, rng);
+      return updatePirate(entity, player, distToPlayer, world, rng);
     case "pirate_hunter":
       return updatePirateHunter(entity, player, distToPlayer, world, rng);
     default:
@@ -606,13 +626,14 @@ function updatePirate(
   entity: EntityState,
   player: EntityState,
   distToPlayer: number,
+  world: WorldState,
   rng: typeof entity.heading extends number ? any : never,
 ): { entity: EntityState; rng: any } {
   const ai = entity.ai!;
   const playerFaction = player.ship?.factionId as string;
 
-  // Chase non-pirate player if close
-  if (playerFaction !== "pirates" && distToPlayer < PIRATE_CHASE_RADIUS) {
+  // Chase a non-pirate player she can actually see (v0.89.0).
+  if (playerFaction !== "pirates" && distToPlayer < awarenessIn(world, entity)) {
     return {
       entity: {
         ...entity,
@@ -675,7 +696,8 @@ function updatePirateHunter(
   const playerNotoriety = world.player.notoriety ?? 0;
 
   // Chase pirate player or high-notoriety player
-  if ((playerFaction === "pirates" || playerNotoriety > 50) && distToPlayer < HUNTER_CHASE_RADIUS) {
+  if ((playerFaction === "pirates" || playerNotoriety > 50)
+    && distToPlayer < awarenessIn(world, entity)) {
     return {
       entity: {
         ...entity,

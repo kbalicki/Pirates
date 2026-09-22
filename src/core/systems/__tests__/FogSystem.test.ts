@@ -8,6 +8,8 @@ import {
   fogVisionMultiplier,
   fogAwarenessMultiplier,
   FOG_MAX_WIND,
+  FOG_PATCH_FLOOR,
+  FOG_PATCH_CEIL,
   FOG_CELL,
   FOG_VISION_SHARE,
   FOG_AWARENESS_SHARE,
@@ -116,8 +118,35 @@ describe("what a fog needs before it forms", () => {
   it("wants calm air and nothing else will do", () => {
     expect(fogCalmFactor(0)).toBe(1);
     expect(fogCalmFactor(FOG_MAX_WIND)).toBe(0);
-    expect(fogCalmFactor(0.9)).toBe(0);
-    expect(fogDensity(makeWorld({ wind: 0.6 }), SOMEWHERE)).toBe(0);
+    expect(fogCalmFactor(1)).toBe(0);
+    expect(fogDensity(makeWorld({ wind: 0.9 }), SOMEWHERE)).toBe(0);
+  });
+
+  it("asks for a calm the sea it runs on can actually give", () => {
+    // The ceiling was 0.35 against a `windStrength` that averages 0.543 and
+    // was never measured below 0.174 in 54 simulated days: fog's first
+    // precondition held on 0.15 % of samples and fog thick enough to be
+    // announced formed ZERO times. A threshold below the floor of the thing it
+    // gates is not a rare event, it is an off switch.
+    const MEASURED_MEAN_WIND = 0.543;
+    const MEASURED_MIN_WIND = 0.174;
+    expect(FOG_MAX_WIND).toBeGreaterThan(MEASURED_MEAN_WIND);
+    expect(fogCalmFactor(MEASURED_MEAN_WIND)).toBeGreaterThan(0.2);
+    expect(fogCalmFactor(MEASURED_MIN_WIND)).toBeGreaterThan(0.7);
+  });
+
+  it("can be as thick as the shares below say a thick bank is", () => {
+    // `fogDensity` multiplies three factors and both shares are written for
+    // the case where it is 1. The patch field averages 0.492 and tops out at
+    // 0.837, so normalising it against 1 capped the best cell in the
+    // Caribbean at 0.64 - and the product of three such factors could never
+    // reach 1 at all. Measured across a sweep of every wind ceiling: the
+    // thickest bank anywhere was 0.32.
+    expect(FOG_PATCH_CEIL).toBeLessThanOrEqual(0.837);
+    expect(FOG_PATCH_FLOOR).toBeLessThan(0.492);
+    // A cell at the top of the field, dead calm, deep night: a full bank.
+    const patchAtCeil = (FOG_PATCH_CEIL - FOG_PATCH_FLOOR) / (FOG_PATCH_CEIL - FOG_PATCH_FLOOR);
+    expect(patchAtCeil * fogCalmFactor(0) * fogHourFactor(4)).toBe(1);
   });
 
   it("means no storm is ever foggy, without a rule saying so", () => {
@@ -264,6 +293,78 @@ describe("what a fog lets a hunted ship do", () => {
 
   it("still lets her see him when he is right alongside", () => {
     expect(stateOf(withTrader(makeWorld(), 30))).toBe("flee");
+  });
+
+  // ── and the two she is actually afraid of (v0.89.0) ──────────────────────
+
+  /**
+   * `FOG_AWARENESS_SHARE`'s own comment says the captain "is the one being
+   * hunted often enough for this to be the half he notices". The two hulls
+   * that hunt him read a flat `PIRATE_CHASE_RADIUS` / `HUNTER_CHASE_RADIUS`
+   * instead of `awarenessIn`, so fog took nothing at all off the only eyes it
+   * was written to blind. `updatePirate` was the one behaviour of the four
+   * never handed `world`, so it could not have read the rule.
+   */
+  function withHunter(world: WorldState, behavior: "pirate" | "pirate_hunter", dist: number): WorldState {
+    const id = entityId("npc_hunter");
+    const radius = behavior === "pirate" ? 250 : 300;
+    // A rover does not chase her own flag, and a hunter only chases a wanted
+    // man: the harness flies whichever colours make the question real.
+    const playerShipId = world.player.shipId as string;
+    const playerShip = world.entities[playerShipId];
+    return {
+      ...world,
+      time: { ...world.time, tick: 100 },
+      player: { ...world.player, notoriety: 80 },
+      entities: {
+        ...world.entities,
+        [playerShipId]: {
+          ...playerShip,
+          ship: { ...playerShip.ship!, factionId: behavior === "pirate" ? "england" : "pirates" },
+        },
+        [id as string]: {
+          id, kind: "ship", mode: "sailing",
+          pos: { x: SOMEWHERE.x + dist, y: SOMEWHERE.y },
+          vel: { x: 0, y: 0 }, heading: 0, sailLevel: 0.8, depthOffset: 0,
+          ai: { behavior, state: "travel", awarenessRadius: radius, aggression: 0.9, lastDecisionTick: 0 },
+          ship: {
+            classId: "brigantine", factionId: behavior === "pirate" ? "pirates" : "england",
+            hullHp: 90, hullMax: 90, sailsHp: 70, sailsMax: 70,
+            cannons: 12, cargo: {}, cargoCap: 100,
+            crew: { current: 30, max: 40, morale: 0.8 },
+          },
+        },
+      },
+    } as unknown as WorldState;
+  }
+
+  const hunterState = (w: WorldState) =>
+    updateNpcAi(w, 30).entities[entityId("npc_hunter") as string].ai?.state;
+
+  for (const behavior of ["pirate", "pirate_hunter"] as const) {
+    it(`loses a ${behavior} the range the bank takes off her`, () => {
+      const radius = behavior === "pirate" ? 250 : 300;
+      const far = Math.round(radius * 0.9);
+      const clear = withHunter(makeWorld({ hour: 14 }), behavior, far);
+      const foggy = withHunter(makeWorld(), behavior, far);
+      expect(fogDensity(foggy, SOMEWHERE)).toBeGreaterThan(0.5);
+      expect(hunterState(clear)).toBe("chase");
+      expect(hunterState(foggy)).not.toBe("chase");
+    });
+
+    it(`still lets a ${behavior} run him down when she is on top of him`, () => {
+      expect(hunterState(withHunter(makeWorld(), behavior, 40))).toBe("chase");
+    });
+  }
+
+  it("keeps no flat chase radius anywhere in the AI", () => {
+    const src = import.meta.glob("../NpcAiSystem.ts", {
+      query: "?raw", import: "default", eager: true,
+    }) as Record<string, string>;
+    const text = Object.values(src)[0] ?? "";
+    expect(text).toBeTruthy();
+    expect(text).not.toMatch(/const\s+PIRATE_CHASE_RADIUS\s*=/);
+    expect(text).not.toMatch(/const\s+HUNTER_CHASE_RADIUS\s*=/);
   });
 });
 

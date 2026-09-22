@@ -52,8 +52,23 @@
 import type { WorldState, Vec2 } from "../model/WorldState.ts";
 import { clamp, lerp } from "../services/Geometry.ts";
 
-/** Above this wind there is no fog, whatever the hour. */
-export const FOG_MAX_WIND = 0.35;
+/**
+ * Above this wind there is no fog, whatever the hour (v0.89.0).
+ *
+ * It was **0.35**, and `updateWeather` makes a sea whose `windStrength`
+ * averages **0.543** and was never once measured below **0.174** in 54
+ * simulated days. So the first of fog's three preconditions held on **40 of
+ * 27 000** samples — 0.15 % — and, with the other two multiplied in, fog thick
+ * enough to be announced occurred **zero times**.
+ *
+ * The whole mechanic ran on nothing: the spyglass share, the lookout share and
+ * the paragraph explaining why the second is kinder than the first, the banks,
+ * the warning line, the option that turns it off.
+ *
+ * Set from the wind the world actually makes, not from the one it was imagined
+ * with: a ceiling above the mean leaves fog to the lighter half of the air.
+ */
+export const FOG_MAX_WIND = 0.75;
 
 /** What is left of the spyglass in a thick bank. */
 export const FOG_VISION_SHARE = 0.35;
@@ -74,11 +89,22 @@ export const FOG_CELL = 420;
 /**
  * How much of the noise field counts as fog at all.
  *
- * The raw field averages 0.5, so a floor above that leaves banks rather than a
- * permanent haze: roughly two cells in five carry anything, and only their
- * middles are thick.
+ * The raw field averages **0.492** and its highest value in 13 158 night
+ * samples was **0.837** — a bilinear blend of four uniform hashes piles up
+ * around a half and does not reach its ends. A floor of 0.55 against that left
+ * the normalised patch at 0.64 in the very best cell in the Caribbean and at
+ * zero almost everywhere; and because `fogDensity` multiplies three such
+ * factors, a density of **1** — which is what "a thick bank" means to both
+ * shares below — was unreachable by construction. The thickest bank any
+ * combination of ceilings produced in the sweep was **0.32**.
+ *
+ * So the field is normalised between a floor under its mean and a ceiling at
+ * its own top, and then it spans what it claims to span.
  */
-export const FOG_PATCH_FLOOR = 0.55;
+export const FOG_PATCH_FLOOR = 0.35;
+
+/** The top of the raw field, measured: above this a cell is fully fogged. */
+export const FOG_PATCH_CEIL = 0.80;
 
 function hash3(a: number, b: number, c: number): number {
   let h = Math.imul((a | 0) ^ 0x9e3779b9, 0x85ebca6b);
@@ -154,7 +180,7 @@ export function fogDensity(world: WorldState, pos: Vec2): number {
   const hour = fogHourFactor(world.time.hour, world.time.minute);
   if (hour <= 0) return 0;
   const raw = fogPatch(fogNight(world.time.day, world.time.hour), pos);
-  const patch = clamp((raw - FOG_PATCH_FLOOR) / (1 - FOG_PATCH_FLOOR), 0, 1);
+  const patch = clamp((raw - FOG_PATCH_FLOOR) / (FOG_PATCH_CEIL - FOG_PATCH_FLOOR), 0, 1);
   return calm * hour * patch;
 }
 

@@ -439,11 +439,29 @@ tnie wzrok **obu stronom**.
 
 | stała | wartość | znaczenie |
 |---|---|---|
-| `FogSystem.FOG_MAX_WIND` | 0.35 | powyżej tej siły wiatru mgły nie ma |
+| `FogSystem.FOG_MAX_WIND` | 0.75 | powyżej tej siły wiatru mgły nie ma |
 | `FogSystem.FOG_VISION_SHARE` | 0.35 | do ilu spada luneta gracza |
 | `FogSystem.FOG_AWARENESS_SHARE` | 0.45 | do ilu spada czujność NPC |
 | `FogSystem.FOG_CELL` | 420 | rozdzielczość pola mgły |
-| `FogSystem.FOG_PATCH_FLOOR` | 0.55 | próg, od którego łata mgły istnieje |
+| `FogSystem.FOG_PATCH_FLOOR` | 0.35 | próg, od którego łata mgły istnieje |
+| `FogSystem.FOG_PATCH_CEIL` | 0.8 | i góra pola szumu: wyżej komórka jest zamglona całkowicie |
+
+> **Poprawione w v0.89.0 — do tego wydania mgły nie było w ogóle.** Próg wiatru
+> wynosił **0,35**, a `updateWeather` robi morze, którego `windStrength` ma
+> średnią **0,543** i w 54 dobach symulacji **ani razu** nie zeszło poniżej
+> **0,174**. Pierwszy z trzech warunków mgły spełniał się na **40 z 27 000**
+> próbek (0,15 %), a mgła na tyle gęsta, żeby ją zgłosić, nie powstała
+> **ani razu**.
+> 
+> Drugi ogranicznik: `fogDensity` to **iloczyn trzech czynników**, a oba udziały
+> wyżej są pisane dla gęstości **1**. Pole szumu ma średnią **0,492** i
+> najwyższą zmierzoną wartość **0,837**, więc normalizacja względem 1 przy progu
+> 0,55 dawała w najlepszej komórce Karaibów **0,64** — a iloczyn trzech takich
+> czynników nie mógł osiągnąć jedynki **z konstrukcji**. Najgrubsza ława w całym
+> przemiataniu prógów: **0,32**.
+> 
+> Po zmianie: mgła zgłoszona na **14,3 %** próbek (było 0 %), najgrubsza ława
+> **0,40**, luneta kapitana **48,8 → 43,0**.
 | `FogSystem.FOG_VISIBLE` | 0.12 | gęstość, przy której gracz ją widzi |
 | `FogSystem.FOG_LIFTED` | 0.05 | gęstość, przy której komunikat znika |
 
