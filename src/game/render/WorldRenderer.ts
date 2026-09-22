@@ -27,17 +27,15 @@ import { ladenTier } from "../../core/systems/PrizeSystem.ts";
 import { txt } from "../ui/textStyle.ts";
 import { t } from "../../core/i18n/index.ts";
 
-/** Base vision range (world units) — added to mast height bonus */
-const BASE_VISION = 25;
-/** World-px of vision per meter of mast height */
-const RANGE_PER_METER = 1.14;
-/** Distance over which ships fade in/out at the edge of vision range */
+/**
+ * Distance over which ships fade in/out at the edge of vision range.
+ *
+ * The only vision number left in this file, and the only one that is about
+ * drawing rather than about seeing. How far the captain can see moved to
+ * `core/systems/VisionSystem.ts` in v0.87.0, because `core/` was reasoning
+ * about it in prose and getting it wrong by a factor of ten.
+ */
 const FADE_BAND = 25;
-
-/** Calculate vision range from mast height: Pinnace(10m)→36, Sloop(15m)→42, Galleon(35m)→65 */
-export function visionRangeForMast(mastHeight: number): number {
-  return BASE_VISION + mastHeight * RANGE_PER_METER;
-}
 
 /**
  * Map headingToDir8 index → sailship spritesheet frame index.

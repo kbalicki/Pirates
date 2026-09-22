@@ -38,7 +38,14 @@ export type CombatState = {
   version: number;
   time: { tick: number };
   arena: { width: number; height: number };
-  /** Effective cannon range in arena pixels. ~half of arena.width by convention. */
+  /**
+   * How far a broadside carries here, in arena pixels.
+   *
+   * `cannonRangeFor(arena.width)` — a twelfth of the arena, which is a
+   * quarter of a screen. Until v0.87.0 this line called it roughly the arena's
+   * own half, by convention: six times the number the scene has always written,
+   * and the convention was nobody's.
+   */
   cannonRange: number;
   wind: { dirRad: HeadingRad; strength: number };
   playerShipId: EntityId;

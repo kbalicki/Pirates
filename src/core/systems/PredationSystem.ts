@@ -51,6 +51,7 @@ import type { Vec2 } from "../model/WorldState.ts";
 import type { EntityState } from "../model/EntityState.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { vec2Dist } from "../services/Geometry.ts";
+import { playerVisionRange } from "./VisionSystem.ts";
 
 /** How far a hull will look for somebody else's quarrel, as a share of her awareness. */
 export const PREY_REACH = 1.0;
@@ -275,8 +276,28 @@ import { factionNameKey } from "../i18n/names.ts";
  *  second and swerving between two merchantmen for ever. */
 export const PREDATION_INTERVAL = 60;
 
-/** How far the player has to be to see it happen and get a line in his log. */
-export const WITNESS_RANGE = 700;
+/**
+ * Whether the captain saw it happen, and so whether it reaches his journal.
+ *
+ * This was `WITNESS_RANGE = 700` and a comment reading *"How far the player
+ * has to be to see it happen"*. He cannot see 700. The best spyglass in the
+ * game — a galleon's thirty-five metres of mast — reaches **65** world px,
+ * and beyond it `WorldRenderer` draws a hull at **alpha zero**. Measured over
+ * 50 simulated days and 447 hulls run down by somebody else, the journal gave
+ * him a line for 243 and he could have seen **15**; the median fight it
+ * reported was **684** px away, off the screen at all fourteen zoom levels.
+ *
+ * The other 94 % are not lost. A hull taken on her lane is that lane preyed
+ * upon (`disruptRoute`, below), and the tavern tells him so: `tavern.rumor_lane`,
+ * *"a run nobody will insure"*. That is the channel a captain learns through
+ * — v0.62.0's split between what is shouted across the water and what is
+ * heard ashore — and the journal is for what he watched himself.
+ */
+export function sawItHappen(world: WorldState, where: Vec2): boolean {
+  const playerPos = world.entities[world.player.shipId as string]?.pos;
+  if (!playerPos) return false;
+  return vec2Dist(playerPos, where) <= playerVisionRange(world);
+}
 
 const crownOfEntity = (e: EntityState) => (e.ship?.factionId as string) ?? "";
 
@@ -293,7 +314,6 @@ export function runPredation(world: WorldState, dtTicks: number): WorldState {
   if (!tickBoundaryCrossed(tick - dtTicks, tick, PREDATION_INTERVAL)) return world;
 
   const playerShipId = world.player.shipId as string;
-  const playerPos = world.entities[playerShipId]?.pos;
 
   const npcs = Object.entries(world.entities).filter(
     ([id, e]) => id !== playerShipId && e.kind === "ship" && e.ai && e.ship,
@@ -325,7 +345,7 @@ export function runPredation(world: WorldState, dtTicks: number): WorldState {
           let roll: number;
           ({ value: roll, state: rng } = rngNext(rng));
           const outcome = resolveHunt(id, entity, current!, quarry, kind, roll);
-          out = settleHunt(out, id, entity, current!, quarry, outcome, kind, playerPos);
+          out = settleHunt(out, id, entity, current!, quarry, outcome, kind);
           entities = out.entities;
           gone.add(outcome.loserId);
           changed = true;
@@ -383,7 +403,6 @@ function settleHunt(
   target: EntityState,
   outcome: HuntOutcome,
   kind: PreyKind,
-  playerPos?: Vec2,
 ): WorldState {
   const loser = outcome.loserId === hunterId ? hunter : target;
   const winner = outcome.loserId === hunterId ? target : hunter;
@@ -415,9 +434,8 @@ function settleHunt(
   const laneId = loser.ai?.lane?.routeId;
   if (laneId) w = disruptRoute(w, laneId);
 
-  const near = playerPos
-    && Math.hypot(playerPos.x - loser.pos.x, playerPos.y - loser.pos.y) < WITNESS_RANGE;
-  if (near) {
+  // Only what he actually watched (v0.87.0) — see `sawItHappen` above.
+  if (sawItHappen(w, loser.pos)) {
     // The key, not the raw `factionId`. These two entries were the only ones
     // left in the game stamping a bare id, and the journal printed it: *"A
     // england man-of-war has run down a rover"*, *"Okręt (england) dopadł

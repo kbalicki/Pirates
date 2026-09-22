@@ -4,7 +4,7 @@ import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
-import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY, bearingSide, HULL_WIDTH } from "../systems/CombatSystem.ts";
+import { CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY, bearingSide, HULL_WIDTH } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
 import { damageSpeedMultiplier, damageTurnMultiplier, applyFlooding } from "../systems/DamageSystem.ts";
@@ -262,7 +262,7 @@ export class CombatEngine {
     const playerId = state.playerShipId as string;
     const enemy = updatedEntities[enemyId];
     const player = updatedEntities[playerId];
-    const baseRange = state.cannonRange ?? CANNON_RANGE;
+    const baseRange = state.cannonRange;
 
     if (enemy?.ship && player) {
       const aiResult = this.runEnemyAI(enemy, player, dtTicks, baseRange);
@@ -606,7 +606,7 @@ export class CombatEngine {
     if (!self || !other) return { state, events: [] };
 
     const dist = vec2Dist(self.pos, other.pos);
-    const breakOff = (state.cannonRange ?? CANNON_RANGE) * DISENGAGE_RANGE_MUL;
+    const breakOff = state.cannonRange * DISENGAGE_RANGE_MUL;
     if (dist < breakOff) {
       return { state, events: [{ type: "DisengageRejected", reason: "too_close" }] };
     }
@@ -663,7 +663,7 @@ export class CombatEngine {
     }
 
     const dist = vec2Dist(entity.pos, target.pos);
-    const baseRange = state.cannonRange ?? CANNON_RANGE;
+    const baseRange = state.cannonRange;
     const effectiveRange = baseRange * def.rangeMul;
     if (dist > effectiveRange) {
       events.push({ type: "CannonFired", side, shipId: entity.id, ammo, hit: false, fromPos: entity.pos, targetPos: target.pos });

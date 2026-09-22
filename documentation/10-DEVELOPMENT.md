@@ -244,6 +244,37 @@ strumień audio gry trzymają otwarte żądanie tak długo, jak żyje strona, wi
 `networkidle0` zawsze wyczekiwał swój timeout i przerywał przebieg, zanim ten
 się zaczął. Boot pokrywa `--wait`.
 
+### sweep-constants.mjs — dwie liczby o jednej rzeczy (v0.87.0)
+
+```bash
+node scripts/sweep-constants.mjs            # wszystkie wymiary
+node scripts/sweep-constants.mjs px days     # tylko te
+```
+
+Wypisuje **jedną tabelę na wymiar**, posortowaną po wartości: każdą nazwaną
+stałą liczbową w `src/` plus każdy goły literal wpisany do zmiennej, której
+nazwa deklaruje wymiar (te są oznaczone `*`). Wymiar bierze się **z nazwy** —
+`_DAYS`, `_TICKS`, `_TONS`, `_RANGE`/`_RADIUS`/`_DIST`, `_GOLD`/`_PRICE`,
+`_CREW`, `_YEARS`, `_SHARE`/`_RATIO` — bo nic innego w tym repo nie zapisuje
+jednostki, i w tym jest cały problem.
+
+Trzy wydania z rzędu znalazły ten sam kształt ręcznie: v0.84.0 w cyfrach
+zakładek, v0.85.0 w progu zrywania kontaktu, v0.86.0 w zasięgu bosaka. To jest
+przemiatanie, które znajduje je wszystkie naraz.
+
+**Jak czytać wynik.** Bierz sąsiadujące wiersze i pytaj, czy to nie są dwie
+nazwy jednej rzeczy — a potem czytaj komentarze nad nimi, bo tam siedzi
+twierdzenie, i to twierdzenie się psuje. Tabela oznaczona **"BOTH layers"** jest
+znaleziskiem sama w sobie: `core/` nie umie zaimportować liczby z `src/game/`,
+więc może o niej tylko **pisać prozą** — i tak właśnie `PredationSystem`
+napisał, że gracz widzi 700, przy lunecie sięgającej 65.
+
+Uwaga na fałszywe trafienia: `px` miesza piksele areny (bitwa) z pikselami
+świata (mapa), a `RAID_DISTANCE_FEE` jest złotem za odległość, nie odległością.
+Stałe strażnika, które z tego wyszły, są w `src/core/__tests__/dimensions.test.ts`.
+
+---
+
 ### measure-battle.mjs — czy przeciwnik jest w kadrze (v0.85.0)
 
 Arena bitwy ma **trzy ekrany** szerokości, a kamera chodzi za graczem. Ten skrypt

@@ -23,7 +23,7 @@
  */
 import Phaser from "phaser";
 import { SHIP_CLASSES, type ShipClassDef } from "../../core/data/ships.ts";
-import { visionRangeForMast } from "../render/WorldRenderer.ts";
+import { visionRangeForMast } from "../../core/systems/VisionSystem.ts";
 import { bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";

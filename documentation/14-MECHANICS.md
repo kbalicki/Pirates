@@ -449,9 +449,21 @@ tnie wzrok **obu stronom**.
 
 ### Wzrok
 
-`visionRangeForMast(maszt) = 25 + maszt × 1.14` (`WorldRenderer`, warstwa gry).
-Czyli pinasa (maszt 10) widzi ~36, galeon (35) ~65 jednostek. Mgła i sztorm
-mnożą ten zasięg przez swoje udziały powyżej.
+`visionRangeForMast(maszt) = BASE_VISION + maszt × RANGE_PER_METER`
+(`VisionSystem`). Czyli pinasa (maszt 10) widzi ~36, slup (15) ~42, galeon (35)
+~65 jednostek — i **65 to najdalej, jak ktoś w tej grze widzi**. Mgła i sztorm
+mnożą ten zasięg przez swoje udziały powyżej; `playerVisionRange(world)` składa
+to razem: najwyższy maszt eskadry razy pogoda w miejscu, gdzie gracz stoi.
+
+| stała | wartość | znaczenie |
+|---|---|---|
+| `VisionSystem.BASE_VISION` | 25 | wzrok bez masztu |
+| `VisionSystem.RANGE_PER_METER` | 1.14 | jednostek horyzontu za każdy metr masztu |
+
+> Do v0.87.0 ta funkcja mieszkała w `src/game/render/WorldRenderer.ts`, obok
+> kodu ustawiającego przezroczystość sprite'a. `core/` nie może jej stamtąd
+> zaimportować, więc każdy moduł reguł, który potrzebował wiedzieć, co kapitan
+> widzi, **opisywał to prozą** — i jeden z nich opisał źle o rząd wielkości.
 
 ---
 
@@ -1098,7 +1110,20 @@ Ginie mniej więcej **jeden kadłub na trzy dni**.
 | `PredationSystem.PREY_ODDS` | 0.7 | szansa napastnika |
 | `PredationSystem.PREY_AGGRESSION_FLOOR` | 0.35 | poniżej tej agresji NPC nie atakuje |
 | `PredationSystem.DEFENCE_FLOOR` | 0.35 | podłoga obrony ofiary |
-| `PredationSystem.WITNESS_RANGE` | 700 | z jakiej odległości gracz to zobaczy |
+
+Czy gracz **zobaczył** cudzą walkę, rozstrzyga `sawItHappen` — czyli
+`playerVisionRange` z sekcji *Wzrok*, a nie osobna liczba. Do v0.86.0 stało tu
+`WITNESS_RANGE = 700` pod komentarzem „z jakiej odległości gracz to zobaczy".
+**Nikt nie widzi 700.** Najlepsza luneta w grze — trzydzieści pięć metrów masztu
+galeona — sięga **65**, a dalej `WorldRenderer` rysuje kadłub z przezroczystością
+**zero**. Zmierzone na 50 dobach świata i 447 kadłubach dopadniętych przez kogoś
+innego: dziennik dał kapitanowi wpis o **243** z nich, a mógł zobaczyć **15**.
+Mediana „obserwowanej" walki działa się **684** jednostki stąd — poza ekranem na
+**wszystkich czternastu** poziomach przybliżenia.
+
+Pozostałe 94 % nie przepada: kadłub wzięty na szlaku to szlak napadnięty
+(`disruptRoute`), a to mówi mu karczma (`tavern.rumor_lane`, *„kurs, którego
+nikt nie ubezpieczy"*). Dziennik jest od tego, co widział sam.
 
 ### Ucieczka
 
@@ -1143,7 +1168,7 @@ miała ani łuku, ani burty).
 
 | stała | wartość | znaczenie |
 |---|---|---|
-| `CombatSystem.CANNON_RANGE` | 480 | **wartość zapasowa**, nie zasięg: prawdziwy liczy się per bitwa jako **połowa szerokości areny** |
+| `CombatSystem.CANNON_RANGE_ARENA_DIVISOR` | 12 | zasięg burty to **jedna dwunasta areny**: `cannonRangeFor(3840)` = **320**, czyli ćwierć ekranu |
 | `CombatSystem.CANNON_COOLDOWN_TICKS` | 180 | najlepsza możliwa kadencja burty (9 s) |
 | `CombatSystem.CANNON_DAMAGE_HULL` | 3.5 | obrażenia w kadłub na trafienie |
 | `CombatSystem.CANNON_DAMAGE_SAILS` | 3.0 | obrażenia w takielunek |

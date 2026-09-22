@@ -125,6 +125,18 @@ Z daleka rozpoznasz obcy statek po trzech znakach:
 Proporczyk ładunku widać dopiero z **połowy** zasięgu lunety. Żeby wiedzieć,
 czy warto gonić, trzeba podejść bliżej.
 
+**A jak daleko sięga luneta?** Tyle, ile masz masztu. Pinasa widzi ~36 jednostek,
+slup ~42, galeon ~65 — i to jest najwięcej, ile w tej grze widać. Liczy się
+**najwyższy maszt eskadry**, więc wysoka konsorta jest bocianim gniazdem całego
+zespołu. Mgła i sztorm ten krąg zaciskają.
+
+> **Czego dziennik już nie napisze** (v0.87.0). Kiedy ktoś inny dopadnie
+> kupca, dostajesz wpis — ale tylko jeśli **naprawdę to widziałeś**. Wcześniej
+> pisał się z 700 jednostek: dziesięć razy dalej, niż sięga najlepsza luneta,
+> i poza ekranem przy każdym przybliżeniu. O reszcie dowiesz się tak, jak
+> dowiadywałeś się zawsze o cudzych sprawach — **w karczmie**: kurs, którego nikt
+> nie ubezpieczy, to kurs, na którym ktoś niedawno zginął.
+
 ---
 
 ## Port

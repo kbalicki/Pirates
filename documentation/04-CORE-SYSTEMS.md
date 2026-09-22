@@ -380,7 +380,9 @@ sailsDelta = −3.0 × shots × ammo.sailsMul × distFactor × (1 − target.arm
 crewDelta  = −4.5 × shots × ammo.crewMul  × distFactor × (1 − target.armor × 0.3)
 ```
 
-Zasięg = `arena.width / 2` (fallback `CANNON_RANGE = 480`). Łuki ostrzału: ±60° od trawersu obu burt — dziób i rufa to martwe pole.
+Zasięg = `cannonRangeFor(arena.width)`, czyli **jedna dwunasta areny** — 320 px. Łuki ostrzału: ±60° od trawersu obu burt — dziób i rufa to martwe pole.
+
+> **Poprawione w v0.87.0.** Stało tu „`arena.width / 2` (fallback `CANNON_RANGE = 480`)” — połowa areny to 1920, a scena od zawsze pisała `screenW * 0.25` = 320. Wartość zapasowa nie mogła się uruchomić (pole jest wymagane) i została usunięta.
 
 ### Stopnie uszkodzeń (`DamageSystem.ts`, v0.9.9)
 
@@ -757,8 +759,13 @@ pościg, salwę i tonący statek, czyli dokładnie to.
 
 Konsekwencje są wyłącznie takie, które już istniały: kupiec stracony na szlaku
 to ten szlak nękany (`routeDisruption` z v0.22.0), a wpis w dzienniku dostaje
-gracz tylko wtedy, gdy był dość blisko, żeby to zobaczyć (`WITNESS_RANGE`).
+gracz tylko wtedy, gdy był dość blisko, żeby to zobaczyć.
 **Nic nowego nie jest zapisywane.**
+
+> **Poprawione w v0.87.0.** „Dość blisko” znaczyło `WITNESS_RANGE = 700`, a
+> najdalej, jak ktoś w tej grze widzi, to **65**. Teraz rozstrzyga
+> `sawItHappen`, czyli `playerVisionRange`. Zmierzone: dziennik dawał wpis o 243
+> walkach na 447, z czego zobaczyć można było **15**.
 
 ### Obsada (`CrewSystem.ts`, v0.49.0)
 

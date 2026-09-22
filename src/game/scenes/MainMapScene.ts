@@ -4,7 +4,9 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { Transition } from "../../core/model/Events.ts";
 import { WorldEngine } from "../../core/engine/WorldEngine.ts";
 import { type TerrainType, findOpenSeaHeading } from "../../core/systems/NavigationSystem.ts";
-import { WorldRenderer, visionRangeForMast } from "../render/WorldRenderer.ts";
+import { WorldRenderer } from "../render/WorldRenderer.ts";
+import { visionRangeForMast } from "../../core/systems/VisionSystem.ts";
+import { ENCOUNTER_RANGE } from "../../core/systems/NpcNewsSystem.ts";
 import { stormVisionMultiplier, stormWarning } from "../../core/systems/StormSystem.ts";
 import { weatherAt, type LocalWeather } from "../../core/systems/WeatherFieldSystem.ts";
 import { drawCurrents, clearCurrents, currentsStale, type CurrentResult } from "../render/CurrentRenderer.ts";
@@ -1446,7 +1448,6 @@ export class MainMapScene extends Phaser.Scene {
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
     if (!playerEntity || playerEntity.mode !== "sailing") return;
 
-    const ENCOUNTER_RANGE = 18; // world px — very close, like port approach
     const playerShipId = this.worldState.player.shipId as string;
 
     for (const [id, entity] of Object.entries(this.worldState.entities)) {

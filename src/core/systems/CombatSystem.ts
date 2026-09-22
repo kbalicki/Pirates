@@ -41,8 +41,37 @@ export function effectiveReloadTicks(
   const totalMul = crewMul * moraleMul * trainingMul;
   return Math.round(CANNON_COOLDOWN_TICKS / Math.max(0.2, totalMul));
 }
-/** Fallback range when state.cannonRange is missing; real value computed per-battle as arena.width/2. */
-export const CANNON_RANGE = 480;
+/**
+ * How far a broadside carries, in arena pixels (v0.87.0).
+ *
+ * Three numbers described this one distance and no two of them agreed. The
+ * constant said **480**, under a comment sending the reader to a per-battle
+ * value it described as the arena's own half; `CombatState.cannonRange`'s doc
+ * line said the same thing in the same words; and `14-MECHANICS.md` printed
+ * both.
+ * The arena is three screens across — 3840 px from a 1280 px screen — so half
+ * of it is **1920**. What `SeaBattleScene` actually wrote was `screenW * 0.25`:
+ * **320**, a *twelfth* of the arena. The comment was out by six times, the
+ * fallback by half again, and the fallback could never fire anyway, because
+ * `cannonRange` is a required field.
+ *
+ * So the arena owns the number and the scene asks for it. A gun carries a
+ * quarter of a screen, and the arena is three screens wide.
+ */
+export const CANNON_RANGE_ARENA_DIVISOR = 12;
+
+/**
+ * What a broadside carries in an arena this wide — 320 px in the 3840 px arena
+ * the game builds from a 1280 px screen.
+ *
+ * There is no fallback constant any more. `CombatState.cannonRange` is a
+ * required field, so the `?? CANNON_RANGE` beside all three of its readers
+ * could never fire; what the dead 480 did instead was get printed in the
+ * manual as the reach of a gun.
+ */
+export function cannonRangeFor(arenaWidth: number): number {
+  return arenaWidth / CANNON_RANGE_ARENA_DIVISOR;
+}
 
 /**
  * Per-cannon damage constants — scaled up by the number of cannons firing in the broadside

@@ -22,6 +22,7 @@ import {
   consortTraining,
 } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
+import { cannonRangeFor } from "../../core/systems/CombatSystem.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
 import { windSpeedModifier, navigatedWindModifier } from "../../core/systems/WeatherSystem.ts";
@@ -172,8 +173,10 @@ export class SeaBattleScene extends Phaser.Scene {
     const w = screenW * 3;
     const h = screenH * 3;
 
-    // Cannon range — modest fraction of the screen so combat feels tactical, not blanket.
-    const cannonRange = screenW * 0.25;
+    // A quarter of a screen, which is a twelfth of the arena. The number is
+    // `CombatSystem`'s now (v0.87.0): it was written here and described three
+    // different ways in `core/`, none of them this one.
+    const cannonRange = cannonRangeFor(w);
 
     // Player always spawns at arena center (camera follows them, so they're visually centered)
     let playerPos = { x: w * 0.5, y: h * 0.5 };

@@ -16,7 +16,7 @@ export interface AmmoDef {
   hullMul: number;          // multiplier for hull damage
   sailsMul: number;         // multiplier for sails damage
   crewMul: number;          // crew kills per hit (absolute)
-  rangeMul: number;         // effective range multiplier (1 = full CANNON_RANGE)
+  rangeMul: number;         // effective range multiplier (1 = the whole of `cannonRange`)
 }
 
 export const AMMO_DEFS: Record<AmmoType, AmmoDef> = {

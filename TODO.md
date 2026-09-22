@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-22 · **Wersja:** v0.86.0.0 · **Branch:** `main`
-**Kod:** 268 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2340 przechodzi, 0 failuje, 0 `todo`** w 81 plikach
+**Stan na:** 2026-09-22 · **Wersja:** v0.87.0.0 · **Branch:** `main`
+**Kod:** 270 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2355 przechodzi, 0 failuje, 0 `todo`** w 82 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2582,45 +2582,84 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.86.0)
+**Znalezione przy przemiataniu stałych, nienaprawione** (v0.87.0.0):
+
+- **`core/` nadal nie wie, ile widać na ekranie.** `playerVisionRange` odpowiada,
+  co kapitan widzi **lunetą**, ale przybliżenie mapy (`ZOOM_VALUES`, `z1`–`z14`)
+  siedzi w `src/game/settings/`. Przy `z1` ekran obejmuje 427 jednostek w bok,
+  przy `z8` — 107, a luneta 36–65. To znaczy, że **krąg widzenia bywa mniejszy
+  niż ekran i bywa większy**, i żadna reguła nie umie o tym powiedzieć słowa
+- **Nikt nie sprawdza, czy zasięg wpisany w reguły mieści się w świecie.**
+  `DESPAWN_DISTANCE = 900` jest większe niż `WITNESS_RANGE` było, `PRESENCE_RANGE
+  = 400` i `BLOCKADE_RADIUS = 320` decydują o rzeczach, których gracz nie widzi
+  — część słusznie (blokada to patrol, nie wzrok), ale **nikt tego nie rozstrzygnął
+  pozycja po pozycji**. Tabela `px` z `sweep-constants.mjs` jest gotową listą
+- **`px` miesza dwie przestrzenie.** Piksele areny (bitwa, 3840 wszerz) i piksele
+  świata (mapa) leżą w jednej tabeli, bo nazwa nie mówi, w której jest.
+  `CANNON_RANGE_ARENA_DIVISOR` ma już `ARENA` w nazwie; reszta nie
+- **`RAID_DISTANCE_FEE = 900` to złoto za odległość, nie odległość.** Przemiatanie
+  bierze wymiar z nazwy, więc wpadło do `px`. Fałszywe trafienie, ale nazwa jest
+  myląca i dla człowieka
+- **Kapitan nie przełoży tony z burty na burtę.** Zmierzone przy pozycji 1 niżej:
+  całe przenoszenie ładunku między własnymi kadłubami dzieje się samo, przy
+  odejściu konsorty. Nie ma żadnej komendy, która by to robiła celowo
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.87.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-**1. Dzieląca się ładownia — `sellFleetShip` nie dolicza nic za tony**
-*(zostawione świadomie **sześć** wydań z rzędu — to już nie jest odkładanie, to jest
-decyzja, którą trzeba albo podjąć, albo skreślić z listy)*. Stocznia nie kupuje
-kakao, kupuje kadłub, więc „zapłać za ładunek” jest złą odpowiedzią — ale kapitan,
-który **chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca,
-bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli kapitana
-od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno), i czy
-istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie „da się, tylko
-długo” — to jest wynik, a nie zadanie.
+**Zamknięte pomiarem w v0.87.0 — nie wracać bez nowego powodu:**
 
-**2. Którego jeszcze klawisza nikt nie nacisnął?** v0.85.0 znalazła `ESC`, który był
+- **Dzieląca się ładownia** (odkładana sześć wydań). 729 kombinacji, wszystkie
+  ładownie pełne: opróżnienie konsorty kosztuje **średnio 2,7 naciśnięcia, nigdy
+  więcej niż 5**, i **nie ma stanu, w którym się nie da**. „Da się, i to szybko” —
+  wynik, nie zadanie. Koszt uboczny: średnio 38 ton sprzedanych z kadłubów, które
+  zostają, bo lada czerpie od flagowca
+- **Dwie liczby o tej samej rzeczy.** Przemiatanie napisane:
+  `scripts/sweep-constants.mjs`. Znalazło lunetę (65 przeciwko 700), działo
+  (480 / 1920 / 320) i `ENCOUNTER_RANGE`. Strażnicy w `dimensions.test.ts`.
+  **Pozycja nie znika — przemiatanie trzeba uruchamiać**, nie odhaczyć
+
+---
+
+**1. Którego jeszcze klawisza nikt nie nacisnął?** v0.85.0 znalazła `ESC`, który był
 związany, nazwany i **nie miał `case` w silniku** — czyli przechodził przez oba
 przemiatania źródła, z v0.81.0 i v0.84.0. Jedyne, co to widzi, to test, który
 **naciska klawisz i patrzy na stan**. **Robota:** dla każdej sceny wypisać, co każdy
 związany klawisz **zmienia** — i wypisać te, które nie zmieniają nic. `drive.mjs` już
-naciska klawisze i zrzuca stan; brakuje porównania stanu przed i po.
+naciska klawisze i zrzuca stan; brakuje porównania stanu przed i po. Audyt layoutu
+wypisuje już `ZWIAZANE-NIEZAPOWIEDZIANE` i `OBIECANE-NIEZWIAZANE` — trzeciej
+kolumny, *nic nie robi*, nie ma.
 
-**3. Dwie liczby o tej samej rzeczy.** v0.86.0 znalazła 30 i 40 opisujące tę samą
-odległość, stojące obok siebie od v0.6.0 pod komentarzem, który mówił, że są tym
-samym. v0.84.0 znalazła to w cyfrach zakładek, v0.85.0 w progu zrywania kontaktu.
-**Robota:** przemieść stałe w `core/` i wypisać pary o **równej albo prawie równej
-wartości w tej samej dziedzinie** (piksele areny, dni, tony, ułamki) — a potem
-przeczytać komentarze nad nimi. To jest przemiatanie, które da się napisać raz.
+**2. Czy reguła mieści się w świecie, w którym działa?** v0.87.0 znalazła regułę
+mówiącą o widzeniu z odległości dziesięciokrotnie większej niż wzrok — bo liczba
+opisująca wzrok leżała w innej warstwie. **Robota:** wziąć tabelę `px` z
+`sweep-constants.mjs` i przejść ją **pozycja po pozycji**, pytając o każdą: czy to
+jest odległość wzroku, zasięgu, czy obecności? Te trzy rządzą się różnymi
+prawami i dziś leżą w jednej kolumnie. Zacząć od `PRESENCE_RANGE` i
+`BLOCKADE_RADIUS`, bo obie decydują o czymś, czego gracz nie widzi.
 
-**4. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane osobno
+**3. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane osobno
 w tym repo: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0), **okno
 liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast dwóch**
-(v0.82.0). Trzecia jest najbliżej i łączy się z pozycją 3 wyżej.
+(v0.82.0). Trzecia jest najbliżej i łączy się z pozycją 2 wyżej — to ten sam
+kształt w warstwie ekranu.
+
+**4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** Sedno v0.87.0 nie
+brzmi „stałe się rozjechały”, tylko **„liczba, od której zależą reguły, leżała
+w warstwie, która rysuje”**. **Robota:** przemieść `src/game/` za stałymi i funkcjami
+czystymi, które rozstrzygają coś, a nie rysują — i przenieść je. Strażnik na
+`*_RANGE` już jest; po nim idą progi, ceny i każda funkcja, której wynik trafia
+do `WorldState`.
 
 **5. Przed każdym wydaniem.** Dotykającym ekranu: `node scripts/audit-layout.mjs`.
-Dotykającym bitwy: `node scripts/measure-battle.mjs 4 --policy=hold`. Od v0.86.0
-bitwa potrafi sama otworzyć pojedynek, więc `endedAt: "scene gone"` nie znaczy już
-końca walki.
+Dotykającym bitwy: `node scripts/measure-battle.mjs 4 --policy=hold`. Dotykającym
+liczb: `node scripts/sweep-constants.mjs`. Od v0.86.0 bitwa potrafi sama otworzyć
+pojedynek, więc `endedAt: "scene gone"` nie znaczy już końca walki.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

@@ -53,9 +53,20 @@ import { vec2Dist } from "../services/Geometry.ts";
 import { addLogEntry } from "./EventLogSystem.ts";
 
 /**
+ * How close two hulls must be before either will go alongside.
+ *
+ * This was a bare `18` inside `MainMapScene.checkNpcEncounter`, and the block
+ * below wrote about it by name as though it were a constant — the shape
+ * v0.87.0 went looking for. A module in `core/` cannot see a literal in a
+ * scene, so the sentence "wider than `ENCOUNTER_RANGE` (18) on purpose" was
+ * a claim nothing could check. It lives beside the number it is compared to.
+ */
+export const ENCOUNTER_RANGE = 18;
+
+/**
  * How far a ship will call across to another.
  *
- * Wider than `ENCOUNTER_RANGE` (18) on purpose: a hail happens before you are
+ * Wider than `ENCOUNTER_RANGE` on purpose: a hail happens before you are
  * close enough to talk, and the difference between the two is the whole point
  * of the split.
  */
