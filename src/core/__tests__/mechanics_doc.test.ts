@@ -70,7 +70,19 @@ function num(text: string): number {
 /** `const NAME = 12;` or `export const NAME = 12;`, value up to the semicolon. */
 function constantIn(src: string, name: string): string | null {
   const m = src.match(new RegExp(`^(?:export )?const ${name}(?::[^=]+)? = ([^;]+);`, "m"));
-  return m ? m[1].trim() : null;
+  if (!m) return null;
+  const value = (m[1] as string).trim();
+  // One constant may be written as another's name — that is the point of
+  // `BOARDING_RANGE = HULL_WIDTH` (v0.86.0): a grapnel reaches exactly as far
+  // as a hull is wide, and writing 77 twice is how the two drift apart. Follow
+  // one hop, through every module, so the document can still state the number.
+  if (/^[A-Z][A-Z0-9_]*$/.test(value)) {
+    for (const other of Object.values(BY_MODULE)) {
+      const hop = other.match(new RegExp(`^(?:export )?const ${value}(?::[^=]+)? = ([^;]+);`, "m"));
+      if (hop) return (hop[1] as string).trim();
+    }
+  }
+  return value;
 }
 
 describe("14-MECHANICS.md — every number in it is a number from the code", () => {

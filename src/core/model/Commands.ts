@@ -28,6 +28,8 @@ export type CombatCommand =
   | { type: "FireCannons"; side: "left" | "right" }
   | { type: "SetAmmo"; ammo: AmmoType }
   | { type: "AttemptBoarding" }
+  /** Settle a boarding the enemy began, once her captain has been met. */
+  | { type: "RepelBoarders" }
   | { type: "CeaseFire" }
   | { type: "AttemptDisengage" }
   | { type: "EndBattleAcknowledge" };

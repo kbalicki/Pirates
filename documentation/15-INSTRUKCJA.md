@@ -397,9 +397,17 @@ zrefować.
 Przeciwnik **opuszcza banderę sam**, gdy spadnie poniżej dziesięciu procent
 kadłuba albo żagli, albo zostanie mu mniej niż dziesięciu ludzi.
 
-Abordaż wymaga **odległości poniżej trzydziestu** i osłabionego przeciwnika:
-kadłub poniżej 35% **albo** załoga poniżej połowy. Rozstrzyga liczba ludzi
-razy morale razy Twoja szermierka.
+Abordaż wymaga **burty w burtę** — odległości mniejszej niż szerokość kadłuba —
+i osłabionego przeciwnika: kadłub poniżej 35 % **albo** załoga poniżej połowy.
+Rozstrzyga pojedynek kapitanów; za nim liczba ludzi razy morale razy szermierka.
+
+> **I ona robi to samo.** Jeśli ma półtora raza więcej ludzi niż Ty, podejdzie
+> burta w burtę i rzuci bosaki — a wtedy ten sam pojedynek rozstrzyga, czy
+> utrzymasz własny pokład. Twoja szermierka liczy się wtedy w obronie.
+> Odparty oddział wraca po dziesięciu sekundach.
+>
+> Trzy rzeczy temu zapobiegają: **trzymaj dystans** (musi być przy burcie),
+> **łańcuch w żagle**, żeby nie doszła, i **`Esc` poza zasięgiem dział**.
 
 > **`Esc` zrywa kontakt od razu**, jeśli jesteś dalej niż dziewięć dziesiątych
 > zasięgu dział. Bliżej — odmawia i mówi dlaczego: spod burty się nie odchodzi.

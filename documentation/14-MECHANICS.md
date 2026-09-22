@@ -1151,7 +1151,10 @@ miała ani łuku, ani burty).
 | `CombatSystem.NEUTRAL_GUNNERY` | 5 | kanonierka, przy której celność jest nominalna |
 | `CombatSystem.BROADSIDE_ARC_COS` | 0.5 | martwa strefa dziobu i rufy: ±60° |
 | `CombatEngine.DISENGAGE_RANGE_MUL` | 0.9 | ułamek zasięgu dział, od którego wolno zerwać kontakt — i od którego liczy zegar |
-| `CombatEngine.HULL_CLEARANCE` | 77 | najbliższe stanowisko, na jakie wchodzi sternik przeciwnika (szerokość rysowanego kadłuba) |
+| `CombatSystem.HULL_WIDTH` | 77 | szerokość rysowanego kadłuba (sprite 256 px w skali 0,3): najbliższe stanowisko sternika **i** zasięg bosaka |
+| `CombatEngine.BOARDER_CREW_RATIO` | 1.5 | od jakiej przewagi w ludziach przeciwnik idzie na abordaż |
+| `CombatEngine.FLEEING_CREW_RATIO` | 0.5 | przy jakiej słabości ucieka poza strzał |
+| `CombatEngine.BOARDING_COOLDOWN_TICKS` | 200 | ile czeka po odparciu, zanim rzuci bosaki znowu (10 s) |
 
 ### Amunicja
 
@@ -1192,11 +1195,29 @@ płaci ją tak samo jak ty.
 
 | stała | wartość | znaczenie |
 |---|---|---|
-| `BoardingSystem.BOARDING_RANGE` | 30 | z jakiej odległości można wejść |
+| `BoardingSystem.BOARDING_RANGE` | 77 | z jakiej odległości można wejść: **burta w burtę**, czyli wprost `HULL_WIDTH`. Było 30 — liczba, do której nie dochodził nikt |
 | `BoardingSystem.BOARDING_MAX_ENEMY_HULL` | 0.35 | kadłub wroga musi być poniżej tego |
 | `BoardingSystem.BOARDING_MAX_ENEMY_CREW` | 0.5 | albo załoga poniżej tego |
 
+Zasięg bosaka to **szerokość kadłuba**, bo rzuca się go burta w burtę. Było 30 px
+— odległość, na którą nie schodził nikt. Zmierzone na 144 bitwach (trzy archetypy,
+trzy układy załóg, kapitan strzelający z dział i kapitan bezczynny): statki były
+bliżej niż 30 px przez **0 ticków z 518 400**, a warunek abordażu nie przeszedł
+**ani razu**. Jedyna droga do abordażu prowadziła przez celowe wpłynięcie w nią.
+
 `B` w bitwie → pojedynek → wynik decyduje o przejęciu.
+
+**Przeciwnik też wchodzi na pokład** (v0.86.0). Warunki są lustrzane: musi mieć
+**półtora raza** więcej ludzi (`BOARDER_CREW_RATIO`), być w zasięgu bosaka i mieć
+przed sobą osłabiony pokład — kadłub poniżej 35 % **albo** załoga poniżej połowy.
+Wtedy bitwa staje i otwiera się **ten sam** `DuelScene`, tyle że szermierka
+kapitana liczy się po stronie **broniącej**. Wygrana — zrzuceni z burty; przegrana
+— pokład stracony. Po odparciu czeka **dziesięć sekund**.
+
+> Do v0.86.0 nie robiła tego nigdy. `runEnemyAI` nie wystawiało komendy w żadnym
+> stanie, a funkcja, która rozstrzyga abordaż, brała **jeden** identyfikator i
+> czytała cel wprost z `state.enemyShipId` — gdyby komendę wystawiła, weszłaby
+> na własny pokład.
 
 ### Zakończenia
 

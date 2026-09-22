@@ -101,6 +101,8 @@ export class SeaBattleScene extends Phaser.Scene {
   private rangeCircle!: Phaser.GameObjects.Graphics;
   /** Reload-progress indicators per ship (drawn each tick). */
   private reloadBars: Record<string, Phaser.GameObjects.Graphics> = {};
+  /** Set when the enemy carried his deck, so the result says so (v0.86.0). */
+  private lostToBoarders = false;
   /** Far-distance timeout: ms spent at "very far" distance; after 60s shows countdown 60s. */
   private farDistanceMs = 0;
   private countdownMs = 0;
@@ -471,6 +473,45 @@ export class SeaBattleScene extends Phaser.Scene {
   }
 
   /**
+   * She is across, and the captain has a blade of his own (v0.86.0).
+   *
+   * The mirror of `attemptBoarding`: the battle pauses, the two captains meet
+   * in `DuelScene`, and the result goes back to the engine, which settles what
+   * the melee around them cost. Nothing reached this before v0.86.0 — the AI
+   * had no boarding path, and the one function that would have settled it read
+   * its target off `state.enemyShipId`, so she would have boarded herself.
+   *
+   * If the scene is already paused (the captain opened the manual in the same
+   * frame) the engine settles it by strength on its next tick, which is the
+   * fallback every headless caller uses.
+   */
+  private defendBoarding(): void {
+    if (this.battleOver || this.scene.isPaused()) return;
+
+    const player = this.combatState.entities[this.combatState.playerShipId as string];
+    const enemy = this.combatState.entities[this.combatState.enemyShipId as string];
+    if (!player?.ship || !enemy?.ship) return;
+
+    const playerFencing = effectiveSkill(this.worldState, "fencing");
+    const enemyFencing = enemyFencingFor(
+      enemy.ship.crew.current, enemy.ship.crew.max, this.worldState.player.notoriety ?? 0,
+    );
+
+    this.flashBanner(t("battle.boarders_away"), "#ff8888", 16, 60);
+    this.scene.pause();
+    this.scene.launch("DuelScene", {
+      playerFencing,
+      enemyFencing,
+      seed: this.combatState.time.tick + player.ship.crew.current,
+      onFinish: (playerWon: boolean) => {
+        this.scene.resume();
+        this.combatEngine.setDuelResult(playerWon);
+        this.commandBuffer.push({ type: "RepelBoarders" });
+      },
+    });
+  }
+
+  /**
    * Grapple and go across. Since v0.10.0 the captains settle it in `DuelScene`
    * instead of a single strength roll: the duel decides who wins, the engine
    * still works out what the melee around them cost both crews.
@@ -559,6 +600,16 @@ export class SeaBattleScene extends Phaser.Scene {
       // Handle events
       for (const event of result.events) {
         this.handleCombatEvent(event);
+      }
+
+      // An event has taken the deck away — a duel, the manual, the result
+      // banner. `scene.pause()` only stops the NEXT `update`, and one long
+      // frame runs this loop more than once: the second tick would settle a
+      // boarding by strength before the two captains had even met, and bank
+      // time the paused fight never sailed (v0.86.0).
+      if (this.battleOver || this.scene.isPaused()) {
+        this.tickAccumulator = 0;
+        break;
       }
     }
 
@@ -1141,10 +1192,20 @@ export class SeaBattleScene extends Phaser.Scene {
       case "DisengageRejected":
         this.flashBanner(t("battle.disengage_too_close"), "#ff8888", 13);
         break;
-      case "BoardingResolved":
-        this.flashBanner(
-          event.captured ? t("battle.boarding_won") : t("battle.boarding_lost"),
-          event.captured ? "#ffee88" : "#ff8888", 16);
+      case "BoardingIncoming":
+        this.defendBoarding();
+        break;
+      case "BoardingResolved": {
+        // `captured` reads from the boarder's side, so the same flag means
+        // opposite things depending on which deck the fight was on.
+        const hisBoarding = (event.boarderId as string) === (this.combatState.playerShipId as string);
+        const good = hisBoarding ? event.captured : !event.captured;
+        if (!hisBoarding && event.captured) this.lostToBoarders = true;
+        const msg = hisBoarding
+          ? (event.captured ? t("battle.boarding_won") : t("battle.boarding_lost"))
+          : (event.captured ? t("battle.boarded_lost") : t("battle.boarded_held"));
+        this.flashBanner(msg, good ? "#ffee88" : "#ff8888", 16);
+      }
         break;
       case "BattleEnded": {
         this.battleOver = true;
@@ -1212,7 +1273,9 @@ export class SeaBattleScene extends Phaser.Scene {
     const settled = this.applyBattleOutcomeToWorld(outcome);
     const messages: Record<string, string> = {
       win: t("battle.victory"),
-      lose: t("battle.defeat"),
+      // A hull carried by boarders was not "destroyed" — she is still afloat,
+      // under somebody else's flag. Same settlement, different sentence.
+      lose: this.lostToBoarders ? t("battle.defeat_boarded") : t("battle.defeat"),
       disengaged: t("battle.disengaged"),
       surrender: t("battle.surrender"),
       captured: t("battle.captured"),

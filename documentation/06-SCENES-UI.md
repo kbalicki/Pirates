@@ -378,6 +378,24 @@ Dla piszącego scenę znaczy to tyle: **nie buduj własnej bramki**. `PortScene`
 miała taką (`tradePending`, v0.76.0) i została skasowana. Pomiar i mechanizm
 w [10-DEVELOPMENT.md](10-DEVELOPMENT.md), narzędzie w `scripts/keycount.mjs`.
 
+## Zapauzowana bitwa, która płynęła dalej (v0.86.0)
+
+`scene.pause()` zatrzymuje **następne** `update`, a pętla ticków bitwy wykonuje się
+w jednej długiej klatce **więcej niż raz**:
+
+```ts
+while (this.tickAccumulator >= TICK_MS) { ... apply ... handleCombatEvent ... }
+```
+
+Więc tick po tym, jak zaczął się pojedynek, leci dalej — rozstrzygnąłby abordaż
+siłą załóg, **zanim kapitanowie się spotkali**, i zaksięgowałby czas, którego
+zatrzymana bitwa nie przeżegluje. Pętla przerywa się teraz, gdy pokład przejmuje
+coś innego: pojedynek, podręcznik albo baner wyniku. Abordaż gracza ma ten wyścig
+od v0.10.0 i nikt na niego nie wszedł — bo nic poza nim nie pauzowało sceny w
+środku ticka.
+
+---
+
 ## Cztery zdania bitwy, których nigdy nie było na ekranie (v0.85.0)
 
 Arena bitwy ma **trzy ekrany szerokości**, a kamera chodzi za graczem, który

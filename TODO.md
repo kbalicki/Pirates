@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-21 · **Wersja:** v0.85.0.0 · **Branch:** `main`
-**Kod:** 268 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2332 przechodzi, 0 failuje, 0 `todo`** w 81 plikach
+**Stan na:** 2026-09-22 · **Wersja:** v0.86.0.0 · **Branch:** `main`
+**Kod:** 268 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2340 przechodzi, 0 failuje, 0 `todo`** w 81 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2562,53 +2562,65 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-21, po v0.85.0)
+**Znalezione przy abordażu, nienaprawione** (v0.86.0.0):
+
+- **Abordaż przeciwnika nie ma żadnej zapowiedzi na ekranie poza jednym
+  wierszem.** Baner „Rzucają bosaki” pojawia się w tej samej klatce, w której scena
+  jest pauzowana pod pojedynek — czyli gracz czyta go dopiero **po** pojedynku, przez
+  dwie sekundy, kiedy już nie ma znaczenia. Przydałoby się ostrzeżenie **zanim** ona
+  podejdzie: ona schodzi do 40 px tylko w trybie abordażowym, więc stan da się
+  odczytać z odległości i stosunku załóg
+- **`BoardingResolved` nie mówi, ile kosztowało odparcie.** Zdarzenie niesie liczby
+  załóg po starciu, ale ekran pokazuje tylko zdanie „zrzuceni z burty” — kapitan nie
+  dowiaduje się, ilu ludzi stracił, choć bywa to połowa załogi
+- **Nie ma abordażu NPC na NPC.** `resolveBoarding` ma dla niego ścieżkę od zawsze
+  (bez `forcedCapture`) i nikt jej nie wywołuje. Dwa okręty NPC w zasięgu bosaka po
+  prostu się ostrzeliwują
+- **`?battle=` nie umie postawić abordażu wprost.** Najkrótsza droga to
+  `?battle=navy&crew=12`, co działa, ale zależy od wiatru i rogu, w którym stanie
+  przeciwnik — w jednym przebiegu na trzy nie dochodzi do niego w ogóle
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.86.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
 repo wydanie zaczyna się od liczby, nie od pomysłu.
 
-**1. Przeciwnik nigdy nie wchodzi na pokład.** Abordaż jest w tej grze
-najciekawszym rozstrzygnięciem bitwy — pojedynek kapitanów, przejęcie kadłuba,
-łup — i **wyłącznie gracz może go zacząć**. `runEnemyAI` nie wystawia
-`AttemptBoarding` w żadnym stanie; tryb „boarder” od stosunku załóg znaczy tylko
-„podejdź i strzelaj kartaczem”. Do v0.85.0 pytania nie dawało się nawet postawić,
-bo sternik nie umiał podejść. **Pomiar na wejściu:** w ilu bitwach przeciwnik
-osiąga stan, w którym `canBoard()` przepuściłoby **jego** (kadłub gracza poniżej
-35 % albo załoga poniżej połowy, dystans poniżej 30), i jak długo w nim stoi. Jeśli
-prawie nigdy — to jest wynik i sprawa zamknięta.
+**1. Dzieląca się ładownia — `sellFleetShip` nie dolicza nic za tony**
+*(zostawione świadomie **sześć** wydań z rzędu — to już nie jest odkładanie, to jest
+decyzja, którą trzeba albo podjąć, albo skreślić z listy)*. Stocznia nie kupuje
+kakao, kupuje kadłub, więc „zapłać za ładunek” jest złą odpowiedzią — ale kapitan,
+który **chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw flagowca,
+bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć dzieli kapitana
+od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako jedno), i czy
+istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie „da się, tylko
+długo” — to jest wynik, a nie zadanie.
 
-**2. Dzieląca się ładownia — `sellFleetShip` nie dolicza nic za tony**
-*(zostawione świadomie **pięć** wydań z rzędu)*. Stocznia nie kupuje kakao,
-kupuje kadłub, więc „zapłać za ładunek” jest złą odpowiedzią — ale kapitan,
-który **chce** sprzedać ładunek przed kadłubem, musi dziś opróżnić najpierw
-flagowca, bo lada czerpie **od flagowca**. **Pomiar na wejściu:** ile naciśnięć
-dzieli kapitana od opróżnienia konsorty przy pełnej eskadrze (licząc `Ctrl` jako
-jedno), i czy istnieje stan, w którym nie da się tego zrobić wcale. Jeśli wyjdzie
-„da się, tylko długo” — to jest wynik, a nie zadanie.
-
-**3. Reguły layoutu: policzyć, ile scen stosuje każdą.** v0.84.0 zrobiła to dla
-**jednej** — „nic nie wychodzi poza panel” — i odpowiedź brzmiała: jeden ekran
-na szesnaście ją łamał; w v0.85.0 wynik to **0 na 16**. Zostały trzy nazwane
-osobno w tym repo: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0),
-**okno liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast
-dwóch** (v0.82.0 — v0.84.0 znalazła drugi przypadek w cyfrach zakładek, v0.85.0
-trzeci w progu zrywania kontaktu). **Robota:** dodać `audit-layout.mjs` pytania o
-te trzy. Trzecia jest najbliżej: w każdej scenie da się policzyć pozycje wpisane
-**dwa razy**.
-
-**4. Którego jeszcze klawisza nikt nie nacisnął?** v0.85.0 znalazła `ESC`, który
-był związany, nazwany i **nie miał `case` w silniku** — czyli przechodził przez oba
+**2. Którego jeszcze klawisza nikt nie nacisnął?** v0.85.0 znalazła `ESC`, który był
+związany, nazwany i **nie miał `case` w silniku** — czyli przechodził przez oba
 przemiatania źródła, z v0.81.0 i v0.84.0. Jedyne, co to widzi, to test, który
-**naciska klawisz i patrzy na stan**. **Robota:** dla każdej sceny wypisać, co
-każdy związany klawisz **zmienia** — i wypisać te, które nie zmieniają nic.
-`scripts/drive.mjs` już to potrafi w połowie: naciska klawisze i zrzuca stan
-świata. Brakuje porównania stanu przed i po.
+**naciska klawisz i patrzy na stan**. **Robota:** dla każdej sceny wypisać, co każdy
+związany klawisz **zmienia** — i wypisać te, które nie zmieniają nic. `drive.mjs` już
+naciska klawisze i zrzuca stan; brakuje porównania stanu przed i po.
 
-**5. Przemieść sceny klawiaturą — zrobione, i nie przestawać.** **16 z 18**:
-zostały `BootScene` i `PreloadScene`, które nic nie rysują. Przed każdym wydaniem
-dotykającym ekranu: `node scripts/audit-layout.mjs`. Przed każdym dotykającym
-bitwy: `node scripts/measure-battle.mjs 4 --policy=hold`.
+**3. Dwie liczby o tej samej rzeczy.** v0.86.0 znalazła 30 i 40 opisujące tę samą
+odległość, stojące obok siebie od v0.6.0 pod komentarzem, który mówił, że są tym
+samym. v0.84.0 znalazła to w cyfrach zakładek, v0.85.0 w progu zrywania kontaktu.
+**Robota:** przemieść stałe w `core/` i wypisać pary o **równej albo prawie równej
+wartości w tej samej dziedzinie** (piksele areny, dni, tony, ułamki) — a potem
+przeczytać komentarze nad nimi. To jest przemiatanie, które da się napisać raz.
+
+**4. Reguły layoutu: policzyć, ile scen stosuje każdą.** Zostały trzy nazwane osobno
+w tym repo: **odstęp liczony od tekstu, który przed nim stoi** (v0.27.0), **okno
+liczone z miejsca, które zostało** (v0.80.0), **jedna tabela pozycji zamiast dwóch**
+(v0.82.0). Trzecia jest najbliżej i łączy się z pozycją 3 wyżej.
+
+**5. Przed każdym wydaniem.** Dotykającym ekranu: `node scripts/audit-layout.mjs`.
+Dotykającym bitwy: `node scripts/measure-battle.mjs 4 --policy=hold`. Od v0.86.0
+bitwa potrafi sama otworzyć pojedynek, więc `endedAt: "scene gone"` nie znaczy już
+końca walki.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

@@ -22,8 +22,9 @@
  *     had neither, and always fired the left battery.
  */
 import { describe, it, expect } from "vitest";
-import { CombatEngine, DISENGAGE_RANGE_MUL, HULL_CLEARANCE, type AiArchetype } from "../CombatEngine.ts";
-import { bearingSide, BROADSIDE_ARC_COS } from "../../systems/CombatSystem.ts";
+import { CombatEngine, DISENGAGE_RANGE_MUL, BOARDING_COOLDOWN_TICKS, BOARDER_CREW_RATIO, type AiArchetype } from "../CombatEngine.ts";
+import { bearingSide, BROADSIDE_ARC_COS, HULL_WIDTH } from "../../systems/CombatSystem.ts";
+import { BOARDING_RANGE, canBoard, resolveBoarding } from "../../systems/BoardingSystem.ts";
 import type { CombatState, CombatEntityState } from "../../model/CombatState.ts";
 import type { EntityId, ShipClassId, FactionId } from "../../model/ids.ts";
 
@@ -79,8 +80,10 @@ function sail(arch: AiArchetype, startDist: number, secs = 90, crew: [number, nu
   for (let i = 0; i < secs * 20; i++) {
     const r = eng.apply(st, [], 1);
     st = r.state;
+    let over = false;
     for (const ev of r.events) {
       if (ev.type === "CannonFired" && (ev.shipId as string) === "e") sides.push(ev.side);
+      if (ev.type === "BattleEnded") over = true;
     }
     // Hold the captain hove to and his crew whole: he is the fixed ruler the
     // enemy's helm is measured against.
@@ -94,8 +97,12 @@ function sail(arch: AiArchetype, startDist: number, secs = 90, crew: [number, nu
     };
     const E = st.entities.e!;
     dists.push(Math.hypot(E.pos.x - st.entities.p!.pos.x, E.pos.y - st.entities.p!.pos.y));
+    if (over) break;
   }
-  return { dists, sides, end: dists[dists.length - 1]!, state: st };
+  return {
+    dists, sides, end: dists[dists.length - 1]!, state: st,
+    min: Math.min(...dists),
+  };
 }
 
 describe("the broadside arc, read in one place", () => {
@@ -153,7 +160,7 @@ describe("the enemy's helm changes the range", () => {
   ];
 
   for (const [arch, desired] of CASES) {
-    const station = Math.max(HULL_CLEARANCE, desired);
+    const station = Math.max(HULL_WIDTH, desired);
 
     it(`${arch}: closes from 900 px to the station she wants`, () => {
       const run = sail(arch, 900);
@@ -185,19 +192,18 @@ describe("the enemy's helm changes the range", () => {
     expect(Math.abs(run.end - RANGE * 1.1)).toBeLessThan(12);
   });
 
-  it("presses to grapple when her crew is half again his — but not into his water", () => {
-    // The boarder's station is 40 px. A drawn hull is 256 px of sprite at 0.3,
-    // so two ships at 40 px are drawn one through the other. Nothing enforced
-    // a clearance before, because nothing could reach the station to break it.
-    const run = sail("aggressive", 425, 90, [20, 45]);
-    expect(run.end).toBeGreaterThanOrEqual(HULL_CLEARANCE - 2);
-    expect(run.end).toBeLessThan(HULL_CLEARANCE + 12);
-  });
+  it("comes hull to hull when she means to board, and only then", () => {
+    // Grappled ships touch: her boarding station is the 40 px the AI has
+    // always written down, and since v0.86.0 that is inside `BOARDING_RANGE`
+    // rather than outside it. Every other mode keeps a hull's width off,
+    // because two hulls nearer than that are drawn one through the other.
+    const boarding = sail("aggressive", 425, 90, [20, 45]);
+    expect(boarding.min).toBeLessThan(HULL_WIDTH);
+    expect(boarding.min).toBeGreaterThan(20);
 
-  it("never steers inside a hull's width of him, whatever she wants", () => {
     for (const arch of ["aggressive", "defensive", "tactical"] as AiArchetype[]) {
-      const run = sail(arch, 425, 90, [20, 45]);
-      expect(Math.min(...run.dists.slice(-600))).toBeGreaterThan(HULL_CLEARANCE - 3);
+      const even = sail(arch, 425, 90, [30, 30]);
+      expect(Math.min(...even.dists.slice(-600))).toBeGreaterThan(HULL_WIDTH - 3);
     }
   });
 });
@@ -265,5 +271,145 @@ describe("what the fight says, it says on the screen", () => {
     // where the fade was meant to be, so the lines piled up.
     expect(sceneSrc).not.toMatch(/delayedCall\(\s*\d+\s*,\s*\(\)\s*=>\s*\{\s*\}\s*\)/);
     expect(sceneSrc).toMatch(/delayedCall\(BANNER_MS, \(\) => banner\.destroy\(\)\)/);
+  });
+});
+
+describe("she comes across too", () => {
+  /** Her alongside, him weakened: the state a boarding needs. */
+  function grappled(pCrew = 10, eCrew = 40) {
+    const st = arena(50, [pCrew, eCrew]);
+    // A deck worth carrying: hull well down as well as the crew.
+    st.entities.p!.ship!.hullHp = 20;
+    return st;
+  }
+
+  it("a grapnel carries as far as a hull is wide", () => {
+    // It was a flat 30 px. The closest any helm the engine steers will come
+    // when it is not boarding is a hull's width, and her boarding station is
+    // the 40 px the AI always wrote down — which was OUTSIDE the old range,
+    // under a comment reading "get close enough to grapple".
+    expect(BOARDING_RANGE).toBe(HULL_WIDTH);
+    expect(BOARDING_RANGE).toBeGreaterThan(40);
+    expect(canBoard(grappled().entities.e!.ship!, grappled().entities.p!.ship!, 50).ok).toBe(true);
+    expect(canBoard(grappled().entities.e!.ship!, grappled().entities.p!.ship!, 50 * 3).ok).toBe(false);
+  });
+
+  it("throws them when she outnumbers him and his deck is weak", () => {
+    const eng = new CombatEngine();
+    eng.setArchetype("aggressive");
+    const r = eng.apply(grappled(), [], 1);
+    const inc = r.events.find(e => e.type === "BoardingIncoming");
+    expect(inc).toBeTruthy();
+    expect((inc as { boarderId: string }).boarderId).toBe("e");
+    // Announced, not settled: the captains have not met yet.
+    expect(r.events.some(e => e.type === "BoardingResolved")).toBe(false);
+  });
+
+  it("does not throw them at a deck she cannot carry", () => {
+    const eng = new CombatEngine();
+    // Even crews: not a boarder at all.
+    const even = arena(50, [40, 40]);
+    even.entities.p!.ship!.hullHp = 20;
+    expect(eng.apply(even, [], 1).events.some(e => e.type === "BoardingIncoming")).toBe(false);
+
+    // Outnumbered but sound — full hull, more than half his people still on
+    // their feet: `canBoard` refuses a whole ship.
+    const eng2 = new CombatEngine();
+    const sound = arena(50, [25, 40]);
+    expect(eng2.apply(sound, [], 1).events.some(e => e.type === "BoardingIncoming")).toBe(false);
+
+    // Alongside and weak, but she is not strong enough to want it.
+    const eng3 = new CombatEngine();
+    const weakEnemy = arena(50, [10, Math.floor(10 * BOARDER_CREW_RATIO) - 1]);
+    weakEnemy.entities.p!.ship!.hullHp = 20;
+    expect(eng3.apply(weakEnemy, [], 1).events.some(e => e.type === "BoardingIncoming")).toBe(false);
+  });
+
+  it("boards HIM, not herself", () => {
+    // `applyBoarding` took one id before v0.86.0 and read its target straight
+    // off `state.enemyShipId`, so the only pair it could describe was the
+    // captain going the other way.
+    const eng = new CombatEngine();
+    let st = grappled();
+    st = eng.apply(st, [], 1).state;                       // grapnels away
+    const r = eng.apply(st, [], 1);                        // nobody duels: settled by strength
+    const res = r.events.find(e => e.type === "BoardingResolved");
+    expect(res).toBeTruthy();
+    expect((res as { boarderId: string }).boarderId).toBe("e");
+    // His crew fell and hers did too — two ships changed, not one twice.
+    expect(r.state.entities.p!.ship!.crew.current).toBeLessThan(st.entities.p!.ship!.crew.current);
+    expect(r.state.entities.e!.ship!.crew.current).toBeLessThan(st.entities.e!.ship!.crew.current);
+  });
+
+  it("settles on the next tick when no screen is running the duel", () => {
+    const eng = new CombatEngine();
+    let st = grappled();
+    st = eng.apply(st, [], 1).state;
+    const r = eng.apply(st, [], 1);
+    expect(r.events.some(e => e.type === "BoardingResolved")).toBe(true);
+    // And it is not left hanging to fire again a tick later.
+    const r2 = eng.apply(r.state, [], 1);
+    expect(r2.events.some(e => e.type === "BoardingResolved")).toBe(false);
+  });
+
+  it("gives the deck to whoever won the duel", () => {
+    for (const playerWon of [true, false]) {
+      const eng = new CombatEngine();
+      let st = grappled();
+      st = eng.apply(st, [], 1).state;                     // BoardingIncoming
+      eng.setDuelResult(playerWon);
+      const r = eng.apply(st, [{ type: "RepelBoarders" }], 1);
+      const res = r.events.find(e => e.type === "BoardingResolved") as { captured: boolean };
+      expect(res.captured).toBe(!playerWon);
+      expect(r.events.some(e => e.type === "BattleEnded" && e.outcome === "lose")).toBe(!playerWon);
+    }
+  });
+
+  it("waits after a repulse instead of grinding him down a tick at a time", () => {
+    const eng = new CombatEngine();
+    let st = grappled();
+    st = eng.apply(st, [], 1).state;
+    eng.setDuelResult(true);                               // he holds the deck
+    st = eng.apply(st, [{ type: "RepelBoarders" }], 1).state;
+    // Still alongside, still weak — and she does not come again at once.
+    let throwsWithin = 0;
+    for (let i = 0; i < BOARDING_COOLDOWN_TICKS - 2; i++) {
+      const r = eng.apply(st, [], 1);
+      st = r.state;
+      if (r.events.some(e => e.type === "BoardingIncoming")) throwsWithin++;
+    }
+    expect(throwsWithin).toBe(0);
+  });
+
+  it("counts the captain's blade on his own deck", () => {
+    const deck = { classId: "brigantine", factionId: "spain", hullHp: 20, hullMax: 80,
+      sailsHp: 60, sailsMax: 60, cannons: 16, cooldown: { left: 0, right: 0 },
+      crew: { current: 18, max: 40, morale: 0.7 } } as never;
+    const party = { classId: "brigantine", factionId: "spain", hullHp: 80, hullMax: 80,
+      sailsHp: 60, sailsMax: 60, cannons: 16, cooldown: { left: 0, right: 0 },
+      crew: { current: 20, max: 40, morale: 0.7 } } as never;
+    // Her party is the larger one, so with nobody of note defending she wins.
+    expect(resolveBoarding(party, deck, 0).captured).toBe(true);
+    // A captain who can use a sword turns it.
+    expect(resolveBoarding(party, deck, 0, undefined, 10).captured).toBe(false);
+    // And the captain's own boardings are unchanged: the defence bonus is 0.
+    expect(resolveBoarding(party, deck, 0, undefined, 0)).toEqual(resolveBoarding(party, deck, 0));
+  });
+
+  it("tells him why he cannot board, and tells her nothing", () => {
+    const eng = new CombatEngine();
+    const far = arena(RANGE, [30, 30]);
+    const his = eng.apply(far, [{ type: "AttemptBoarding" }], 1);
+    expect(his.events.some(e => e.type === "BoardingRejected" && e.reason === "too_far")).toBe(true);
+
+    // Hers is refused in silence: she simply does not come.
+    const eng2 = new CombatEngine();
+    let st = grappled();
+    st = eng2.apply(st, [], 1).state;                      // pending
+    st = { ...st, entities: { ...st.entities,
+      e: { ...st.entities.e!, pos: { x: st.entities.e!.pos.x + 900, y: st.entities.e!.pos.y } } } };
+    const hers = eng2.apply(st, [{ type: "RepelBoarders" }], 1);
+    expect(hers.events.some(e => e.type === "BoardingRejected")).toBe(false);
+    expect(hers.events.some(e => e.type === "BoardingResolved")).toBe(false);
   });
 });

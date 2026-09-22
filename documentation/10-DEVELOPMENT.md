@@ -265,6 +265,12 @@ uciekającym na pełnych żaglach we wszystkich czterech archetypach.
 **Uwaga:** nie edytuj plików w `src/` w trakcie przebiegu. HMR Vite przeładuje
 stronę i puppeteer przerwie z `Execution context was destroyed`.
 
+Od v0.86.0 bitwa potrafi **sama** otworzyć `DuelScene` (przeciwnik idzie na
+abordaż), więc `endedAt: "scene gone"` w wyniku pomiaru nie musi znaczyć końca
+walki. Najszybsza droga do tego stanu: `?battle=navy&crew=12` — dwunastu ludzi
+przeciwko trzydziestu to przewaga ponad `BOARDER_CREW_RATIO`, a załoga poniżej
+połowy etatu spełnia warunek osłabionego pokładu od pierwszej klatki.
+
 ### audit-layout.mjs — jedna scena, która rzuci, nie zabiera raportu
 
 Od v0.85.0 każda scena jest w `try`/`catch`. Printer od początku umiał pokazać

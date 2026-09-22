@@ -104,6 +104,18 @@ export function gunneryAccuracy(dRatio: number, gunnery: number = NEUTRAL_GUNNER
 }
 
 /**
+ * A drawn hull, in arena pixels: a 256 px sprite at scale 0.3.
+ *
+ * Two things are measured against it and they used to disagree. The helm the
+ * engine steers will not close inside it, because two ships nearer than that
+ * are drawn one through the other. And a grapnel is thrown from **alongside**,
+ * which is this distance and not the 30 px `BOARDING_RANGE` held before
+ * v0.86.0 — a number no ship in the game could ever reach, not even the AI
+ * whose own comment said it was closing "to grapple" at 40.
+ */
+export const HULL_WIDTH = 77;
+
+/**
  * Cosine of the bow/stern dead zone: a target within ±60° of the ship's own
  * heading (or of her stern) lies where no broadside gun can be trained.
  */

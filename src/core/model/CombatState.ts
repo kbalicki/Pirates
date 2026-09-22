@@ -55,6 +55,9 @@ export type CombatEvent =
   | { type: "ShipDamaged"; shipId: EntityId; hullDelta: number; sailsDelta: number; crewDelta?: number }
   | { type: "Surrender"; shipId: EntityId }
   | { type: "BoardingRejected"; reason: "too_far" | "enemy_too_strong" }
+  /** She has thrown her grapnels; whoever reads this owes the captain a duel. */
+  | { type: "BoardingIncoming"; boarderId: EntityId }
   | { type: "DisengageRejected"; reason: "too_close" }
-  | { type: "BoardingResolved"; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number }
+  /** `captured` is from the BOARDER's side: she carried the deck she came for. */
+  | { type: "BoardingResolved"; boarderId: EntityId; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number }
   | { type: "BattleEnded"; outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"; loot?: Record<string, number> };

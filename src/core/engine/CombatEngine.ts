@@ -4,7 +4,7 @@ import type { EngineResult } from "../model/Events.ts";
 import { SHIP_CLASSES } from "../data/ships.ts";
 import { headingToVec, vec2Add, vec2Scale, vec2Dist, normalizeHeading, clamp } from "../services/Geometry.ts";
 import { windPolar, navigatedWindModifier, NEUTRAL_NAVIGATION } from "../systems/WeatherSystem.ts";
-import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY, bearingSide } from "../systems/CombatSystem.ts";
+import { CANNON_RANGE, CANNON_DAMAGE_HULL, CANNON_DAMAGE_SAILS, CANNON_DAMAGE_CREW, effectiveReloadTicks, gunneryAccuracy, NEUTRAL_GUNNERY, bearingSide, HULL_WIDTH } from "../systems/CombatSystem.ts";
 import { AMMO_DEFS, type AmmoType } from "../data/ammo.ts";
 import { canBoard, resolveBoarding } from "../systems/BoardingSystem.ts";
 import { damageSpeedMultiplier, damageTurnMultiplier, applyFlooding } from "../systems/DamageSystem.ts";
@@ -25,10 +25,18 @@ const COMBAT_SPEED_MUL = 10;
 export const DISENGAGE_RANGE_MUL = 0.9;
 
 /**
- * The closest station the enemy's helm will steer for, in arena pixels: the
- * width of a drawn hull (a 256 px sprite at scale 0.3).
+ * How long she waits before throwing her grapnels again after a repulse.
+ * Ten seconds: long enough that a beaten boarding party is a real reprieve.
  */
-export const HULL_CLEARANCE = 77;
+export const BOARDING_COOLDOWN_TICKS = 200;
+
+/**
+ * Crew ratio at which she stops fighting her guns and comes for the deck, and
+ * at which she stands off instead. One table: the helm reads it to pick a
+ * station, and the grapnels read it to be thrown.
+ */
+export const BOARDER_CREW_RATIO = 1.5;
+export const FLEEING_CREW_RATIO = 0.5;
 
 export class CombatEngine {
   /**
@@ -62,6 +70,22 @@ export class CombatEngine {
    * without a duel behind it falls back to the old strength comparison.
    */
   private pendingDuelWin: boolean | null = null;
+  /**
+   * Ticks before she may throw her grapnels again (v0.86.0).
+   *
+   * Without it a boarding she loses is retried twenty times a second, which
+   * turns one repulse into a grinder.
+   */
+  private enemyBoardCooldown = 0;
+  /**
+   * She is across and the captains have not met yet.
+   *
+   * `SeaBattleScene` pauses the battle and runs `DuelScene` when it sees
+   * `BoardingIncoming`, then sends `RepelBoarders` back. A headless caller
+   * sends no such command, and its next tick settles the melee by strength —
+   * the same fallback `resolveBoarding` has always had for NPC-on-NPC.
+   */
+  private boardingPending = false;
 
   setArchetype(a: AiArchetype): void {
     this.archetype = a;
@@ -144,6 +168,20 @@ export class CombatEngine {
   ): EngineResult<CombatState, CombatEvent> {
     let state = prev;
     const events: CombatEvent[] = [];
+
+    // A boarding she began and nobody came to settle (v0.86.0). `SeaBattleScene`
+    // pauses the fight and runs the duel, so the next tick it sends carries
+    // `RepelBoarders`; a headless caller sends nothing, and the melee falls
+    // back to the strength comparison `resolveBoarding` has always used for
+    // NPC-on-NPC. Either way it is settled on the very next tick, never left
+    // hanging.
+    if (this.boardingPending && !commands.some(c => c.type === "RepelBoarders")) {
+      this.boardingPending = false;
+      const settled = this.applyBoarding(
+        state, state.enemyShipId as string, state.playerShipId as string);
+      state = settled.state;
+      events.push(...settled.events);
+    }
 
     // Apply player commands
     for (const cmd of commands) {
@@ -306,6 +344,27 @@ export class CombatEngine {
       }
     }
 
+    // She throws her grapnels (v0.86.0).
+    //
+    // Before this the AI had no boarding path at all. `runEnemyAI` never
+    // issued the command, `applyBoarding` could not have described the pair if
+    // it had, and her own "boarder" crew-mode meant nothing but grape at close
+    // range. Measured across 144 battles: the captain and the enemy were
+    // inside the old 30 px boarding range for 0 ticks of 518 400 unless he
+    // steered into her on purpose.
+    if (this.enemyBoardCooldown > 0) this.enemyBoardCooldown -= dtTicks;
+    const boarder = updatedEntities[enemyId];
+    const boardTarget = updatedEntities[playerId];
+    if (
+      !this.boardingPending && this.enemyBoardCooldown <= 0
+      && boarder?.ship && boardTarget?.ship
+      && boarder.ship.crew.current >= boardTarget.ship.crew.current * BOARDER_CREW_RATIO
+      && canBoard(boarder.ship, boardTarget.ship, vec2Dist(boarder.pos, boardTarget.pos)).ok
+    ) {
+      this.boardingPending = true;
+      events.push({ type: "BoardingIncoming", boarderId: boarder.id });
+    }
+
     // Surrender / battle-end checks
     const playerShip = updatedEntities[playerId]?.ship;
     const enemyShip = updatedEntities[enemyId]?.ship;
@@ -420,7 +479,13 @@ export class CombatEngine {
       }
 
       case "AttemptBoarding": {
-        return this.applyBoarding(state, shipId);
+        return this.applyBoarding(state, shipId, state.enemyShipId as string);
+      }
+
+      case "RepelBoarders": {
+        if (!this.boardingPending) return { state, events };
+        this.boardingPending = false;
+        return this.applyBoarding(state, state.enemyShipId as string, state.playerShipId as string);
       }
 
       case "AttemptDisengage": {
@@ -432,47 +497,75 @@ export class CombatEngine {
     }
   }
 
+  /**
+   * Settle a boarding between two named ships.
+   *
+   * It took one id before v0.86.0 and read the target straight off
+   * `state.enemyShipId`, so the only pair it could describe was the captain
+   * going across. Had the enemy ever sent the command — and nothing in the AI
+   * ever did — she would have boarded **herself**.
+   */
   private applyBoarding(
     state: CombatState,
-    shipId: string,
+    boarderId: string,
+    targetId: string,
   ): { state: CombatState; events: CombatEvent[] } {
     const events: CombatEvent[] = [];
-    const player = state.entities[shipId];
-    const enemyId = state.enemyShipId as string;
-    const enemy = state.entities[enemyId];
-    if (!player?.ship || !enemy?.ship) return { state, events };
+    const boarder = state.entities[boarderId];
+    const target = state.entities[targetId];
+    if (!boarder?.ship || !target?.ship) return { state, events };
 
-    const dist = vec2Dist(player.pos, enemy.pos);
-    const precheck = canBoard(player.ship, enemy.ship, dist);
+    const playerIsBoarding = boarderId === (state.playerShipId as string);
+    const dist = vec2Dist(boarder.pos, target.pos);
+    const precheck = canBoard(boarder.ship, target.ship, dist);
     if (!precheck.ok) {
-      events.push({ type: "BoardingRejected", reason: precheck.reason });
+      // Only the captain is told why. She simply does not come.
+      if (playerIsBoarding) events.push({ type: "BoardingRejected", reason: precheck.reason });
       return { state, events };
     }
 
     const duelWin = this.pendingDuelWin;
     this.pendingDuelWin = null;
-    const result = resolveBoarding(player.ship, enemy.ship, this.swordsmanship, duelWin ?? undefined);
+    // `forcedCapture` is read from the BOARDER's side. When she is the one
+    // across, the captain winning the duel means the boarding fails.
+    const forced = duelWin === null ? undefined : (playerIsBoarding ? duelWin : !duelWin);
+    const result = resolveBoarding(
+      boarder.ship, target.ship,
+      playerIsBoarding ? this.swordsmanship : 0,
+      forced,
+      playerIsBoarding ? 0 : this.swordsmanship,
+    );
     events.push({
       type: "BoardingResolved",
+      boarderId: boarder.id,
       captured: result.captured,
       playerCrewAfter: result.playerCrewAfter,
       enemyCrewAfter: result.enemyCrewAfter,
     });
 
-    // Apply crew losses
-    const newPlayerShip = {
-      ...player.ship,
-      crew: { ...player.ship.crew, current: result.playerCrewAfter },
+    const newBoarderShip = {
+      ...boarder.ship,
+      crew: { ...boarder.ship.crew, current: result.playerCrewAfter },
     };
-    const newEnemyShip = {
-      ...enemy.ship,
-      crew: { ...enemy.ship.crew, current: result.enemyCrewAfter },
+    const newTargetShip = {
+      ...target.ship,
+      crew: { ...target.ship.crew, current: result.enemyCrewAfter },
     };
 
-    if (result.captured) {
-      events.push({ type: "BattleEnded", outcome: "captured", loot: { gold: 100, fraction: result.lootFraction } });
-    } else if (result.playerCrewAfter <= 0) {
-      events.push({ type: "BattleEnded", outcome: "lose" });
+    if (playerIsBoarding) {
+      if (result.captured) {
+        events.push({ type: "BattleEnded", outcome: "captured", loot: { gold: 100, fraction: result.lootFraction } });
+      } else if (result.playerCrewAfter <= 0) {
+        events.push({ type: "BattleEnded", outcome: "lose" });
+      }
+    } else {
+      // She carried the deck, or she was thrown back off it. Either way her
+      // party has to re-form before it can go again — and the cooldown is what
+      // stops a boarding that ENDED the battle from being thrown a second time
+      // on the very next tick, since nothing in a pure engine knows the fight
+      // is over.
+      this.enemyBoardCooldown = BOARDING_COOLDOWN_TICKS;
+      if (result.captured) events.push({ type: "BattleEnded", outcome: "lose" });
     }
 
     return {
@@ -480,8 +573,8 @@ export class CombatEngine {
         ...state,
         entities: {
           ...state.entities,
-          [shipId]: { ...player, ship: newPlayerShip },
-          [enemyId]: { ...enemy, ship: newEnemyShip },
+          [boarderId]: { ...boarder, ship: newBoarderShip },
+          [targetId]: { ...target, ship: newTargetShip },
         },
       },
       events,
@@ -688,8 +781,8 @@ export class CombatEngine {
     let crewMode: "boarder" | "fleeing" | "normal" = "normal";
     if (player.ship && enemy.ship.crew.current > 0) {
       const ratio = enemy.ship.crew.current / Math.max(1, player.ship.crew.current);
-      if (ratio >= 1.5) crewMode = "boarder";
-      else if (ratio <= 0.5) crewMode = "fleeing";
+      if (ratio >= BOARDER_CREW_RATIO) crewMode = "boarder";
+      else if (ratio <= FLEEING_CREW_RATIO) crewMode = "fleeing";
     }
 
     // Archetype-driven defaults
@@ -715,14 +808,18 @@ export class CombatEngine {
       preferredAmmo = "chain"; // shred player sails to widen the gap
     }
 
-    // Two hulls do not share the same water. Nothing enforced this before
-    // v0.85.0 because nothing could: the enemy's helm never closed, so the
-    // boarder's 40 px station was a number no ship ever reached. It is half a
-    // hull — the sprites are 256 px drawn at 0.3, so 77 px of arena each — and
-    // two ships at 40 px are drawn one through the other. She lies alongside
-    // instead. The captain may still close to grapple: `canBoard` wants 30 px,
-    // and this is a rule for the helm the engine steers, not for his.
-    desiredDist = Math.max(HULL_CLEARANCE, desiredDist);
+    // Two hulls that are merely fighting do not share the same water: nearer
+    // than a hull's width and they are drawn one through the other. Nothing
+    // enforced it before v0.85.0 because nothing could — the enemy's helm
+    // never closed at all.
+    //
+    // A ship that means to board is the exception, and it is not an oversight
+    // that she overlaps: grappled ships touch. Her station is the 40 px the
+    // AI has always written down under the comment "get close enough to
+    // grapple" — a comment that was false from the day it was typed, because
+    // a grapnel carried 30. Since v0.86.0 it carries `BOARDING_RANGE`, which
+    // is a hull's width, and 40 is finally inside it.
+    if (crewMode !== "boarder") desiredDist = Math.max(HULL_WIDTH, desiredDist);
 
     // Broadside offset — keep the target on one side.
     //
