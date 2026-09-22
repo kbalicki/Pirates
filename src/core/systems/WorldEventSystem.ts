@@ -13,6 +13,7 @@ import { addLogEntry } from "./EventLogSystem.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
 import { MUSTER_PORTS } from "./TreasureFleetSystem.ts";
 import { PORTS } from "../data/ports.ts";
+import { HURRICANE_RADIUS } from "./WeatherFieldSystem.ts";
 import { HISTORICAL_WARS } from "../data/wars.ts";
 import { updateDiplomacy, TREATY_DAYS } from "./DiplomacySystem.ts";
 import { GOVERNOR_NEW_DAYS } from "./PardonSystem.ts";
@@ -426,8 +427,37 @@ function checkHistoricalWars(world: WorldState, cal: { year: number; month: numb
  * units of this map in a day and runs for three to seven, so a second landfall
  * seven hundred units on is a storm doing what a storm does. Beyond that it is
  * two storms.
+ *
+ * That paragraph was written about the *distance* and it is still right about
+ * the distance. What it silently claimed about the *speed* was not: a road
+ * drawn from the six nearest towns inside this reach has a median length of
+ * 465 units, so the eye walked it at a median **93** a day rather than four
+ * hundred, and only 0.5 % of storms reached the figure this comment quotes.
+ * See `STORM_MIN_LEG` — the reach was never the problem, the shortlist was.
  */
 const NEIGHBOUR_REACH = 700;
+
+/**
+ * How far apart two landfalls of one storm must be (v0.90.0).
+ *
+ * `pickNeighbours` answers the question *which towns are near this one*, and
+ * for a good harvest or a spreading fever that is exactly the question. A
+ * hurricane is not a neighbourhood, it is a road, and asking the neighbourhood
+ * question built roads too short to walk: measured over 1 760 rolled storms,
+ * **22 % had a whole road shorter than the storm's own radius**, so the eye
+ * v0.45.0 set moving never left the circle it started in. That is the three
+ * stationary circles of v0.44.0 again, arrived at by geometry instead of by
+ * code.
+ *
+ * One storm radius per leg is the smallest rule that cannot produce that: at
+ * the end of a leg the eye is, by construction, standing somewhere it was not
+ * covering at the start. Measured, it takes the median road from 465 to 916
+ * and the eye from 93 units a day to **188** — which is a little faster than
+ * the slowest hull in the game can run on her best point of sailing, and so
+ * the first speed at which `hurricaneEyes`' promise that the danger "has to be
+ * outrun" is true of anybody.
+ */
+const STORM_MIN_LEG = HURRICANE_RADIUS;
 
 /**
  * How many of the nearest candidates the roll chooses between.
@@ -503,6 +533,61 @@ export function pickNeighbours(
   }
   chosen.sort((a, b) => dist(a) - dist(b));
   return { ports: chosen, rng: r };
+}
+
+/**
+ * The towns one storm makes landfall on, in the order she reaches them.
+ *
+ * Deliberately **not** `pickNeighbours`, and the difference is the whole of
+ * v0.90.0. That function sorts by distance from the town in the headline and
+ * takes the nearest handful, which is right for every other multi-port event
+ * in the table — a harvest is a good year in one region, a fever spreads to
+ * the towns next door. It is wrong for a storm twice over:
+ *
+ *   - it picks the *nearest* towns, and in the Lesser Antilles the six nearest
+ *     are all inside one circle, so the road is shorter than the storm;
+ *   - it then re-sorts the result by distance from the first town, which lets
+ *     a road double back on itself.
+ *
+ * This one chains instead: each stop is chosen from the towns nearest the
+ * **previous** stop, at least `STORM_MIN_LEG` on from it and still inside
+ * `NEIGHBOUR_REACH` of the town the headline names. The shortlist is kept so a
+ * storm off Cartagena is not always the same three towns — that was
+ * `NEIGHBOUR_SHORTLIST`'s reason and it has not changed.
+ *
+ * Fewer stops than asked for stays the right answer for an isolated town, for
+ * the same reason as before: a hurricane over Bermuda has nowhere else to go.
+ */
+export function pickStormRoad(
+  pool: string[],
+  mainPort: string,
+  count: number,
+  rng: RngState,
+): { ports: string[]; rng: RngState } {
+  if (count <= 0) return { ports: [], rng };
+  const named = PORTS[mainPort]?.pos;
+  if (!named) return { ports: [], rng };
+
+  const at = (k: string) => PORTS[k].pos;
+  const gap = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+    Math.hypot(a.x - b.x, a.y - b.y);
+
+  const road: string[] = [];
+  let r = rng;
+  let from = mainPort;
+  while (road.length < count) {
+    const shortlist = pool
+      .filter(k => k !== mainPort && !road.includes(k) && PORTS[k])
+      .filter(k => gap(at(k), named) <= NEIGHBOUR_REACH && gap(at(k), at(from)) >= STORM_MIN_LEG)
+      .sort((a, b) => gap(at(a), at(from)) - gap(at(b), at(from)))
+      .slice(0, NEIGHBOUR_SHORTLIST);
+    if (shortlist.length === 0) break;
+    const roll = rngNextInt(r, 0, shortlist.length - 1);
+    r = roll.state;
+    road.push(shortlist[roll.value]);
+    from = road[road.length - 1];
+  }
+  return { ports: road, rng: r };
 }
 
 function expireEvents(world: WorldState): WorldState {
@@ -592,7 +677,10 @@ function rollOneEvent(
     const targetFaction = chosen.type === "treasure_fleet" ? "spain" : (portDef?.factionId as string);
     affectedPorts = allPorts.filter(k => PORTS[k].factionId === targetFaction);
   } else {
-    const picked = pickNeighbours(pool, mainPort, chosen.affectsPorts - 1, rng);
+    // A storm walks a road; everything else spreads to its neighbours.
+    const picked = chosen.type === "hurricane"
+      ? pickStormRoad(pool, mainPort, chosen.affectsPorts - 1, rng)
+      : pickNeighbours(pool, mainPort, chosen.affectsPorts - 1, rng);
     rng = picked.rng;
     affectedPorts = [mainPort, ...picked.ports];
   }

@@ -112,10 +112,27 @@ export const ZONE_WIND_PULL = 0.45;
  *
  * The map is 3200 px across roughly 45° of longitude, so a pixel is about a
  * kilometre and this is a storm field some 500 km wide — which is what a
- * hurricane is. It also sits between `BLOCKADE_RADIUS` (320) and
- * `MATERIALIZE_RANGE` (620), so the circle is bigger than anything the player
- * does to a harbour and smaller than the distance between two of them: it can
- * be sailed around.
+ * hurricane is. That is the whole of the justification, and until v0.90.0
+ * three further sentences stood here that were not:
+ *
+ *   - *"it sits between `BLOCKADE_RADIUS` (320) and `MATERIALIZE_RANGE`
+ *     (620)"* — 260 is below both of them, not between them. Every number the
+ *     sentence quoted was current; only the comparison was wrong, which is why
+ *     `sweep-claims.mjs` grades a quoted value and a comparison separately.
+ *   - *"bigger than anything the player does to a harbour"* — the cordon he
+ *     lays is 320 and the beach he can reach men across is 400. The weather is
+ *     the **smallest** of the three.
+ *   - *"smaller than the distance between two of them: it can be sailed
+ *     around"* — the median distance from a harbour to its nearest neighbour
+ *     is **101** px. Only **2 of 45** harbours have a neighbour further off
+ *     than this radius. One circle covers a median of **3** other towns and as
+ *     many as **8** in the Lesser Antilles.
+ *
+ * What is true, measured: the circle is 520 px across, which is **eight
+ * spyglasses** and 2.4 screens at the default zoom, and it stands over 2.8 %
+ * of the navigable sea. It is not a thing the captain sees the edge of. It is
+ * a region he is told about — chart pin, headline, three warned towns — and
+ * then has to keep a reckoning of, which is the point.
  */
 export const HURRICANE_RADIUS = 260;
 
@@ -220,6 +237,16 @@ export function hurricaneProgress(world: WorldState, ev: { startDay: number; end
  * vanished. It is now one circle that starts at the first town and is over the
  * last one when the event lifts — which is why the same three towns are still
  * warned, and why the danger has to be outrun rather than merely avoided.
+ *
+ * That last clause was a promise about a speed nobody had measured, and for
+ * five releases it was false. The road is `ev.ports` and the pace is its
+ * length over the event's life: with the towns drawn from the six nearest,
+ * the eye walked a median **93** units a day, slower than every hull in the
+ * game — the slowest, a merchantman, averages 95 over all headings and makes
+ * 190 on her best point — and **22 %** of storms had a road shorter than this
+ * circle's own radius, so the eye never left the water it started over.
+ * `STORM_MIN_LEG` (v0.90.0) is what makes the clause true: median 188 a day,
+ * and no storm that stands still.
  */
 export function hurricaneEyes(
   world: WorldState,

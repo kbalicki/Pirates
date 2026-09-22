@@ -83,8 +83,13 @@ import { factionNameKey, portNameKey, villageNameKey } from "../i18n/names.ts";
 /**
  * How close the ship has to be before the village hails her.
  *
- * Eight times a town's dock radius, because there is no harbour to steer into
- * — only a beach to anchor off, and a boat to send. Measured: at forty units
+ * Three and a third times a town's dock radius — fifteen, the same for all
+ * forty-five of them — because there is no harbour to steer into, only a beach
+ * to anchor off and a boat to send. (This paragraph said *eight times* and,
+ * below, *a town's six* until v0.90.0. Both were stale and neither was
+ * catchable by the quoted-value sweep, because `dockRadius` is a field rather
+ * than a constant and because a number spelled in words is not a number.)
+ * Measured: at forty units
  * four of the eight anchorages put a sloop **aground** before she was close
  * enough to be heard, because the land grid the depth field is built from is
  * coarser than the coastline polygons and its shore is fatter than the drawn
@@ -93,8 +98,13 @@ import { factionNameKey, portNameKey, villageNameKey } from "../i18n/names.ts";
  * lie and leaves the five deep ones aground — which is the rule, not an
  * accident.
  *
- * Every village is sited at least sixty-five units from the nearest town, so
- * this range and a town's six can never both be live at once.
+ * Every village is sited at least sixty-five units from the nearest town —
+ * which is exactly this range plus a town's fifteen, so the two hails can
+ * never both be live at once. That invariant is worth the sentence and was
+ * carrying no guard: measured, the closest pair on the chart is Champotón and
+ * Campeche at **65.7 units**, a margin of seven tenths of one unit. Moving
+ * either of them a pixel inshore would put a captain inside both. It is
+ * asserted in `claims.test.ts` now.
  */
 export const VILLAGE_RANGE = 50;
 

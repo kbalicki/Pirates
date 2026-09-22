@@ -328,6 +328,40 @@ Stałe strażnika, które z tego wyszły, są w `src/core/__tests__/dimensions.t
 
 ---
 
+### sweep-claims.mjs — komentarz jest twierdzeniem (v0.90.0)
+
+```bash
+node scripts/sweep-claims.mjs            # wszystkie stopnie
+node scripts/sweep-claims.mjs quoted     # tylko jeden
+node scripts/sweep-claims.mjs --all      # także src/game/
+```
+
+`sweep-constants.mjs` przemiata **liczby**. To przemiata **zdania o liczbach** —
+349 z nich w 116 plikach `core/` — i dzieli je na cztery stopnie:
+
+| stopień | co to jest | sprawdzalne? |
+|---|---|---|
+| **QUOTED** | zdanie pisze wartość obok nazwy stałej: `BLOCKADE_RADIUS` (320) | **maszynowo**, skrypt kończy się kodem 1 |
+| **COMPARED** | zdanie wymienia stałą i słowo porównawcze (większy, między, nigdy) | ręcznie: obie strony istnieją, więc da się z tego zrobić asercję |
+| **SPELLED** | liczba **napisana słowem** przy jednostce albo dzierżawczo — „miejskie sześć”, „około czterystu jednostek na dobę” | ręcznie |
+| **COUNTED** | zdanie wylicza czytelników albo przypadki („czytane cztery razy”) | ręcznie — to kształt defektu z v0.89.0 |
+
+**Wszystkie siedem wartości QUOTED było aktualnych.** Każdy defekt, który to
+wydanie znalazło, siedział w zdaniu, którego liczby były poprawne, a **porównanie
+nie** — i dlatego stopnie są rozdzielone. Sam test QUOTED nie jest już tylko
+w skrypcie: pierwszy blok `src/core/__tests__/claims.test.ts` robi to samo
+przemiatanie na **obu** warstwach i chodzi przy każdym commicie.
+
+Stopień SPELLED istnieje, bo v0.90.0 znalazła dwa takie zdania, których QUOTED
+nie mógł zobaczyć: **liczba napisana słowem nie jest liczbą**, a rzecz, którą
+opisuje, bywa polem (`dockRadius`), nie stałą.
+
+**Jak czytać wynik.** QUOTED albo przechodzi, albo wskazuje palcem. Pozostałe
+trzy to **lista lektur**: weź jedno zdanie, napisz asercję, którą ono implikuje,
+i uruchom ją. Te, które zaczerwienią, są wydaniem.
+
+---
+
 ### measure-battle.mjs — czy przeciwnik jest w kadrze (v0.85.0)
 
 Arena bitwy ma **trzy ekrany** szerokości, a kamera chodzi za graczem. Ten skrypt

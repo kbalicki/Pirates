@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-22 · **Wersja:** v0.89.0.0 · **Branch:** `main`
-**Kod:** 271 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2367 przechodzi, 0 failuje, 0 `todo`** w 83 plikach
+**Stan na:** 2026-09-22 · **Wersja:** v0.90.0.0 · **Branch:** `main`
+**Kod:** 272 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2377 przechodzi, 0 failuje, 0 `todo`** w 84 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2645,7 +2645,33 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.89.0)
+**Znalezione przy przemiataniu zdań, nienaprawione** (v0.90.0.0):
+
+- **`pointInLandmass` odpowiada `false` dla wszystkich 45 miast i 8 wiosek**,
+  także po wczytaniu prawdziwego `caribbean_geo.json` (102 lądy). Najbliższa
+  woda: **1 jednostka** od każdej z nich. Komentarz nad `VillageDef.pos` twierdzi
+  *„On land, within six units of open water”*. Pozycja **1** listy poniżej
+- **Lista lektur ma 342 zdania** — COMPARED 67, SPELLED 94, COUNTED 181 —
+  i przejrzane z nich zostało kilkanaście. `node scripts/sweep-claims.mjs`
+- **Prędkość oka to nadal nie cytowane 400/dobę**, tylko 188: sufitem jest
+  `NEIGHBOUR_REACH = 700` i trzy przystanki. Podniesienie zasięgu dotknęłoby też
+  `harvest`, więc zostawione świadomie — ale komentarz nad `NEIGHBOUR_REACH`
+  mówi teraz wprost, że **odległość była w porządku, a lista krótka**
+- **`pickStormRoad` rozciąga drogę, więc trzy ostrzeżone miasta leżą dalej od
+  siebie.** Nie sprawdzone, co to robi z `MapEventSystem.MARK_MAX_PORTS` (4)
+  i z czytelnością trasy na czarcie przy małym przybliżeniu
+- **`playerPresentAt` ma martwą gałąź.** Czas płynie **tylko** w `MainMapScene`
+  (`PortScene` nie rusza zegara, a wchodzi się do niej przez `scene.start`, który
+  mapę zatrzymuje), więc `tickReconquest` nigdy nie widzi
+  `location.type === "port"` — skrót na początku funkcji nie może się wykonać,
+  a dwa testy go pilnują. Gdyby się wykonywał, mówiłby coś dziwnego: **zakotwiczony
+  w Antigui, 12 px od własnego Montserratu, kapitan jest „nieobecny”**, a na morzu
+  399 px dalej — obecny. 256 skierowanych par (przystań, miasto) w promieniu 400,
+  28 z nich bliżej niż najlepsza luneta
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.90.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2674,7 +2700,18 @@ repo wydanie zaczyna się od liczby, nie od pomysłu.
 
 ---
 
-**1. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?** v0.89.0 wzięła z niej
+**1. `pointInLandmass` mówi, że żadne miasto nie stoi na lądzie.** Zmierzone
+w v0.90.0 przy wczytanym **prawdziwym** `public/data/caribbean_geo.json` (102
+lądy, nie fallback): funkcja odpowiada **false dla wszystkich 45 miast i
+wszystkich 8 wiosek**, a najbliższa woda leży o **1 jednostkę** od każdego z
+nich. Komentarz nad `VillageDef.pos` mówi *„On land, within six units of open
+water"*. Albo zdanie jest fałszywe, albo funkcja — i **żadnej asercji
+o geografii nie wolno pisać, zanim się nie wie której**. `findWaterApproach`
+zaczyna szukać dopiero od 40 jednostek, więc nigdy się na tym nie potknęło.
+**Pomiar na wejściu:** ile punktów siatki 3200×2400 `pointInLandmass` uznaje za
+ląd i czy ten odsetek zgadza się z tym, co widać na ekranie.
+
+**2. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?** v0.89.0 wzięła z niej
 pierwszą pozycję (mgła i czujność) i znalazła mechanikę, która **nie działała
 w ogóle**. Zostały dwie nazwane: **`PRESENCE_RANGE` (400)** — z jakiej odległości
 flota gracza „liczy się jako obecna” przy odbijaniu miasta, i **`BLOCKADE_RADIUS`
@@ -2683,28 +2720,29 @@ widzi** (luneta sięga 36–65). Dla blokady to może być słuszne (patrol to n
 wzrok), dla obecności — nie wiadomo. **Pomiar na wejściu:** jak często flota
 „jest obecna” przy mieście, którego kapitan nie ma na ekranie.
 
-**2. Czy generator daje to, czego próg żąda?** To jest ogólniejsza postać tego,
+**3. Czy generator daje to, czego próg żąda?** To jest ogólniejsza postać tego,
 co v0.89.0 znalazła w mgle, i da się to zadać każdemu progowi: **wypisać rozkład
 wielkości, którą bramkuje, i sprawdzić, po której stronie próg stoi**. Kandydaci
 od razu: `STORM_SAFE_SAIL`, `HURRICANE_*`, progi cen w `PricingSystem`
 (`RATIO_MIN`/`RATIO_MAX` — v0.67.0 już raz na to wpadła), `PREY_AGGRESSION_FLOOR`
 przeciwko tabeli agresji.
 
-**3. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe widzą
+**4. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe widzą
 każdą scenę w **jednym** stanie — tym, w którym się otwiera. v0.88.0 dopisała
 drugą recepturę dla szturmu i to od razu zmieniło wynik dla dziewięciu klawiszy.
 **Robota:** wypisać dla każdej sceny jej **fazy** i policzyć, ile z nich ma
 recepturę. Podejrzani: `PortScene` (sześć lad), `CityDefenseScene`, `DuelScene`.
 
-**4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?** v0.87.0: liczba
-w warstwie, która rysuje. v0.88.0: liczba w zdaniu. v0.89.0: reguła, która
-wymienia swoich czytelników w komentarzu, a dwaj najważniejsi są poza listą.
-**Robota:** przemieść komentarze w `core/`, które **wyliczają** czytelników albo
-twierdzą coś o zasięgu, i sprawdzić każde takie zdanie kodem.
+**~~4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?~~ ✅ v0.90.0** —
+`scripts/sweep-claims.mjs`, **349 zdań** w czterech stopniach. Pozycja **nie
+znika**: QUOTED chodzi teraz w teście, ale COMPARED (67), SPELLED (94) i COUNTED
+(181) to **lista lektur**, którą trzeba przechodzić zdanie po zdaniu. Z niej
+wyszły trzy fałszywe twierdzenia huraganu o sobie i dwa o wiosce.
 
 **5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs`. Klawisze:
 `node scripts/probe-keys.mjs`. Bitwa: `node scripts/measure-battle.mjs 4
---policy=hold`. Liczby: `node scripts/sweep-constants.mjs`.
+--policy=hold`. Liczby: `node scripts/sweep-constants.mjs`. Zdania o liczbach:
+`node scripts/sweep-claims.mjs`.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

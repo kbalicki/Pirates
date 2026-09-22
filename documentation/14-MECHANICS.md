@@ -432,6 +432,26 @@ ostrzeżone miasta, z pierścieniem i trasą na czarcie.
 | `WeatherFieldSystem.HURRICANE_VISION_SHARE` | 0.3 | do ilu spada luneta |
 | `WeatherFieldSystem.ZONE_WIND_PULL` | 0.45 | jak mocno strefy mapy ciągną pasat |
 
+**Droga oka (v0.90.0).** Trzy ostrzeżone miasta to nie sąsiedztwo, tylko trasa.
+Do v0.89.0 wybierał je `pickNeighbours` — sześć **najbliższych** miast w promieniu
+700 — i wychodziła z tego droga o medianie **465 jednostek**, którą oko
+przechodziło przez 3–7 dni z medianową prędkością **93 jednostek na dobę**.
+To mniej niż robi w dobę **każdy** kadłub w grze (najwolniejszy, merchantman, ma
+średnio 95 po wszystkich kursach i 190 na najlepszym), a **22% dróg było
+krótszych niż własny promień burzy** — oko nie opuszczało koła, w którym
+zaczynało. Od v0.90.0 trasę buduje `pickStormRoad`: **każdy odcinek co najmniej
+jeden promień burzy** (`STORM_MIN_LEG` = 260), a kolejne miasto wybierane jest
+spośród najbliższych **poprzedniemu**, nie pierwszemu — więc droga nie zawraca.
+Zmierzone po zmianie: mediana drogi **916**, oko **188 jednostek na dobę**, ani
+jednej burzy stojącej w miejscu.
+
+Promień **260** jest przy tym **najmniejszym** z trzech zasięgów tej skali:
+kordon blokady to 320, a odległość, z której kapitan rzuca ludzi na plażę, 400.
+Koło ma 520 px średnicy — **osiem lunet** i 2,4 ekranu przy domyślnym
+przybliżeniu — i stoi nad **2,8%** żeglownego morza. Mediana odległości portu do
+najbliższego sąsiada to **101 px**, więc jedno koło nakrywa medianowo **3** inne
+miasta, a na Małych Antylach **8**.
+
 ### Mgła
 
 Pierwsza pogoda, która **nie jest zagrożeniem**: nie zabiera statkowi nic, za to
@@ -1489,6 +1509,15 @@ Osiem wiosek na czarcie, **żadna nie nosi bandery**.
 | `VillageSystem.WAR_PARTY_DAYS` | 40 | ile trwa zdarzenie najazdu |
 | `SeaDepth.VILLAGE_ANCHORAGE_DEPTH` | 4 | głębokość przy wiosce |
 | `SeaDepth.VILLAGE_ANCHORAGE_RADIUS` | 60 | promień tego kotwicowiska |
+
+**Dwa zawołania nigdy naraz (v0.90.0).** Zasięg wioski (50) plus promień doku
+miasta (`dockRadius` = 15, **taki sam dla wszystkich 45 miast**) daje 65, a
+najbliższa para na czarcie — Champotón i Campeche — dzieli **65,7 jednostki**.
+Margines to **siedem dziesiątych jednostki** i do v0.90.0 nie pilnował go żaden
+test; przesunięcie któregokolwiek o piksel w głąb lądu postawiłoby kapitana
+w obu naraz. Teraz pilnuje `claims.test.ts`. (Komentarz nad `VILLAGE_RANGE`
+mówił przy tym „ośmiokrotność promienia doku” i „miejskie sześć” — jest to
+3⅓ i piętnaście.)
 
 **Sześć ton rumu kupuje złoto** — jedyne dobro `rare`, którego żaden port nie
 trzyma na ladzie — i kupuje zaufanie. Zaufanie przy 60 kupuje **najazd na
