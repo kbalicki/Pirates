@@ -197,6 +197,68 @@ describe("the recipe list is not shorter than the screens", () => {
     const src = tool(name);
     expect(src).toContain("labelOf(recipe)");
     expect(src, `${name} matches --only against the label too`)
-      .toContain("labelOf(recipe) !== only");
+      .toContain("r.key === only || labelOf(r) === only");
+  });
+
+  // =========================================================================
+  // One walk, not two (v0.95.0)
+  // =========================================================================
+
+  /**
+   * v0.94.0 gave the tools one list of screens and left them two copies of the
+   * **walk** — the page load, the frame pump, the phase keys, the `require`
+   * check. They diverged inside the hour: `probe-keys.mjs` checked `require`
+   * against a text truncated at sixty characters, which is right for a diff
+   * channel and wrong for a precondition, so the assault's settled screen was
+   * reachable by one tool and *"unreachable in five tries"* by the other. The
+   * walk is `scene-driver.mjs` now, and this is what keeps it the only one.
+   */
+  it.each(["audit-layout.mjs", "probe-keys.mjs"])("%s walks through the driver", (name) => {
+    const src = tool(name);
+    expect(src).toMatch(/import \{[^}]*openDriver[^}]*\} from '\.\/scene-driver\.mjs'/);
+    expect(src, `${name} does not open a browser of its own`).not.toContain("puppeteer.launch");
+    expect(src, `${name} does not import puppeteer`).not.toMatch(/^import puppeteer/m);
+    expect(src, `${name} does not navigate on its own`).not.toContain("page.goto");
+    expect(src, `${name} does not define its own pump`).not.toMatch(/^const pump = \(/m);
+  });
+
+  it("the driver is the only thing that opens a browser", () => {
+    const drivers = Object.entries(TOOLS)
+      .filter(([, src]) => src.includes("puppeteer.launch"))
+      .map(([p]) => p.split("/").pop());
+    // `measure-battle.mjs`, `drive.mjs` and the screenshot tools drive the
+    // game without recipes at all, so they are not in this family.
+    expect(drivers).toContain("scene-driver.mjs");
+    expect(drivers).not.toContain("audit-layout.mjs");
+    expect(drivers).not.toContain("probe-keys.mjs");
+  });
+
+  /**
+   * A run nobody can afford is a run nobody does.
+   *
+   * The probe rebuilt the screen with a **page load** before every key: 13.4 s
+   * of goto, a 3 800 ms boot wait and a pump whose frames cost about 99 ms
+   * each while the first render warms. Over 39 screens and some 25 rebuilds
+   * apiece that is four hours, against a checklist that says to run it before
+   * every release. These are the three things that made it minutes instead,
+   * and none of them is visible from the outside.
+   */
+  it("the driver rebuilds in the page rather than reloading", () => {
+    const src = tool("scene-driver.mjs");
+    expect(src, "the world is snapshotted and put back").toContain("g.registry.set('worldState'");
+    expect(src, "the toggles are put back too").toContain("pc_");
+    // A restart reuses the same Scene object and keeps every field.
+    expect(src, "the scene is a new instance, not a restarted one")
+      .toContain("g.scene.remove(wanted)");
+    expect(src).toContain("g.scene.add(wanted, Ctor, false)");
+    // A settle walks the same game time in fewer renders.
+    expect(src).toContain("SETTLE_STEP_MS");
+  });
+
+  it("a run says where it has got to, on stderr", () => {
+    expect(tool("scene-driver.mjs")).toContain("process.stderr.write");
+    for (const name of ["audit-layout.mjs", "probe-keys.mjs"]) {
+      expect(tool(name), `${name} prints progress`).toContain("bar.tick(labelOf(recipe))");
+    }
   });
 });

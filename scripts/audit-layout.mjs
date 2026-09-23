@@ -27,10 +27,8 @@
  * They live in `scene-recipes.mjs` now, shared with `probe-keys.mjs`, because
  * two copies of one list is two lists.
  */
-import puppeteer from 'puppeteer';
-import { RECIPES, labelOf } from './scene-recipes.mjs';
-
-const BASE = 'http://localhost:3000/';
+import { RECIPES } from './scene-recipes.mjs';
+import { openDriver, progress, labelOf } from './scene-driver.mjs';
 
 
 const args = process.argv.slice(2);
@@ -304,24 +302,15 @@ const MARGIN = 2;            // a descender hanging a pixel over is not a findin
 // Checked on the screen before this number was raised.
 const COLLIDE_MIN = 9;
 
-const browser = await puppeteer.launch({
-  headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'],
-});
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 720 });
-
-const pump = (frames) => page.evaluate((n) => {
-  const g = window.__PHASER_GAME__;
-  if (!g) return 0;
-  let t = performance.now();
-  for (let i = 0; i < n; i++) { t += 16.7; g.loop.step(t); }
-  return g.loop.frame;
-}, frames);
+const driver = await openDriver();
+const { page, pump, buildUntil } = driver;
 
 const report = [];
+const todo = RECIPES.filter(r => !only || r.key === only || labelOf(r) === only);
+const bar = progress(todo.length);
 
-for (const recipe of RECIPES) {
-  if (only && recipe.key !== only && labelOf(recipe) !== only) continue;
+for (const recipe of todo) {
+  bar.tick(labelOf(recipe));
   try {
     await auditOne(recipe);
   } catch (err) {
@@ -330,92 +319,25 @@ for (const recipe of RECIPES) {
     // to show `row.error`. A run of sixteen scenes that dies on the fourth and
     // prints nothing is worse than no tool at all (v0.85.0).
     report.push({ scene: labelOf(recipe), error: String(err?.message ?? err).split(String.fromCharCode(10))[0] });
+    // Whatever went wrong, the next screen starts from a fresh page: a
+    // recipe that failed has usually left one that cannot be reused.
+    driver.soil();
   }
+  bar.step();
 }
-
-/** Did the walk-in land where the recipe says it must? */
-async function reached(recipe) {
-  if (!recipe.require) return true;
-  const probe = await page.evaluate(PROBE, recipe.key);
-  if (probe.missing) return false;
-  const want = Array.isArray(recipe.require) ? recipe.require : [recipe.require];
-  return want.every(needle => probe.texts.some(t => (t.full ?? t.text).includes(needle)));
-}
+const cost = driver.cost;
+bar.tick(`gotowe — ${cost.reloads} przeładowań strony`
+  + (cost.reloadOnly.length ? `, przebudowa w stronie nie działa na: ${cost.reloadOnly.join(' ')}` : ''));
 
 async function auditOne(recipe) {
-  for (let attempt = 0; attempt < (recipe.require ? 5 : 1); attempt++) {
-    await buildOne(recipe);
-    if (await reached(recipe)) break;
-    if (attempt === 4) {
-      report.push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu (szukano: "${recipe.require}")` });
-      return;
-    }
+  // The walk itself is `scene-driver.mjs`, shared with `probe-keys.mjs`. It
+  // used to be a second copy here, and the two diverged within the hour of
+  // being written (v0.95.0).
+  if (!await buildUntil(recipe)) {
+    report.push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu (szukano: "${recipe.require}")` });
+    return;
   }
   await measureOne(recipe);
-}
-
-async function buildOne(recipe) {
-  await page.goto(BASE + recipe.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await new Promise(r => setTimeout(r, recipe.wait ?? 3800));
-  await pump(60);
-
-  if (recipe.start) {
-    await page.evaluate(({ key, data }) => {
-      const g = window.__PHASER_GAME__;
-      const world = g.registry.get('worldState');
-      const target = g.scene.getScene(key);
-      for (const scene of g.scene.scenes) {
-        if (scene.scene.isActive() && scene.scene.key !== 'BootScene' && scene.scene.key !== key) {
-          scene.scene.stop();
-        }
-      }
-      // The scene we want may be the one already up — `CharacterCreationScene`
-      // is the game's own first screen, and a port world opens in `PortScene`.
-      // A stop and a start queued in the same frame are processed stop-last, so
-      // the first draft of this shut the screen it was asking about and every
-      // such recipe reported "scene not active".
-      if (target && target.scene.isActive()) target.scene.restart({ worldState: world, ...data });
-      else g.scene.start(key, { worldState: world, ...data });
-    }, { key: recipe.start, data: recipe.data ?? {} });
-    await pump(40);
-  }
-
-  // A screen with phases needs walking into. Copied in shape from
-  // `probe-keys.mjs`, which learned it first: `settle` covers the
-  // `delayedCall` chains an assault runs between its phases.
-  for (const k of String(recipe.keys ?? '').split(',').filter(Boolean)) {
-    await page.keyboard.press(k);
-    await pump(24);
-  }
-  if (recipe.settle) {
-    for (let n = 0; n < Math.ceil(recipe.settle / 40); n++) {
-      await pump(40);
-      await new Promise(r => setTimeout(r, 60));
-    }
-  }
-  // Keys pressed after the screen has settled, for a phase that is reached
-  // from a settled one. `keys` and `then` cannot be one list: the assault's
-  // spoils are three bombardments and a landing away, and the key that takes
-  // the spoils has to arrive **after** the wave loop has finished, not while
-  // it is still running.
-  for (const k of String(recipe.then ?? '').split(',').filter(Boolean)) {
-    await page.keyboard.press(k);
-    await pump(12);
-  }
-  // Exact, for a screen that is on a clock. `settle` pumps whole batches and
-  // overshoots: a phase drawn for 1600 ms is 96 frames, and the smallest
-  // `settle` there is walks 80 of them at a time.
-  if (recipe.frames) await pump(recipe.frames);
-
-  // Real time, not pumped frames. Pumping Phaser's loop moves the game's
-  // clock and nothing else, and the save tab draws its slots — and binds the
-  // eight keys its hint line names — from an **IndexedDB read**, which
-  // resolves on the browser's own queue. Measured without this, the audit
-  // reported `DELETE DOWN ENTER L UP X` as promised and unbound on a screen
-  // where all six are bound 300 ms later. A tool that measures a screen
-  // before it exists is worse than no tool (v0.94.0).
-  await new Promise(r => setTimeout(r, 350));
-  await pump(20);
 }
 
 async function measureOne(recipe) {
@@ -532,7 +454,7 @@ async function measureOne(recipe) {
   });
 }
 
-await browser.close();
+await driver.close();
 
 let total = 0;
 for (const row of report) {

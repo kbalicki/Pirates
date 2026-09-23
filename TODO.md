@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-23 · **Wersja:** v0.94.0.0 · **Branch:** `main`
-**Kod:** 279 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2428 przechodzi, 0 failuje, 0 `todo`** w 88 plikach
+**Stan na:** 2026-09-23 · **Wersja:** v0.95.0.0 · **Branch:** `main`
+**Kod:** 279 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2433 przechodzi, 0 failuje, 0 `todo`** w 88 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2729,7 +2729,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.94.0)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.95.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2819,14 +2819,17 @@ znika**: QUOTED chodzi teraz w teście, ale COMPARED (67), SPELLED (94) i COUNTE
 (181) to **lista lektur**, którą trzeba przechodzić zdanie po zdaniu. Z niej
 wyszły trzy fałszywe twierdzenia huraganu o sobie i dwa o wiosce.
 
-**5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs` (**39
-ekranów, ok. 6 min**). Klawisze: `node scripts/probe-keys.mjs`. Bitwa:
-`node scripts/measure-battle.mjs 4 --policy=hold`. Liczby:
+**5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs`
+(39 ekranów). Klawisze: `node scripts/probe-keys.mjs` — **do v0.95.0 pełny
+przebieg trwał cztery godziny i nie został nigdy zrobiony**; teraz da się.
+Bitwa: `node scripts/measure-battle.mjs 4 --policy=hold`. Liczby:
 `node scripts/sweep-constants.mjs`. Zdania o liczbach:
 `node scripts/sweep-claims.mjs`. **Geografia: pamiętaj, że `getFallbackLandmasses()`
 to nie Karaiby** — do prawdziwej mapy jest `src/core/__tests__/realGeo.ts`.
 **Nowy ekran albo nowy stan sceny → receptura w `scripts/scene-recipes.mjs`**,
-inaczej `scene_states.test.ts` zaczerwieni suitę.
+inaczej `scene_states.test.ts` zaczerwieni suitę. Oba narzędzia przechodzą
+ekran przez `scripts/scene-driver.mjs` i **żadne nie ma własnego przejścia** —
+to też jest pilnowane testem.
 
 **6. Log zmian na ekranie opcji — pytanie o projekt, nie o kod.** Historia wydań
 to **115 wpisów i 3 708 wierszy**; rysowana oknami kosztuje już tyle, co reszta
@@ -2835,6 +2838,21 @@ stronicowanie po wydaniach, osobny ekran, tylko ostatnie N. Tam też stoi
 **próbnik ikon pirackich** (52 glify plus wiersz etykiet) — narzędzie
 deweloperskie na ekranie gracza, za żadną flagą. **Na rozmowę.**
 
+**7a. Linia podpowiedzi obiecuje klawisz, którego ekran nie może wykonać.**
+Zakładka zapisu nazywa `L — wczytaj` i `Delete/X — usuń` **bezwarunkowo**, a oba
+są bramkowane `slot?.hasData`: **na świeżej grze, gdzie nie ma ani jednego
+zapisu, żaden z nich nic nie robi**. Ta sama rodzina co `R — Napraw` w stoczni
+(naprawione w v0.94.0). Warianty: dwie wersje napisu (jak w stoczni) albo
+wyszarzenie wiersza slotu, którego nie da się wczytać.
+
+**Uwaga o pomiarze:** `probe-keys.mjs` tego **nie pokaże czysto**, i to jest
+osobna lekcja. Sonda przywraca `worldState` i przełączniki `pc_*`, ale **nie
+IndexedDB** — a `ENTER` na tej zakładce zapisuje grę. Zanim więc dojdzie do `L`
+i `X`, slot już istnieje i oba działają. Pierwszy przebieg (przed poprawką
+drugiego przejścia) zgłosił je jako martwe, drugi jako żywe, i **oba mówiły
+prawdę o stanie, w którym je nacisnął**. Stan spoza migawki to ta sama rodzina
+co język w zmiennej modułu.
+
 **7. `1-9 — odpowiedź` przy czterech opcjach.** Czytnik legend rozwija zakres na
 dziewięć cyfr, a gubernator wiąże tyle, ile ma opcji, więc audyt zgłasza pięć
 klawiszy jako obiecane-i-niezwiązane na ekranie, który niczego nie obiecuje na
@@ -2842,6 +2860,16 @@ wyrost. Do zrobienia: `1-{{n}}` liczone z listy opcji (i `1` przy jednej).
 Ta sama rodzina: wiersze listy zoomu (`7 — Bliżej`) wyglądają jak legenda,
 a `CTRL`/`SHIFT` u kupca są modyfikatorami czytanymi w obsłudze `Enter`
 i nigdy nie będą „związane".
+
+**8a. `MainMapScene` nie da się przebudować w stronie.** Usunięcie sceny
+zostawia `delayedCall` trzymający callback na scenie, której już nie ma, i
+następny krok pętli umiera na `this.callback is not a function`. Cztery takie
+wywołania stoją w `MainMapScene` (`:321`, `:442`, `:1036`, `:1070`) — wszystkie
+z opóźnieniem **0**, czyli „w następnej klatce". Sterownik to wykrywa i wraca
+do przeładowania strony, więc narzędzie działa; ale **scena zatrzymana
+w tej samej klatce, w której czeka jej `delayedCall`, to wada samej gry** i
+nikt jej nie zmierzył od strony gracza. Do sprawdzenia: czy jest droga, którą
+gracz zamyka mapę, zanim callback zdąży się wykonać.
 
 **8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.**
 To pozycja z v0.84.0 na scenie, która nie ma gdzie postawić legendy — cały

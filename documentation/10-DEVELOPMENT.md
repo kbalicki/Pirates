@@ -434,7 +434,71 @@ przy uniach w źródłach scen, żąda receptury dla każdego stanu **albo zapis
 powodu**, dlaczego jej mieć nie może, i sprawdza, że oba narzędzia czytają jedną
 listę.
 
-**Pułapki, które to kosztowało:**
+### scene-driver.mjs — jedno przejście na ekran (v0.95.0)
+
+`scene-recipes.mjs` scaliło **listę** ekranów; kopie zostały w **przejściu** —
+wczytanie strony, pompowanie klatek, klawisze fazy, sprawdzenie `require`.
+Rozjechały się w ciągu godziny: `probe-keys.mjs` sprawdzał `require` na tekście
+**uciętym na 60 znakach** (słusznie dla kanału różnic, niesłusznie dla
+warunku wstępnego), więc ustalony ekran szturmu — którego jedynym znakiem jest
+ostatnia z sześciu linii w jednym `Text` — był osiągalny dla audytu
+i *„nieosiągalny w pięciu próbach"* dla sondy.
+
+**Ile to kosztowało.** Sonda przebudowywała ekran przed **każdym klawiszem**
+przez przeładowanie strony:
+
+| faza | czas |
+|---|---|
+| `goto` | 540 ms |
+| oczekiwanie na boot (na sztywno) | 3 800 ms |
+| `pump(60)` po nim | **5 950 ms** |
+| `start` + `pump(40)` | 1 850 ms |
+| settle | 1 225 ms |
+| **jedna przebudowa** | **13 350 ms** |
+
+Przy 39 ekranach i około 25 przebudowach na każdy to **cztery godziny** — a
+lista kontrolna każe uruchamiać to przed każdym wydaniem. **Narzędzie, na które
+nie stać, to narzędzie, którego się nie uruchamia**, a v0.94.0 pogorszyło
+sprawę, podnosząc listę z 17 ekranów do 39.
+
+**Czas nie szedł na wczytywanie strony, tylko na pompowanie klatek** — każdy
+krok pętli **renderuje**: ok. 99 ms na klatkę, dopóki pierwszy render się nie
+rozgrzeje, i ok. 43 ms potem. Więc:
+
+- strona wczytuje się raz na **adres**, a 27 z 39 receptur dzieli jeden;
+- `worldState` wraca z migawki zrobionej po boocie — razem z `world.rng`, więc
+  ostrzał rzuca kośćmi tak samo dwa razy;
+- przełączniki `pc_*` wracają, bo mieszkają w `localStorage` i przeżywają
+  wszystko;
+- scena jest **usuwana i dodawana z powrotem**, nie restartowana. `restart`
+  używa **tego samego obiektu sceny**, więc każde pole zainicjowane przy
+  deklaracji trzyma to, co zostawił poprzedni klawisz: dwa naciśnięcia Down
+  w stoczni i następna przebudowa otwierała się z kursorem nadal na wierszu 2 —
+  stąd pierwsza wersja raportowała `UP` jako klawisz, który rusza listę stojącą
+  na pierwszym wierszu. Przeładowanie strony konstruowało nowy obiekt i **to**
+  było w nim istotne;
+- scena zbudowana przez **świat debugowy** jest uruchamiana ponownie
+  z `sys.settings.data`, bo to jedyna kopia jej ładunku, jaka istnieje;
+- `settle` przechodzi ten sam czas gry w **szóstej części** renderów (krok
+  100 ms zamiast 16,7) — `delayedCall` odpala się na tej samej milisekundzie
+  tak czy inaczej.
+
+Czego nie da się cofnąć w stronie — **języka przełączonego z zakładki
+ustawień**, bo mieszka także w zmiennej modułu — jest **wykrywane** po
+`pc_lang` i odpowiada mu prawdziwe przeładowanie.
+
+Przebudowa kosztuje dziś ok. **300 ms**. Stocznia: **222 s → 52 s**, pojedynek
+**104 s → 33 s**.
+
+**Postęp idzie na stderr**, więc `> out.txt` łapie sam raport, a przebieg,
+który trwa minuty, nie milczy przez te minuty.
+
+Strażnik: `scene_states.test.ts` sprawdza, że oba narzędzia importują
+`openDriver`, że **żadne** nie woła `puppeteer.launch`, `page.goto` ani nie ma
+własnego `pump`, i że sterownik robi to, co mówi (migawka świata, przełączniki,
+`scene.remove` + `add`, krok settle).
+
+**Pułapki, które te dwa wydania kosztowały:**
 
 - **Scena, która już jest pokazana, musi być `restart`, nie `stop` + `start`.**
   Phaser przetwarza jedno i drugie w tej samej klatce **stop-jako-ostatni**, więc
@@ -448,6 +512,13 @@ listę.
   gabinetu gubernatora, kiedy w porcie nie ma córki — od tego jest `require`.
 - **`settle` przepompowuje.** Batch to 40 klatek, a faza rysowana 1600 ms to 96;
   od tego jest `frames`.
+- **`restart` nie jest nowym obiektem sceny.** Pole zainicjowane przy
+  deklaracji przeżywa restart; przeżyje więc także klawisz, który je zmienił.
+  `remove` + `add` daje nowy egzemplarz i tyle samo czasu.
+- **Warunek wstępny czyta się na pełnym tekście.** Sonda ucinała `Text` na
+  60 znakach i nie widziała linii, która stoi szósta w jednym napisie.
+
+---
 
 ## Konwencje wydań
 

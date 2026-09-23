@@ -19,9 +19,13 @@
  * Only pressing the key sees it.
  *
  * Usage:
- *   node scripts/probe-keys.mjs                 # every scene
- *   node scripts/probe-keys.mjs --only=PortScene
- *   node scripts/probe-keys.mjs --json          # machine-readable
+ *   node scripts/probe-keys.mjs                      # every screen
+ *   node scripts/probe-keys.mjs --only='PortScene[shipyard]'
+ *   node scripts/probe-keys.mjs --json               # machine-readable
+ *
+ * Progress goes to **stderr**, so `> out.txt` keeps the report alone and a run
+ * that takes minutes is not silent while it takes them. `--only` matches the
+ * scene key or a recipe label, and a bare scene key takes every state of it.
  *
  * ── How a change is detected ───────────────────────────────────────────────
  *
@@ -47,10 +51,8 @@
  * otherwise send the next key somewhere else entirely, and a key that spends
  * gold would leave less of it for the one after.
  */
-import puppeteer from 'puppeteer';
-import { RECIPES, labelOf } from './scene-recipes.mjs';
-
-const BASE = 'http://localhost:3000/';
+import { RECIPES } from './scene-recipes.mjs';
+import { openDriver, progress, labelOf } from './scene-driver.mjs';
 const NL = String.fromCharCode(10);
 
 
@@ -176,101 +178,8 @@ const empty = (d) => !d.scenes.length && !d.texts.length && !d.world.length && !
 
 // ── Drive ──────────────────────────────────────────────────────────────────
 
-const browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-const page = await browser.newPage();
-await page.setViewport({ width: 1280, height: 720 });
-
-const pump = (frames) => page.evaluate((n) => {
-  const g = window.__PHASER_GAME__;
-  if (!g) return 0;
-  let t = performance.now();
-  for (let i = 0; i < n; i++) { t += 16.7; g.loop.step(t); }
-  return g.loop.frame;
-}, frames);
-
-async function build(recipe) {
-  await page.goto(BASE + recipe.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
-  await new Promise(r => setTimeout(r, recipe.wait ?? 3800));
-  await pump(60);
-  if (recipe.start) {
-    // Paused, not stopped — which is how the game itself opens these screens,
-    // and the reason this probe can pump frames afterwards while
-    // `audit-layout.mjs` cannot. A stopped `MainMapScene` leaves its renderers
-    // holding a destroyed camera, and the next `g.loop.step` dies reading
-    // `cam.zoom`. The audit never notices because it measures one still frame.
-    await page.evaluate(({ key, data }) => {
-      const g = window.__PHASER_GAME__;
-      const world = g.registry.get('worldState');
-      const target = g.scene.getScene(key);
-      for (const s of g.scene.scenes) {
-        if (s.scene.isActive() && s.scene.key !== 'BootScene' && s.scene.key !== key) s.scene.pause();
-      }
-      // See `audit-layout.mjs`: a scene that is already up is restarted, never
-      // stopped and started, because the two are processed stop-last.
-      if (target && target.scene.isActive()) target.scene.restart({ worldState: world, ...data });
-      else g.scene.start(key, { worldState: world, ...data });
-    }, { key: recipe.start, data: recipe.data ?? {} });
-    await pump(40);
-  }
-  // A screen with phases needs walking into. `settle` covers the delayedCall
-  // chains an assault runs between them.
-  for (const k of String(recipe.keys ?? '').split(',').filter(Boolean)) {
-    await page.keyboard.press(k);
-    await pump(24);
-  }
-  if (recipe.settle) {
-    for (let n = 0; n < Math.ceil(recipe.settle / 40); n++) {
-      await pump(40);
-      await new Promise(r => setTimeout(r, 60));
-    }
-  }
-  // Keys pressed after the screen has settled, for a phase that is reached
-  // from a settled one. `keys` and `then` cannot be one list: the assault's
-  // spoils are three bombardments and a landing away, and the key that takes
-  // the spoils has to arrive **after** the wave loop has finished, not while
-  // it is still running.
-  for (const k of String(recipe.then ?? '').split(',').filter(Boolean)) {
-    await page.keyboard.press(k);
-    await pump(12);
-  }
-  // Exact, for a screen that is on a clock. `settle` pumps whole batches and
-  // overshoots: a phase drawn for 1600 ms is 96 frames, and the smallest
-  // `settle` there is walks 80 of them at a time.
-  if (recipe.frames) await pump(recipe.frames);
-
-  // Real time, not pumped frames. Pumping Phaser's loop moves the game's
-  // clock and nothing else, and the save tab draws its slots — and binds the
-  // eight keys its hint line names — from an **IndexedDB read**, which
-  // resolves on the browser's own queue. Measured without this, the audit
-  // reported `DELETE DOWN ENTER L UP X` as promised and unbound on a screen
-  // where all six are bound 300 ms later. A tool that measures a screen
-  // before it exists is worse than no tool (v0.94.0).
-  await new Promise(r => setTimeout(r, 350));
-  await pump(20);
-}
-
-/**
- * Did the walk-in land where the recipe says it must?
- *
- * `require` is a piece of text the screen shows in that state, in the language
- * the recipes run in. A key, not being on the screen, would never match.
- */
-async function reached(recipe) {
-  if (!recipe.require) return true;
-  const snap = await page.evaluate(SNAP, recipe.key);
-  if (snap.missing) return false;
-  const want = Array.isArray(recipe.require) ? recipe.require : [recipe.require];
-  return want.every(needle => snap.texts.some(t => t.includes(needle)));
-}
-
-/** Build until the precondition holds, or give up and say so. */
-async function buildUntil(recipe) {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    await build(recipe);
-    if (await reached(recipe)) return true;
-  }
-  return false;
-}
+const driver = await openDriver();
+const { page, pump, buildUntil } = driver;
 
 /** Bound keys, read the way `audit-layout.mjs` reads them. */
 const BOUND = function (sceneKey) {
@@ -315,17 +224,51 @@ const BOUND = function (sceneKey) {
 /** What to press at a screen that reads `event.key` itself. */
 const WILDCARD_KEYS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'ESC', 'TAB', 'SPACE', 'A', '1'];
 
+/**
+ * The key that undoes this one, where there is one.
+ *
+ * A cursor on the top row answers `UP` with nothing, and the only honest way
+ * to find out whether it answers at all is to move it down first.
+ */
+const OPPOSITE = {
+  UP: 'DOWN', DOWN: 'UP', W: 'S', S: 'W',
+  LEFT: 'RIGHT', RIGHT: 'LEFT', A: 'D', D: 'A',
+  PAGE_UP: 'PAGE_DOWN', PAGE_DOWN: 'PAGE_UP',
+};
+
 const report = [];
 
-for (const recipe of RECIPES) {
-  if (only && recipe.key !== only && labelOf(recipe) !== only) continue;
+const todo = RECIPES.filter(r => !only || r.key === only || labelOf(r) === only);
+const bar = progress(todo.length);
+
+let deadTotal = 0;
+let pressedTotal = 0;
+/** Keep the row for `--json`, and print it now for everybody else. */
+const push = (row) => {
+  report.push(row);
+  if (asJson) return;
+  const n = printRow(row);
+  deadTotal += n.dead;
+  pressedTotal += n.pressed;
+};
+
+for (const recipe of todo) {
+  bar.tick(labelOf(recipe));
+  // A screen that only exists for a second and a half cannot be walked into
+  // once per key; the recipe says so and says why.
+  if (recipe.probe === false) {
+    push({ scene: labelOf(recipe), error: 'receptura oznaczona `probe: false` — tylko do audytu układu' });
+    bar.step();
+    continue;
+  }
   try {
     if (!await buildUntil(recipe)) {
-      report.push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu w 5 próbach (szukano: "${recipe.require}")` });
+      push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu w 5 próbach (szukano: "${recipe.require}")` });
+      bar.step();
       continue;
     }
     const read = await page.evaluate(BOUND, recipe.key);
-    if (read === null) { report.push({ scene: labelOf(recipe), error: 'scene not active' }); continue; }
+    if (read === null) { push({ scene: labelOf(recipe), error: 'scene not active' }); bar.step(); continue; }
     const bound = read.wildcard
       ? [...new Set([...read.keys, ...WILDCARD_KEYS])].sort()
       : read.keys;
@@ -341,12 +284,20 @@ for (const recipe of RECIPES) {
     for (const key of bound) {
       const name = pressName(key);
       if (!name) { rows.push({ key, skipped: 'brak nazwy w puppeteerze' }); continue; }
-      if (!await buildUntil(recipe)) { rows.push({ key, skipped: 'stan nieosiągalny' }); continue; }
-      const before = await page.evaluate(SNAP, recipe.key);
-      await page.keyboard.press(name);
-      await pump(24);
-      const after = await page.evaluate(SNAP, recipe.key);
-      rows.push({ key, diff: minusNoise(channels(before, after), noise) });
+      try {
+        if (!await buildUntil(recipe)) { rows.push({ key, skipped: 'stan nieosiągalny' }); continue; }
+        const before = await page.evaluate(SNAP, recipe.key);
+        await page.keyboard.press(name);
+        await pump(24);
+        const after = await page.evaluate(SNAP, recipe.key);
+        rows.push({ key, diff: minusNoise(channels(before, after), noise) });
+      } catch (err) {
+        // One key that breaks the page used to take the whole screen's report
+        // with it — the same shape v0.85.0 fixed in the audit, one level in.
+        // The page is reloaded for the next key and this one is named.
+        rows.push({ key, skipped: `strona padła: ${String(err?.message ?? err).split(NL)[0].slice(0, 60)}` });
+        driver.soil();
+      }
     }
 
     // ── Second pass: the ones that did nothing, tried from somewhere else ──
@@ -360,61 +311,121 @@ for (const recipe of RECIPES) {
     // character sheet and never `ENTER`, which is the one key that reaches the
     // second page — where `LEFT` and `RIGHT` live. A setup key is only useful
     // if it moves the screen somewhere else.
-    const movers = rows
-      .filter(r => r.diff && !empty(r.diff))
-      .sort((a, b) =>
-        (b.diff.scenes.length * 1000 + b.diff.texts.length) -
-        (a.diff.scenes.length * 1000 + a.diff.texts.length))
-      .map(r => r.key);
+    // Biggest mover first, but **a key that leaves the screen is the worst
+    // setup there is**, not the best. The first version sorted scene changes
+    // to the front, so on seven of the port's counters the three setups tried
+    // were `ESC` (gone), `Enter` and `E` (both of which complete a
+    // transaction and leave the view) — and `DOWN`, the one key that moves
+    // the cursor and stays, was never reached. `UP` was reported dead on all
+    // seven, and it is not dead: it is a cursor on the top row (v0.95.0).
+    // **Smallest mover first, and a key that leaves the screen last.**
+    //
+    // The first version took the biggest mover, which on the quartermaster's
+    // tab is a number key — it changes 61 to 113 texts because it opens
+    // another tab — and on the port's counters is `Enter`, which completes a
+    // transaction and leaves the view. Neither is a setup: a setup has to put
+    // the screen somewhere else **and still be the screen**. A small change
+    // on the same screen is a cursor move, and a cursor move is exactly what
+    // a suspect cursor key needs (v0.95.0).
+    const moved = rows.filter(r => r.diff && !empty(r.diff));
+    const movers = [
+      ...moved.filter(r => !r.diff.scenes.length)
+        .sort((a, b) => a.diff.texts.length - b.diff.texts.length),
+      ...moved.filter(r => r.diff.scenes.length),
+    ].map(r => r.key);
     for (const r of rows) {
       if (r.skipped || !empty(r.diff)) continue;
       r.retried = [];
-      for (const setup of movers.filter(m => m !== r.key).slice(0, 3)) {
+      // **The way to test whether Up works is to press Down first.** Sorting
+      // by how much a key moved picks the number keys on the quartermaster's
+      // tab (61 to 113 texts) and never `DOWN` (4), so `A`, `D`, `UP` and `W`
+      // were all reported dead on a screen where each of them works one row
+      // in. The same on seven of the port's counters. A cursor key's setup is
+      // its opposite, and nothing else is as good (v0.95.0).
+      // The opposite only leads if it moved something itself: `A` and `D` on
+      // the settings tab are each other's opposite and **both** do nothing
+      // until a volume row is focused, so leading with one of them spends the
+      // only three tries this key gets.
+      const opposite = OPPOSITE[r.key];
+      const useOpposite = opposite && movers.includes(opposite);
+      const order = [
+        ...(useOpposite ? [opposite] : []),
+        ...movers.filter(m => m !== r.key && m !== (useOpposite ? opposite : null)),
+      ].slice(0, 3);
+      // A cursor setup is pressed once **and** twice, because a list's cursor
+      // may need more than one step to reach a row where the suspect can act:
+      // the quartermaster's tab is speed, mute, and only then the three volume
+      // rows, so `A` and `D` — which do nothing unless a volume row is focused
+      // — were reported dead after a single press of `DOWN`.
+      const setups = order.flatMap(k => (OPPOSITE[k] ? [[k, 1], [k, 2]] : [[k, 1]]));
+      for (const [setup, times] of setups) {
         if (!await buildUntil(recipe)) break;
-        await page.keyboard.press(pressName(setup));
-        await pump(24);
+        for (let i = 0; i < times; i++) {
+          await page.keyboard.press(pressName(setup));
+          await pump(24);
+        }
         const before = await page.evaluate(SNAP, recipe.key);
         if (before.missing) continue;   // the setup key left the screen
         await page.keyboard.press(pressName(r.key));
         await pump(24);
         const after = await page.evaluate(SNAP, recipe.key);
         const d = minusNoise(channels(before, after), noise);
-        r.retried.push(setup);
-        if (!empty(d)) { r.diff = d; r.after = setup; break; }
+        const name = times > 1 ? `${setup}×${times}` : setup;
+        r.retried.push(name);
+        if (!empty(d)) { r.diff = d; r.after = name; break; }
       }
     }
-    report.push({ scene: labelOf(recipe), bound, wildcard: read.wildcard, noise, rows });
+    push({ scene: labelOf(recipe), bound, wildcard: read.wildcard, noise, rows });
   } catch (err) {
-    report.push({ scene: labelOf(recipe), error: String(err?.message ?? err).split(NL)[0] });
+    push({ scene: labelOf(recipe), error: String(err?.message ?? err).split(NL)[0] });
+    // Whatever went wrong, the next screen starts from a fresh page: a
+    // recipe that failed has usually left one that cannot be reused.
+    driver.soil();
   }
+  bar.step();
 }
+const cost = driver.cost;
+bar.tick(`gotowe — ${cost.reloads} przeładowań strony`
+  + (cost.reloadOnly.length ? `, przebudowa w stronie nie działa na: ${cost.reloadOnly.join(' ')}` : ''));
 
-await browser.close();
+await driver.close();
+
+/**
+ * One screen's block, printed the moment it is measured.
+ *
+ * A run over the whole list is tens of minutes, and this used to accumulate
+ * every row and print at the end — so a run that was killed, or that took
+ * longer than anybody was willing to wait, produced **nothing at all**. The
+ * `--json` mode still accumulates, because a half-written array is not JSON.
+ */
+function printRow(row) {
+  if (row.error) {
+    console.log(`${NL}${row.scene}  — BŁĄD: ${row.error}`);
+    return { dead: 0, pressed: 0 };
+  }
+  const dead = [];
+  const lines = [];
+  let pressed = 0;
+  for (const r of row.rows) {
+    if (r.skipped) { lines.push(`  ${r.key.padEnd(6)} — pominięty (${r.skipped})`); continue; }
+    pressed++;
+    if (empty(r.diff)) { dead.push(r.key + (r.retried && r.retried.length ? '' : '?')); continue; }
+    const what = [];
+    if (r.diff.scenes.length) what.push(`sceny ${r.diff.scenes.join(' ')}`);
+    if (r.diff.world.length) what.push(`świat: ${r.diff.world.slice(0, 2).join('; ')}`);
+    if (r.diff.camera.length) what.push(`kamera ${r.diff.camera[0]}`);
+    if (r.diff.texts.length) what.push(`${r.diff.texts.length} napisów`);
+    lines.push(`  ${r.key.padEnd(6)} — ${what.join(' · ')}` +
+      (r.after ? `  (dopiero po ${r.after} — z ekranu otwarcia nie robi nic)` : ''));
+  }
+  console.log(`${NL}${row.scene}  (${row.bound.length} związanych${row.wildcard ? ', w tym nasłuch ogólny — zestaw próbny' : ''})`);
+  for (const l of lines) console.log(l);
+  if (dead.length) console.log(`  NIC-NIE-ZMIENIA: ${dead.join(' ')}`);
+  return { dead: dead.length, pressed };
+}
 
 if (asJson) {
   console.log(JSON.stringify(report, null, 2));
 } else {
-  let deadTotal = 0, pressedTotal = 0;
-  for (const row of report) {
-    if (row.error) { console.log(`${NL}${row.scene}  — BŁĄD: ${row.error}`); continue; }
-    const dead = [];
-    const lines = [];
-    for (const r of row.rows) {
-      if (r.skipped) { lines.push(`  ${r.key.padEnd(6)} — pominięty (${r.skipped})`); continue; }
-      pressedTotal++;
-      if (empty(r.diff)) { dead.push(r.key + (r.retried && r.retried.length ? '' : '?')); continue; }
-      const what = [];
-      if (r.diff.scenes.length) what.push(`sceny ${r.diff.scenes.join(' ')}`);
-      if (r.diff.world.length) what.push(`świat: ${r.diff.world.slice(0, 2).join('; ')}`);
-      if (r.diff.camera.length) what.push(`kamera ${r.diff.camera[0]}`);
-      if (r.diff.texts.length) what.push(`${r.diff.texts.length} napisów`);
-      lines.push(`  ${r.key.padEnd(6)} — ${what.join(' · ')}` +
-        (r.after ? `  (dopiero po ${r.after} — z ekranu otwarcia nie robi nic)` : ''));
-    }
-    deadTotal += dead.length;
-    console.log(`${NL}${row.scene}  (${row.bound.length} związanych${row.wildcard ? ', w tym nasłuch ogólny — zestaw próbny' : ''})`);
-    for (const l of lines) console.log(l);
-    if (dead.length) console.log(`  NIC-NIE-ZMIENIA: ${dead.join(' ')}`);
-  }
   console.log(`${NL}RAZEM: ${deadTotal} klawiszy nie zmienia niczego, z ${pressedTotal} naciśniętych.`);
 }

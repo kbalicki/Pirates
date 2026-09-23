@@ -34,6 +34,7 @@
  *   frames   exact frames to pump, for a phase that is on a clock
  *   require  text that must be on screen for the walk to count as arrived
  *   wait     ms to wait after the page load before anything else
+ *   probe    false for a screen `probe-keys.mjs` must not press keys at
  */
 
 const LANG = 'lang=pl';
@@ -164,6 +165,15 @@ export const RECIPES = [
     // and the controls line are both gone by then, so there is nothing else
     // here to tell the two states apart.
     require: 'złota do ładowni',
+    // **Layout only.** This screen is on a 1 600 ms fuse — `pickSpoils` sets
+    // the phase and hands back to the chart on a `delayedCall` — so the audit,
+    // which measures one still frame, catches it comfortably and the probe,
+    // which walks in again for **every key**, races that fuse twelve times and
+    // loses some of them. What it measured when it did win is that all twelve
+    // bound keys do nothing, which is what a screen with every handler gated
+    // on the two earlier phases should say. A tool that answers a screen
+    // differently depending on how loaded the machine is answers nothing.
+    probe: false,
   },
 
   { key: 'CityDefenseScene', url: `?defend=cartagena&${LANG}` },

@@ -2038,6 +2038,14 @@ export class PortScene extends Phaser.Scene {
         else this.switchView("menu");
       },
     );
+
+    // Nine of the port's ten counters answer `Esc` and this one did not: it is
+    // the only screen behind the warehouse key when no shed is rented, and
+    // `setupActionList` binds the cursor and the confirm, not the way out.
+    // A row labelled *back* is not the same thing in a game played with two
+    // hands on the keys (v0.95.0, found by the first complete run of
+    // `probe-keys.mjs` — the six keys it reported here had no `ESC` among them).
+    this.bindKey("keydown-ESC", () => this.switchView("menu"));
   }
 
   private handleRentStorehouse(): void {
