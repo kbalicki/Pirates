@@ -3,7 +3,8 @@ import { updateNavigation, applyTurn, type TerrainQuery } from "../NavigationSys
 import { pointInPolygon, pointInLandmass } from "../../services/Geometry.ts";
 import { setDepthField, AGROUND_SPEED_MUL, SHOAL_SPEED_MUL } from "../../services/SeaDepth.ts";
 import { mapDamageSpeedMultiplier, MIN_AFLOAT_HULL } from "../DamageSystem.ts";
-import { LANDMASSES, setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
+import { LANDMASSES, setLandmasses } from "../../data/geography.ts";
+import { loadRealLandmasses } from "../../__tests__/realGeo.ts";
 import {
   windSpeedModifier, windPolar, navigatedWindModifier,
   NEUTRAL_NAVIGATION, BEAT_CEIL, IRONS_STEERAGE, bestBeatAngle,
@@ -18,7 +19,7 @@ import type { EntityId, ShipClassId, FactionId } from "../../model/ids.ts";
 
 beforeAll(() => {
   if (LANDMASSES.length === 0) {
-    setLandmasses(getFallbackLandmasses());
+    setLandmasses(loadRealLandmasses());
   }
 });
 

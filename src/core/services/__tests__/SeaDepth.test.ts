@@ -21,7 +21,7 @@ import {
 } from "../SeaDepth.ts";
 import { villageList } from "../../data/villages.ts";
 import { VILLAGE_RANGE } from "../../systems/VillageSystem.ts";
-import { setLandmasses, LANDMASSES, type LandmassDef } from "../../data/geography.ts";
+import { setLandmasses, landmassesFromRaw, LANDMASSES, type RawGeo } from "../../data/geography.ts";
 import { pointInLandmass } from "../Geometry.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import { PORTS } from "../../data/ports.ts";
@@ -171,14 +171,10 @@ describe("the real Caribbean", () => {
    * a single town on the map — so this test is the mechanic's licence to exist.
    */
   function realDepthField(anchorages: Array<{ x: number; y: number }> = []): { field: number[][]; water: number; closed: Map<string, number> } {
-    const raw = JSON.parse(geoRaw) as {
-      landmasses: Array<{ id: string; polygon: number[][]; bbox: number[] }>;
-    };
-    setLandmasses(raw.landmasses.map((lm): LandmassDef => ({
-      id: lm.id,
-      polygon: lm.polygon.map(([x, y]) => ({ x, y })),
-      bbox: { minX: lm.bbox[0], minY: lm.bbox[1], maxX: lm.bbox[2], maxY: lm.bbox[3] },
-    })));
+    // This block used to write the translation out by hand - a second copy of
+    // the one in `GeoLoader`, in a test, where nothing would ever notice it
+    // drifting. Both are `landmassesFromRaw` now (v0.91.0).
+    setLandmasses(landmassesFromRaw(JSON.parse(geoRaw) as RawGeo));
     buildPortWaterCache();
 
     const cols = Math.ceil(3200 / DEPTH_CELL), rows = Math.ceil(2400 / DEPTH_CELL);

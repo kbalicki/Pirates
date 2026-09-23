@@ -56,7 +56,7 @@
 
 import type { WorldState, RngState, WorldEventState } from "../model/WorldState.ts";
 import type { WorldEvent } from "../model/Events.ts";
-import { CITIES } from "../data/cities.ts";
+import { CITIES, isLandlocked } from "../data/cities.ts";
 
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext, rngNextFloat, rngNextInt } from "../services/RNG.ts";
@@ -184,6 +184,10 @@ export function campaignTargets(world: WorldState, war: CrownWar): string[] {
   const targets: string[] = [];
   for (const key of Object.keys(CITIES)) {
     if ((portFaction(world, key) as string) !== war.defender) continue;
+    // A ministry does not fit out transports for a town on the other ocean
+    // (v0.91.0). The expedition would have been a chart pin, a countdown and
+    // hulls materialising where no hull can sail.
+    if (isLandlocked(key)) continue;
     const port = world.ports[key];
     if (!port) continue;
     if (activeExpeditionFor(world, key)) continue;

@@ -38,7 +38,7 @@ import type { WorldState } from "../model/WorldState.ts";
 import { squadronCap } from "./HoldSystem.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest } from "./QuestSystem.ts";
-import { CITIES } from "../data/cities.ts";
+import { CITIES, isLandlocked } from "../data/cities.ts";
 
 import { routesNear, laneThroughput, laneSupplyShare, disruptions } from "./TradeRouteSystem.ts";
 import { getPortWaterPos } from "./PortWaterPositions.ts";
@@ -439,6 +439,12 @@ export function reliefOffer(world: WorldState, portKey: string): ReliefCommissio
   let best: ReliefCommission | null = null;
   for (const [townKey, def] of Object.entries(CITIES)) {
     if (townKey === portKey) continue;
+    // A commission is a promise that the goods can be landed. Panamá is on
+    // the Pacific and no keel reaches it, and because it carries no lane it is
+    // permanently the worst-off town in reach - so without this line it would
+    // have won this contest nearly every time it was inside it, and the paper
+    // would lapse at -5 standing through no fault of the captain's (v0.91.0).
+    if (isLandlocked(townKey)) continue;
     const town = world.ports[townKey];
     if (!town) continue;
     const there = getPortWaterPos(townKey);

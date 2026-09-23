@@ -31,6 +31,29 @@ export type CityDef = {
   demands: string[];
   population: CitySize;
   wealth: WealthLevel;
+  /**
+   * True for a town no keel can reach (v0.91.0).
+   *
+   * There is exactly one, and it is not a mistake: Panamá is on the
+   * **Pacific**, at 8°57'N 79°30'W, which is where the town Morgan sacked in
+   * 1671 stood — he marched across the isthmus to do it. Its Caribbean
+   * counterparts, Porto Bello and Nombre de Dios, are separate entries in this
+   * table and always were.
+   *
+   * The flag exists because the rest of the game had no way of knowing.
+   * Measured against the real coastline, Panamá is reachable from **0 of the
+   * other 44 ports** and carries **0 trade lanes** — and until this release
+   * two systems would happily send the player there anyway: an informer's
+   * relief order (**13 taverns** are inside `RELIEF_REACH` of it, Porto Bello
+   * at 119 px with no sea path at all, and a town with no lanes is permanently
+   * the worst-off one in reach) and the family chain, which draws three towns
+   * out of seventeen Spanish cities and so put a step there for **17.6 %** of
+   * captains.
+   *
+   * Anything that needs a keel must skip it. Weather, news and prices need
+   * none and do not.
+   */
+  landlocked?: boolean;
 };
 
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));
@@ -135,6 +158,8 @@ export const CITIES: Record<string, CityDef> = {
     id: portId("panama"),
     factionId: factionId("spain"),
     type: "city",
+    // The Pacific side of the isthmus. See `CityDef.landlocked`.
+    landlocked: true,
     pos: geoToMap(79.5, 8.95),
     dockRadius: 15,
     marketLevel: 5,
@@ -651,3 +676,16 @@ export const CITIES: Record<string, CityDef> = {
     wealth: "modest",
   },
 };
+
+/**
+ * Towns no keel can reach — see `CityDef.landlocked`.
+ *
+ * A predicate rather than a distance test on purpose: reachability is a fact
+ * about the coastline, and the coastline is empty at boot and in most tests,
+ * so anything computing it on the fly would answer "everything is reachable"
+ * exactly when it mattered least. The flag is the claim; `geography.test.ts`
+ * is what proves the claim against the real map.
+ */
+export function isLandlocked(portKey: string): boolean {
+  return CITIES[portKey]?.landlocked === true;
+}

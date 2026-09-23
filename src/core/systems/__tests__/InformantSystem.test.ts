@@ -34,7 +34,8 @@ import { CITIES } from "../../data/cities.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
 import { portId, entityId, factionId, shipClassId } from "../../model/ids.ts";
-import { setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
+import { setLandmasses } from "../../data/geography.ts";
+import { loadRealLandmasses } from "../../__tests__/realGeo.ts";
 import { resetSeaGrid } from "../../services/Pathfinding.ts";
 import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
 
@@ -120,7 +121,7 @@ function makeWorld(over: Partial<WorldState> = {}): WorldState {
  * lanes, which is all these tests read.
  */
 beforeEach(() => {
-  setLandmasses(getFallbackLandmasses());
+  setLandmasses(loadRealLandmasses());
   resetSeaGrid();
   resetTradeRoutes();
 });

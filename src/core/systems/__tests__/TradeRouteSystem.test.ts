@@ -21,7 +21,8 @@ import { CITIES } from "../../data/cities.ts";
 import { initPortPrices, initPortInventory } from "../../data/prices.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
 import { portId, entityId } from "../../model/ids.ts";
-import { setLandmasses, getFallbackLandmasses } from "../../data/geography.ts";
+import { setLandmasses } from "../../data/geography.ts";
+import { loadRealLandmasses } from "../../__tests__/realGeo.ts";
 import { resetSeaGrid } from "../../services/Pathfinding.ts";
 import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
 
@@ -165,7 +166,7 @@ describe("the lane network", () => {
 
 describe("the network against a real coastline", () => {
   beforeEach(() => {
-    setLandmasses(getFallbackLandmasses());
+    setLandmasses(loadRealLandmasses());
     resetSeaGrid();
     resetTradeRoutes();
   });

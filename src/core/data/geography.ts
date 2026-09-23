@@ -57,6 +57,46 @@ export function landmassGeneration(): number {
   return generation;
 }
 
+/**
+ * The shape `public/data/caribbean_geo.json` actually ships in.
+ *
+ * It is **not** `LandmassDef`: a vertex on disk is a two-element array and a
+ * bbox is four numbers, because that file is generated and a thousand `{"x":
+ * …, "y": …}` pairs would treble it. Nothing wrong with that — what was wrong
+ * was where the translation lived.
+ */
+export type RawGeo = {
+  landmasses: Array<{ id: string; polygon: number[][]; bbox: [number, number, number, number] }>;
+  osmCities?: Array<{ name: string; x: number; y: number }>;
+};
+
+/**
+ * Turn the file on disk into the coastline the rules reason about (v0.91.0).
+ *
+ * This lived in `src/game/world/GeoLoader.ts` until this release, in among the
+ * Phaser cache read, and it was the only code in the project that understood
+ * the format. `core/` cannot import from `src/game/`, so **no test could load
+ * the real Caribbean** — every geography assertion in the repo ran against
+ * `getFallbackLandmasses()`, which is four islands and 66 vertices against the
+ * real 102 and 2 485, and **1.4 % land against 24.6 %**.
+ *
+ * What that cost, measured: 15 of 45 port anchorages sit somewhere else under
+ * the two coastlines, by a median of 16 px and as much as 89 (Santiago) — and
+ * **7 of the anchorages the tests use are on dry land in the real Caribbean**
+ * (Santiago, Panamá, Cumaná, Gran Granada, Antigua, Belize, Petit-Goâve).
+ *
+ * The shape of the data is a fact about the data. It belongs here, next to the
+ * type it produces, and the scene layer is left with the one thing that is
+ * genuinely its own: asking Phaser's cache for the file.
+ */
+export function landmassesFromRaw(raw: RawGeo): LandmassDef[] {
+  return raw.landmasses.map(lm => ({
+    id: lm.id,
+    polygon: lm.polygon.map(([x, y]) => ({ x, y })),
+    bbox: { minX: lm.bbox[0], minY: lm.bbox[1], maxX: lm.bbox[2], maxY: lm.bbox[3] },
+  }));
+}
+
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));
 const Y_TOP = mercY(35);
 const Y_BOT = mercY(7);

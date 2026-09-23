@@ -31,7 +31,7 @@
  */
 
 import type { WorldState, RngState } from "../model/WorldState.ts";
-import { CITIES } from "../data/cities.ts";
+import { CITIES, isLandlocked } from "../data/cities.ts";
 import { FACTIONS } from "../data/factions.ts";
 import { rngNextInt } from "../services/RNG.ts";
 import type { QuestDef } from "./QuestSystem.ts";
@@ -81,11 +81,20 @@ export function villainFactionFor(nationality: string): string {
   return worst;
 }
 
-/** Towns of that crown a marquis could plausibly hide someone in. */
+/**
+ * Towns of that crown a marquis could plausibly hide someone in.
+ *
+ * Landlocked since v0.91.0, and that one filter matters more than it looks:
+ * the chain draws three towns out of seventeen Spanish cities, and Panamá is
+ * one of them, so **17.6 % of captains** were given a family step in a town no
+ * keel can reach. The main story does not get to be uncompletable by a dice
+ * roll made before the first voyage.
+ */
 export function candidatePorts(world: WorldState, villainFaction: string): string[] {
   return Object.keys(CITIES)
     .filter(key => (portFaction(world, key) as string) === villainFaction)
     .filter(key => CITIES[key].type !== "outpost")
+    .filter(key => !isLandlocked(key))
     .sort();
 }
 

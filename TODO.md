@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-22 · **Wersja:** v0.90.0.0 · **Branch:** `main`
-**Kod:** 272 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2377 przechodzi, 0 failuje, 0 `todo`** w 84 plikach
+**Stan na:** 2026-09-23 · **Wersja:** v0.91.0.0 · **Branch:** `main`
+**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2385 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2671,7 +2671,26 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-22, po v0.90.0)
+**Znalezione przy wybrzeżu, nienaprawione** (v0.91.0.0):
+
+- **Kotwicowisko Belize siatka morska uznaje za ląd** (`isSeaCell` = false),
+  choć wielokąty mówią, że to woda. Komórka siatki ma 40 px i jej brzeg jest
+  grubszy od rysowanego — znane od v0.58.0. Droga morska do Belize działa, więc
+  nic się nie psuje widocznie, ale to **jedyny taki port z 45**
+- **Montserrat nie ma ani jednego szlaku handlowego** — z zupełnie innego powodu
+  niż Panama (osiąga 43 porty). Nie sprawdzone, czy zamierzone
+- **`getFallbackLandmasses` dalej obsługuje `Pathfinding.test.ts`** i to jest
+  w porządku (ten plik testuje **algorytm** i mówi to wprost, a odwołuje się do
+  wysp po `id` — prawdziwe mają `land_95`). Ale **żaden test nie chodzi po
+  algorytmie na prawdziwej mapie** poza nowym `geography.test.ts`
+- **`pointInLandmass` nie ma żadnego strażnika na to, że w ogóle coś zwraca.**
+  Przez całe v0.90.0 odpowiadał `false` wszędzie w moim pomiarze i nic tego nie
+  złapało — `geography.test.ts` zamyka to dla prawdziwej mapy, ale każdy inny
+  test dalej może dostać pustą `LANDMASSES` i przejść
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.91.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2700,16 +2719,24 @@ repo wydanie zaczyna się od liczby, nie od pomysłu.
 
 ---
 
-**1. `pointInLandmass` mówi, że żadne miasto nie stoi na lądzie.** Zmierzone
-w v0.90.0 przy wczytanym **prawdziwym** `public/data/caribbean_geo.json` (102
-lądy, nie fallback): funkcja odpowiada **false dla wszystkich 45 miast i
-wszystkich 8 wiosek**, a najbliższa woda leży o **1 jednostkę** od każdego z
-nich. Komentarz nad `VillageDef.pos` mówi *„On land, within six units of open
-water"*. Albo zdanie jest fałszywe, albo funkcja — i **żadnej asercji
-o geografii nie wolno pisać, zanim się nie wie której**. `findWaterApproach`
-zaczyna szukać dopiero od 40 jednostek, więc nigdy się na tym nie potknęło.
-**Pomiar na wejściu:** ile punktów siatki 3200×2400 `pointInLandmass` uznaje za
-ląd i czy ten odsetek zgadza się z tym, co widać na ekranie.
+**~~1. `pointInLandmass` mówi, że żadne miasto nie stoi na lądzie.~~ ✅ v0.91.0**
+— to był **błąd pomiaru**: podano `setLandmasses` surowy JSON zamiast
+przetłumaczonego. Ale **dlaczego** dało się go popełnić, było wydaniem:
+tłumaczenie mieszkało w `src/game/world/GeoLoader.ts`, więc prawie nic w testach
+nie umiało wczytać prawdziwych Karaibów (4 lądy zamiast 102, **1,38% lądu
+zamiast 24,59%**, siedem kotwicowisk na suchym lądzie). Zdanie *„On land, within
+six units of open water"* okazało się **prawdziwe co do jednostki**.
+
+**1. Co Panama ma być?** — **decyzja dla użytkownika, nie do wzięcia
+autonomicznie.** Zmierzone: osiągalna z **0 z 44 portów**, **0 szlaków**, przy
+rynku poziomu **5** i żądaniu `food`/`water`. Geograficznie poprawna (Pacyfik,
+i to tam Morgan przyszedł lądem w 1671). v0.91.0 zamknęła tylko to, co było
+złamane niezależnie od decyzji: nic, co wymaga kilu, już jej nie nazywa.
+Otwarte warianty: (a) zostawić jako miasto-widmo na czarcie; (b) dać wyprawę
+lądową przez przesmyk z Puerto Bello albo od wioski `darien`; (c) usunąć.
+**Pomiar przed decyzją:** co zero szlaków robi z jej ekonomią przez rok
+symulacji — głód, ludność, bogactwo — i czy gracz w ogóle widzi jej nazwę
+gdziekolwiek poza czartą.
 
 **2. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?** v0.89.0 wzięła z niej
 pierwszą pozycję (mgła i czujność) i znalazła mechanikę, która **nie działała
@@ -2742,7 +2769,8 @@ wyszły trzy fałszywe twierdzenia huraganu o sobie i dwa o wiosce.
 **5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs`. Klawisze:
 `node scripts/probe-keys.mjs`. Bitwa: `node scripts/measure-battle.mjs 4
 --policy=hold`. Liczby: `node scripts/sweep-constants.mjs`. Zdania o liczbach:
-`node scripts/sweep-claims.mjs`.
+`node scripts/sweep-claims.mjs`. **Geografia: pamiętaj, że `getFallbackLandmasses()`
+to nie Karaiby** — do prawdziwej mapy jest `src/core/__tests__/realGeo.ts`.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

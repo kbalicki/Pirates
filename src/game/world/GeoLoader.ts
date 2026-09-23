@@ -8,19 +8,15 @@
  * world built in `PreloadScene` needs it too — a captain placed "off the
  * harbour" before the coastline exists is placed on the quay.
  *
- * So the parse lives here and both callers use it.
+ * So the cache read lives here and both callers use it. The parse itself moved
+ * to `core/data/geography.ts` in v0.91.0, for the reason written there.
  */
 
 import type Phaser from "phaser";
-import { setLandmasses, type LandmassDef, type LandmassBbox } from "../../core/data/geography.ts";
+import { setLandmasses, landmassesFromRaw, type RawGeo } from "../../core/data/geography.ts";
 import { buildPortWaterCache } from "../../core/systems/PortWaterPositions.ts";
 
 export type OsmCity = { name: string; x: number; y: number };
-
-type RawGeo = {
-  landmasses: Array<{ id: string; polygon: number[][]; bbox: [number, number, number, number] }>;
-  osmCities: OsmCity[];
-};
 
 /**
  * Populate `LANDMASSES` and the port water cache from the scene's JSON cache.
@@ -32,18 +28,11 @@ export function loadLandmassesFromCache(scene: Phaser.Scene): OsmCity[] | null {
   if (!scene.cache.json.exists("caribbean_geo")) return null;
 
   const raw = scene.cache.json.get("caribbean_geo") as RawGeo;
-  const parsed: LandmassDef[] = raw.landmasses.map(lm => ({
-    id: lm.id,
-    polygon: lm.polygon.map(([x, y]) => ({ x, y })),
-    bbox: {
-      minX: lm.bbox[0],
-      minY: lm.bbox[1],
-      maxX: lm.bbox[2],
-      maxY: lm.bbox[3],
-    } as LandmassBbox,
-  }));
-
-  setLandmasses(parsed);
+  // The translation itself is `landmassesFromRaw` in `core/data/geography.ts`
+  // (v0.91.0). It used to be written out here, which made this scene-layer
+  // file the only code in the project that knew the format the coastline
+  // ships in - so nothing in `core/`, and therefore no test, could load it.
+  setLandmasses(landmassesFromRaw(raw));
   buildPortWaterCache(); // NPC navigation needs a water position per port
-  return raw.osmCities ?? [];
+  return (raw.osmCities as OsmCity[] | undefined) ?? [];
 }

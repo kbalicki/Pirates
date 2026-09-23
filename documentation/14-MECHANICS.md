@@ -578,6 +578,23 @@ i Port Royale. Fregatę albo merchantmana kupisz w dziewięciu miastach.
 Nazwy towarów są identyfikatorami z kodu (`sugar_cane`, `tobacco`, `cocoa`,
 `rum`, `food`, `water`); instrukcja dla gracza je tłumaczy.
 
+**Jedno miasto jest nie do dopłynięcia (v0.91.0).** `panama` leży na 8°57'N
+79°30'W, czyli po stronie **Pacyfiku** — tam stało miasto, które Morgan
+złupił w 1671, przemaszerowawszy przez przesmyk. Jego karaibskie odpowiedniki,
+Puerto Bello i Nombre de Dios, są osobnymi pozycjami tej tabeli. Zmierzone na
+prawdziwym wybrzeżu: Panama jest osiągalna z **0 z pozostałych 44 portów**
+i ma **0 szlaków handlowych**, mimo rynku poziomu 5. W danych nosi
+`landlocked: true`, a `geography.test.ts` pilnuje, że **zbiór miast z tą flagą
+jest dokładnie zbiorem miast bez drogi morskiej** — przesunięcie miasta bez
+przesunięcia flagi zapala test.
+
+Cokolwiek wymaga kilu, omija je: **łańcuch rodzinny** (losuje trzy z siedmnastu
+hiszpańskich miast — do v0.90.0 stawiał etap w Panamie **17,6% kapitanom**),
+**zlecenie dostawy** u informatora (13 tawern leży w `RELIEF_REACH`, Puerto
+Bello o **119 px** i bez żadnej drogi morskiej, a miasto bez szlaków jest
+trwale najbardziej potrzebujące w zasięgu) oraz **kampania korony**. Pogoda,
+wiadomości i ceny kilu nie potrzebują i działają tam normalnie.
+
 | klucz | nazwa | korona | typ | rynek | stocznia | produkuje | potrzebuje |
 |---|---|---|---|---|---|---|---|
 | `havana` | Hawana | Hiszpania | miasto | 5 | 4 | sugar_cane tobacco rum | food water cocoa |
