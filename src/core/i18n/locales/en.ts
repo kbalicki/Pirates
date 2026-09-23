@@ -533,6 +533,12 @@ export const EN: LocaleData = {
 
   // -- Blockade (v0.22.0) --
   "blockade.established": "{{port}} is blockaded — nothing is getting in.",
+  "relief.watch_reach": "Landing at {{port}} in {{days}} {{days:day}} — close enough to stand in the defence.",
+  "relief.watch_far": "Landing at {{port}} in {{days}} {{days:day}} — too far off to reach her.",
+  "relief.watch_ally_reach": "Landing at {{port}}, an ally's town, in {{days}} {{days:day}} — close enough to stand in the defence.",
+  "relief.watch_ally_far": "Landing at {{port}}, an ally's town, in {{days}} {{days:day}} — too far off to reach her.",
+  "relief.watch_today_reach": "Landing at {{port}} — today. You stand in the defence.",
+  "relief.watch_today_far": "Landing at {{port}} — today, and you are too far off.",
   "blockade.lifted": "The blockade of {{port}} has been lifted.",
   "blockade.log_established": "Blockade of {{port}} established",
   "blockade.log_lifted": "Blockade of {{port}} lifted",

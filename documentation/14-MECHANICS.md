@@ -1417,6 +1417,28 @@ Ostrzał rundowy → desant falami → trzy zakończenia; port zmienia właścic
 | `ReconquestSystem.HELD_DEFENSE_SHARE` | 0.45 | sufit obrony pod czarną banderą |
 | `ReconquestSystem.HELD_POPULATION_SHARE` | 0.62 | sufit ludności pod czarną banderą |
 
+**Obecność ma teraz linię na HUD-zie (v0.93.0).** 400 jednostek świata przy
+lunecie sięgającej **65** i ekranie **213 × 120** jednostek przy domyślnym
+przybliżeniu: miasto oddalone o tyle jest w kadrze przy **jednym z czternastu**
+stopni zoomu na wschód/zachód i **przy żadnym** na północ/południe. Na całej
+czarcie kapitan jest „obecny" średnio przy **2,83** miastach, przy co najmniej
+jednym na **65,7%** morza, a w najgęstszym miejscu przy **16** — i **94,6%** par
+(miejsce, miasto) w zasięgu tej reguły dotyczy miasta, którego nie ma na ekranie.
+
+To jest w porządku dla tego, czym ta liczba jest: obecność to nie wzrok.
+Nie było w porządku to, że **nic mu o tym nie mówiło** — kordon blokady, ta sama
+klasa liczby, ma linię na HUD-zie od v0.22.0. `reliefWatch` znajduje najbliższy
+termin desantu na miasto, które gracz trzyma albo którego broni z listu
+kaperskiego, a HUD pisze miasto, liczbę dni i czy jest dość blisko; **na
+czerwono, gdy nie jest**.
+
+Do v0.92.0 `playerPresentAt` miało drugą gałąź, odpowiadającą **tożsamością**,
+gdy gracz był w porcie. **Nigdy się nie wykonała**: `WorldEngine.apply` wraca
+przed przesunięciem zegara, gdy gracz jest w porcie, a `tickReconquest` jest po
+drugiej stronie tego `return`. Gdyby się wykonywała, mówiłaby rzecz dziwną —
+zakotwiczony w Antigui, **12 px** od własnego Montserratu, kapitan był
+*nieobecny*, a na morzu 399 px dalej *obecny*.
+
 ### Wyprawa jako eskadra na mapie
 
 | stała | wartość | znaczenie |

@@ -214,6 +214,7 @@ export class PreloadScene extends Phaser.Scene {
     //   ?battle=trader|navy|pirate — choose enemy archetype
     //   ?siege=cartagena — jump straight to a city assault, with a ship able to try it
     //   ?relief=cartagena — a town already taken, with a royal squadron arriving today
+    //     (&days=N puts the landing N days off, for the HUD's counting line)
     //   ?defend=cartagena — the same landing, fought in person (&ally=1 for someone else's town)
     //   ?intercept=cartagena — the same expedition, met at sea half a passage out
     //   ?commission=port_royal — the governor there with a colony under threat
@@ -304,10 +305,12 @@ export class PreloadScene extends Phaser.Scene {
       const portKey = params.get("relief") || "cartagena";
       const men = params.has("garrison") ? Number(params.get("garrison")) : 120;
       const soldiers = params.has("soldiers") ? Number(params.get("soldiers")) : 100;
+      const daysOut = params.has("days") ? Number(params.get("days")) : 0;
       const world = this.createReliefWorld(
         portKey,
         Number.isFinite(men) ? men : 120,
         Number.isFinite(soldiers) ? soldiers : 100,
+        Number.isFinite(daysOut) ? Math.max(0, daysOut) : 0,
       );
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
@@ -833,8 +836,10 @@ export class PreloadScene extends Phaser.Scene {
       worldFlags: ally
         ? { ...base.worldFlags, [`letter_of_marque_${owner}`]: true }
         : base.worldFlags,
-      // In the harbour itself: `playerPresentAt` short-circuits on a port
-      // location, so this is the least fragile way to be unambiguously there.
+      // In the harbour itself. The scene is started directly with a
+      // `PendingDefense`, so nothing here consults `playerPresentAt` - which
+      // is as well, because the port short-circuit this comment used to lean
+      // on was dead code and went in v0.93.0.
       player: {
         ...base.player,
         location: { type: "port", portId: def.id, pos: { ...def.pos } },
@@ -853,7 +858,7 @@ export class PreloadScene extends Phaser.Scene {
     };
   }
 
-  private createReliefWorld(portKey: string, men: number, soldiers: number): import("../../core/model/WorldState.ts").WorldState {
+  private createReliefWorld(portKey: string, men: number, soldiers: number, daysOut = 0): import("../../core/model/WorldState.ts").WorldState {
     const base = this.createSiegeWorld();
     const def = CITIES[portKey];
     if (!def) return base;
@@ -892,7 +897,10 @@ export class PreloadScene extends Phaser.Scene {
           id: `reconquest_${portKey}_debug`,
           type: "reconquest" as const,
           startDay: day - 8,
-          endDay: day,
+          // `&days=N` puts the landing N days off instead of today (v0.93.0),
+          // which is the only way to see the HUD's counting line: at zero it
+          // says "today" and the squadron lands in the next few seconds.
+          endDay: day + daysOut,
           ports: [portKey],
           factions: [def.factionId as string, "pirates"],
           severity: 3 as const,

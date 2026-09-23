@@ -104,3 +104,61 @@ describe("how many sentences carry a number at all", () => {
     expect(carrying.length, carrying.join(", ")).toBeLessThanOrEqual(31);
   });
 });
+
+// ===========================================================================
+// The HUD line for a landing he cannot see (v0.93.0)
+// ===========================================================================
+
+/**
+ * `PRESENCE_RANGE` is 400 world px against a spyglass of 65 and a screen
+ * 213 x 120 world px wide at the default zoom, so the town whose fate it
+ * decides is off the picture at every zoom the game offers. The cordon, the
+ * same kind of number, has had a HUD line since v0.22.0; this one had nothing.
+ *
+ * Six sentences carry it, and `MainMapScene.updateReliefHud` picks between
+ * them. That choice is in the scene layer, so what can be checked here is that
+ * the six exist in both languages, take their numbers as variables rather than
+ * as digits, and that **the scene names exactly these six and no others** - a
+ * seventh key added to one locale and not to the picker would simply never be
+ * drawn.
+ */
+describe("the relief watch line", () => {
+  const KEYS = [
+    "relief.watch_reach", "relief.watch_far",
+    "relief.watch_ally_reach", "relief.watch_ally_far",
+    "relief.watch_today_reach", "relief.watch_today_far",
+  ];
+
+  it("exists in both languages and resolves with a port and a count", () => {
+    for (const key of KEYS) {
+      expect(PL[key], `PL is missing ${key}`).toBeTruthy();
+      expect(EN[key], `EN is missing ${key}`).toBeTruthy();
+      for (const [lang, table] of [["pl", PL], ["en", EN]] as const) {
+        setLang(lang);
+        const line = t(key, { port: "port.port_royal.name", days: 3 });
+        expect(line, `${lang} ${key} left a placeholder`).not.toContain("{{");
+        expect(line.length, `${lang} ${key} is empty`).toBeGreaterThan(20);
+        expect(table[key]).not.toMatch(/\d+\s*px/i);
+      }
+    }
+    setLang("pl");
+  });
+
+  it("counts days as a variable, with the plural the language wants", () => {
+    setLang("pl");
+    expect(t("relief.watch_reach", { port: "port.port_royal.name", days: 1 })).toContain("1 dzień");
+    expect(t("relief.watch_reach", { port: "port.port_royal.name", days: 3 })).toContain("3 dni");
+    setLang("en");
+    expect(t("relief.watch_reach", { port: "port.port_royal.name", days: 1 })).toContain("1 day");
+    expect(t("relief.watch_reach", { port: "port.port_royal.name", days: 5 })).toContain("5 days");
+    setLang("pl");
+  });
+
+  it("is picked from by the scene, and the scene names exactly these six", () => {
+    const SRC = import.meta.glob("../../../game/scenes/MainMapScene.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const src = Object.values(SRC)[0];
+    expect(src, "MainMapScene was not read").toBeTruthy();
+    const named = [...src.matchAll(/"(relief\.watch_[a-z_]+)"/g)].map(m => m[1]);
+    expect([...new Set(named)].sort()).toEqual([...KEYS].sort());
+  });
+});

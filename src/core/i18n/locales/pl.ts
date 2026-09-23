@@ -532,6 +532,12 @@ export const PL: LocaleData = {
 
   // -- Blokada (v0.22.0) --
   "blockade.established": "{{port}} pod blokadą — nic tam nie dopłynie.",
+  "relief.watch_reach": "Desant na {{port:acc}} za {{days}} {{days:day}} — jesteś dość blisko, by stanąć w obronie.",
+  "relief.watch_far": "Desant na {{port:acc}} za {{days}} {{days:day}} — jesteś za daleko, by zdążyć.",
+  "relief.watch_ally_reach": "Desant na {{port:acc}}, port sojusznika, za {{days}} {{days:day}} — jesteś dość blisko, by stanąć w obronie.",
+  "relief.watch_ally_far": "Desant na {{port:acc}}, port sojusznika, za {{days}} {{days:day}} — jesteś za daleko, by zdążyć.",
+  "relief.watch_today_reach": "Desant na {{port:acc}} — dziś. Stajesz w obronie.",
+  "relief.watch_today_far": "Desant na {{port:acc}} — dziś, a ty jesteś za daleko.",
   "blockade.lifted": "Blokada {{port:gen}} została zdjęta.",
   "blockade.log_established": "Ustanowiono blokadę {{port:gen}}",
   "blockade.log_lifted": "Zdjęto blokadę {{port:gen}}",

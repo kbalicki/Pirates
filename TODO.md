@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-23 · **Wersja:** v0.92.0.0 · **Branch:** `main`
-**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2389 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
+**Stan na:** 2026-09-23 · **Wersja:** v0.93.0.0 · **Branch:** `main`
+**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2394 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2707,7 +2707,29 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.92.0)
+**Znalezione przy obecności, nienaprawione** (v0.93.0.0):
+
+- **Czas nie płynie w porcie, i to jest szersze niż jedna martwa gałąź.**
+  `WorldEngine.apply` wraca **przed** przesunięciem zegara, gdy
+  `location.type === "port"`, więc **każdy termin w grze** — eskadra korony,
+  zlecenie dostawy, kontrakt obronny, `PLUNDER_INTERVAL_DAYS` — **zatrzymuje się
+  wraz z zawinięciem do portu**. Jest to wewnętrznie spójne (dzień znaczy „dzień
+  żeglugi", jak w Sid Meier's Pirates!), ale **nigdzie nie zapisane jako
+  decyzja**, a żadna czynność w porcie nie kosztuje dnia. **Pomiar na wejściu:**
+  ile dat w grze obiecuje graczowi termin i co każdy z nich znaczy, jeśli zegar
+  da się zatrzymać do woli
+- **HUD ma teraz siedem wierszy i nic nie pilnuje, że się nie nachodzą.**
+  `HUD_ROW` to zwykły obiekt ze stałymi w `UIOverlayScene`; najdłuższa nowa
+  linia zmierzona na ekranie ma 374 px przy prawym marginesie, ale to pomiar
+  jednego zdania, nie strażnik
+- **`reliefWatch` nie mówi o desancie na miasto, którego gracz nie trzyma i nie
+  broni** — słusznie, bo takiego nie dostanie. Ale **nie mówi też nic o tym, że
+  jego własne miasto właśnie zmieniło ręce offscreen**; to robi kanał
+  wiadomości i nie zostało sprawdzone, czy faktycznie dociera
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.93.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2755,14 +2777,15 @@ lądową przez przesmyk z Puerto Bello albo od wioski `darien`; (c) usunąć.
 symulacji — głód, ludność, bogactwo — i czy gracz w ogóle widzi jej nazwę
 gdziekolwiek poza czartą.
 
-**2. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?** v0.89.0 wzięła z niej
-pierwszą pozycję (mgła i czujność) i znalazła mechanikę, która **nie działała
-w ogóle**. Zostały dwie nazwane: **`PRESENCE_RANGE` (400)** — z jakiej odległości
-flota gracza „liczy się jako obecna” przy odbijaniu miasta, i **`BLOCKADE_RADIUS`
-(320)** — z jakiej stoi się pod portem. Obie decydują o czymś, czego gracz **nie
-widzi** (luneta sięga 36–65). Dla blokady to może być słuszne (patrol to nie
-wzrok), dla obecności — nie wiadomo. **Pomiar na wejściu:** jak często flota
-„jest obecna” przy mieście, którego kapitan nie ma na ekranie.
+**~~2. Dokończyć tabelę `px`: wzrok, zasięg czy obecność?~~ ✅ v0.93.0** —
+tabela przejrzana do końca. `BLOCKADE_RADIUS` (320) zamknięty **bez zmian**:
+patrol, nie wzrok, i ogłaszany na HUD-zie od v0.22.0. `PRESENCE_RANGE` (400)
+też jest poprawną **obecnością** — ale **nic o nim graczowi nie mówiło**, choć
+jest o 20% większy od kordonu, który ma swoją linię. Zmierzone: miasto 400 px
+od gracza jest w kadrze przy **1 z 14** zoomów na E/W i **przy żadnym** na N/S,
+a **94,6%** par (miejsce, miasto) w zasięgu reguły dotyczy miasta poza ekranem.
+Dostał `reliefWatch` i linię HUD-u. Przy okazji: gałąź `playerPresentAt` dla
+portu **nigdy się nie wykonała** i pilnowały jej dwa testy.
 
 **3. Czy generator daje to, czego próg żąda?** — **częściowo zamknięte
 w v0.92.0**, pozycja zostaje. `STORM_SAFE_SAIL` stał **dokładnie na jednej

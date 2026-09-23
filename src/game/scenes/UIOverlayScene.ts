@@ -42,7 +42,8 @@ const HUD_ROW = {
   drift: 52,
   fleet: 68,
   blockade: 86,
-  storm: 104,
+  relief: 104,
+  storm: 122,
 } as const;
 
 export class UIOverlayScene extends Phaser.Scene {
@@ -54,6 +55,7 @@ export class UIOverlayScene extends Phaser.Scene {
   private speedText!: Phaser.GameObjects.Text;
   private fleetText!: Phaser.GameObjects.Text;
   private blockadeText!: Phaser.GameObjects.Text;
+  private reliefText!: Phaser.GameObjects.Text;
   private windwardText!: Phaser.GameObjects.Text;
   private driftText!: Phaser.GameObjects.Text;
   private stormText!: Phaser.GameObjects.Text;
@@ -176,6 +178,18 @@ export class UIOverlayScene extends Phaser.Scene {
     this.blockadeText.setOrigin(1, 0);
     this.blockadeText.setDepth(30);
 
+    // A squadron standing in for one of his towns (v0.93.0). Same row shape as
+    // the cordon above it, and for the same reason: `PRESENCE_RANGE` decides
+    // whether he is given the battle, and 400 world px is off the screen at
+    // every zoom the game offers.
+    this.reliefText = this.add.text(cam.width - MARGIN, sailY + HUD_ROW.relief, "", {
+      ...txt(11, { color: "#cc8844" }),
+      stroke: "#000000",
+      strokeThickness: 2,
+    });
+    this.reliefText.setOrigin(1, 0);
+    this.reliefText.setDepth(30);
+
     // The squall wash — below everything else this scene draws.
     this.stormVeil = this.add.rectangle(0, 0, cam.width, cam.height, STORM_VEIL_COLOUR, 0);
     this.stormVeil.setOrigin(0, 0);
@@ -212,6 +226,7 @@ export class UIOverlayScene extends Phaser.Scene {
     if (this.driftText) this.driftText.setPosition(width - MARGIN, sailY + HUD_ROW.drift);
     if (this.fleetText) this.fleetText.setPosition(width - MARGIN, sailY + HUD_ROW.fleet);
     if (this.blockadeText) this.blockadeText.setPosition(width - MARGIN, sailY + HUD_ROW.blockade);
+    if (this.reliefText) this.reliefText.setPosition(width - MARGIN, sailY + HUD_ROW.relief);
     if (this.stormText) this.stormText.setPosition(width - MARGIN, sailY + HUD_ROW.storm);
     if (this.stormVeil) this.stormVeil.setSize(width, height);
   }
@@ -318,6 +333,18 @@ export class UIOverlayScene extends Phaser.Scene {
     if (!this.blockadeText) return;
     this.blockadeText.setText(line);
     this.blockadeText.setColor(effective ? "#dd5544" : "#cc8844");
+  }
+
+  /**
+   * The landing he has been warned of, and whether he can reach it (v0.93.0).
+   *
+   * Red when he cannot: that is the state he can still do something about, and
+   * the one the game used to say nothing at all about.
+   */
+  updateRelief(line: string, urgent: boolean): void {
+    if (!this.reliefText) return;
+    this.reliefText.setText(line);
+    this.reliefText.setColor(urgent ? "#dd5544" : "#cc8844");
   }
 
   /**

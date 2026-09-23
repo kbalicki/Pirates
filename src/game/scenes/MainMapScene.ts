@@ -52,6 +52,7 @@ import {
   clearStormCourses,
   type StormCourseResult,
 } from "../render/StormCourseRenderer.ts";
+import { reliefWatch } from "../../core/systems/ReconquestSystem.ts";
 import {
   harbourInReach,
   blockadeDays,
@@ -613,6 +614,29 @@ export class MainMapScene extends Phaser.Scene {
         : t("blockade.tightening", { port: name, days, onset: BLOCKADE_ONSET_DAYS }),
       effective,
     );
+  }
+
+  /**
+   * The squadron standing in for one of his towns, and whether he can reach it
+   * (v0.93.0).
+   *
+   * The cordon he lays has had a line here since v0.22.0; the landing that is
+   * coming for him had none, though it is decided by a number half again as
+   * large. `reliefWatch` is the `core/` half; this only chooses the sentence.
+   */
+  private updateReliefHud(): void {
+    const watch = reliefWatch(this.worldState);
+    if (!watch) {
+      this.uiOverlay?.updateRelief("", false);
+      return;
+    }
+    const port = portNameKey(watch.portKey);
+    const key = watch.daysOut === 0
+      ? (watch.inReach ? "relief.watch_today_reach" : "relief.watch_today_far")
+      : watch.allied
+        ? (watch.inReach ? "relief.watch_ally_reach" : "relief.watch_ally_far")
+        : (watch.inReach ? "relief.watch_reach" : "relief.watch_far");
+    this.uiOverlay?.updateRelief(t(key, { port, days: watch.daysOut }), !watch.inReach);
   }
 
   private initGeoData(): void {
@@ -1274,6 +1298,7 @@ export class MainMapScene extends Phaser.Scene {
     this.uiOverlay?.updateZoom(this.cameras.main.zoom);
     this.uiOverlay?.updateFleet(this.worldState.player.fleet?.length ?? 0);
     this.updateBlockadeHud();
+    this.updateReliefHud();
     // Check if sailing into wind (dead zone)
     const pe3 = this.worldState.entities[this.worldState.player.shipId as string];
     const psc = pe3?.ship ? SHIP_CLASSES[pe3.ship.classId as string] : null;

@@ -14,6 +14,7 @@ import {
   expeditionFor,
   launchExpedition,
   playerPresentAt,
+  reliefWatch,
   fleetDefenceContribution,
   defenceStrength,
   attackStrength,
@@ -536,10 +537,56 @@ describe("presence and strength", () => {
     expect(playerPresentAt(makeWorld({ pos: { x: at.x + PRESENCE_RANGE * 2, y: at.y } }), FORT)).toBe(false);
   });
 
-  it("counts the player as present when docked in the town itself", () => {
-    const far = { x: 9999, y: 9999 };
-    expect(playerPresentAt(makeWorld({ pos: far, inPort: FORT }), FORT)).toBe(true);
-    expect(playerPresentAt(makeWorld({ pos: far, inPort: OUTPOST }), FORT)).toBe(false);
+  /**
+   * The branch this replaces pinned a case that could not happen (v0.93.0).
+   *
+   * `WorldEngine.apply` returns before it advances the clock whenever the
+   * player is in port, and `tickReconquest` is on the far side of that return,
+   * so no day has ever changed with the captain ashore. The old test asserted
+   * that a man docked at Cartagena was "present" at Cartagena from a position
+   * 9 999 units away - true of the code, and about a state the game cannot
+   * reach. **A test that keeps unreachable code alive is worse than no test.**
+   *
+   * What the rule is now is one thing: distance, wherever he happens to be.
+   */
+  it("asks only how far off he is, and the engine never asks it of a man in port", () => {
+    const at = CITIES[FORT].pos;
+    const docked = makeWorld({ pos: at, inPort: FORT });
+    expect(docked.player.location.type).toBe("port");
+    expect(playerPresentAt(docked, FORT)).toBe(true);
+    // Docked in the town, but the position is what answers - so a fixture that
+    // puts him in port on the far side of the sea is absent, as he should be.
+    expect(playerPresentAt(makeWorld({ pos: { x: 9999, y: 9999 }, inPort: FORT }), FORT)).toBe(false);
+  });
+
+  /** The HUD line the rule was missing (v0.93.0). */
+  it("watches the soonest landing he would be given, and says whether he can reach it", () => {
+    const near = makeWorld({
+      day: 130,
+      pos: { ...CITIES[FORT].pos },
+      worldEvents: [inFlight(FORT, { endDay: 133 })],
+    });
+    const watch = reliefWatch(near);
+    expect(watch).toEqual({ portKey: FORT, daysOut: 3, inReach: true, allied: false });
+
+    const off = { x: CITIES[FORT].pos.x + PRESENCE_RANGE * 2, y: CITIES[FORT].pos.y };
+    expect(reliefWatch({ ...near, player: { ...near.player, location: { type: "sea", pos: off } } })!.inReach).toBe(false);
+
+    // Nothing to watch when the landing is not one he would be offered: the
+    // fort here is his, the outpost is not and he holds no paper for it.
+    expect(reliefWatch({ ...near, worldEvents: [inFlight(OUTPOST, { endDay: 133 })] })).toBeNull();
+    expect(reliefWatch({ ...near, worldEvents: [] })).toBeNull();
+  });
+
+  it("takes the nearer deadline when two squadrons are in the air", () => {
+    const world = makeWorld({
+      day: 130,
+      pos: { ...CITIES[FORT].pos },
+      ports: { [FORT]: takenPort(FORT), [OUTPOST]: takenPort(OUTPOST) },
+      worldEvents: [inFlight(OUTPOST, { endDay: 140 }), inFlight(FORT, { endDay: 132 })],
+    });
+    expect(reliefWatch(world)!.portKey).toBe(FORT);
+    expect(reliefWatch(world)!.daysOut).toBe(2);
   });
 
   it("throws a landing party's worth of men into the defence", () => {

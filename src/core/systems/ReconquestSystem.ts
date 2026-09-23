@@ -505,17 +505,78 @@ export function launchExpedition(
 
 // ── The defence ───────────────────────────────────────────
 
-/** True when the player's fleet is close enough to throw men into the defence. */
+/**
+ * True when the player's fleet is close enough to throw men into the defence.
+ *
+ * Distance, and only distance. There was a branch above this one until v0.93.0
+ * answering the same question by *identity* when `location.type === "port"` —
+ * present at the harbour you are lying in and nowhere else — and it could
+ * never run. `WorldEngine.apply` returns **before** it advances the clock when
+ * the player is in port ("If player is in port, skip world simulation"), and
+ * `tickReconquest` is on the far side of that return, reached from the one
+ * `engine.apply` call in `MainMapScene`, which is itself stopped by
+ * `scene.start("PortScene")`. So no day has ever changed with the captain
+ * ashore, and this function has never once been asked about a port.
+ *
+ * Had it run it would have said something strange: anchored in Antigua,
+ * **12 px** from his own Montserrat, he was *absent*; at sea 399 px off —
+ * thirty-three times further — he was *present*. Two tests pinned that
+ * behaviour, which is the worst way to keep a branch alive.
+ */
 export function playerPresentAt(world: WorldState, portKey: string): boolean {
   const def = CITIES[portKey];
   if (!def) return false;
-  if (world.player.location.type === "port") {
-    return (world.player.location.portId as string | undefined) === portKey;
-  }
   const pos = world.player.location.pos;
   const dx = pos.x - def.pos.x;
   const dy = pos.y - def.pos.y;
   return dx * dx + dy * dy <= PRESENCE_RANGE * PRESENCE_RANGE;
+}
+
+/** A landing the captain has been warned of, and whether he can reach it. */
+export type ReliefWatch = {
+  portKey: string;
+  /** Days until she is off the harbour. 0 on the day itself. */
+  daysOut: number;
+  /** True when he is inside `PRESENCE_RANGE` and will be given the defence. */
+  inReach: boolean;
+  /** His own town, or a crown's that counts him one of its own. */
+  allied: boolean;
+};
+
+/**
+ * The landing the HUD should be telling him about, or nothing (v0.93.0).
+ *
+ * `PRESENCE_RANGE` is 400 world px against a best spyglass of **65** and a
+ * screen 213 × 120 world px wide at the default zoom. Measured, a town that
+ * far off is on screen at **one of fourteen** zoom steps due east or west and
+ * **none at all** due north or south, and **94.6 %** of the (place, town)
+ * pairs the rule covers concern a town the captain cannot have in the picture.
+ *
+ * That is fine for what the number is — presence is not sight, and a captain
+ * knows where his own colony lies without looking at it. What was not fine is
+ * that nothing told him. `BLOCKADE_RADIUS`, the same kind of number in the same
+ * game, has had a HUD line naming the port and counting the days since v0.22.0,
+ * for the reason written over `harbourInReach`: *"a cordon that silently does
+ * nothing is indistinguishable from a broken one"*. This is the other half of
+ * that sentence. The rule he can act on was announced; the rule that acts on
+ * him was not.
+ *
+ * Soonest landing first, because two squadrons in the air is a real state and
+ * the nearer deadline is the one he can still do something about.
+ */
+export function reliefWatch(world: WorldState): ReliefWatch | null {
+  if (world.player.location.type !== "sea") return null;
+  let best: ReliefWatch | null = null;
+  for (const ev of expeditionsInFlight(world)) {
+    const portKey = ev.ports[0];
+    if (!CITIES[portKey]) continue;
+    const own = playerHolds(world, portKey);
+    if (!own && !alliedWith(world, portFaction(world, portKey) as string)) continue;
+    const daysOut = Math.max(0, ev.endDay - world.time.day);
+    if (best && best.daysOut <= daysOut) continue;
+    best = { portKey, daysOut, inReach: playerPresentAt(world, portKey), allied: !own };
+  }
+  return best;
 }
 
 /**
