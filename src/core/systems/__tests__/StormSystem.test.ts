@@ -10,6 +10,7 @@ import {
   STORM_RIG_SHARE_PER_TICK,
 } from "../StormSystem.ts";
 import { updateWeather } from "../WeatherSystem.ts";
+import { SAIL_LEVELS } from "../SailSystem.ts";
 import { entityId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
 import { PL } from "../../i18n/locales/pl.ts";
@@ -113,11 +114,34 @@ describe("what a squall takes", () => {
     expect(stormRigLoss(0, 90, 100)).toBe(0);
   });
 
-  it("tears most at full sail and half as much at Half", () => {
-    const full = stormRigLoss(1, 90, 100);
-    const half = stormRigLoss(0.75, 90, 100);
+  /**
+   * Against the four values the ship can actually be at, not against numbers
+   * between them (v0.92.0).
+   *
+   * This test used to call `stormRigLoss(0.75, ...)` "Half" and assert it came
+   * to exactly half of Full - which it did, because the threshold was 0.5. Both
+   * numbers were made up: 0.75 is not a sail level, and 0.5 is Half rather than
+   * Reefed. **A threshold tested only against itself cannot show where it
+   * sits**, which is how it came to sit on one of the four levels it grades.
+   */
+  it("grades the four levels the ship can actually be at", () => {
+    const [furled, reefed, half, full] = SAIL_LEVELS.map(l => stormRigLoss(l.value, 90, 100));
+    expect(furled).toBe(0);
+    expect(reefed).toBe(0);
+    expect(half).toBeGreaterThan(0);
+    expect(half).toBeLessThan(full);
     expect(full).toBeCloseTo(90 * STORM_RIG_SHARE_PER_TICK * 100, 6);
-    expect(half).toBeCloseTo(full / 2, 6);
+    // Half is a middle answer, which is what `stormRigLoss` says it is for:
+    // a quarter of Full's tearing for half again as much canvas as Reefed.
+    expect(half / full).toBeCloseTo(0.254, 3);
+  });
+
+  /** The threshold is a level the sail UI names, which is the whole of its design. */
+  it("stands on Reefed, and on no other level", () => {
+    expect(STORM_SAFE_SAIL).toBe(SAIL_LEVELS[1].value);
+    expect(SAIL_LEVELS.filter(l => l.value === STORM_SAFE_SAIL)).toHaveLength(1);
+    // And Reefed is no longer strictly dominated: it buys something Half does not.
+    expect(stormRigLoss(SAIL_LEVELS[1].value, 90, 100)).toBeLessThan(stormRigLoss(SAIL_LEVELS[2].value, 90, 100));
   });
 
   it("costs a sloop and a galleon the same share of their canvas", () => {
@@ -152,8 +176,15 @@ describe("what a squall takes", () => {
   });
 
   it("leaves the consorts alone when the flagship is reefed", () => {
-    const w = makeWorld({ storm: true, sail: 0.5, fleet: [{ sailsHp: 60, sailsMax: 60 }] });
+    // `SAIL_LEVELS[1]`, not a hand-written 0.5 - that was Half, and the line
+    // above called it reefed (v0.92.0).
+    const w = makeWorld({ storm: true, sail: SAIL_LEVELS[1].value, fleet: [{ sailsHp: 60, sailsMax: 60 }] });
     expect(tickStormDamage(w, 100).player.fleet![0].sailsHp).toBe(60);
+  });
+
+  it("does not leave them alone at Half, which is the level that changed", () => {
+    const w = makeWorld({ storm: true, sail: SAIL_LEVELS[2].value, fleet: [{ sailsHp: 60, sailsMax: 60 }] });
+    expect(tickStormDamage(w, 100).player.fleet![0].sailsHp).toBeLessThan(60);
   });
 });
 

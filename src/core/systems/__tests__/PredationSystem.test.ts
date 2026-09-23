@@ -288,3 +288,35 @@ describe("runPredation", () => {
     expect(out.entities.a.ai!.targetEntityId).toBeUndefined();
   });
 });
+
+// ===========================================================================
+// What the floor makes of the table it grades (v0.92.0)
+// ===========================================================================
+
+/**
+ * `PREY_AGGRESSION_FLOOR`'s comment used to say navy "passes about half the
+ * time". The roll behind it is uniform over the template's band, so the figure
+ * is arithmetic, not opinion — and it is seven in eight. The number stayed and
+ * the sentence went, because a king's ship that sights a pirate and declines
+ * to chase is not a subtler rule; but the figure is pinned here so the next
+ * sentence written about it has to agree with it.
+ */
+describe("the aggression floor, against the bands it grades", () => {
+  /** Share of a uniform band that clears the floor. */
+  const passes = ([lo, hi]: [number, number]) =>
+    Math.max(0, Math.min(1, (hi - PREY_AGGRESSION_FLOOR) / (hi - lo)));
+
+  it("lets no trader through, seven navy hulls in eight, and every rover", () => {
+    expect(passes([0, 0.1])).toBe(0);
+    expect(passes([0.3, 0.7])).toBeCloseTo(0.875, 3);
+    expect(passes([0.5, 0.9])).toBe(1);
+    expect(passes([0.6, 1.0])).toBe(1);
+  });
+
+  it("does not stand on the edge of any band, which is where a floor stops grading", () => {
+    for (const band of [[0, 0.1], [0.3, 0.7], [0.5, 0.9], [0.6, 1.0]] as [number, number][]) {
+      expect(PREY_AGGRESSION_FLOOR, `floor is an endpoint of ${band}`).not.toBe(band[0]);
+      expect(PREY_AGGRESSION_FLOOR, `floor is an endpoint of ${band}`).not.toBe(band[1]);
+    }
+  });
+});

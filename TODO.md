@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-23 · **Wersja:** v0.91.0.0 · **Branch:** `main`
-**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2385 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
+**Stan na:** 2026-09-23 · **Wersja:** v0.92.0.0 · **Branch:** `main`
+**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2389 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2690,7 +2690,24 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.91.0)
+**Znalezione przy progach, nienaprawione** (v0.92.0.0):
+
+- **Refowane a Pół różnią się teraz także zwrotnością** (`sailBonus = 1 + (1 −
+  sailLevel) × 0.5`), czego **nie zmierzyłem pod szkwałem**. Czy 3,7% płótna to
+  uczciwa cena za 17 punktów procentowych prędkości — to jest do **przegrania**,
+  nie do policzenia
+- **HUD ma dwa stany na cztery stopnie.** „Za dużo płótna" zapala się tak samo
+  przy Pół (3,7%) jak przy Pełnych (14,4%). Uczciwe, ale zgrubne
+- **`DEFENCE_FLOOR` i `PREY_AGGRESSION_FLOOR` to obie 0,35** i stoją w tym samym
+  pliku, dziesięć linii od siebie. Przemiatanie stałych ich nie zestawi, bo nazwy
+  deklarują różne wymiary — a to jest dokładnie kształt z v0.87.0
+- **`stormRigLoss` nie dotyczy NPC** (świadomie, v0.38.0). Teraz gdy drabina ma
+  cztery szczeble, warto zapytać, czy żagle NPC ustawione na 0,5–1,0 przez
+  `BEHAVIOR_TEMPLATES` powinny coś kosztować
+
+---
+
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.92.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2747,12 +2764,18 @@ widzi** (luneta sięga 36–65). Dla blokady to może być słuszne (patrol to n
 wzrok), dla obecności — nie wiadomo. **Pomiar na wejściu:** jak często flota
 „jest obecna” przy mieście, którego kapitan nie ma na ekranie.
 
-**3. Czy generator daje to, czego próg żąda?** To jest ogólniejsza postać tego,
-co v0.89.0 znalazła w mgle, i da się to zadać każdemu progowi: **wypisać rozkład
-wielkości, którą bramkuje, i sprawdzić, po której stronie próg stoi**. Kandydaci
-od razu: `STORM_SAFE_SAIL`, `HURRICANE_*`, progi cen w `PricingSystem`
-(`RATIO_MIN`/`RATIO_MAX` — v0.67.0 już raz na to wpadła), `PREY_AGGRESSION_FLOOR`
-przeciwko tabeli agresji.
+**3. Czy generator daje to, czego próg żąda?** — **częściowo zamknięte
+w v0.92.0**, pozycja zostaje. `STORM_SAFE_SAIL` stał **dokładnie na jednej
+z czterech wartości `SAIL_LEVELS`**, które miał stopniować (0,5 = Pół), więc
+cztery stopnie dawały dwie odpowiedzi, a Refowane były ściśle zdominowane.
+`PREY_AGGRESSION_FLOOR` zbadało pasma agresji: marynarka przechodzi **7 razy na
+8**, nie „połowę” — tam została liczba, a znikło zdanie. **Nowa forma pytania,
+którą warto zadać każdemu progowi: czy próg nie stoi na jednej z wartości,
+które bramkuje, albo na końcu pasma?** Zostaje: `HURRICANE_*` (pobieżnie
+sprawdzone, podłogi osiągalne), `RATIO_MIN`/`RATIO_MAX` w `PricingSystem`
+(v0.67.0 już raz na to wpadła), progi reputacji przeciwko rozkładowi zmian
+reputacji, `DEFENCE_FLOOR` (**ta sama wartość 0,35 co `PREY_AGGRESSION_FLOOR`
+— czy to jedna liczba, czy dwie?**).
 
 **4. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe widzą
 każdą scenę w **jednym** stanie — tym, w którym się otwiera. v0.88.0 dopisała

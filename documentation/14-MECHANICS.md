@@ -414,9 +414,28 @@ przechodzi tyle, ile się w nich zmieści, a dziennik nazywa tony, które przepa
 
 | stała | wartość | znaczenie |
 |---|---|---|
-| `StormSystem.STORM_SAFE_SAIL` | 0.5 | powyżej tego płótna szkwał je drze |
+| `StormSystem.STORM_SAFE_SAIL` | 0.33 | powyżej tego płótna szkwał je drze |
 | `StormSystem.STORM_RIG_SHARE_PER_TICK` | 0.0004 | ile takielunku ubywa na tik |
 | `StormSystem.STORM_VISION_SHARE` | 0.55 | do ilu spada luneta |
+
+**Czterostopniowa drabina, po raz pierwszy (v0.92.0).** Próg był do v0.91.0
+równy **0,5** — a `SAIL_LEVELS` to Zwinięte 0,00, **Refowane 0,33**, Pół 0,50,
+Pełne 1,00 — więc stał **dokładnie na jednej z czterech wartości, które miał
+stopniować**, a `over <= 0` czyniło tę wartość darmową. Prędkość na mapie jest
+liniowa w `sailLevel`, więc **Refowane były ściśle zdominowane przez Pół**:
+wolniejsze i ani o włos bezpieczniejsze. Cztery nazwane stopnie dawały dwie
+odpowiedzi, a komunikat *„Refuj albo zapłać stengami"* prosił o tę, która nic
+nie dawała.
+
+| stopień | płótno | prędkość | ubytek takielunku w medianowym szkwale (360 tików) |
+|---|---|---|---|
+| Zwinięte | 0,00 | 0% | 0% |
+| Refowane | 0,33 | 33% | 0% |
+| Pół | 0,50 | 50% | **3,7%** (przedtem 0%) |
+| Pełne | 1,00 | 100% | 14,4% (najgorszy szkwał 24%) |
+
+Szkwał trwa **120–600 tików**. HUD mówi teraz „za dużo płótna" także przy
+Pół — bo to prawda.
 
 ### Huragan
 
@@ -1165,6 +1184,16 @@ Ginie mniej więcej **jeden kadłub na trzy dni**.
 | `PredationSystem.PREY_ODDS` | 0.7 | szansa napastnika |
 | `PredationSystem.PREY_AGGRESSION_FLOOR` | 0.35 | poniżej tej agresji NPC nie atakuje |
 | `PredationSystem.DEFENCE_FLOOR` | 0.35 | podłoga obrony ofiary |
+
+**Ile z którego pasma przechodzi próg (zmierzone, v0.92.0).** Agresję losuje
+`NpcSpawnSystem` **równomiernie** z pasma szablonu, więc to arytmetyka, nie
+opinia: kupiec [0; 0,1] — **nigdy**; marynarka [0,3; 0,7] — **siedem razy na
+osiem** (komentarz w kodzie mówił do v0.91.0 „mniej więcej połowę razy");
+łowca piratów [0,5; 0,9] i korsarz [0,6; 1,0] — **zawsze**. Liczba została,
+zdanie poszło: marynarka poluje wyłącznie na kadłuby pod **czarną banderą**
+(`preyKind` zwraca dla niej tylko `police`), a okręt królewski, który widzi
+pirata i w połowie przypadków odpuszcza, to nie subtelniejsza reguła, tylko
+gorsza.
 
 Czy gracz **zobaczył** cudzą walkę, rozstrzyga `sawItHappen` — czyli
 `playerVisionRange` z sekcji *Wzrok*, a nie osobna liczba. Do v0.86.0 stało tu

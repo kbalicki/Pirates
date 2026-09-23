@@ -63,9 +63,22 @@ export const PREY_STRIKE_RANGE = 34;
  * Aggression a hull needs before she will leave her voyage for a target.
  *
  * Below it she has seen the prize and decided her cargo, or her orders, are
- * worth more. Traders roll 0-0.1 and never pass; navy rolls 0.3-0.7 and passes
- * about half the time; a rover rolls 0.6-1.0 and always does. That is the
- * table doing its job for the first time since it was written.
+ * worth more.
+ *
+ * The sentence here used to read *"navy rolls 0.3-0.7 and passes **about half
+ * the time**"*. Measured against the roll that produces it — uniform over the
+ * band, in `NpcSpawnSystem` — it is **(0.7-0.35)/(0.7-0.3) = 87.5 %**. The
+ * table as it actually resolves: trader [0, 0.1] never, **navy [0.3, 0.7]
+ * seven times in eight**, pirate hunter [0.5, 0.9] always, rover [0.6, 1.0]
+ * always.
+ *
+ * The number stays and the sentence goes, which is the opposite of what
+ * v0.92.0 did to `STORM_SAFE_SAIL` on the same day and for a good reason: a
+ * navy hull only ever preys on a **pirate-crowned** target (`preyKind` returns
+ * "police" and nothing else for her), and a king's ship that sights a pirate
+ * and declines to give chase seven times in sixteen is not a subtler rule, it
+ * is a worse one. What was wrong here was the arithmetic in the comment, not
+ * the behaviour it was describing.
  */
 export const PREY_AGGRESSION_FLOOR = 0.35;
 

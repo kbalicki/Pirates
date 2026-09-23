@@ -20,7 +20,9 @@
  * `ShipRepairSystem` has jury repair at sea that mattered only after a battle.
  *
  * **Canvas is what it tears.** Rigging damage is proportional to how much sail
- * is set above `STORM_SAFE_SAIL`; at Reefed or Furled there is none at all. The
+ * is set above `STORM_SAFE_SAIL`; at Reefed or Furled there is none at all —
+ * true of the code only since v0.92.0, when the threshold stopped standing on
+ * Half. The
  * captain who wants to keep running before a squall pays for it in topmasts,
  * and the one who shortens sail pays for it in hours. Neither answer is free
  * and neither is wrong.
@@ -66,11 +68,39 @@ import { FOG_VISIBLE, fogVisionMultiplier } from "./FogSystem.ts";
 /**
  * Sail a squall can be carried under without loss.
  *
- * Half — which is `SailSystem`'s "Reefed", the level that already exists and
- * that the player already knows how to reach. Choosing a number the sail UI
- * does not name would make the rule invisible.
+ * Reefed — a level the sail UI already names and the player already knows how
+ * to reach. Choosing a number the UI does not name would make the rule
+ * invisible.
+ *
+ * **It was 0.5 until v0.92.0, under a comment that called 0.5 "Reefed".** It is
+ * not: `SAIL_LEVELS` is Furled 0.00, Reefed 0.33, **Half 0.50**, Full 1.00, so
+ * the threshold sat exactly on top of one of the four values it was there to
+ * grade — and `over <= 0` made that value free.
+ *
+ * What that cost, measured over a squall's own 120-600 ticks:
+ *
+ * | level | canvas | speed | rig lost, median squall |
+ * |---|---|---|---|
+ * | Furled | 0.00 | 0 % | 0 % |
+ * | Reefed | 0.33 | 33 % | 0 % |
+ * | Half | 0.50 | 50 % | **0 %** ← |
+ * | Full | 1.00 | 100 % | 14.4 % (worst 24 %) |
+ *
+ * Map speed is linear in `sailLevel` (`NavigationSystem`), so **Reefed was
+ * strictly dominated by Half**: slower, and not one thread safer. Four named
+ * levels resolved to two answers, and the toast the player is shown — *"Reef,
+ * or pay in topmasts"* — asked him for the one that bought him nothing.
+ *
+ * At Reefed's own 0.33 the ladder is the one all three comments in this file
+ * describe: Half exposes (0.50-0.33)/(1-0.33) = **0.254** of Full's tearing,
+ * which is 3.7 % of canvas in a median squall against Full's 14.4 %.
+ *
+ * Written out rather than imported from `SAIL_LEVELS[1].value`, because the
+ * mechanics document wants a plain number it can check — and because the whole
+ * defect was a number that agreed with a level by accident. `StormSystem.test`
+ * asserts the two are equal, which is the relation without the coincidence.
  */
-export const STORM_SAFE_SAIL = 0.5;
+export const STORM_SAFE_SAIL = 0.33;
 
 /**
  * Rigging torn per tick at full sail, as a share of the ship's own `sailsMax`.
@@ -123,7 +153,9 @@ export function stormVisionMultiplier(weather: AnyWeather): number {
  * Rigging lost this tick at a given sail level.
  *
  * Zero at or below `STORM_SAFE_SAIL`, and rising linearly from there so that
- * Half sail is genuinely a middle answer rather than a worse Full.
+ * Half sail is genuinely a middle answer rather than a worse Full — which it
+ * was not until v0.92.0, the threshold having sat on Half's own value and made
+ * it free. See `STORM_SAFE_SAIL`.
  */
 export function stormRigLoss(sailLevel: number, sailsMax: number, dtTicks: number): number {
   const over = sailLevel - STORM_SAFE_SAIL;

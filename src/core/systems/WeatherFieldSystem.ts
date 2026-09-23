@@ -84,8 +84,11 @@
  * and canvas down to the "torn" tier and no further. So the worst weather in
  * the game leaves the captain limping home with a story, and never takes the
  * game away from him at a moment he cannot fight. Same principle as
- * `STORM_SAFE_SAIL = 0.5` being exactly `SailSystem`'s "Reefed": pick the
- * threshold from a number the player can already read off a screen.
+ * `STORM_SAFE_SAIL = 0.33` being exactly `SailSystem`'s "Reefed": pick the
+ * threshold from a number the player can already read off a screen. (It said
+ * 0.5 here until v0.92.0, and 0.5 is Half — the fourth place in this codebase
+ * to restate the same wrong number, and the reason the threshold spent nine
+ * releases standing on a level instead of between two.)
  */
 
 import type { WorldState, WeatherState, Vec2 } from "../model/WorldState.ts";
