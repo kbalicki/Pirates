@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-23 · **Wersja:** v0.93.0.0 · **Branch:** `main`
-**Kod:** 274 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2394 przechodzi, 0 failuje, 0 `todo`** w 85 plikach
+**Stan na:** 2026-09-23 · **Wersja:** v0.94.0.0 · **Branch:** `main`
+**Kod:** 279 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2428 przechodzi, 0 failuje, 0 `todo`** w 88 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2729,7 +2729,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 ---
 
-## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.93.0)
+## ★ Od czego zacząć (propozycja kolejności, 2026-09-23, po v0.94.0)
 
 Lista wyżej jest **magazynem znalezisk**, nie kolejką. Poniżej pozycje ułożone
 tak, jak bym je wziął — każda ma **pomiar do zrobienia na wejściu**, bo w tym
@@ -2800,11 +2800,18 @@ sprawdzone, podłogi osiągalne), `RATIO_MIN`/`RATIO_MAX` w `PricingSystem`
 reputacji, `DEFENCE_FLOOR` (**ta sama wartość 0,35 co `PREY_AGGRESSION_FLOOR`
 — czy to jedna liczba, czy dwie?**).
 
-**4. Recept na scenę jest mniej niż stanów sceny.** Oba narzędzia ekranowe widzą
-każdą scenę w **jednym** stanie — tym, w którym się otwiera. v0.88.0 dopisała
-drugą recepturę dla szturmu i to od razu zmieniło wynik dla dziewięciu klawiszy.
-**Robota:** wypisać dla każdej sceny jej **fazy** i policzyć, ile z nich ma
-recepturę. Podejrzani: `PortScene` (sześć lad), `CityDefenseScene`, `DuelScene`.
+**~~4. Recept na scenę jest mniej niż stanów sceny.~~ ✅ v0.94.0** — policzone:
+**16 receptur na 32 stany**, więc `RAZEM: 0` z audytu układu było odpowiedzią
+o połowie ekranów. Obie listy były przy tym **osobnymi kopiami**, pod zdaniem,
+że są tą samą. Dziś jedna lista (`scripts/scene-recipes.mjs`), **39 ekranów**
+i strażnik (`scene_states.test.ts`), który żąda receptury dla każdego stanu albo
+zapisanego powodu. Pierwszy przebieg po otwarciu: zakładka kwatermistrza
+rysowała **całą historię wydań** (3 871 obiektów `Text`, 55 289 px, **4,0 s na
+jedno naciśnięcie strzałki**), siedem par nazw miast na sobie, wiersz glifów
+o 215 px szerszy od okna, podpowiedź na przycisku zamknięcia, `R — Napraw`
+obiecywane zawsze i wiązane czasem — **i cztery wady w samym narzędziu**.
+**Pozycja nie znika w tym sensie, że listę trzeba utrzymywać** — ale teraz
+pilnuje jej test, a nie pamięć.
 
 **~~4. Co jeszcze `core/` opisuje prozą, zamiast policzyć?~~ ✅ v0.90.0** —
 `scripts/sweep-claims.mjs`, **349 zdań** w czterech stopniach. Pozycja **nie
@@ -2812,11 +2819,35 @@ znika**: QUOTED chodzi teraz w teście, ale COMPARED (67), SPELLED (94) i COUNTE
 (181) to **lista lektur**, którą trzeba przechodzić zdanie po zdaniu. Z niej
 wyszły trzy fałszywe twierdzenia huraganu o sobie i dwa o wiosce.
 
-**5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs`. Klawisze:
-`node scripts/probe-keys.mjs`. Bitwa: `node scripts/measure-battle.mjs 4
---policy=hold`. Liczby: `node scripts/sweep-constants.mjs`. Zdania o liczbach:
+**5. Przed każdym wydaniem.** Ekran: `node scripts/audit-layout.mjs` (**39
+ekranów, ok. 6 min**). Klawisze: `node scripts/probe-keys.mjs`. Bitwa:
+`node scripts/measure-battle.mjs 4 --policy=hold`. Liczby:
+`node scripts/sweep-constants.mjs`. Zdania o liczbach:
 `node scripts/sweep-claims.mjs`. **Geografia: pamiętaj, że `getFallbackLandmasses()`
 to nie Karaiby** — do prawdziwej mapy jest `src/core/__tests__/realGeo.ts`.
+**Nowy ekran albo nowy stan sceny → receptura w `scripts/scene-recipes.mjs`**,
+inaczej `scene_states.test.ts` zaczerwieni suitę.
+
+**6. Log zmian na ekranie opcji — pytanie o projekt, nie o kod.** Historia wydań
+to **115 wpisów i 3 708 wierszy**; rysowana oknami kosztuje już tyle, co reszta
+zakładki, ale do jej końca jest nadal **119 naciśnięć PageDown**. Warianty:
+stronicowanie po wydaniach, osobny ekran, tylko ostatnie N. Tam też stoi
+**próbnik ikon pirackich** (52 glify plus wiersz etykiet) — narzędzie
+deweloperskie na ekranie gracza, za żadną flagą. **Na rozmowę.**
+
+**7. `1-9 — odpowiedź` przy czterech opcjach.** Czytnik legend rozwija zakres na
+dziewięć cyfr, a gubernator wiąże tyle, ile ma opcji, więc audyt zgłasza pięć
+klawiszy jako obiecane-i-niezwiązane na ekranie, który niczego nie obiecuje na
+wyrost. Do zrobienia: `1-{{n}}` liczone z listy opcji (i `1` przy jednej).
+Ta sama rodzina: wiersze listy zoomu (`7 — Bliżej`) wyglądają jak legenda,
+a `CTRL`/`SHIFT` u kupca są modyfikatorami czytanymi w obsłudze `Enter`
+i nigdy nie będą „związane".
+
+**8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.**
+To pozycja z v0.84.0 na scenie, która nie ma gdzie postawić legendy — cały
+ekran jest mapą. Podręcznik pod `H` je wymienia; pytanie brzmi, czy to
+wystarcza, i jest to pytanie do **zmierzenia na ekranie**, nie do rozstrzygnięcia
+z fotela.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

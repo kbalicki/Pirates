@@ -48,50 +48,11 @@
  * gold would leave less of it for the one after.
  */
 import puppeteer from 'puppeteer';
+import { RECIPES, labelOf } from './scene-recipes.mjs';
 
 const BASE = 'http://localhost:3000/';
-const LANG = 'lang=pl';
 const NL = String.fromCharCode(10);
 
-/** The same screens `audit-layout.mjs` reaches, and reached the same way. */
-const RECIPES = [
-  { key: 'CharacterCreationScene', url: `?${LANG}` },
-  { key: 'MainMapScene', url: `?skip&${LANG}` },
-  { key: 'UIOverlayScene', url: `?skip&${LANG}` },
-  { key: 'SeaBattleScene', url: `?battle=navy&${LANG}`, wait: 5000 },
-  { key: 'CityAssaultScene', url: `?siege=cartagena&${LANG}` },
-  // The same screen in its other half. Nine of its twelve keys belong to the
-  // division of spoils and are gated on `phase === "spoils"`, which is three
-  // bombardments and a landing away: from the opening screen they do nothing,
-  // and a probe that only ever sees the opening screen would call them dead.
-  {
-    key: 'CityAssaultScene', label: 'CityAssaultScene[spoils]',
-    url: `?siege=cartagena&${LANG}`, keys: 'Space,Space,Space,l', settle: 500,
-    // The walk in is not deterministic — a bombardment rolls dice and an
-    // assault takes as many waves as it takes. Without this check the rebuild
-    // before key `2` lands in a different phase from the one before key `1`,
-    // and the report compares two different screens: the first draft of this
-    // tool said `UP` and `DOWN` were dead here, and they are not.
-    //
-    // Both rows, not just the first: the sponsor's line is what makes `3` a
-    // real choice rather than an empty one, and a screen without it answers
-    // three of these keys differently.
-    require: ['Złupić i odpłynąć', 'bractwa', 'Oddać'],
-  },
-  { key: 'CityDefenseScene', url: `?defend=cartagena&${LANG}` },
-  { key: 'VillageScene', url: `?village=darien&${LANG}`, start: 'VillageScene', data: { villageKey: 'darien' } },
-  { key: 'PortScene', url: `?skip&${LANG}`, start: 'PortScene', data: { portId: 'havana' } },
-  { key: 'PortApproachScene', url: `?skip&${LANG}`, start: 'PortApproachScene', data: { portId: 'havana' } },
-  { key: 'CityInfoScene', url: `?skip&${LANG}`, start: 'CityInfoScene', data: { portKey: 'havana' } },
-  { key: 'OptionsMenuScene', url: `?skip&${LANG}`, start: 'OptionsMenuScene', data: {} },
-  { key: 'HelpScene', url: `?skip&${LANG}`, start: 'HelpScene', data: {} },
-  { key: 'BattleHelpScene', url: `?battle=navy&${LANG}`, start: 'BattleHelpScene', data: {}, wait: 5000 },
-  { key: 'DuelScene', url: `?skip&${LANG}`, start: 'DuelScene', data: { playerFencing: 6, enemyFencing: 5, seed: 3 } },
-  {
-    key: 'ShipEncounterScene', url: `?hail=havana&${LANG}`,
-    start: 'ShipEncounterScene', data: { npcEntityId: 'hail_trader' },
-  },
-];
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -240,10 +201,14 @@ async function build(recipe) {
     await page.evaluate(({ key, data }) => {
       const g = window.__PHASER_GAME__;
       const world = g.registry.get('worldState');
+      const target = g.scene.getScene(key);
       for (const s of g.scene.scenes) {
-        if (s.scene.isActive() && s.scene.key !== 'BootScene') s.scene.pause();
+        if (s.scene.isActive() && s.scene.key !== 'BootScene' && s.scene.key !== key) s.scene.pause();
       }
-      g.scene.start(key, { worldState: world, ...data });
+      // See `audit-layout.mjs`: a scene that is already up is restarted, never
+      // stopped and started, because the two are processed stop-last.
+      if (target && target.scene.isActive()) target.scene.restart({ worldState: world, ...data });
+      else g.scene.start(key, { worldState: world, ...data });
     }, { key: recipe.start, data: recipe.data ?? {} });
     await pump(40);
   }
@@ -259,6 +224,29 @@ async function build(recipe) {
       await new Promise(r => setTimeout(r, 60));
     }
   }
+  // Keys pressed after the screen has settled, for a phase that is reached
+  // from a settled one. `keys` and `then` cannot be one list: the assault's
+  // spoils are three bombardments and a landing away, and the key that takes
+  // the spoils has to arrive **after** the wave loop has finished, not while
+  // it is still running.
+  for (const k of String(recipe.then ?? '').split(',').filter(Boolean)) {
+    await page.keyboard.press(k);
+    await pump(12);
+  }
+  // Exact, for a screen that is on a clock. `settle` pumps whole batches and
+  // overshoots: a phase drawn for 1600 ms is 96 frames, and the smallest
+  // `settle` there is walks 80 of them at a time.
+  if (recipe.frames) await pump(recipe.frames);
+
+  // Real time, not pumped frames. Pumping Phaser's loop moves the game's
+  // clock and nothing else, and the save tab draws its slots — and binds the
+  // eight keys its hint line names — from an **IndexedDB read**, which
+  // resolves on the browser's own queue. Measured without this, the audit
+  // reported `DELETE DOWN ENTER L UP X` as promised and unbound on a screen
+  // where all six are bound 300 ms later. A tool that measures a screen
+  // before it exists is worse than no tool (v0.94.0).
+  await new Promise(r => setTimeout(r, 350));
+  await pump(20);
 }
 
 /**
@@ -330,14 +318,14 @@ const WILDCARD_KEYS = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'ENTER', 'ESC', 'TAB', 'SP
 const report = [];
 
 for (const recipe of RECIPES) {
-  if (only && recipe.key !== only && (recipe.label ?? '') !== only) continue;
+  if (only && recipe.key !== only && labelOf(recipe) !== only) continue;
   try {
     if (!await buildUntil(recipe)) {
-      report.push({ scene: recipe.label ?? recipe.key, error: `nie dało się dojść do tego stanu w 5 próbach (szukano: "${recipe.require}")` });
+      report.push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu w 5 próbach (szukano: "${recipe.require}")` });
       continue;
     }
     const read = await page.evaluate(BOUND, recipe.key);
-    if (read === null) { report.push({ scene: recipe.label ?? recipe.key, error: 'scene not active' }); continue; }
+    if (read === null) { report.push({ scene: labelOf(recipe), error: 'scene not active' }); continue; }
     const bound = read.wildcard
       ? [...new Set([...read.keys, ...WILDCARD_KEYS])].sort()
       : read.keys;
@@ -395,9 +383,9 @@ for (const recipe of RECIPES) {
         if (!empty(d)) { r.diff = d; r.after = setup; break; }
       }
     }
-    report.push({ scene: recipe.label ?? recipe.key, bound, wildcard: read.wildcard, noise, rows });
+    report.push({ scene: labelOf(recipe), bound, wildcard: read.wildcard, noise, rows });
   } catch (err) {
-    report.push({ scene: recipe.label ?? recipe.key, error: String(err?.message ?? err).split(NL)[0] });
+    report.push({ scene: labelOf(recipe), error: String(err?.message ?? err).split(NL)[0] });
   }
 }
 

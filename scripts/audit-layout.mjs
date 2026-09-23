@@ -21,57 +21,17 @@
  * Usage:
  *   node scripts/audit-layout.mjs [--only=SceneKey] [--json=out.json]
  *
- * The recipes below are the other half of the answer to "why was this screen
- * never driven": four scenes had no way in at all until v0.84.0.
+ * The recipes are the other half of the answer to "why was this screen never
+ * driven": four scenes had no way in at all until v0.84.0, and until v0.94.0
+ * every scene with more than one screen was measured in exactly one of them.
+ * They live in `scene-recipes.mjs` now, shared with `probe-keys.mjs`, because
+ * two copies of one list is two lists.
  */
 import puppeteer from 'puppeteer';
+import { RECIPES, labelOf } from './scene-recipes.mjs';
 
 const BASE = 'http://localhost:3000/';
-const LANG = 'lang=pl';
 
-/** How to reach each scene. `start` means: stop everything, then start this. */
-const RECIPES = [
-  { key: 'CharacterCreationScene', url: `?${LANG}` },
-  { key: 'MainMapScene', url: `?skip&${LANG}` },
-  { key: 'UIOverlayScene', url: `?skip&${LANG}` },
-  { key: 'SeaBattleScene', url: `?battle=navy&${LANG}`, wait: 5000 },
-  { key: 'CityAssaultScene', url: `?siege=cartagena&${LANG}` },
-  { key: 'CityDefenseScene', url: `?defend=cartagena&${LANG}` },
-  { key: 'VillageScene', url: `?village=darien&${LANG}`, start: 'VillageScene', data: { villageKey: 'darien' } },
-  { key: 'PortScene', url: `?skip&${LANG}`, start: 'PortScene', data: { portId: 'havana' } },
-  { key: 'PortApproachScene', url: `?skip&${LANG}`, start: 'PortApproachScene', data: { portId: 'havana' } },
-  { key: 'CityInfoScene', url: `?skip&${LANG}`, start: 'CityInfoScene', data: { portKey: 'havana' } },
-  { key: 'OptionsMenuScene', url: `?skip&${LANG}`, start: 'OptionsMenuScene', data: {} },
-  { key: 'HelpScene', url: `?skip&${LANG}`, start: 'HelpScene', data: {} },
-  { key: 'BattleHelpScene', url: `?battle=navy&${LANG}`, start: 'BattleHelpScene', data: {}, wait: 5000 },
-  { key: 'DuelScene', url: `?skip&${LANG}`, start: 'DuelScene', data: { playerFencing: 6, enemyFencing: 5, seed: 3 } },
-  {
-    key: 'ShipEncounterScene', url: `?hail=havana&${LANG}`,
-    start: 'ShipEncounterScene', data: { npcEntityId: 'hail_trader' },
-  },
-  {
-    key: 'RetirementScene', url: `?skip&${LANG}`, start: 'RetirementScene',
-    // Hand-built rather than computed: the only captain who reaches this screen
-    // is one who has sailed for thirty years, and there is no flag for that.
-    data: {
-      captainName: 'Kapitan',
-      score: {
-        age: 52, yearsAtSea: 31, total: 8400, titleKey: 'retire.title_admiral',
-        lines: [
-          { key: 'retire.line_gold', amount: 124000, points: 12400 },
-          { key: 'retire.line_fleet', amount: 46000, points: 2300 },
-          { key: 'retire.line_ranks', amount: 7, points: 2100 },
-          { key: 'retire.line_reputation', amount: 180, points: 720 },
-          { key: 'retire.line_fame', amount: 74, points: 888 },
-          { key: 'retire.line_years', amount: 31, points: 1100 },
-          { key: 'retire.line_towns', amount: 3, points: 1200 },
-          { key: 'retire.line_family', amount: 2, points: 1400 },
-          { key: 'retire.line_marriage', amount: 1, points: 900 },
-        ],
-      },
-    },
-  },
-];
 
 const args = process.argv.slice(2);
 const flag = (name) => {
@@ -114,20 +74,30 @@ const PROBE = function (sceneKey) {
    * emitted when the fill happens. This is the only way to ask Phaser where a
    * Graphics actually put its ink.
    */
-  const readGraphics = (obj) => {
+  /**
+   * @param at  where the object's parent has been moved to. A Graphics inside
+   *   a container carries none of the container's transform in its own `x`/`y`
+   *   or in `commandBuffer`, and reading it without one put the map tab's
+   *   ocean 166 px above where it is drawn — enough for the dialog's own
+   *   backdrop to be reported as ink spilling out of it.
+   */
+  const readGraphics = (obj, clip, at) => {
     const cb = obj.commandBuffer || [];
-    const ox = obj.x || 0;
-    const oy = obj.y || 0;
+    const ox = (obj.x || 0) + (at ? at.x : 0);
+    const oy = (obj.y || 0) + (at ? at.y : 0);
     let path = null;
-    const openPath = () => { path = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity }; };
+    const openPath = () => {
+      path = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, pts: 0 };
+    };
     const point = (x, y) => {
       if (!path) openPath();
+      path.pts++;
       path.x0 = Math.min(path.x0, x); path.y0 = Math.min(path.y0, y);
       path.x1 = Math.max(path.x1, x); path.y1 = Math.max(path.y1, y);
     };
-    const emit = (x, y, w, h, from) => {
+    const emit = (x, y, w, h, from, pts) => {
       if (!(w > 0 && h > 0)) return;
-      shapes.push({ x: x + ox, y: y + oy, w, h, from });
+      shapes.push({ x: x + ox, y: y + oy, w, h, from, clip, pts });
     };
     for (let i = 0; i < cb.length; i++) {
       switch (cb[i]) {
@@ -138,7 +108,9 @@ const PROBE = function (sceneKey) {
         case BEGIN_PATH: openPath(); break;
         case CLOSE_PATH: break;
         case FILL_PATH:
-          if (path && path.x1 > path.x0) emit(path.x0, path.y0, path.x1 - path.x0, path.y1 - path.y0, 'fillPath');
+          if (path && path.x1 > path.x0) {
+            emit(path.x0, path.y0, path.x1 - path.x0, path.y1 - path.y0, 'fillPath', path.pts);
+          }
           break;
         case STROKE_PATH: break;
         case FILL_RECT: emit(cb[i + 1], cb[i + 2], cb[i + 3], cb[i + 4], 'fillRect'); i += 4; break;
@@ -173,11 +145,47 @@ const PROBE = function (sceneKey) {
    * either, so everything it draws is screen space and everything is judged.
    */
   const staticCam = cam.scrollX === 0 && cam.scrollY === 0 && cam.zoom === 1;
-  const walk = (obj, fixed) => {
+
+  /**
+   * The window a masked scrolling container shows through, or null.
+   *
+   * A list longer than its window is the normal case, not a defect: the
+   * quartermaster's tab is 55 289 px of settings and release history inside
+   * 470 px of mask, and before this the audit called every row below the fold
+   * OUT_OF_VIEW — eleven findings on a screen with none. What is still a
+   * defect there is a row too WIDE for the window, because no amount of
+   * scrolling brings that back. So a masked container's children are judged
+   * across, and not down.
+   *
+   * The mask is a `GeometryMask` over a Graphics, and the only way to ask
+   * where it is is to read that Graphics' commands — the same trick the panel
+   * finder uses.
+   */
+  const maskBox = (obj) => {
+    const m = obj.mask;
+    const g = m && m.geometryMask;
+    if (!g || !g.commandBuffer) return null;
+    const before = shapes.length;
+    readGraphics(g);
+    const drawn = shapes.splice(before);
+    let box = null;
+    for (const s of drawn) {
+      if (!box || s.w * s.h > box.w * box.h) box = s;
+    }
+    return box;
+  };
+
+  const walk = (obj, fixed, clip, at) => {
     if (obj.visible === false) return;
+    const here = at || { x: 0, y: 0 };
     const isFixed = fixed
       ?? (staticCam || (obj.scrollFactorX === 0 && obj.scrollFactorY === 0));
-    if (obj.type === 'Container') { (obj.list || []).forEach(o => walk(o, isFixed)); return; }
+    if (obj.type === 'Container') {
+      const inner = clip ?? maskBox(obj);
+      const moved = { x: here.x + (obj.x || 0), y: here.y + (obj.y || 0) };
+      (obj.list || []).forEach(o => walk(o, isFixed, inner, moved));
+      return;
+    }
     if (!isFixed) return;
     if (obj.type === 'Text') {
       const b = obj.getBounds();
@@ -186,7 +194,7 @@ const PROBE = function (sceneKey) {
       // do eskorty    L - ludzi na mury    ESC - ciac liny` lost `L` and `ESC`
       // at 44 characters and the audit reported them as unannounced.
       const s = (obj.text || '').split(String.fromCharCode(10)).join(' / ');
-      texts.push({ text: s.slice(0, 44), full: s, x: b.x, y: b.y, w: b.width, h: b.height });
+      texts.push({ text: s.slice(0, 44), full: s, x: b.x, y: b.y, w: b.width, h: b.height, clip });
       return;
     }
     if (obj.type === 'Rectangle' || obj.type === 'Image' || obj.type === 'Sprite') {
@@ -196,10 +204,10 @@ const PROBE = function (sceneKey) {
       // draft of this audit reported that as the compass falling off the map.
       if (obj.rotation) return;
       const b = obj.getBounds();
-      shapes.push({ x: b.x, y: b.y, w: b.width, h: b.height, from: obj.type, kind: obj.type });
+      shapes.push({ x: b.x, y: b.y, w: b.width, h: b.height, from: obj.type, kind: obj.type, clip });
       return;
     }
-    if (obj.type === 'Graphics') readGraphics(obj);
+    if (obj.type === 'Graphics') readGraphics(obj, clip, here);
   };
   scene.children.list.forEach(o => walk(o));
 
@@ -209,6 +217,12 @@ const PROBE = function (sceneKey) {
   const BACKING = { Rectangle: 1, fillRect: 1, fillPath: 1 };
   for (const s of shapes) {
     if (!BACKING[s.from]) continue;                       // a picture is not a panel
+    // Nor is a coastline. Every panel this game draws as a path is a rounded
+    // rect — four lines and four arcs, a dozen points at the outside — while
+    // the chart on the map tab draws Hispaniola with hundreds. Taking the
+    // island for a panel put Barbados' name 3 px "over" it, on a chart the
+    // name is comfortably inside (v0.94.0).
+    if (s.from === 'fillPath' && s.pts > 12) continue;
     if (s.w >= 120 && s.h >= 40 && s.w * s.h <= area * 0.7) {
       panels.push({ x: s.x, y: s.y, w: s.w, h: s.h, from: s.from });
     }
@@ -307,7 +321,7 @@ const pump = (frames) => page.evaluate((n) => {
 const report = [];
 
 for (const recipe of RECIPES) {
-  if (only && recipe.key !== only) continue;
+  if (only && recipe.key !== only && labelOf(recipe) !== only) continue;
   try {
     await auditOne(recipe);
   } catch (err) {
@@ -315,11 +329,32 @@ for (const recipe of RECIPES) {
     // `catch` anywhere in this file, although the printer has always known how
     // to show `row.error`. A run of sixteen scenes that dies on the fourth and
     // prints nothing is worse than no tool at all (v0.85.0).
-    report.push({ scene: recipe.key, error: String(err?.message ?? err).split(String.fromCharCode(10))[0] });
+    report.push({ scene: labelOf(recipe), error: String(err?.message ?? err).split(String.fromCharCode(10))[0] });
   }
 }
 
+/** Did the walk-in land where the recipe says it must? */
+async function reached(recipe) {
+  if (!recipe.require) return true;
+  const probe = await page.evaluate(PROBE, recipe.key);
+  if (probe.missing) return false;
+  const want = Array.isArray(recipe.require) ? recipe.require : [recipe.require];
+  return want.every(needle => probe.texts.some(t => (t.full ?? t.text).includes(needle)));
+}
+
 async function auditOne(recipe) {
+  for (let attempt = 0; attempt < (recipe.require ? 5 : 1); attempt++) {
+    await buildOne(recipe);
+    if (await reached(recipe)) break;
+    if (attempt === 4) {
+      report.push({ scene: labelOf(recipe), error: `nie dało się dojść do tego stanu (szukano: "${recipe.require}")` });
+      return;
+    }
+  }
+  await measureOne(recipe);
+}
+
+async function buildOne(recipe) {
   await page.goto(BASE + recipe.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
   await new Promise(r => setTimeout(r, recipe.wait ?? 3800));
   await pump(60);
@@ -328,25 +363,88 @@ async function auditOne(recipe) {
     await page.evaluate(({ key, data }) => {
       const g = window.__PHASER_GAME__;
       const world = g.registry.get('worldState');
+      const target = g.scene.getScene(key);
       for (const scene of g.scene.scenes) {
-        if (scene.scene.isActive() && scene.scene.key !== 'BootScene') scene.scene.stop();
+        if (scene.scene.isActive() && scene.scene.key !== 'BootScene' && scene.scene.key !== key) {
+          scene.scene.stop();
+        }
       }
-      g.scene.start(key, { worldState: world, ...data });
+      // The scene we want may be the one already up — `CharacterCreationScene`
+      // is the game's own first screen, and a port world opens in `PortScene`.
+      // A stop and a start queued in the same frame are processed stop-last, so
+      // the first draft of this shut the screen it was asking about and every
+      // such recipe reported "scene not active".
+      if (target && target.scene.isActive()) target.scene.restart({ worldState: world, ...data });
+      else g.scene.start(key, { worldState: world, ...data });
     }, { key: recipe.start, data: recipe.data ?? {} });
     await pump(40);
   }
 
+  // A screen with phases needs walking into. Copied in shape from
+  // `probe-keys.mjs`, which learned it first: `settle` covers the
+  // `delayedCall` chains an assault runs between its phases.
+  for (const k of String(recipe.keys ?? '').split(',').filter(Boolean)) {
+    await page.keyboard.press(k);
+    await pump(24);
+  }
+  if (recipe.settle) {
+    for (let n = 0; n < Math.ceil(recipe.settle / 40); n++) {
+      await pump(40);
+      await new Promise(r => setTimeout(r, 60));
+    }
+  }
+  // Keys pressed after the screen has settled, for a phase that is reached
+  // from a settled one. `keys` and `then` cannot be one list: the assault's
+  // spoils are three bombardments and a landing away, and the key that takes
+  // the spoils has to arrive **after** the wave loop has finished, not while
+  // it is still running.
+  for (const k of String(recipe.then ?? '').split(',').filter(Boolean)) {
+    await page.keyboard.press(k);
+    await pump(12);
+  }
+  // Exact, for a screen that is on a clock. `settle` pumps whole batches and
+  // overshoots: a phase drawn for 1600 ms is 96 frames, and the smallest
+  // `settle` there is walks 80 of them at a time.
+  if (recipe.frames) await pump(recipe.frames);
+
+  // Real time, not pumped frames. Pumping Phaser's loop moves the game's
+  // clock and nothing else, and the save tab draws its slots — and binds the
+  // eight keys its hint line names — from an **IndexedDB read**, which
+  // resolves on the browser's own queue. Measured without this, the audit
+  // reported `DELETE DOWN ENTER L UP X` as promised and unbound on a screen
+  // where all six are bound 300 ms later. A tool that measures a screen
+  // before it exists is worse than no tool (v0.94.0).
+  await new Promise(r => setTimeout(r, 350));
+  await pump(20);
+}
+
+async function measureOne(recipe) {
   const probe = await page.evaluate(PROBE, recipe.key);
   if (probe.missing) {
-    report.push({ scene: recipe.key, error: 'scene not active' });
+    report.push({ scene: labelOf(recipe), error: 'scene not active' });
     return;
   }
 
   const findings = [];
   const { camera, panels, texts, shapes } = probe;
 
-  const outOfView = (b) => Math.round(Math.max(
-    -b.x, -b.y, b.x + b.w - camera.w, b.y + b.h - camera.h));
+  /**
+   * How far a box hangs out of the camera.
+   *
+   * A box inside a masked scrolling container is measured **across only**: the
+   * rows below the fold of a list are what scrolling is for, and calling them
+   * findings buried the two real ones on the quartermaster's tab under eleven
+   * that were not. A row too wide for the window is still a finding, because
+   * no amount of scrolling brings it back.
+   */
+  const outOfView = (b) => b.clip
+    ? Math.round(Math.max(b.clip.x - b.x, b.x + b.w - (b.clip.x + b.clip.w)))
+    : Math.round(Math.max(-b.x, -b.y, b.x + b.w - camera.w, b.y + b.h - camera.h));
+
+  /** The same rule for the panel behind it: across only, inside a scroller. */
+  const overPanel = (b, p) => b.clip
+    ? Math.round(Math.max(p.x - b.x, b.x + b.w - (p.x + p.w)))
+    : Math.round(Math.max(p.x - b.x, p.y - b.y, b.x + b.w - (p.x + p.w), b.y + b.h - (p.y + p.h)));
 
   for (const t of texts) {
     const off = outOfView(t);
@@ -360,8 +458,7 @@ async function auditOne(recipe) {
     }
     const p = panelUnder(panels, t);
     if (!p) continue;
-    const out = Math.round(Math.max(
-      p.x - t.x, p.y - t.y, t.x + t.w - (p.x + p.w), t.y + t.h - (p.y + p.h)));
+    const out = overPanel(t, p);
     if (out > MARGIN) {
       findings.push({
         kind: 'OVER_PANEL', text: t.text,
@@ -392,8 +489,7 @@ async function auditOne(recipe) {
     // spilling out of it.
     if (sh.x <= p.x && sh.y <= p.y
       && sh.x + sh.w >= p.x + p.w && sh.y + sh.h >= p.y + p.h) continue;
-    const out = Math.round(Math.max(
-      p.x - sh.x, p.y - sh.y, sh.x + sh.w - (p.x + p.w), sh.y + sh.h - (p.y + p.h)));
+    const out = overPanel(sh, p);
     if (out > MARGIN) {
       findings.push({
         kind: 'INK_OVER_PANEL', text: sh.from,
@@ -427,7 +523,7 @@ async function auditOne(recipe) {
   };
 
   report.push({
-    scene: recipe.key,
+    scene: labelOf(recipe),
     keys,
     texts: probe.texts.length,
     shapes: probe.shapes.length,

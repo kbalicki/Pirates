@@ -2701,9 +2701,14 @@ export class PortScene extends Phaser.Scene {
       this.cx, this.dlgY + DLG_H - PAD - 4,
       // The cursor spans two lists, so `Enter` does not mean one thing. The
       // line says which.
-      t(this.selectedIndex >= availableShips.length && fleet.length > 0
+      //
+      // And it only names `R` when there is something to repair: the key is
+      // bound under `if (hasDamage)` and the line promised it either way, so
+      // a captain with a sound hull was told about a key the screen does not
+      // answer to — which is on most visits (v0.94.0).
+      t((this.selectedIndex >= availableShips.length && fleet.length > 0
         ? "port.hint_shipyard_fleet"
-        : "port.hint_shipyard"),
+        : "port.hint_shipyard") + (hasDamage ? "" : "_sound")),
       txt(10, { color: "#888888" }),
     );
     hint.setOrigin(0.5, 1);

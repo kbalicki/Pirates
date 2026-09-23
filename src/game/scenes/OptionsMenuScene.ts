@@ -38,8 +38,29 @@ import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import { SKILL_IDS, SKILL_MAX, calculateAge } from "../../core/model/CaptainState.ts";
 import { CHANGELOG } from "../../changelog.ts";
 import { offsetRevealing } from "../../core/services/menuCursor.ts";
+import { placeRows, rowsInWindow, type PlacedRow } from "../../core/services/longList.ts";
+import { placeLabels, slotBox } from "../../core/services/labelPlacement.ts";
 
 type TabId = "cabin" | "captain" | "journal" | "calendar" | "settings" | "save" | "map";
+
+/** One drawn line of the release history, without the object that draws it. */
+type ChangelogLine = { text: string; dx: number; size: number; bold: boolean; color: string };
+
+/**
+ * How far past the window the release history is drawn, so a notch of scroll
+ * does not have to rebuild the slice. `scrollContent` moves 100 px at a time.
+ */
+const CHANGELOG_MARGIN = 240;
+
+/**
+ * How much two names on the chart may share before it counts as an overlap.
+ *
+ * The same 9 px `audit-layout.mjs` allows, and for the same reason: Dancing
+ * Script's box carries about six pixels of slack over its glyphs, so two lines
+ * that touch as boxes do not touch as ink. Placing against a smaller number
+ * would move names that are already readable.
+ */
+const LABEL_OVERLAP = 9;
 
 const ALL_TABS: TabId[] = ["cabin", "captain", "journal", "calendar", "settings", "save", "map"];
 
@@ -89,6 +110,24 @@ export class OptionsMenuScene extends Phaser.Scene {
   private dlgY = 0;
   private contentBaseY = 0;
   private contentH = 0;
+
+  /**
+   * The release history, laid out and not drawn.
+   *
+   * It used to be drawn in full: **3 871 text objects, a column 55 289 px
+   * tall, 99.1 % of it outside the screen.** The tab took **4.2 s** to open
+   * where the next tab takes 0.39 s, and since every cursor move rebuilds the
+   * tab, one press of Down on *Game speed* cost **4.0 s**. Now `syncChangelog`
+   * draws the window and `changelogBottom` tells `getContentHeight` about the
+   * part that is not there — without it the scroll floor is computed from the
+   * drawn objects and the list can only be scrolled as far as it already has.
+   */
+  private changelogRows: PlacedRow<ChangelogLine>[] = [];
+  private changelogDrawn: Phaser.GameObjects.Text[] = [];
+  private changelogBottom = 0;
+  private changelogX = 0;
+  /** The window top the drawn slice was chosen for, or null when none is. */
+  private changelogAt: number | null = null;
   /** Footer line saying what the open tab does with the keyboard. */
   private tabHint!: Phaser.GameObjects.Text;
 
@@ -205,16 +244,23 @@ export class OptionsMenuScene extends Phaser.Scene {
     // What the open tab does with the keyboard. It used to be drawn *inside*
     // the scrolling container at its bottom edge, which put it on top of the
     // last two rows of the zoom list and would now ride up and down with the
-    // scroll. `[ ZAMKNIJ ]` is centred and narrow, so the hint shares its line
-    // from the left — the same answer as the squadron line in v0.80.0.
+    // scroll, so it shares the close button's line from the left instead
+    // (v0.84.0).
+    //
+    // The button used to be centred, which left the hint 269 px of a 672 px
+    // dialog — and the save tab's hint, which names five keys, is 480 px wide
+    // and was drawn straight over `[ ZAMKNIJ ]` (v0.94.0). The button is at
+    // the right margin now and the hint has the rest of the line. No wording
+    // fixes this: shortening the hint to fit 269 px means dropping a key the
+    // screen answers to.
     this.tabHint = this.add.text(this.dlgX + PAD + 8, this.dlgY + DLG_H - PAD - 14,
       "", txt(10, { color: HINT_ON_LIGHT }));
     this.tabHint.setOrigin(0, 1);
 
     // Close button
-    const closeBtn = this.add.text(cx, this.dlgY + DLG_H - PAD - 14,
+    const closeBtn = this.add.text(this.dlgX + DLG_W - PAD - 8, this.dlgY + DLG_H - PAD - 14,
       t("menu.close"), txt(13, { bold: true }));
-    closeBtn.setOrigin(0.5, 1);
+    closeBtn.setOrigin(1, 1);
     closeBtn.setInteractive({ useHandCursor: true });
     closeBtn.on("pointerover", () => closeBtn.setColor("#555555"));
     closeBtn.on("pointerout", () => closeBtn.setColor("#1a1a1a"));
@@ -257,9 +303,15 @@ export class OptionsMenuScene extends Phaser.Scene {
         }
       });
 
-      // PageUp / PageDown for scrolling
-      this.input.keyboard.on("keydown-PAGE_UP", () => this.scrollContent(-100));
-      this.input.keyboard.on("keydown-PAGE_DOWN", () => this.scrollContent(100));
+      // PageUp / PageDown move a page, less an overlap so the reader keeps a
+      // line of what he was on. They used to move a flat 100 px against a
+      // window of 470, which on the quartermaster's tab — 55 289 px of it,
+      // nearly all release history — was **549 presses** to reach the end.
+      // It is 119 now, which is still a lot, and that is about the screen
+      // rather than about the key.
+      const page = () => Math.max(100, this.contentH - 40);
+      this.input.keyboard.on("keydown-PAGE_UP", () => this.scrollContent(-page()));
+      this.input.keyboard.on("keydown-PAGE_DOWN", () => this.scrollContent(page()));
     }
 
     // Dynamic resize — restart scene to recenter dialog
@@ -276,6 +328,34 @@ export class OptionsMenuScene extends Phaser.Scene {
     const newY = this.contentContainer.y - amount;
     const minY = this.contentBaseY - Math.max(0, this.getContentHeight() - this.contentH);
     this.contentContainer.y = Phaser.Math.Clamp(newY, minY, this.contentBaseY);
+    this.syncChangelog();
+  }
+
+  /**
+   * Draw the slice of the release history the window can see, and no more.
+   *
+   * `force` is for the first draw after a layout, when there is nothing drawn
+   * and the remembered window is meaningless. Otherwise the slice is left
+   * alone until the scroll has eaten into the margin, so a notch of the wheel
+   * usually costs nothing at all.
+   */
+  private syncChangelog(force = false): void {
+    if (this.changelogRows.length === 0) return;
+    const top = this.contentBaseY - this.contentContainer.y;
+    if (!force && this.changelogAt !== null
+      && Math.abs(top - this.changelogAt) < CHANGELOG_MARGIN / 2) return;
+    this.changelogAt = top;
+
+    for (const drawn of this.changelogDrawn) drawn.destroy();
+    this.changelogDrawn = [];
+
+    for (const row of rowsInWindow(this.changelogRows, top, this.contentH, CHANGELOG_MARGIN)) {
+      const line = row.item;
+      const obj = this.add.text(this.changelogX + line.dx, row.y, line.text,
+        txt(line.size, { bold: line.bold, color: line.color }));
+      this.contentContainer.add(obj);
+      this.changelogDrawn.push(obj);
+    }
   }
 
   private clearTabKeyboard(): void {
@@ -339,6 +419,13 @@ export class OptionsMenuScene extends Phaser.Scene {
     }
 
     this.contentContainer.removeAll(true);
+    // `removeAll(true)` has already destroyed the drawn slice; what is left is
+    // the plan, and a stale plan would have `getContentHeight` answering about
+    // a tab that is no longer showing.
+    this.changelogRows = [];
+    this.changelogDrawn = [];
+    this.changelogBottom = 0;
+    this.changelogAt = null;
     this.contentContainer.y = keptScroll;
     this.tabHint.setText(this.tabHintFor(tab));
 
@@ -1308,34 +1395,54 @@ export class OptionsMenuScene extends Phaser.Scene {
     this.contentContainer.add(iconRight);
     y += 32;
 
-    // Pirate icon sampler — each letter = different pirate symbol
-    const sampleRow = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    const sampler = this.add.text(x, y, sampleRow, {
-      fontFamily: PIRATE_ICONS_FONT, fontSize: "18px", color: "#555555", resolution: TEXT_RES,
-      wordWrap: { width: DLG_W - PAD * 2 - 16 },
-    });
-    this.contentContainer.add(sampler);
-    y += sampler.height + 8;
+    // Pirate icon sampler — each letter = different pirate symbol, with the
+    // letter under it so a glyph can be named.
+    //
+    // Broken into rows by hand. `wordWrap` was asked to hold it to the dialog
+    // and could not: the alphabet is one word, and Phaser wraps on spaces. It
+    // was drawn **865 px wide inside a 470 px window** — 215 px past the right
+    // edge of the screen, in a container that only scrolls down, so nothing
+    // could ever bring the tail of it back (v0.94.0).
+    const SAMPLER_PER_ROW = 13;
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    for (let i = 0; i < alphabet.length; i += SAMPLER_PER_ROW) {
+      const chunk = alphabet.slice(i, i + SAMPLER_PER_ROW);
+      const sampler = this.add.text(x, y, chunk.split("").join("  "), {
+        fontFamily: PIRATE_ICONS_FONT, fontSize: "18px", color: "#555555", resolution: TEXT_RES,
+      });
+      this.contentContainer.add(sampler);
+      y += sampler.height + 2;
 
-    // Label each char for identification
-    const labelRow = sampleRow.split("").join(" ");
-    const labels = this.add.text(x, y, labelRow, txt(7, { color: "#999999" }));
-    this.contentContainer.add(labels);
-    y += labels.height + 12;
+      const labels = this.add.text(x, y, chunk.split("").join("     "), txt(7, { color: "#999999" }));
+      this.contentContainer.add(labels);
+      y += labels.height + 8;
+    }
+    y += 4;
 
+    // 115 entries and 3 708 lines of them. Laid out here and drawn a window at
+    // a time: the arithmetic is in `core/services/longList.ts`, where it can be
+    // checked, and the reason is in the field declaration above.
+    const lines: Array<{ item: ChangelogLine; h: number }> = [];
     for (const entry of CHANGELOG) {
       const header = t("changelog.version", { version: entry.version, date: entry.date });
-      this.contentContainer.add(
-        this.add.text(x + 4, y, header, txt(11, { bold: true, color: "#333333" })));
-      y += 16;
-
-      for (const change of entry.changes) {
-        this.contentContainer.add(
-          this.add.text(x + 14, y, `\u2022 ${change}`, txt(10, { color: "#555555" })));
-        y += 14;
-      }
-      y += 6;
+      lines.push({
+        // The gap after an entry rides on its last line, so an entry with no
+        // changes at all still leaves it behind.
+        h: entry.changes.length === 0 ? 22 : 16,
+        item: { text: header, dx: 4, size: 11, bold: true, color: "#333333" },
+      });
+      entry.changes.forEach((change, i) => {
+        lines.push({
+          h: i === entry.changes.length - 1 ? 20 : 14,
+          item: { text: `\u2022 ${change}`, dx: 14, size: 10, bold: false, color: "#555555" },
+        });
+      });
     }
+    const placed = placeRows(lines, y);
+    this.changelogRows = placed.rows;
+    this.changelogBottom = placed.bottom;
+    this.changelogX = x;
+    this.syncChangelog(true);
 
     // The list is longer than the window, so the window follows the cursor.
     // Drawn last, because the row positions are only known once the whole tab
@@ -1503,18 +1610,31 @@ export class OptionsMenuScene extends Phaser.Scene {
       g.fillPath();
     }
 
-    // Port dots and labels
-    for (const [key, port] of Object.entries(PORTS)) {
-      const px = offsetX + port.pos.x * scale;
-      const py = offsetY + port.pos.y * scale;
-
+    // Port dots and labels.
+    //
+    // Every name used to sit directly above its dot, which on a chart at 0.153
+    // of scale put **seven pairs of them on top of each other** and hung
+    // Barbados 3 px over the eastern edge — eight of forty-five names
+    // unreadable, with nothing wrong in the four lines that drew them
+    // (v0.94.0). Where a crowded name goes is arithmetic, and it lives in
+    // `core/services/labelPlacement.ts` where it can be checked.
+    const drawn = Object.entries(PORTS).map(([key, port]) => {
+      const text = this.add.text(0, 0, t("port." + key + ".name"), txt(7, { color: "#333333" }));
+      text.setOrigin(0.5, 0.5);
+      return { text, x: offsetX + port.pos.x * scale, y: offsetY + port.pos.y * scale };
+    });
+    const slots = placeLabels(
+      drawn.map(d => ({ x: d.x, y: d.y, w: d.text.width, h: d.text.height })),
+      LABEL_OVERLAP,
+      { x: offsetX, y: offsetY, w: mapDisplayW, h: mapDisplayH },
+    );
+    drawn.forEach((d, i) => {
       g.fillStyle(0x1a1a1a, 1);
-      g.fillCircle(px, py, 2);
-
-      const label = this.add.text(px, py - 5, t("port." + key + ".name"), txt(7, { color: "#333333" }));
-      label.setOrigin(0.5, 1);
-      this.contentContainer.add(label);
-    }
+      g.fillCircle(d.x, d.y, 2);
+      const box = slotBox({ x: d.x, y: d.y, w: d.text.width, h: d.text.height }, slots[i]);
+      d.text.setPosition(box.x + box.w / 2, box.y + box.h / 2);
+      this.contentContainer.add(d.text);
+    });
 
     // Player position
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
@@ -1563,7 +1683,11 @@ export class OptionsMenuScene extends Phaser.Scene {
         if (localBottom > maxY) maxY = localBottom;
       }
     });
-    return maxY + 10;
+    // The release history is only drawn a window at a time, so the drawn
+    // objects say nothing about where the tab ends. Without this the scroll
+    // floor would follow the slice and the captain could never reach the
+    // bottom — the v0.82.0 defect back in a new shape.
+    return Math.max(maxY, this.changelogBottom) + 10;
   }
 
   /**
@@ -1585,6 +1709,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     const minY = this.contentBaseY - Math.max(0, this.getContentHeight() - this.contentH);
     this.contentContainer.y = Phaser.Math.Clamp(wanted, minY, this.contentBaseY);
+    this.syncChangelog();
   }
 
   private closeMenu(): void {

@@ -396,6 +396,59 @@ Od v0.85.0 każda scena jest w `try`/`catch`. Printer od początku umiał pokaza
 scen kończył się bez jednej linijki, jeśli czwarta rzuciła. Narzędzie, które
 umie zaraportować błąd, ale nie umie go złapać, nie raportuje nic.
 
+### scene-recipes.mjs — jedna lista dróg na ekrany (v0.94.0)
+
+Oba narzędzia ekranowe czytają **tę samą** listę:
+
+```bash
+node scripts/audit-layout.mjs --only='OptionsMenuScene[settings]'
+node scripts/probe-keys.mjs   --only='PortScene[charter]'
+```
+
+Do v0.94.0 każde miało własną kopię, a kopia w `probe-keys.mjs` miała nad sobą
+zdanie *„the same screens `audit-layout.mjs` reaches, and reached the same
+way"*. Nieprawdziwe w dniu, w którym je napisano: audyt sięgał
+`RetirementScene`, a sonda nie; sonda sięgała podziału łupów, a audyt nie.
+
+**Receptura nazywa ekran, a ekran to scena w stanie.** `PortScene` to dziesięć
+lad za jednym klawiszem, `OptionsMenuScene` siedem zakładek, `HelpScene` pięć
+stron podręcznika: **16 receptur na 32 stany**, więc `RAZEM: 0` było
+odpowiedzią o połowie ekranów. Dziś jest ich **39**.
+
+Pola receptury:
+
+| pole | znaczenie |
+|---|---|
+| `key` | klucz sceny Phasera, o którą sonda pyta |
+| `label` | jak raport nazywa ten wiersz; domyślnie `key`. Konwencja: `Scene[stan]` |
+| `url` | świat debugowy (patrz `PreloadScene`) |
+| `start` / `data` | zatrzymaj resztę i uruchom tę scenę z tym `init` |
+| `keys` | klawisze naciskane po podniesieniu sceny |
+| `settle` | ms pompowanych klatek, na łańcuchy `delayedCall` |
+| `then` | klawisze **po** `settle`, dla fazy osiąganej ze stanu ustalonego |
+| `frames` | dokładna liczba klatek, dla fazy stojącej na zegarze |
+| `require` | napis, który **musi** być na ekranie, żeby dojście się liczyło |
+
+Strażnik: `src/game/scenes/__tests__/scene_states.test.ts` trzyma spis stanów
+przy uniach w źródłach scen, żąda receptury dla każdego stanu **albo zapisanego
+powodu**, dlaczego jej mieć nie może, i sprawdza, że oba narzędzia czytają jedną
+listę.
+
+**Pułapki, które to kosztowało:**
+
+- **Scena, która już jest pokazana, musi być `restart`, nie `stop` + `start`.**
+  Phaser przetwarza jedno i drugie w tej samej klatce **stop-jako-ostatni**, więc
+  każda receptura dla sceny, którą świat debugowy już otwiera, raportowała
+  *„scene not active"*.
+- **Ekran budowany z odczytu asynchronicznego trzeba odczekać w czasie
+  rzeczywistym.** Pompowanie pętli Phasera przesuwa zegar gry i nic więcej;
+  zakładka zapisu rysuje sloty z **IndexedDB**, więc audyt mierzył ją bez nich
+  i ogłaszał sześć klawiszy jako niezwiązane.
+- **Po cichu przekierowany widok mierzy coś innego.** `renderDaughter` wraca do
+  gabinetu gubernatora, kiedy w porcie nie ma córki — od tego jest `require`.
+- **`settle` przepompowuje.** Batch to 40 klatek, a faza rysowana 1600 ms to 96;
+  od tego jest `frames`.
+
 ## Konwencje wydań
 
 ### Wersjonowanie
