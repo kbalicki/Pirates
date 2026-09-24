@@ -251,7 +251,7 @@ liczbę, nie dodając wyboru.
 |---|---|
 | `bombard` | SPACJA — salwa · L — desant · ESC — odstąp |
 | `assault` | odgrywa się sama, jedna fala na 0.7 s |
-| `spoils` | W/S — wybór · Enter — potwierdzenie · 1-4 — skrót |
+| `spoils` | W/S — wybór · Enter — potwierdzenie · 1-n — skrót (n = liczba wierszy: 2 + jeden na każdy list kaperski, do 5) |
 
 Wejście: `PortApproachScene` → „SZTURM NA MIASTO" (dostępne przy każdym mieście,
 o ile gracz nie jest pieszo). Wyjście: `MainMapScene` z zaktualizowanym światem.
@@ -711,12 +711,33 @@ Co z tego wyszło poza samą notacją:
 | ekran | klawiszy wiązanych | nazwanych przed v0.84.0 |
 |---|---|---|
 | kwatermistrz (`OptionsMenuScene`) | 12 globalnych + 8 w zakładkach | 3, i tylko na **jednej zakładce z siedmiu** |
-| gubernator (`PortScene`) | `Esc` + `1`-`9` | 0 — jedyna lada w porcie bez legendy |
+| gubernator (`PortScene`) | `Esc` + `1`-`n` (n = liczba opcji) | 0 — jedyna lada w porcie bez legendy |
 | obrona miasta | `T`, `G`, `SPACJA`, `L`, `ESC` | 4 (`SPACJA` powtarza ostatni cel) |
-| łupy po szturmie | `W/S`, `Enter`, `1`-`4` | 2 |
+| łupy po szturmie | `W/S`, `Enter`, `1`-`4` (od v0.96.0 `1`-`n`) | 2 |
 
 Do tego `hud.controls` i `hud.controls_land` — po legendzie każdy, w tej samej
 prywatnej notacji, **bez jednego czytelnika w projekcie**. Skasowane.
+
+### Zakres liczony z listy (v0.96.0)
+
+Odwrotna wada: legenda nazywa **więcej**, niż lista ma wierszy. `1-9 — odpowiedź`
+nad gubernatorem z czterema opcjami obiecywało pięć martwych klawiszy, a
+`1-4 — wprost` nad łupami, których bywa do pięciu (dwa zakończenia plus po
+jednym na każdy list kaperski), zostawiało piąty wiersz osiągalny tylko kursorem
+— przy trzech wierszach `4` było związane z niczym.
+
+Zakres zależny od wierszy pisze się w tabeli locale jako `{{digits}}` i wypełnia
+przez `digitRange(n)` z `legendKeys.ts` (`1` przy jednym wierszu, `1-4` przy
+czterech, nigdy ponad `9`). Czytany niewypełniony, jak stoi w tabeli,
+`{{digits}}` obiecuje wszystkie dziewięć — najszerzej, jak da się go narysować.
+Scena wiąże cyfry z `DIGIT_KEYS`, **tyle, ile wierszy**, w chwili gdy wiersze
+istnieją.
+
+To samo na zakładce zapisu: `L — wczytaj` i `Delete/X — usuń` działają tylko na
+slocie z zapisem, więc na świeżej grze (pięć pustych slotów) linia obiecywała
+dwa klawisze, które nic nie robiły. Linia zakładki idzie teraz za slotem pod
+kursorem (`save.hint` / `save.hint_empty`), a druga kopia tej samej legendy,
+rysowana pod slotami, zniknęła.
 
 ### Jedna rzecz ustawiona w dwóch miejscach, znowu
 

@@ -17,7 +17,7 @@ import {
   removeSave,
 } from "../../persistence/SaveRepository.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
-import type { SavePayload } from "../../persistence/SaveSchema.ts";
+import { saveTitleDay, type SavePayload } from "../../persistence/SaveSchema.ts";
 import { txt, PIRATE_ICONS_FONT, TEXT_RES, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
 import type { AssetPackId } from "../settings/AssetPack.ts";
@@ -79,7 +79,7 @@ const NUMBER_KEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN"];
 const TAB_HINT: Partial<Record<TabId, string>> = {
   cabin: "cabin.fleet_keys",
   settings: "options.hint",
-  save: "save.hint",
+  save: "save.hint",   // and `save.hint_empty`, see `tabHintFor`
 };
 const DLG_W = 672;
 const DLG_H = 528;
@@ -369,11 +369,18 @@ export class OptionsMenuScene extends Phaser.Scene {
    * The cabin's two are gated on there being a consort to move the cursor over
    * — the list is one row long without one, and a legend that names a key
    * nothing binds is the defect v0.81.0 removed from the other end of this
-   * screen. Everything else is the same line every time the tab is open.
+   * screen. The save tab's follows the slot under the cursor; everything else
+   * is the same line every time the tab is open.
    */
   private tabHintFor(tab: TabId): string {
     if (tab === "cabin") {
       return (this.worldState.player.fleet ?? []).length > 0 ? t("cabin.fleet_keys") : "";
+    }
+    // `L` and `Delete/X` act only on a slot that holds a game, so a fresh
+    // captain -- five empty slots -- was promised two keys that did nothing
+    // (v0.96.0). The line follows the slot under the cursor.
+    if (tab === "save") {
+      return t(this.saveSlotData[this.selectedItemIndex]?.hasData ? "save.hint" : "save.hint_empty");
     }
     const key = TAB_HINT[tab];
     return key ? t(key) : "";
@@ -1045,7 +1052,7 @@ export class OptionsMenuScene extends Phaser.Scene {
       if (existing) {
         const date = new Date(existing.updatedAt);
         const dateStr = date.toLocaleDateString() + " " + date.toLocaleTimeString();
-        label = `${t("save.slot_label", { n: String(slotIdx + 1), day: existing.title })} (${dateStr})`;
+        label = `${t("save.slot_label", { n: String(slotIdx + 1), day: String(saveTitleDay(existing.title)) })} (${dateStr})`;
       } else {
         label = `Slot ${slotIdx + 1}: ${t("save.slot_empty")}`;
       }
@@ -1057,34 +1064,36 @@ export class OptionsMenuScene extends Phaser.Scene {
           bold: isFocused,
         })));
 
-      // Save button
-      const saveBtn = this.add.text(rightX - 140, y, t("save.btn_save"), txt(12, { bold: true, color: "#2a7a2a" }));
-      saveBtn.setInteractive({ useHandCursor: true });
-      saveBtn.on("pointerdown", () => this.doSave(slotId));
-      this.contentContainer.add(saveBtn);
-
-      if (existing) {
-        const loadBtn = this.add.text(rightX - 80, y, t("save.btn_load"), txt(12, { bold: true, color: "#2266aa" }));
-        loadBtn.setInteractive({ useHandCursor: true });
-        loadBtn.on("pointerdown", () => this.doLoad(slotId));
-        this.contentContainer.add(loadBtn);
-
-        const delBtn = this.add.text(rightX - 20, y, t("save.btn_delete"), txt(12, { bold: true, color: "#aa2222" }));
-        delBtn.setInteractive({ useHandCursor: true });
-        delBtn.on("pointerdown", () => this.doDelete(slotId));
-        this.contentContainer.add(delBtn);
+      // The buttons are laid from the right edge inward, each by its measured
+      // width, in the same three columns whether the slot is full or empty.
+      // They stood at fixed offsets of 140, 80 and 20 px, which fitted `[Del]`
+      // and put `[Usuń]` over the panel's border (v0.96.0).
+      const buttons: { key: string; color: string; act: () => void; live: boolean }[] = [
+        { key: "save.btn_save", color: "#2a7a2a", act: () => this.doSave(slotId), live: true },
+        { key: "save.btn_load", color: "#2266aa", act: () => this.doLoad(slotId), live: !!existing },
+        { key: "save.btn_delete", color: "#aa2222", act: () => this.doDelete(slotId), live: !!existing },
+      ];
+      let btnRight = rightX;
+      for (let b = buttons.length - 1; b >= 0; b--) {
+        const btn = this.add.text(btnRight, y, t(buttons[b].key), txt(12, { bold: true, color: buttons[b].color }));
+        btn.setOrigin(1, 0);
+        btnRight -= btn.width + 10;
+        if (!buttons[b].live) { btn.destroy(); continue; }
+        btn.setInteractive({ useHandCursor: true });
+        btn.on("pointerdown", buttons[b].act);
+        this.contentContainer.add(btn);
       }
 
       y += 24;
     }
 
-    // Keyboard hint for save/load
-    const hint = this.add.text(this.cameras.main.width / 2, y + 8,
-      t("save.hint"),
-      txt(10, { color: HINT_ON_LIGHT }));
-    hint.setOrigin(0.5, 0);
-    this.contentContainer.add(hint);
-    y += 28;
+    // The keys are named once, on the tab's own line at the foot of the
+    // panel. Until v0.96.0 the same legend was drawn a second time here, under
+    // the slots -- two copies of one promise, and the one at the foot was
+    // unconditional. It follows the focused slot now, and the slots have only
+    // just been read, so the line is written again.
+    this.tabHint.setText(this.tabHintFor("save"));
+    y += 8;
 
     // --- Divider ---
     y += 6;

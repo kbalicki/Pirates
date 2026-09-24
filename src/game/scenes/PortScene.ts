@@ -147,6 +147,7 @@ import {
 import { CITIES } from "../../core/data/cities.ts";
 import { rngNextInt } from "../../core/services/RNG.ts";
 import { t } from "../../core/i18n/index.ts";
+import { DIGIT_KEYS, digitRange } from "../../core/services/legendKeys.ts";
 import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
 
@@ -862,7 +863,7 @@ export class PortScene extends Phaser.Scene {
       label.on("pointerdown", () => this.pickGovernorOption(option.id));
       this.contentContainer.add(label);
 
-      const digit = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"][i];
+      const digit = DIGIT_KEYS[i];
       if (digit) this.bindKey("keydown-" + digit, () => this.pickGovernorOption(option.id));
 
       y += label.height + 8;
@@ -871,8 +872,10 @@ export class PortScene extends Phaser.Scene {
     // The one counter in the port with no legend on it until v0.84.0. The
     // options carry their own numbers, but nothing said the door was `Esc` —
     // and the option list is the only thing on the screen, so there is room.
+    // The range is counted from the options drawn: a fixed `1-9` over four
+    // answers promised five keys that did nothing (v0.96.0).
     const hint = this.add.text(
-      this.cx, this.dlgY + DLG_H - PAD - 4, t("governor.hint"),
+      this.cx, this.dlgY + DLG_H - PAD - 4, t("governor.hint", { digits: digitRange(options.length) }),
       txt(10, { color: HINT_ON_LIGHT }));
     hint.setOrigin(0.5, 1);
     this.contentContainer.add(hint);

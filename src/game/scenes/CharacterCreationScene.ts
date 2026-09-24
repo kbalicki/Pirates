@@ -7,6 +7,7 @@ import { UI_FONT, TEXT_RES, txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
 import type { MusicManager } from "../audio/MusicManager.ts";
 import { listSaves, loadGame } from "../../persistence/SaveRepository.ts";
+import { saveTitleDay } from "../../persistence/SaveSchema.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
 import {
@@ -498,6 +499,12 @@ export class CharacterCreationScene extends Phaser.Scene {
     }).setOrigin(0.5, 0).setDepth(10);
 
     const saves = await listSaves();
+    // The year each save's own era began. Read without it, every save was
+    // dated from the default era: a game begun on 1 January 1680 was listed
+    // as 1 January 1690 (v0.96.0). The index holds only the title, so the
+    // worlds are read -- five slots at most, all before anything is drawn.
+    const startYears = new Map(await Promise.all(saves.map(async (save) =>
+      [save.slotId, (await loadGame(save.slotId))?.world.startYear] as const)));
     let y = startY + 42;
 
     if (saves.length === 0) {
@@ -508,11 +515,12 @@ export class CharacterCreationScene extends Phaser.Scene {
     }
 
     for (const save of saves) {
-      const cal = dayToCalendar(parseInt(save.title.replace("Day ", ""), 10) || 1);
+      const day = saveTitleDay(save.title);
+      const cal = dayToCalendar(day, startYears.get(save.slotId));
       const dateStr = `${cal.dayOfMonth} ${getMonthName(cal.month)} ${cal.year}`;
       const realDate = new Date(save.updatedAt);
       const realStr = realDate.toLocaleDateString();
-      const label = `${save.title} — ${dateStr}  (${realStr})`;
+      const label = `${t("save.day_label", { day })} — ${dateStr}  (${realStr})`;
 
       const slotText = this.add.text(cx, y, label, txt(13, { color: "#666666" }));
       slotText.setOrigin(0.5, 0).setDepth(10);

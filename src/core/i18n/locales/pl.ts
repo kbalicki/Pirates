@@ -126,6 +126,7 @@ export const PL: LocaleData = {
   "settings.debug": "Debug",
   "creation.hint": "Tab — Następny blok   ↑↓ — Wybór   ←→ — Umiejętność   Enter — Zatwierdź   Esc — Wróć",
   "save.hint": "↑↓ — slot  Enter — zapisz  L — wczytaj  Delete/X — usuń",
+  "save.hint_empty": "↑↓ — slot  Enter — zapisz",
   "options.hint": "↑↓ — wybór   Enter — przełącz   ←/→ — głośność",
   "approach.hint": "W/S — Wybór   Enter — Zatwierdź   Esc — Odpłyń",
   "port.col_item": "Towar",
@@ -276,6 +277,7 @@ export const PL: LocaleData = {
   // -- Save/Load --
   "save.title": "ZAPIS / ODCZYT",
   "save.slot_empty": "Pusty slot",
+  "save.day_label": "Dzień {{day}}",
   "save.slot_label": "Slot {{n}}: Dzień {{day}}",
   "save.btn_save": "[Zapisz]",
   "save.btn_load": "[Wczytaj]",
@@ -664,7 +666,7 @@ export const PL: LocaleData = {
 
   // -- Governor --
   "governor.title": "REZYDENCJA GUBERNATORA",
-  "governor.hint": "1-9 — odpowiedź   Esc — Wróć",
+  "governor.hint": "{{digits}} — odpowiedź   Esc — Wróć",
   "governor.opt_ask_letter": "Zapytaj o list kaperski",
   "governor.opt_ask_news": "Zapytaj, co słychać",
   "governor.opt_ask_standing": "Zapytaj, jak stoisz u korony",
@@ -1038,7 +1040,7 @@ export const PL: LocaleData = {
   "siege.fleet_crew": "Ludzi: {{now}}   Dział w burcie: {{guns}}",
   "siege.odds": "Szanse na plaży: {{pct}}%   Desant: {{men}} {{men:man}}",
   "siege.controls_bombard": "SPACJA — salwa burtowa    L — desant    ESC — odstąp",
-  "siege.controls_spoils": "W/S — wybór    1-4 — wprost    Enter — potwierdź",
+  "siege.controls_spoils": "W/S — wybór    {{digits}} — wprost    Enter — potwierdź",
   "siege.log_open": "Bateria otwiera ogień: {{guns}} {{guns:gun}}, {{soldiers}} {{soldiers:man}} za murami.",
   "siege.log_broadside": "Salwa — {{guns}} {{guns:gun}} mniej, {{walls}} muru w gruzach.",
   "siege.log_return_fire": "Odpowiadają: {{hull}} kadłuba, {{crew}} {{crew:man}}.",

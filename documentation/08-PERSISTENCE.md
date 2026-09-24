@@ -34,12 +34,12 @@ deleteSlot(slotId: number): Promise<void>
 
 ```typescript
 type SaveMeta = {
-  slotId: number;
-  title: string;          // np. "Captain Jack - Day 42"
-  createdAt: string;      // ISO date
-  updatedAt: string;
-  playtime: number;       // sekundy
-  worldVersion: number;   // wersja stanu (do migracji)
+  slotId: SaveSlotId;       // "slot_1" … "slot_5"
+  title: string;            // zawsze "Day N", po angielsku — patrz niżej
+  createdAt: number;        // ms od epoki
+  updatedAt: number;
+  playtimeSeconds: number;
+  worldVersion: number;     // wersja stanu (do migracji)
 };
 
 type SavePayload = {
@@ -48,6 +48,15 @@ type SavePayload = {
   combat?: CombatState;   // jeśli zapis w trakcie bitwy
 };
 ```
+
+**`title` nie jest tekstem do wyświetlenia.** Zakładka zapisu pisze go jako
+`Day N` od pierwszego zapisu, więc taki tytuł ma każdy slot w każdej przeglądarce.
+Oba ekrany listujące zapisy drukowały go wprost — `Slot 1: Dzień Day 1` w polskiej
+grze — do v0.96.0. Dziś `saveTitleDay(title)` (`SaveSchema.ts`) wyciąga z niego
+numer dnia, a ekran składa napis we własnym języku (`save.slot_label`,
+`save.day_label`). Data kalendarzowa na liście wczytywania liczy się z
+`world.startYear` **zapisu** — indeks go nie ma, więc lista czyta światy
+(najwyżej pięć); bez tego gra zaczęta 1 stycznia 1680 była listowana jako 1690.
 
 ## LocalSaveAdapter (IndexedDB)
 

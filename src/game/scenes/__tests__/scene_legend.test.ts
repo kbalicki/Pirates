@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { PL } from "../../../core/i18n/locales/pl.ts";
 import { EN } from "../../../core/i18n/locales/en.ts";
 import {
-  isLegend, promisedKeys, normaliseKey, legendEntries,
+  isLegend, promisedKeys, normaliseKey, legendEntries, digitRange, DIGIT_KEYS,
 } from "../../../core/services/legendKeys.ts";
 
 // ===========================================================================
@@ -31,6 +31,10 @@ import {
  * | `hud.controls` / `hud.controls_land` | a legend each, **no reader at all** |
  * | the defence screen | `SPACE` repeats the last salvo, unnamed |
  * | the spoils list | `1-4` pick a share, unnamed |
+ *
+ * And v0.96.0 the opposite: a range **named wider than the list**. `1-9` over a
+ * governor with four answers, `1-4` over up to five spoils rows. A range that
+ * depends on the rows is written `{{digits}}` and filled by `digitRange`.
  */
 
 const SCENES = import.meta.glob("../*.ts", {
@@ -46,6 +50,12 @@ function boundKeys(src: string): Set<string> {
   // `NUMBER_KEYS.forEach((name, i) => ... "keydown-" + name ...)` and the
   // assault screen's `["ONE", ...]` loop: the array literal is the binding.
   for (const m of src.matchAll(/"keydown-"\s*\+\s*(\w+)/g)) {
+    // The shared list of number-row names: `DIGIT_KEYS.forEach((digit, i) =>
+    // ... "keydown-" + digit ...)` or `const digit = DIGIT_KEYS[i]`.
+    if (new RegExp(`\\b${m[1]}\\b[^;\\n]*DIGIT_KEYS|DIGIT_KEYS[^;\\n]*\\b${m[1]}\\b`).test(src)) {
+      for (const word of DIGIT_KEYS) keys.add(normaliseKey(word));
+      continue;
+    }
     const list = new RegExp(`(?:const\\s+)?${m[1]}\\s*(?::[^=]+)?=\\s*\\[([^\\]]*)\\]`).exec(src);
     if (!list) continue;
     for (const word of list[1].matchAll(/"([A-Z_]+)"/g)) keys.add(normaliseKey(word[1]));
@@ -118,11 +128,9 @@ const UNNAMED: Record<string, { keys: string[]; why: string }> = {
       + "rather than by the line that is on every tab.",
   },
   PortScene: {
-    keys: ["Q", "E", "F", "R", "B", "ENTER", "BACKSPACE", "UP", "DOWN",
-      "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+    keys: ["Q", "E", "F", "R", "B", "ENTER", "BACKSPACE", "UP", "DOWN"],
     why: "Six counters with a legend each; a scan of the file cannot tell which "
-      + "view a binding belongs to. The governor's options carry their number "
-      + "in the row itself, the way the retirement button does.",
+      + "view a binding belongs to.",
   },
   RetirementScene: {
     keys: [],
@@ -161,6 +169,44 @@ describe("the legend notation", () => {
     // What `battle.controls` looked like until v0.84.0. Nothing can check a
     // promise written in a private form, which is why it went unchecked.
     expect(isLegend("WSAD: Żagle/Ster  |  Q/E: Ogień L/P  |  B: Abordaż")).toBe(false);
+  });
+
+  it("reads a range counted at draw time as the widest it can be drawn", () => {
+    expect(promisedKeys("{{digits}} — odpowiedź   Esc — Wróć"))
+      .toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "ESC"]);
+  });
+
+  it("counts a digit range from the rows, never past the number row", () => {
+    // v0.96.0: `1-9 — answer` over four options promised five dead keys, and
+    // `1-4` over five spoils rows left the fifth reachable only by the cursor.
+    expect(digitRange(1)).toBe("1");
+    expect(digitRange(4)).toBe("1-4");
+    expect(digitRange(5)).toBe("1-5");
+    expect(digitRange(12)).toBe("1-9");
+    expect(digitRange(0)).toBe("1");
+    expect(promisedKeys(`${digitRange(4)} — odpowiedź   Esc — Wróć`))
+      .toEqual(["1", "2", "3", "4", "ESC"]);
+    expect(promisedKeys(`${digitRange(1)} — odpowiedź   Esc — Wróć`)).toEqual(["1", "ESC"]);
+  });
+
+  it("reads a lone digit as a number unless the line names other keys", () => {
+    // v0.96.0: the fourteen rows of the zoom setting are written `8 — Detale`,
+    // and the audit read every one of them as a key the quartermaster's screen
+    // promises. Only 8 and 9 were ever reported — 1-7 are bound as tab keys,
+    // so the false promise was kept quiet by a true one on the line above.
+    expect(promisedKeys(PL["settings.zoom.z8"])).toEqual([]);
+    expect(promisedKeys(EN["settings.zoom.z8"])).toEqual([]);
+    expect(promisedKeys("• Głód: dowieź żywność za 2–4× cenę.")).toEqual([]);
+    // A digit among keys is a key, and a range always is.
+    expect(promisedKeys("1 — odpowiedź   Esc — Wróć")).toEqual(["1", "ESC"]);
+    expect(promisedKeys("1-5 — karta")).toEqual(["1", "2", "3", "4", "5"]);
+  });
+
+  it("keeps the one-entry legends that are a screen's only announcement", () => {
+    // The rule above must not take the door off a screen that names it once.
+    expect(promisedKeys(PL["cityinfo.hint_close"])).toEqual(["ESC"]);
+    expect(promisedKeys(PL["defense.controls_done"])).toEqual(["ENTER"]);
+    expect(promisedKeys(PL["duel.controls_attack"])).toEqual(["E", "Q", "W"]);
   });
 
   it("counts an entry, not a dash", () => {
@@ -222,6 +268,13 @@ describe("no key the screen answers to goes unnamed", () => {
       }
     }
     expect(missing, "a key bound and never named").toEqual([]);
+  });
+
+  it("sees the number row bound through the shared list", () => {
+    // Otherwise the guard above passes by not seeing the binding at all.
+    const src = (name: string) => SCENES[Object.keys(SCENES).find(p => sceneName(p) === name)!];
+    expect(boundKeys(src("PortScene")).has("9")).toBe(true);
+    expect(boundKeys(src("CityAssaultScene")).has("5")).toBe(true);
   });
 
   it("keeps no exception for a key the scene does not bind", () => {

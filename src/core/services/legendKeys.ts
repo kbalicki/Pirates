@@ -55,6 +55,26 @@ export function normaliseKey(name: string): string {
   return WORD_DIGIT[upper] ?? NAMED[upper] ?? upper;
 }
 
+/** The placeholder a legend writes where the number of rows decides the range. */
+export const DIGITS_PLACEHOLDER = "{{digits}}";
+
+/** Phaser's names for the number row, in order: `DIGIT_KEYS[0]` is `1`. */
+export const DIGIT_KEYS = ["ONE", "TWO", "THREE", "FOUR", "FIVE", "SIX", "SEVEN", "EIGHT", "NINE"] as const;
+
+/**
+ * The digits a list of `n` rows answers to, written the way a legend writes
+ * them: `1` for one row, `1-4` for four, never past `9`.
+ *
+ * A fixed `1-9 — answer` over a governor offering four options promised five
+ * keys that did nothing, and a fixed `1-4` over a spoils list that grows to
+ * five rows with three letters of marque named a row it could not reach
+ * (v0.96.0). The range is a fact about the list, so it is counted from it.
+ */
+export function digitRange(n: number): string {
+  const top = Math.min(DIGIT_KEYS.length, Math.max(1, Math.floor(n)));
+  return top === 1 ? "1" : `1-${top}`;
+}
+
 /** Em dash, en dash, or a spaced hyphen — the three a legend is written with. */
 const DASH = /[—–]|\s-\s/;
 
@@ -69,6 +89,11 @@ function keysInToken(token: string): string[] | null {
   // Long enough for `H / ESC / SPACJA / kliknij`, short enough that a clause
   // of prose never reaches this far.
   if (trimmed.length === 0 || trimmed.length > 40) return null;
+
+  // `{{digits}}` is a range counted at draw time from the rows on the screen
+  // (`digitRange`). Read unfilled, as the locale table holds it, it promises
+  // every digit a list could ever be given — the widest it can be drawn.
+  if (trimmed === DIGITS_PLACEHOLDER) return ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
 
   // `1-5` names every number in the range and nothing else.
   const range = /^([0-9])\s*-\s*([0-9])$/.exec(trimmed);
@@ -114,7 +139,27 @@ function tokenBeforeDash(chunk: string): string {
 
 export type LegendEntry = { token: string; keys: string[] };
 
-/** Every `key — meaning` entry on the line, in order. */
+/**
+ * A token that is one digit and nothing else: `8` in `8 — Detale`.
+ *
+ * On its own it is a **number**, not a key — a row of a numbered list, or a
+ * quantity in a sentence. It is a key only on a line that is already naming
+ * keys, which is what `legendEntries` uses this for.
+ */
+const BARE_DIGIT = /^[0-9]$/;
+
+/**
+ * Every `key — meaning` entry on the line, in order.
+ *
+ * A **lone digit before a dash counts only where something else on the line is
+ * a key.** Until v0.96.0 it always counted, and the fourteen rows of the zoom
+ * setting — `8 — Detale`, `9 — Bardzo blisko` — were read as a promise that
+ * those keys do something on the quartermaster's screen; so was `za 2–4× cenę`
+ * in the middle of a paragraph of the manual. The rows 1–7 hid inside the
+ * `1-7 — karta` above them, which is why only two of the nine were ever
+ * reported. A range (`1-5`) and a digit standing among other keys are
+ * untouched: a screen that answers to a number still has to say so.
+ */
 export function legendEntries(line: string): LegendEntry[] {
   const chunks = line.split(DASH);
   const out: LegendEntry[] = [];
@@ -123,6 +168,7 @@ export function legendEntries(line: string): LegendEntry[] {
     const keys = keysInToken(token);
     if (keys) out.push({ token, keys });
   }
+  if (out.every(e => BARE_DIGIT.test(e.token.trim()))) return [];
   return out;
 }
 

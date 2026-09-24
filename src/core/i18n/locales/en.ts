@@ -127,6 +127,7 @@ export const EN: LocaleData = {
   "settings.debug": "Debug",
   "creation.hint": "Tab — Next block   ↑↓ — Navigate   ←→ — Adjust skill   Enter — Select   Esc — Back",
   "save.hint": "↑↓ — slot  Enter — save  L — load  Delete/X — remove",
+  "save.hint_empty": "↑↓ — slot  Enter — save",
   "options.hint": "↑↓ — navigate   Enter — toggle   ←/→ — volume",
   "approach.hint": "W/S — Select   Enter — Confirm   Esc — Leave",
   "port.col_item": "Item",
@@ -277,6 +278,7 @@ export const EN: LocaleData = {
   // -- Save/Load --
   "save.title": "SAVE / LOAD",
   "save.slot_empty": "Empty Slot",
+  "save.day_label": "Day {{day}}",
   "save.slot_label": "Slot {{n}}: Day {{day}}",
   "save.btn_save": "[Save]",
   "save.btn_load": "[Load]",
@@ -665,7 +667,7 @@ export const EN: LocaleData = {
 
   // -- Governor --
   "governor.title": "GOVERNOR'S MANSION",
-  "governor.hint": "1-9 — answer   Esc — Back",
+  "governor.hint": "{{digits}} — answer   Esc — Back",
   "governor.opt_ask_letter": "Ask about a Letter of Marque",
   "governor.opt_ask_news": "Ask what he has heard lately",
   "governor.opt_ask_standing": "Ask how you stand with the crown",
@@ -1039,7 +1041,7 @@ export const EN: LocaleData = {
   "siege.fleet_crew": "Hands: {{now}}   Guns bearing: {{guns}}",
   "siege.odds": "Odds ashore: {{pct}}%   Landing party: {{men}} {{men:man}}",
   "siege.controls_bombard": "SPACE — fire a broadside    L — land the men    ESC — break off",
-  "siege.controls_spoils": "W/S — choose    1-4 — straight to it    Enter — confirm",
+  "siege.controls_spoils": "W/S — choose    {{digits}} — straight to it    Enter — confirm",
   "siege.log_open": "The battery opens up: {{guns}} {{guns:gun}}, {{soldiers}} {{soldiers:man}} behind the walls.",
   "siege.log_broadside": "Broadside away — {{guns}} {{guns:gun}} dismounted, {{walls}} of wall down.",
   "siege.log_return_fire": "They answer: {{hull}} hull, {{crew}} {{crew:hand}}.",

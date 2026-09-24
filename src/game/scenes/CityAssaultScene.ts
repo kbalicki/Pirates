@@ -4,6 +4,7 @@ import type { PortId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
+import { DIGIT_KEYS, digitRange } from "../../core/services/legendKeys.ts";
 import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import {
@@ -132,10 +133,6 @@ export class CityAssaultScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-UP", () => this.moveSelection(-1));
       this.input.keyboard.on("keydown-S", () => this.moveSelection(1));
       this.input.keyboard.on("keydown-DOWN", () => this.moveSelection(1));
-      for (let i = 1; i <= 4; i++) {
-        const digit = ["ONE", "TWO", "THREE", "FOUR"][i - 1];
-        this.input.keyboard.on("keydown-" + digit, () => this.pickSpoils(i - 1));
-      }
     }
 
     this.pushLog(t("siege.log_open", { guns: this.siege.fort.guns, soldiers: this.siege.fort.soldiers }));
@@ -277,6 +274,15 @@ export class CityAssaultScene extends Phaser.Scene {
       });
     }
 
+    // One number per row, bound once the rows exist. Two endings plus one per
+    // letter of marque makes up to five, and the hand-written `1-4` bound in
+    // `create` left the fifth reachable only by the cursor, while with three
+    // rows `4` was bound to nothing (v0.96.0).
+    this.spoils.forEach((_, i) => {
+      const digit = DIGIT_KEYS[i];
+      if (digit) this.input.keyboard?.on("keydown-" + digit, () => this.pickSpoils(i));
+    });
+
     this.redraw();
   }
 
@@ -364,7 +370,7 @@ export class CityAssaultScene extends Phaser.Scene {
     this.spoilsTexts = [];
 
     if (this.phase === "spoils") {
-      this.controlsText.setText(t("siege.controls_spoils"));
+      this.controlsText.setText(t("siege.controls_spoils", { digits: digitRange(this.spoils.length) }));
       // Under the last lines of narration, inside the same panel.
       const startY = this.logText.y + this.log.length * 19 + 10;
       this.spoils.forEach((entry, i) => {

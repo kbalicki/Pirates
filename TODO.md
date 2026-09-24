@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-23 · **Wersja:** v0.95.0.0 · **Branch:** `main`
-**Kod:** 279 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2433 przechodzi, 0 failuje, 0 `todo`** w 88 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.96.0.0 · **Branch:** `main`
+**Kod:** 280 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2440 przechodzi, 0 failuje, 0 `todo`** w 89 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2838,7 +2838,12 @@ stronicowanie po wydaniach, osobny ekran, tylko ostatnie N. Tam też stoi
 **próbnik ikon pirackich** (52 glify plus wiersz etykiet) — narzędzie
 deweloperskie na ekranie gracza, za żadną flagą. **Na rozmowę.**
 
-**7a. Linia podpowiedzi obiecuje klawisz, którego ekran nie może wykonać.**
+**~~7a. Linia podpowiedzi obiecuje klawisz, którego ekran nie może wykonać.~~ ✅ v0.96.0**
+— linia zakładki zapisu idzie za slotem pod kursorem (`save.hint` / `save.hint_empty`),
+a druga kopia tej samej legendy, rysowana pod slotami, zniknęła. Po drodze na tym samym
+ekranie: `Slot 1: Dzień Day 1` (tytuł zapisu `Day N` po angielsku wklejany w zdanie —
+`saveTitleDay()`), lista wczytywania datowała każdy zapis od domyślnej ery (1680 → **1690**),
+a `[Usuń]` wystawał poza panel. Oryginalny opis:
 Zakładka zapisu nazywa `L — wczytaj` i `Delete/X — usuń` **bezwarunkowo**, a oba
 są bramkowane `slot?.hasData`: **na świeżej grze, gdzie nie ma ani jednego
 zapisu, żaden z nich nic nie robi**. Ta sama rodzina co `R — Napraw` w stoczni
@@ -2853,7 +2858,14 @@ drugiego przejścia) zgłosił je jako martwe, drugi jako żywe, i **oba mówił
 prawdę o stanie, w którym je nacisnął**. Stan spoza migawki to ta sama rodzina
 co język w zmiennej modułu.
 
-**7. `1-9 — odpowiedź` przy czterech opcjach.** Czytnik legend rozwija zakres na
+**~~7. `1-9 — odpowiedź` przy czterech opcjach.~~ ✅ v0.96.0** — `{{digits}}` w tabeli
+locale, `digitRange(n)` w `legendKeys.ts`; gubernator mówi `1-4`, łupy `1-n` (do **5** wierszy
+przy trzech listach kaperskich — stare `1-4` zostawiało piąty tylko kursorowi, a przy
+trzech wierszach `4` był związany z niczym; cyfry wiązane w `openSpoils`, po jednej na
+wiersz). Wiersze listy zoomu (`8 — Detale`) okazały się **wadą czytnika, nie wierszy**:
+samotna cyfra przed myślnikiem liczyła się jako klawisz; teraz tylko obok innego klawisza
+w tej samej linii (`legendEntries`, `BARE_DIGIT`). Zgłaszane były tylko 8 i 9 — 1-7 kryła
+prawdziwa obietnica `1-7 — karta` linię wyżej. Zostaje: `CTRL`/`SHIFT` u kupca. Oryginalny opis: Czytnik legend rozwija zakres na
 dziewięć cyfr, a gubernator wiąże tyle, ile ma opcji, więc audyt zgłasza pięć
 klawiszy jako obiecane-i-niezwiązane na ekranie, który niczego nie obiecuje na
 wyrost. Do zrobienia: `1-{{n}}` liczone z listy opcji (i `1` przy jednej).
@@ -2861,7 +2873,13 @@ Ta sama rodzina: wiersze listy zoomu (`7 — Bliżej`) wyglądają jak legenda,
 a `CTRL`/`SHIFT` u kupca są modyfikatorami czytanymi w obsłudze `Enter`
 i nigdy nie będą „związane".
 
-**8a. `MainMapScene` nie da się przebudować w stronie.** Usunięcie sceny
+**~~8a. `MainMapScene` nie da się przebudować w stronie.~~ ❌ NIE ODTWARZA SIĘ (v0.96.0)** —
+trzy przebudowy mapy w jednej stronie: 1 przeładowanie (pierwsze wczytanie), `reloadOnly: []`.
+`H` + jedna klatka: mapa **już** zapauzowana (status 6) — pauza ląduje w tym samym kroku,
+w którym powstaje scena nad nią, więc gracz nie ma okna na wyścig. Usunięcie sceny
+z wiszącą pauzą: zero wyjątków. Poprawka (`pauseBehind` na zdarzeniu `update`) była
+napisana i **cofnięta**, bo nie było czego mierzyć przed i po. Komentarz w
+`scene-driver.mjs` poprawiony. Oryginalny opis: Usunięcie sceny
 zostawia `delayedCall` trzymający callback na scenie, której już nie ma, i
 następny krok pętli umiera na `this.callback is not a function`. Cztery takie
 wywołania stoją w `MainMapScene` (`:321`, `:442`, `:1036`, `:1070`) — wszystkie
@@ -2870,6 +2888,12 @@ do przeładowania strony, więc narzędzie działa; ale **scena zatrzymana
 w tej samej klatce, w której czeka jej `delayedCall`, to wada samej gry** i
 nikt jej nie zmierzył od strony gracza. Do sprawdzenia: czy jest droga, którą
 gracz zamyka mapę, zanim callback zdąży się wykonać.
+
+**8b. Data po polsku w mianowniku (znalezione v0.96.0).** HUD i lista zapisów piszą
+`1 Styczeń 1680`; z liczbą dnia polszczyzna chce dopełniacza (`1 stycznia 1680`).
+`getMonthName` (`CharacterCreationScene.ts:~515`, HUD w `UIOverlayScene`) zwraca mianownik —
+potrzebny drugi zestaw nazw (`month_gen`) w `pl.ts`; angielski bez zmian. Ta sama rodzina
+co v0.69.0 (przypadki nazw portów).
 
 **8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.**
 To pozycja z v0.84.0 na scenie, która nie ma gdzie postawić legendy — cały

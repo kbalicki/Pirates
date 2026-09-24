@@ -123,11 +123,13 @@ export async function openDriver() {
   /**
    * Screens whose in-page rebuild throws, and which are reloaded instead.
    *
-   * `MainMapScene` is one: removing it leaves a `delayedCall` holding a
-   * callback on a scene that no longer exists, and the next step of the loop
-   * dies on `this.callback is not a function`. That is the game's business and
-   * not this tool's, but a tool that answers a screen with an exception is
-   * worse than a slow one — so it notices, falls back, and says how often.
+   * v0.95.0 wrote that `MainMapScene` was one — a `delayedCall` outliving the
+   * removed scene, `this.callback is not a function`. v0.96.0 could not make
+   * it happen: three rebuilds of the chart in one page, and a rebuild with
+   * `H` pressed and its pause still pending, all threw nothing. The full run
+   * lists the tabs of `OptionsMenuScene` and `PortApproachScene`. Whatever
+   * the cause, a tool that answers a screen with an exception is worse than a
+   * slow one — so it notices, falls back, and says how often.
    */
   const reloadOnly = new Set();
   let reloads = 0;
