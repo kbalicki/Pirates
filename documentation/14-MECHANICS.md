@@ -1642,6 +1642,11 @@ za jego złoto, a ładunek to udział, który i tak przeżył zatonięcie.
 | `R` | naprawa (w stoczni) |
 
 Zoom **1,5×–12×** w czternastu krokach (`z1`–`z14`, domyślnie `z8` = 6×).
+Do v0.97.0 to zdanie było prawdziwe **tylko tutaj**: ekran ustawień szturchał kamerę,
+a kontroler ściągał ją z powrotem, więc trzynaście z czternastu stopni wracało do 6×
+w ciągu sekundy gry; kółko myszy chodziło po liczbach całkowitych od 1 do 12,
+a wskaźnik zaokrąglał powiększenie i dawał jedenaście odczytów. Jedna drabina,
+czytana przez kamerę w każdej klatce (`cameraZoom.test.ts`).
 
 
 ---

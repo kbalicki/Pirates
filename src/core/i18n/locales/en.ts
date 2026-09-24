@@ -113,6 +113,7 @@ export const EN: LocaleData = {
   // -- Time --
   "time.format": "Day {{day}}, {{hh}}:{{mm}}",
   "time.month_names": "January,February,March,April,May,June,July,August,September,October,November,December",
+  "time.date": "{{day}} {{month}} {{year}}",
 
   // -- Port Scene --
   "hud.knots": "{{knots}} kn",

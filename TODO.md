@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.96.1.0 · **Branch:** `main`
-**Kod:** 280 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2443 przechodzi, 0 failuje, 0 `todo`** w 89 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.97.0.0 · **Branch:** `main`
+**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2475 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2912,11 +2912,42 @@ w tej samej klatce, w której czeka jej `delayedCall`, to wada samej gry** i
 nikt jej nie zmierzył od strony gracza. Do sprawdzenia: czy jest droga, którą
 gracz zamyka mapę, zanim callback zdąży się wykonać.
 
-**8b. Data po polsku w mianowniku (znalezione v0.96.0).** HUD i lista zapisów piszą
-`1 Styczeń 1680`; z liczbą dnia polszczyzna chce dopełniacza (`1 stycznia 1680`).
-`getMonthName` (`CharacterCreationScene.ts:~515`, HUD w `UIOverlayScene`) zwraca mianownik —
-potrzebny drugi zestaw nazw (`month_gen`) w `pl.ts`; angielski bez zmian. Ta sama rodzina
-co v0.69.0 (przypadki nazw portów).
+**~~8b. Data po polsku w mianowniku.~~ ✅ v0.97.0** — i była wierzchołkiem czegoś
+większego. `time.month_names` ma **jednego** czytelnika, a każde zdanie na nim zbudowane
+stawia przed miesiącem liczbę dnia, więc **mianownik jest formą, której gra nigdy nie
+drukuje**. Zdanie było napisane **trzy razy** (HUD, zakładka kalendarza, lista zapisów) —
+stąd ta sama zła forma w trzech plikach — i **nie miało żadnego testu**, choć gra pisze je
+w każdej klatce. Dziś jeden budowniczy (`formatCalendarDay`), formy w `plForms.ts`
+(nie w `pl.ts` — `keys.test.ts` trzyma obie tabele na tym samym zbiorze kluczy) i strażnik
+na czwartą kopię.
+
+**~~Liczba pisana po angielsku.~~ ✅ v0.97.0** — przemiecione z 8b jako ta sama rodzina.
+Polski stawia przecinek, `toFixed` stawia kropkę: **jedenastu miejsc** (prędkość, znos,
+działa strącone salwą, współrzędne portów) plus `kn` po angielsku w HUD bitwy. Sam
+podręcznik pisał obie formy trzy wiersze od siebie (`×0,6` i `×1.5`). `core/i18n/numbers.ts`;
+trzy bloki **wzorów** w podręczniku bitwy zostają z kropką, z imienną listą w strażniku.
+
+**~~Luneta: trzy drabiny na jedną kontrolkę.~~ ✅ v0.97.0** — największe znalezisko wydania.
+Wybór stopnia na ekranie kwatermistrza **nie działał**: ekran szturchał `cameras.main.setZoom`,
+a `CameraController.update()` ściągał kamerę z powrotem do `zoomTarget` z konstruktora.
+Zmierzone: po sekundzie gry **13 z 14 stopni wracało do 6×**, a czternasty to wartość
+domyślna. Trzymało się, dopóki menu było otwarte, bo czarta stoi za nim zapauzowana.
+Kółko myszy chodziło po liczbach całkowitych (nie trafiało w sześć półstopni poniżej 4×,
+schodziło do `1×` spoza drabiny, nie zapisywało poziomu), a wskaźnik w rogu zaokrąglał
+powiększenie i dawał **11 odczytów na 14 ustawień**. Jedna drabina, czytana w każdej klatce.
+
+**Nowe, nienaprawione (v0.97.0):**
+
+- **`CameraController.setZoom` nie miał żadnego wywołania** — usunięty przy okazji; wartą
+  zapamiętania jest reszta: to **on** byłby czwartą drogą do zoomu. Pytanie do zadania
+  innym kontrolerom: ile publicznych metod w `src/game/render/` nie ma czytelnika?
+- **`ZOOM_LERP` 0,15 przy stałym progu 0,05** — przy skoku 1,5→ 2 różnica startowa to 0,5,
+  więc dojście zajmuje ok. 15 klatek, a przy 11→12 tyle samo mimo mniejszej względnej
+  zmiany. Czy płynność ma być stała w pikselach, czy w stopniach drabiny? **Do zmierzenia
+  na ekranie, nie z fotela.**
+- **Zapis poziomu zoomu jest teraz pisany kółkiem myszy** — `pc_zoom_level` zmienia się
+  bez wchodzenia w menu. To poprawne (ekran przestał kłamać), ale znaczy, że przewinienie
+  kółkiem w trakcie gry **przetrwa restart**. Jeśli to niepożądane — osobna decyzja.
 
 **8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.**
 To pozycja z v0.84.0 na scenie, która nie ma gdzie postawić legendy — cały

@@ -305,6 +305,36 @@ export function plPhraseFallback(form: string, text: string): string | undefined
   }
 }
 
+/**
+ * The twelve months in the genitive, lower case (v0.97.0).
+ *
+ * `time.month_names` holds the nominative, and the nominative is the one form
+ * the game never prints: the month name has **one** reader, `getMonthName`,
+ * and every sentence built on it is `<day number> <month> <year>` — the HUD
+ * every frame, the calendar tab, the list of saves on the title screen. With a
+ * day number in front of it Polish wants the genitive, so the chart read
+ * *1 Styczeń 1680* where it should read *1 stycznia 1680*, and had since the
+ * clock was written.
+ *
+ * Kept here rather than in `pl.ts` for the same reason the port forms are:
+ * `keys.test.ts` holds the two locale tables to the same key set, and English
+ * has no second form to put opposite this one.
+ */
+const MONTHS_GEN: readonly string[] = [
+  "stycznia", "lutego", "marca", "kwietnia", "maja", "czerwca",
+  "lipca", "sierpnia", "września", "października", "listopada", "grudnia",
+];
+
+/** The month in the genitive, or `undefined` for a number that is not one. */
+export function plMonthGen(month: number): string | undefined {
+  return MONTHS_GEN[month - 1];
+}
+
+/** The genitive months, for the test that reads them against the nominative. */
+export function plMonthsGen(): readonly string[] {
+  return MONTHS_GEN;
+}
+
 /** Every name this table claims to know, by family. Read by the tests. */
 export function plDeclinedKeys(kind: "port" | "faction" | "village" | "ship"): string[] {
   const table = kind === "port" ? PORTS

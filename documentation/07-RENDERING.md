@@ -86,17 +86,28 @@ Każdy bit = sąsiad na lądzie. 256 kombinacji → mapowanie na tileset.
 
 | Parametr | Wartość |
 |----------|---------|
-| Smooth follow lerp | 0.08 |
-| Zoom lerp | 0.10 |
-| Min zoom | 0.75 (far) |
-| Max zoom | 3.375 (close) |
-| Zoom krok | ×1.5 per scroll |
+| Smooth follow | brak lerpu — kamera idzie wprost za `targetPos` |
+| Zoom lerp | 0.15, próg dojścia 0.05 |
+| Min zoom | **1.5** (`z1`, cała czarta) |
+| Max zoom | **12** (`z14`) |
+| Zoom krok | **jeden szczebel drabiny** `ZOOM_VALUES`, nie mnożnik |
 
-### Tryby zoom
+Cztery z pięciu wierszy powyżej były nieprawdą do v0.97.0 (0.10 / 0.75 / 3.375 /
+×1.5 per scroll) — **piąta drabina zoomu**, obok trzech w kodzie. Dlatego stoją tu
+teraz nazwy stopni, a nie przepisane liczby.
 
-- **Far (0.75):** widok strategiczny, duża część mapy
-- **Normal (1.5):** standardowy gameplay
-- **Close (3.375):** detale, pixel art w pełnej krasie
+### Stopnie zoomu
+
+Czternaście, w `src/game/settings/ZoomSetting.ts`, i **to jedyna drabina**:
+
+```
+z1 1,5   z2 2   z3 2,5   z4 3   z5 3,5   z6 4   z7 5
+z8 6 (domyślny)   z9 7   z10 8   z11 9   z12 10   z13 11   z14 12
+```
+
+Ekran kwatermistrza wybiera stopień, kółko myszy przesuwa o jeden, a
+`CameraController.update()` czyta `getZoomValue()` **w każdej klatce** — nikt inny
+nie rusza `cameras.main.setZoom` na czarcie i pilnuje tego `cameraZoom.test.ts`.
 
 ### Bounds clamping
 

@@ -5,6 +5,7 @@ import { pointInLandmass } from "../../core/services/Geometry.ts";
 import { drawCityIcon } from "./CityIconRenderer.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
+import { fmtNum } from "../../core/i18n/numbers.ts";
 import { pixelToGeo, LAT_LINES, LON_LINES, getLatWorldY, getLonWorldX } from "./CartographicGrid.ts";
 
 export interface PortMarkerResult {
@@ -128,7 +129,7 @@ export class PortMarkerRenderer {
       const MAP_H = 2400;
       const geo = pixelToGeo(safePos.x, safePos.y, MAP_W, MAP_H);
       const coordAnchorY = anchorY + (isLarge ? 18 : port.population === "medium" ? 16 : 13);
-      const coordText = `${geo.lonW.toFixed(1)}\u00B0W ${geo.lat.toFixed(1)}\u00B0N`;
+      const coordText = `${fmtNum(geo.lonW)}\u00B0W ${fmtNum(geo.lat)}\u00B0N`;
       const coordLabel = this.scene.add.text(anchorX, coordAnchorY, coordText, {
         ...txt(7, { color: "#aaaaaa" }),
       });

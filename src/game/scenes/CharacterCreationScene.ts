@@ -11,8 +11,7 @@ import { saveTitleDay } from "../../persistence/SaveSchema.ts";
 import { saveSlotId } from "../../core/model/ids.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
 import {
-  dayToCalendar,
-  getMonthName,
+  formatCalendarDay,
 } from "../../core/systems/TimeSystem.ts";
 import {
   SKILL_IDS,
@@ -516,8 +515,7 @@ export class CharacterCreationScene extends Phaser.Scene {
 
     for (const save of saves) {
       const day = saveTitleDay(save.title);
-      const cal = dayToCalendar(day, startYears.get(save.slotId));
-      const dateStr = `${cal.dayOfMonth} ${getMonthName(cal.month)} ${cal.year}`;
+      const dateStr = formatCalendarDay(day, startYears.get(save.slotId));
       const realDate = new Date(save.updatedAt);
       const realStr = realDate.toLocaleDateString();
       const label = `${t("save.day_label", { day })} — ${dateStr}  (${realStr})`;

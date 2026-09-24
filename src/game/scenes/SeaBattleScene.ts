@@ -9,6 +9,7 @@ import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
 import { ShipDamageOverlay } from "../render/ShipDamageOverlay.ts";
 import { t } from "../../core/i18n/index.ts";
+import { fmtNum } from "../../core/i18n/numbers.ts";
 import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { addLogEntry } from "../../core/systems/EventLogSystem.ts";
 import { AMMO_DEFS, AMMO_ORDER, type AmmoType } from "../../core/data/ammo.ts";
@@ -786,7 +787,7 @@ export class SeaBattleScene extends Phaser.Scene {
     this.statusText.setText(
       `${t("battle.hud_ammo")}: ${ammoLabel}\n` +
       `${t("battle.hud_sails")}: ${sailLabel}\n` +
-      `${t("battle.hud_speed")}: ${knots.toFixed(1)} kn\n` +
+      `${t("battle.hud_speed")}: ${t("hud.knots", { knots: fmtNum(knots) })}\n` +
       `${t("battle.hud_cannons")}: ${cannons}\n` +
       `${t("battle.hud_training")}: ${training}%\n` +
       `${t("battle.hud_condition")}: ${this.conditionLabel(playerEntity.ship)}`,
@@ -1166,7 +1167,7 @@ export class SeaBattleScene extends Phaser.Scene {
         //   hull (red)  /  sails (cyan)  /  crew (orange).  Each lives 2 s.
         // Sub-1 damage is rendered as a fraction (e.g. "-0.7 hull") so the player
         // still sees something happened — important for chain-shot from far away.
-        const fmt = (v: number) => Math.abs(v) >= 1 ? String(Math.round(v)) : v.toFixed(1);
+        const fmt = (v: number) => Math.abs(v) >= 1 ? String(Math.round(v)) : fmtNum(v);
         const ent = this.combatState.entities[event.shipId as string];
         if (ent) {
           let yOffset = 0;

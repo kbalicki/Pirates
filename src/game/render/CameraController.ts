@@ -1,21 +1,20 @@
-import Phaser from "phaser";
+// Type-only: this controller touches a camera's fields and nothing of
+// Phaser's runtime, which is what lets `cameraZoom.test.ts` drive it
+// against a plain object instead of a browser (v0.97.0).
+import type Phaser from "phaser";
 import type { Vec2 } from "../../core/model/WorldState.ts";
 import { lerp } from "../../core/services/Geometry.ts";
-import { getZoomValue } from "../settings/ZoomSetting.ts";
+import { getZoomValue, stepZoomLevel } from "../settings/ZoomSetting.ts";
 
 const ZOOM_LERP = 0.15;
-const ZOOM_MIN = 1;
-const ZOOM_MAX = 12;
 
 export class CameraController {
   private camera: Phaser.Cameras.Scene2D.Camera;
   private targetPos: Vec2 = { x: 0, y: 0 };
-  private zoomTarget: number;
 
   constructor(camera: Phaser.Cameras.Scene2D.Camera) {
     this.camera = camera;
-    this.zoomTarget = getZoomValue();
-    this.camera.setZoom(this.zoomTarget);
+    this.camera.setZoom(getZoomValue());
   }
 
   setTarget(pos: Vec2): void {
@@ -32,21 +31,9 @@ export class CameraController {
     this.camera.setBounds(x, y, width, height);
   }
 
-  setZoom(zoom: number): void {
-    this.zoomTarget = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoom));
-    this.camera.setZoom(this.zoomTarget);
-  }
-
-  /** Adjust zoom by mouse-wheel delta — snaps to integer zoom levels (1,2,3...12). */
+  /** One step along the ladder the quartermaster's screen lists (v0.97.0). */
   adjustZoom(delta: number): void {
-    const current = Math.round(this.zoomTarget);
-    if (delta < 0) {
-      this.zoomTarget = Math.min(current + 1, ZOOM_MAX);
-    } else {
-      this.zoomTarget = Math.max(current - 1, ZOOM_MIN);
-    }
-    // Ensure integer
-    this.zoomTarget = Math.round(Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, this.zoomTarget)));
+    stepZoomLevel(delta < 0 ? 1 : -1);
   }
 
   update(): void {
@@ -55,14 +42,24 @@ export class CameraController {
     this.camera.scrollX = this.targetPos.x - this.camera.width / 2;
     this.camera.scrollY = this.targetPos.y - this.camera.height / 2;
 
-    // Smooth zoom with snap to integer when close
+    /*
+     * The zoom the player chose, every frame, from the one place it is kept.
+     *
+     * Until v0.97.0 this aimed at a `zoomTarget` field set in the constructor
+     * and moved only by the mouse wheel. The quartermaster's screen wrote the
+     * setting and then poked `cameras.main.setZoom` itself, and this line
+     * **undid it on the next frame**: measured, thirteen of the fourteen steps
+     * were back at 6× within one second of play, and the fourteenth was 6×
+     * already. `* Działa natychmiast` was true for as long as the map stayed
+     * paused behind the menu.
+     */
     const currentZoom = this.camera.zoom;
-    const diff = Math.abs(currentZoom - this.zoomTarget);
+    const target = getZoomValue();
+    const diff = Math.abs(currentZoom - target);
     if (diff > 0.05) {
-      this.camera.setZoom(lerp(currentZoom, this.zoomTarget, ZOOM_LERP));
+      this.camera.setZoom(lerp(currentZoom, target, ZOOM_LERP));
     } else if (diff > 0.001) {
-      // Snap to exact integer target
-      this.camera.setZoom(this.zoomTarget);
+      this.camera.setZoom(target);
     }
   }
 

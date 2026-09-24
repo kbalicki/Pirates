@@ -5,7 +5,7 @@ import { PORTS } from "../../core/data/ports.ts";
 import { LANDMASSES } from "../../core/data/geography.ts";
 import {
   dayToCalendar,
-  getMonthName,
+  formatCalendarDay,
   daysInMonth,
   clockHHMM,
 } from "../../core/systems/TimeSystem.ts";
@@ -21,7 +21,7 @@ import { saveTitleDay, type SavePayload } from "../../persistence/SaveSchema.ts"
 import { txt, PIRATE_ICONS_FONT, TEXT_RES, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
 import type { AssetPackId } from "../settings/AssetPack.ts";
-import { getZoomLevel, setZoomLevel, ZOOM_VALUES } from "../settings/ZoomSetting.ts";
+import { getZoomLevel, setZoomLevel } from "../settings/ZoomSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { CROWNS, enemiesOf, coBelligerentAgainst, alliedSince } from "../../core/systems/DiplomacySystem.ts";
@@ -903,8 +903,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     // shape as every other second reading this project has found: one caller
     // passes the argument and the other never learned it existed.
     const cal = dayToCalendar(this.worldState.time.day, this.worldState.startYear);
-    const monthName = getMonthName(cal.month);
-    const dateStr = `${cal.dayOfMonth} ${monthName} ${cal.year}`;
+    const dateStr = formatCalendarDay(this.worldState.time.day, this.worldState.startYear);
     const { hh, mm } = clockHHMM(this.worldState.time);
 
     const dateText = this.add.text(cx, y, dateStr, txt(16, { bold: true }));
@@ -1317,12 +1316,10 @@ export class OptionsMenuScene extends Phaser.Scene {
       const zoomBtn = this.add.text(x + 10, y, label, txt(12, { bold: isActive || isItemFocused, color }));
       if (!isActive) {
         zoomBtn.setInteractive({ useHandCursor: true });
+        // No poke at the chart's camera: `CameraController.update()` reads the
+        // setting every frame since v0.97.0. The poke used to be undone by it.
         zoomBtn.on("pointerdown", () => {
           setZoomLevel(level);
-          const mainScene = this.scene.get("MainMapScene");
-          if (mainScene) {
-            mainScene.cameras.main.setZoom(ZOOM_VALUES[level]);
-          }
           this.switchTab("settings");
         });
       }
@@ -1488,10 +1485,6 @@ export class OptionsMenuScene extends Phaser.Scene {
       } else if (item.type.startsWith("zoom:")) {
         const level = item.type.split(":")[1] as ZoomLevel;
         setZoomLevel(level);
-        const mainScene = this.scene.get("MainMapScene");
-        if (mainScene) {
-          mainScene.cameras.main.setZoom(ZOOM_VALUES[level]);
-        }
         this.switchTab("settings");
       } else if (item.type === "fog") {
         const isFogOn = localStorage.getItem("pc_fog") === "1";

@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { t } from "../../core/i18n/I18n.ts";
+import { fmtNum, fmtTrim } from "../../core/i18n/numbers.ts";
 import { UI_FONT, TEXT_RES, txt } from "../ui/textStyle.ts";
 import { APP_VERSION } from "../../version.ts";
 import { WindCompassWidget } from "../render/WindCompassWidget.ts";
@@ -259,7 +260,7 @@ export class UIOverlayScene extends Phaser.Scene {
         this.speedText.setText("");
       } else {
         // Convert to knots display: speedBase×windMod×32 = max knots (frigate=12kn)
-        const knots = (speed * 32).toFixed(1);
+        const knots = fmtNum(speed * 32);
         this.speedText.setText(t("hud.knots", { knots }));
       }
     }
@@ -284,7 +285,7 @@ export class UIOverlayScene extends Phaser.Scene {
     const arrow = info.offWind < info.beatDeg ? "\u2192" : "\u2190"; // fall off / come up
     this.windwardText.setText(
       `${t("hud.beat")} ${Math.round(info.offWind)}\u00b0/${Math.round(info.beatDeg)}\u00b0 `
-      + `${onIt ? "\u2713" : arrow}  ${t("hud.made_good")} ${(info.made * 32).toFixed(1)}`
+      + `${onIt ? "\u2713" : arrow}  ${t("hud.made_good")} ${fmtNum(info.made * 32)}`
       + (info.goAbout ? `  \u21bb ${t("hud.go_about")}` : ""),
     );
     this.windwardText.setColor(onIt ? "#88cc88" : "#ccaa55");
@@ -298,7 +299,7 @@ export class UIOverlayScene extends Phaser.Scene {
       t("hud.set_drift", {
         sign: setDeg > 0 ? "+" : "",
         deg: Math.round(setDeg),
-        speed: t("hud.knots", { knots: (overGround * 32).toFixed(1) }),
+        speed: t("hud.knots", { knots: fmtNum(overGround * 32) }),
       }),
     );
   }
@@ -382,8 +383,11 @@ export class UIOverlayScene extends Phaser.Scene {
   /** Called from MainMapScene each frame with current zoom level */
   updateZoom(zoom: number): void {
     if (this.zoomText) {
-      // Show integer zoom level (1×–12×)
-      this.zoomText.setText(t("hud.zoom", { level: Math.round(zoom) }));
+      // The magnification itself, not its rounding (v0.97.0): the fourteen
+      // steps run 1.5 to 12 and `Math.round` gave them **eleven** readings, so
+      // the three widest pairs printed the same number and `1×`, which the
+      // line here used to promise, could never appear at all.
+      this.zoomText.setText(t("hud.zoom", { level: fmtTrim(zoom) }));
     }
   }
 

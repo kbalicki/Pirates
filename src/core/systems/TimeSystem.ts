@@ -1,5 +1,6 @@
 import type { GameTime } from "../model/WorldState.ts";
-import { t } from "../i18n/index.ts";
+import { t, getLang } from "../i18n/index.ts";
+import { plMonthGen } from "../i18n/plForms.ts";
 
 // 1 tick = 1 game minute at normal speed
 // 20 ticks/sec real time → 1 game hour = 60 ticks = 3 real seconds
@@ -189,12 +190,38 @@ export function calendarToDay(
   return Math.max(1, day + dayOfMonth - 1);
 }
 
-export function getMonthName(month: number): string {
+/**
+ * The month by name, in the case the sentence around it wants.
+ *
+ * `"nom"` is the bare name a heading would use. `"gen"` is the form a **day
+ * number** puts it in, which in Polish is a different word: *1 stycznia*, not
+ * *1 Styczeń*. English has one form and ignores the argument.
+ */
+export function getMonthName(month: number, form: "nom" | "gen" = "nom"): string {
   const names = t("time.month_names").split(",");
-  return names[month - 1] ?? `Month ${month}`;
+  const nominative = names[month - 1] ?? `Month ${month}`;
+  if (form === "gen" && getLang() === "pl") return plMonthGen(month) ?? nominative;
+  return nominative;
+}
+
+/**
+ * The one date sentence this game writes: `1 stycznia 1680`, `1 January 1680`.
+ *
+ * It was written **three** times until v0.97.0 — here, on the calendar tab and
+ * under the list of saves on the title screen — and all three had the month in
+ * the nominative. The duplication is the reason the wrong form had to be found
+ * three times over; the comment on the calendar tab says as much about the
+ * *year* it had already got wrong for the same reason, and the copy stayed.
+ */
+export function formatCalendarDay(day: number, startYear?: number): string {
+  const cal = dayToCalendar(day, startYear);
+  return t("time.date", {
+    day: cal.dayOfMonth,
+    month: getMonthName(cal.month, "gen"),
+    year: cal.year,
+  });
 }
 
 export function formatCalendarDate(time: GameTime, startYear?: number): string {
-  const cal = dayToCalendar(time.day, startYear);
-  return `${cal.dayOfMonth} ${getMonthName(cal.month)} ${cal.year}`;
+  return formatCalendarDay(time.day, startYear);
 }

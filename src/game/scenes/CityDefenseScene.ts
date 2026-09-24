@@ -3,6 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
+import { fmtNum } from "../../core/i18n/numbers.ts";
 import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import type { PanelBox } from "../ui/panelBox.ts";
@@ -193,12 +194,12 @@ export class CityDefenseScene extends Phaser.Scene {
     }
 
     this.pushLog(t("defense.log_squadron_fire", {
-      walls: round.wallsBreached.toFixed(1),
-      guns: round.fortGunsLost.toFixed(1),
+      walls: fmtNum(round.wallsBreached),
+      guns: fmtNum(round.fortGunsLost),
     }));
     if (round.hullLost > 0 || round.crewLost > 0) {
       this.pushLog(t("defense.log_fleet_hit", {
-        hull: round.hullLost.toFixed(1),
+        hull: fmtNum(round.hullLost),
         crew: round.crewLost,
       }));
     }

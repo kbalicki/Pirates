@@ -88,6 +88,7 @@ import type { PortDef } from "../../core/data/ports.ts";
 import { LANDMASSES } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass, chaikinSmooth } from "../../core/services/Geometry.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
+import { fmtNum } from "../../core/i18n/numbers.ts";
 import { t } from "../../core/i18n/index.ts";
 import { portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -970,7 +971,7 @@ export class MainMapScene extends Phaser.Scene {
       const yBot = mercYFn(7);
       const mercLat = yTop - (py / 2400) * (yTop - yBot);
       const lat = (2 * Math.atan(Math.exp(mercLat)) - Math.PI / 2) * 180 / Math.PI;
-      const coordLabel = this.add.text(px, py + 14, `${(-lon).toFixed(1)}°W ${lat.toFixed(1)}°N`, {
+      const coordLabel = this.add.text(px, py + 14, `${fmtNum(-lon)}°W ${fmtNum(lat)}°N`, {
         ...txt(8, { color: "#ffff00" }),
         backgroundColor: "#000000aa",
         padding: { x: 2, y: 1 },

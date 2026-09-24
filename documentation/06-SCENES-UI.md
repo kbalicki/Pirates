@@ -108,7 +108,9 @@ update(delta):
 - Data i czas gry
 - Poziom ożaglowania (pod kompasem)
 - Wersja gry
-- Wskaźnik zoomu (lewy dolny róg, skala 0→10)
+- Wskaźnik zoomu (lewy dolny róg) — **powiększenie**, nie numer stopnia: `zoom: 1,5×`
+  … `zoom: 12×`, czternaście odczytów na czternaście stopni lunety (v0.97.0; do tej
+  wersji zaokrąglenie dawało ich jedenaście)
 
 **Statystyki kapitana** (złoto, załoga, morale, wyszkolenie, ładownia) są w menu SPACE, zakładka Kabina — nie na stałym HUD-zie. Minimapa została usunięta w v0.9.2.
 

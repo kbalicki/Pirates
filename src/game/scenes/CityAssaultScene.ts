@@ -4,6 +4,7 @@ import type { PortId } from "../../core/model/ids.ts";
 import { PORTS } from "../../core/data/ports.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { t } from "../../core/i18n/index.ts";
+import { fmtNum } from "../../core/i18n/numbers.ts";
 import { DIGIT_KEYS, digitRange } from "../../core/services/legendKeys.ts";
 import { factionNameKey, portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
@@ -164,12 +165,12 @@ export class CityAssaultScene extends Phaser.Scene {
     this.worldState = { ...this.worldState, rng: result.rng };
 
     this.pushLog(t("siege.log_broadside", {
-      guns: result.gunsSilenced.toFixed(1),
-      walls: result.wallsBreached.toFixed(1),
+      guns: fmtNum(result.gunsSilenced),
+      walls: fmtNum(result.wallsBreached),
     }));
     if (result.hullLost > 0 || result.crewLost > 0) {
       this.pushLog(t("siege.log_return_fire", {
-        hull: result.hullLost.toFixed(1),
+        hull: fmtNum(result.hullLost),
         crew: result.crewLost,
       }));
     } else {
