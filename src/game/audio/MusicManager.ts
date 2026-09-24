@@ -83,9 +83,4 @@ export class MusicManager {
     }
     this.currentTrack = "none";
   }
-
-  /** Get the currently playing track identifier. */
-  getCurrent(): MusicTrack {
-    return this.currentTrack;
-  }
 }

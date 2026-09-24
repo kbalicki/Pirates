@@ -277,19 +277,33 @@ describe("no screen draws words through a template either", () => {
  * `event.embarked`, the keys for exactly those sentences, written into the log
  * two lines above.
  */
-describe("the engine hands the screen no words of its own", () => {
-  const CORE_SOURCES = import.meta.glob("../../**/*.ts", {
+describe("nobody hands the screen words of their own", () => {
+  // v0.98.0 widened this from `src/core` to the whole of `src/`: the chart
+  // raises toasts too, and `MainMapScene`'s `V` key said `Fog of war: ON` /
+  // `OFF (test)` in the Polish game while every other toast on that screen had
+  // gone through `t()` for releases. A rule applied to one directory is not a
+  // rule — the same sentence v0.83.0 wrote about screens.
+  const SOURCES = import.meta.glob("../../../**/*.ts", {
     query: "?raw", import: "default", eager: true,
   }) as Record<string, string>;
 
   it("builds every toast message through t()", () => {
     const offenders: string[] = [];
-    for (const [path, src] of Object.entries(CORE_SOURCES)) {
+    for (const [path, src] of Object.entries(SOURCES)) {
       if (path.includes("__tests__")) continue;
       for (const m of src.matchAll(/type:\s*"Toast",\s*message:\s*(["'`])/g)) {
         offenders.push(`${path}: Toast with a ${m[1]}literal${m[1]}`);
       }
     }
     expect(offenders).toEqual([]);
+  });
+
+  it("reads both halves of the game, not just the engine", () => {
+    // Without this, widening the glob and breaking it would look like a pass.
+    // The glob's keys are relative to this file, so `core/` appears only as
+    // the path that climbs out of it; name a file on each side instead.
+    const paths = Object.keys(SOURCES);
+    expect(paths.some(p => p.endsWith("/engine/WorldEngine.ts"))).toBe(true);
+    expect(paths.some(p => p.endsWith("/game/scenes/MainMapScene.ts"))).toBe(true);
   });
 });

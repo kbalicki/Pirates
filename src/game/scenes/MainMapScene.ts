@@ -16,7 +16,6 @@ import { CameraController } from "../render/CameraController.ts";
 import { CloudRenderer } from "../render/CloudRenderer.ts";
 import { SeagullRenderer } from "../render/SeagullRenderer.ts";
 import type { UIOverlayScene } from "./UIOverlayScene.ts";
-import { FxManager } from "../render/FxManager.ts";
 import { generateFlagTextures, generateCrewTexture } from "../render/TextureFactory.ts";
 import { PortMarkerRenderer, refreshPortFlags, type PortMarkerResult } from "../render/PortMarkerRenderer.ts";
 import { renderVillageMarkers, type VillageMarkerResult } from "../render/VillageMarkerRenderer.ts";
@@ -88,6 +87,7 @@ import type { PortDef } from "../../core/data/ports.ts";
 import { LANDMASSES } from "../../core/data/geography.ts";
 import { vec2Dist, pointInLandmass, chaikinSmooth } from "../../core/services/Geometry.ts";
 import { formatCalendarDate } from "../../core/systems/TimeSystem.ts";
+import { isFogEnabled, setFogEnabled, fogOfWarActive } from "../settings/FogSetting.ts";
 import { fmtNum } from "../../core/i18n/numbers.ts";
 import { t } from "../../core/i18n/index.ts";
 import { portNameKey } from "../../core/i18n/names.ts";
@@ -254,8 +254,6 @@ export class MainMapScene extends Phaser.Scene {
     }
     this.uiOverlay = this.scene.get("UIOverlayScene") as UIOverlayScene;
 
-    new FxManager(this);
-
     this.commandQueue = new CommandQueue();
     this.sailSystem = new SailSystem(0);
     this.inputMapper = new InputMapper(this, this.commandQueue, this.sailSystem);
@@ -323,10 +321,15 @@ export class MainMapScene extends Phaser.Scene {
       });
 
       this.input.keyboard.on("keydown-V", () => {
-        this.worldRenderer.fogOfWarEnabled = !this.worldRenderer.fogOfWarEnabled;
-        // minimap removed
-        const mode = this.worldRenderer.fogOfWarEnabled ? "ON" : "OFF (test)";
-        this.worldRenderer.applyEvents(this, [{ type: "Toast", message: `Fog of war: ${mode}` }]);
+        // The SETTING, not the renderer's field: `update()` derives that field
+        // from the setting every frame, so writing it here lasted one frame
+        // and the toast was the whole of what the key appeared to do. And the
+        // toast spoke English in a Polish game, which is how it was found.
+        setFogEnabled(!isFogEnabled());
+        const key = !isFogEnabled() ? "map.fog_off"
+          : fogOfWarActive() ? "map.fog_on"
+          : "map.fog_debug";       // asked for, and debug is revealing the map
+        this.worldRenderer.applyEvents(this, [{ type: "Toast", message: t(key) }]);
       });
 
       this.input.keyboard.on("keydown-L", () => {
@@ -1193,10 +1196,10 @@ export class MainMapScene extends Phaser.Scene {
       }
     }
 
-    // Sync fog-of-war from settings (debug mode disables it)
-    const debugMode = localStorage.getItem("pc_debug") !== "0";
-    const fogSetting = localStorage.getItem("pc_fog") === "1";
-    this.worldRenderer.fogOfWarEnabled = debugMode ? false : fogSetting;
+    // What the chart draws, from the one function that answers it. This line
+    // used to read `pc_debug` as `!== "0"` -- so an unset key counted as debug
+    // ON -- and then threw the fog setting away every frame (v0.98.0).
+    this.worldRenderer.fogOfWarEnabled = fogOfWarActive();
 
     // Calculate vision range from fleet's tallest mast
     const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
@@ -1362,8 +1365,13 @@ export class MainMapScene extends Phaser.Scene {
 
     // Animate water surface with wind
     this.waterRenderer.update(wx.windDirRad, wx.windStrength);
-    // Cartographic grid: show/hide based on zoom
-    this.cartographicGrid.update();
+    // Cartographic grid: one fade rule, applied to the lines and handed to the
+    // labels at the margin. Until v0.98.0 nothing called `updateGridLabels`
+    // and the degree labels sat in world space in the middle of the sea.
+    const gridFadeNow = this.cartographicGrid.update();
+    const gcam = this.cameras.main;
+    this.uiOverlay?.updateGridLabels(
+      gcam.scrollX, gcam.scrollY, gcam.zoom, gcam.width, gcam.height, gridFadeNow.alpha);
     this.mountainRenderer.update(this.cameras.main.zoom);
 
     // Wind sound volume: base audible level scaled by wind strength × user gain (0..1)

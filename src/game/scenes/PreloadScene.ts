@@ -6,6 +6,7 @@ import { MusicManager } from "../audio/MusicManager.ts";
 import { createNewWorldState } from "../GameApp.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getPackPrefix } from "../settings/AssetPack.ts";
+import { setDebugMode } from "../settings/DebugSetting.ts";
 import { CITIES } from "../../core/data/cities.ts";
 
 import { pickNeighbours, getPortNews } from "../../core/systems/WorldEventSystem.ts";
@@ -277,7 +278,11 @@ export class PreloadScene extends Phaser.Scene {
       setZoomLevel(params.get("zoom")! as ZoomLevel);
     }
     if (params.has("debug")) {
-      localStorage.setItem("pc_debug", params.get("debug")!);
+      // Through the setting, like `?zoom=` above: a bare write put whatever the
+      // query string said into the key, so `?debug=yes` stored `yes`, which is
+      // neither `"1"` nor `"0"` and read differently by each of the four places
+      // that looked at it before v0.98.0.
+      setDebugMode(params.get("debug") === "1");
     }
     if (params.has("defeat")) {
       const world = this.createDefeatWorld(params.get("defeat") ?? "alone");

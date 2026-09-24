@@ -105,7 +105,9 @@ const UNNAMED: Record<string, { keys: string[]; why: string }> = {
   MainMapScene: {
     keys: ["C", "E", "G", "H", "L", "N", "T", "V", "X", "SPACE"],
     why: "The chart has no panel to put a legend on, and its keys are the whole "
-      + "of `HelpScene`'s first page, which is what `H` opens.",
+      + "of `HelpScene`'s first page, which is what `H` opens. That last clause "
+      + "is a claim about two files and is checked below, not taken on trust "
+      + "(v0.98.0, TODO 8).",
   },
   SeaBattleScene: {
     keys: ["ENTER", "SPACE"],
@@ -306,5 +308,84 @@ describe("the quartermaster's tabs", () => {
     // opened the fourth tab because the journal had been left out of the list.
     expect(keyCount).toBe(tabCount);
     expect(src).toMatch(/NUMBER_KEYS\.forEach/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+/**
+ * The chart's legend is the manual (v0.98.0, closing TODO 8).
+ *
+ * `MainMapScene` binds eighteen keys and names none of them on the screen,
+ * which has been on the list since v0.84.0 as a question to measure rather
+ * than to argue: is the manual under `H` really the legend the chart does not
+ * have? Measured, it is — the table on `HelpScene`'s first page and the chart's
+ * bindings are **the same eighteen keys, exactly**.
+ *
+ * So the answer to TODO 8 is a test rather than a new panel. What was actually
+ * missing was this check: the allowance above has said "its keys are the whole
+ * of HelpScene's first page" since v0.84.0 and nothing compared the two, so a
+ * key added to the chart, or a row dropped from the manual, would have made the
+ * sentence quietly false — which is the shape this project keeps finding.
+ */
+const INPUT = import.meta.glob("../../input/InputMapper.ts", {
+  query: "?raw", import: "default", eager: true,
+}) as Record<string, string>;
+
+describe("the chart's keys and the manual's table are one list", () => {
+  const source = (base: string): string => {
+    const hit = Object.entries(SCENES).find(([p]) => p.endsWith(`/${base}`));
+    if (!hit) throw new Error(`no source read for ${base}`);
+    return hit[1];
+  };
+
+  /** The first column of `HelpScene`'s CONTROLS table, as keys. */
+  function manualKeys(): Set<string> {
+    const help = source("HelpScene.ts");
+    const from = help.indexOf("const CONTROLS");
+    const to = help.indexOf("\n];", from);
+    if (from < 0 || to < 0) throw new Error("the manual's controls table has moved");
+    const table = help.slice(from, to);
+    const keys = new Set<string>();
+    for (const row of table.matchAll(/\[\s*"([^"]+)"\s*,/g)) {
+      // The same reader the legends go through, so `W / ↑` is two keys and
+      // `Scroll` is not a key at all.
+      for (const key of promisedKeys(`${row[1]} — x   Esc — y`)) {
+        if (key !== "ESC") keys.add(key);
+      }
+    }
+    return keys;
+  }
+
+  /**
+   * Every key the chart answers to.
+   *
+   * Ten are `keydown-` handlers in `MainMapScene`. The other eight — the
+   * helm and the sails — are **held**, not pressed, so `InputMapper` takes
+   * them with `addKey` and reads `isDown` every frame; a scan that looked only
+   * for `keydown-` saw ten of eighteen and would have called the manual's
+   * other eight rows phantoms.
+   */
+  function chartKeys(): Set<string> {
+    const keys = boundKeys(source("MainMapScene.ts"));
+    const held = Object.values(INPUT)[0];
+    if (!held) throw new Error("no source read for InputMapper.ts");
+    for (const m of held.matchAll(/KeyCodes\.([A-Z_]+)/g)) keys.add(normaliseKey(m[1]));
+    return keys;
+  }
+
+  it("has a manual row for every key the chart binds", () => {
+    const bound = chartKeys();
+    const manual = manualKeys();
+    expect([...bound].sort(), "the chart binds eighteen").toHaveLength(18);
+    const unlisted = [...bound].filter(k => !manual.has(k)).sort();
+    expect(unlisted, "the chart answers to these and the manual does not say so").toEqual([]);
+  });
+
+  it("promises no key the chart does not bind", () => {
+    const bound = chartKeys();
+    const manual = manualKeys();
+    const phantom = [...manual].filter(k => !bound.has(k)).sort();
+    expect(phantom, "the manual names these and the chart does not answer").toEqual([]);
   });
 });

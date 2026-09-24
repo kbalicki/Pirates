@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.97.2.0 · **Branch:** `main`
-**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2482 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.98.0.0 · **Branch:** `main`
+**Kod:** 288 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2514 przechodzi, 0 failuje, 0 `todo`** w 95 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2978,11 +2978,62 @@ powiększenie i dawał **11 odczytów na 14 ustawień**. Jedna drabina, czytana 
   bez wchodzenia w menu. To poprawne (ekran przestał kłamać), ale znaczy, że przewinienie
   kółkiem w trakcie gry **przetrwa restart**. Jeśli to niepożądane — osobna decyzja.
 
-**8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.**
-To pozycja z v0.84.0 na scenie, która nie ma gdzie postawić legendy — cały
-ekran jest mapą. Podręcznik pod `H` je wymienia; pytanie brzmi, czy to
-wystarcza, i jest to pytanie do **zmierzenia na ekranie**, nie do rozstrzygnięcia
-z fotela.
+**~~8. `MainMapScene` ma 18 klawiszy związanych i ani jednego zapowiedzianego.~~ ✅ v0.98.0**
+— zamknięte **testem, nie nowym panelem**. Wyjątek w `scene_legend.test.ts`
+tłumaczył to od v0.84.0 zdaniem, że klawisze czarty „są całą pierwszą stroną
+`HelpScene`” — **twierdzeniem o dwóch plikach, którego nic nie sprawdzało**.
+Zmierzone: tabela podręcznika i wiązania czarty to **te same osiemnaście
+klawiszy, co do jednego**, więc brakowało nie legendy, tylko tego sprawdzenia.
+Pułapka: skan źródła widzi **dziesięć** — ster i żagle są **trzymane**, więc
+`InputMapper` bierze je przez `addKey`, a nie `keydown-`.
+
+**~~Siatka, którą widać i której nie da się odczytać.~~ ✅ v0.98.0** — największe
+znalezisko wydania, wyszło z pytania zostawionego przez v0.97.0.0 („ile jeszcze
+metod bez wywołania?”). Trzynaście etykiet stopni czarty było rysowanych
+w przestrzeni świata, wszystkie w jednym punkcie pośrodku morza: **115 z 1755
+par (port, etykieta) miało etykietę w kadrze — 6,6%**, przy 191 liniach
+przecinających kadr. `UIOverlayScene.updateGridLabels`, pięćdziesiąt kompletnych
+linii kładących je **przy marginesie ekranu**, **nie było wywoływane nigdy**.
+Do tego dwie reguły wygaszania (2,2 dla linii, 2 dla etykiet) — teraz jedna.
+
+**~~Zbudowane i nigdy niezapytane.~~ ✅ v0.98.0** — siedem metod publicznych
+i cztery klasy w `src/game/` bez wywołania. Usunięte: `new FxManager(this);`
+z wyrzucanym wynikiem, `InputMapper.setSailLevel` (puste ciało, „Deprecated”),
+`MusicManager.getCurrent`, `CommandQueue.get length`. Strażnik `dead_code.test.ts`
+trzyma to na zerze.
+
+**~~Mgła wojny nie mogła się pojawić na nowej instalacji.~~ ✅ v0.98.0** — trop od
+drugiej sesji (`V` cofane w następnej klatce), po sprawdzeniu większy. `pc_debug`
+miał **czterech czytelników i dwie odpowiedzi** dla klucza nieustawionego, czyli
+dla świeżego profilu: `isDebugMode()` i `PortMarkerRenderer` czytały `=== "1"`
+(wyłączony), a `OptionsMenuScene` i `MainMapScene` — `raw === null ? true`
+i `!== "0"` (**włączony**). Czarta robiła co klatkę
+`fogOfWarEnabled = debugMode ? false : fogSetting`, więc przełącznik `Zasięg
+lunety` i klawisz `V` **nie mogły zadziałać nigdy**, a toast był całym widocznym
+działaniem `V`. Ten sam kształt co luneta z v0.97.0.0. `FogSetting.ts` posiada
+`pc_fog` i rozdziela „o co poprosił" od „co czarta rysuje"; debug dalej odsłania
+mapę, ale **mówi o tym**. Cztery angielskie literały na ekranie ustawień — też
+przy okazji.
+
+**Nowe, nienaprawione (v0.98.0):**
+
+- **Chybienie nie jest zdarzeniem.** `FxManager.spawnSplash` i `spawnSmoke` są
+  napisane i nikt ich nie woła, bo `CombatEngine` przy pudle ustawia **tylko
+  przeładowanie** (`CombatEngine.ts:713`). Ekran nie ma z czego narysować
+  pióropusza wody ani dymu. To zmiana w tym, co silnik **zgłasza** — nowy
+  wariant `CombatEvent` — a nie w rysowaniu, więc świadomie nie w v0.98.0.
+  **Do zmierzenia najpierw: ile salw w typowej bitwie pudłuje?** Jeśli pudło
+  jest rzadkie, brak informacji zwrotnej nie boli.
+- **Przemiatanie twierdzeń nie czyta warstwy rysującej.** `sweep-claims.mjs`
+  chodzi po `core/`. W `src/game/render/` komentarz `MountainRenderer` mówi
+  *„full opacity at zoom >= 4”*, a kod czyta `zoom < 2 ? 0.5 : 1`. Progi zoomu
+  są tam rozsypane (2 / 2,2 / 3 / 4 w sześciu plikach) i każdy jest o czym
+  innym, więc **nie ma czego scalać — jest co sprawdzić**.
+- **Cztery klasy nigdy nie budowane zostają na dysku**, z powodem w imiennej
+  liście strażnika: `MinimapRenderer` (minimapa usunięta w v0.9.2),
+  `ShoreWaveRenderer` (udokumentowany eksperyment, sześć nieudanych podejść),
+  `DOMCloudOverlay`, `WindCompassRenderer`. **Decyzja o skasowaniu należy do
+  użytkownika** — to parkowana praca, nie śmieci.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

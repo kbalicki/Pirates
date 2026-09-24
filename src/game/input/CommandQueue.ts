@@ -16,8 +16,4 @@ export class CommandQueue {
   clear(): void {
     this.queue = [];
   }
-
-  get length(): number {
-    return this.queue.length;
-  }
 }

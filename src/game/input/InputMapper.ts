@@ -90,10 +90,6 @@ export class InputMapper {
     }
   }
 
-  setSailLevel(_level: number): void {
-    // Deprecated — SailSystem handles levels now
-  }
-
   destroy(): void {
     if (this.keys && this.scene.input.keyboard) {
       this.scene.input.keyboard.removeKey(Phaser.Input.Keyboard.KeyCodes.W);

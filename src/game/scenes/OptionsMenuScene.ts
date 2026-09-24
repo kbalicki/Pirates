@@ -22,6 +22,8 @@ import { txt, PIRATE_ICONS_FONT, TEXT_RES, HINT_ON_LIGHT } from "../ui/textStyle
 import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
 import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel } from "../settings/ZoomSetting.ts";
+import { isDebugMode, setDebugMode } from "../settings/DebugSetting.ts";
+import { isFogEnabled, setFogEnabled } from "../settings/FogSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { CROWNS, enemiesOf, coBelligerentAgainst, alliedSince } from "../../core/systems/DiplomacySystem.ts";
@@ -1336,15 +1338,19 @@ export class OptionsMenuScene extends Phaser.Scene {
       this.add.text(x, y, t("settings.debug"), txt(13, { bold: true })));
     y += 22;
 
+    // Through `isDebugMode()` since v0.98.0. This row read the key itself and
+    // took an unset one for ON, so a fresh install showed `Debug: ON` in red
+    // while the module that owns the switch said off \u2014 and the chart, reading
+    // it a fourth way, turned the fog of war off for good on the strength of it.
     settingsItems.push({ type: "debug", y });
-    const debugRaw = localStorage.getItem("pc_debug");
-    const debugOn = debugRaw === null ? true : debugRaw === "1";
-    const debugLabel = debugOn ? "\u25B8 Debug: ON" : "  Debug: OFF";
+    const debugOn = isDebugMode();
+    const debugLabel = (debugOn ? "\u25B8 " : "  ")
+      + `${t("settings.debug")}: ${t(debugOn ? "settings.on" : "settings.off")}`;
     const debugColor = debugOn ? "#cc4444" : "#888888";
     const debugBtn = this.add.text(x + 10, y, debugLabel, txt(12, { bold: debugOn, color: debugColor }));
     debugBtn.setInteractive({ useHandCursor: true });
     debugBtn.on("pointerdown", () => {
-      localStorage.setItem("pc_debug", debugOn ? "0" : "1");
+      setDebugMode(!debugOn);
       this.switchTab("settings");
     });
     this.contentContainer.add(debugBtn);
@@ -1352,13 +1358,14 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Fog of War (spyglass range) toggle
     settingsItems.push({ type: "fog", y });
-    const fogOn = localStorage.getItem("pc_fog") === "1";
-    const fogLabel = fogOn ? "\u25B8 Spyglass range: ON" : "  Spyglass range: OFF";
+    const fogOn = isFogEnabled();
+    const fogLabel = (fogOn ? "\u25B8 " : "  ")
+      + `${t("settings.fog_label")}: ${t(fogOn ? "settings.on" : "settings.off")}`;
     const fogColor = fogOn ? "#2266aa" : "#888888";
     const fogBtn = this.add.text(x + 10, y, fogLabel, txt(12, { bold: fogOn, color: fogColor }));
     fogBtn.setInteractive({ useHandCursor: true });
     fogBtn.on("pointerdown", () => {
-      localStorage.setItem("pc_fog", fogOn ? "0" : "1");
+      setFogEnabled(!fogOn);
       this.switchTab("settings");
     });
     this.contentContainer.add(fogBtn);
@@ -1487,13 +1494,12 @@ export class OptionsMenuScene extends Phaser.Scene {
         setZoomLevel(level);
         this.switchTab("settings");
       } else if (item.type === "fog") {
-        const isFogOn = localStorage.getItem("pc_fog") === "1";
-        localStorage.setItem("pc_fog", isFogOn ? "0" : "1");
+        // The keyboard path kept its own copy of both readings, and its debug
+        // one disagreed with `isDebugMode()` in the same way (v0.98.0).
+        setFogEnabled(!isFogEnabled());
         this.switchTab("settings");
       } else if (item.type === "debug") {
-        const debugRawKb = localStorage.getItem("pc_debug");
-        const isOn = debugRawKb === null ? true : debugRawKb === "1";
-        localStorage.setItem("pc_debug", isOn ? "0" : "1");
+        setDebugMode(!isDebugMode());
         this.switchTab("settings");
       } else if (item.type.startsWith("vol:")) {
         const ch = item.type.split(":")[1] as SoundChannel;

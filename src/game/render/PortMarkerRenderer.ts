@@ -6,7 +6,8 @@ import { drawCityIcon } from "./CityIconRenderer.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt } from "../ui/textStyle.ts";
 import { fmtNum } from "../../core/i18n/numbers.ts";
-import { pixelToGeo, LAT_LINES, LON_LINES, getLatWorldY, getLonWorldX } from "./CartographicGrid.ts";
+import { pixelToGeo } from "./CartographicGrid.ts";
+import { isDebugMode } from "../settings/DebugSetting.ts";
 
 export interface PortMarkerResult {
   portSafePositions: Map<string, { x: number; y: number }>;
@@ -139,7 +140,7 @@ export class PortMarkerRenderer {
       coordLabels.push({ text: coordLabel, anchorX, anchorY: coordAnchorY });
 
       // Debug: port interaction radius circle (only when debug mode ON)
-      if (localStorage.getItem("pc_debug") === "1") {
+      if (isDebugMode()) {
         const dg = this.scene.add.circle(safePos.x, safePos.y, 6, 0x00ff00, 0);
         dg.setStrokeStyle(0.3, 0x00ff00, 0.3);
         dg.setDepth(499);
@@ -150,39 +151,13 @@ export class PortMarkerRenderer {
       }
     }
 
-    // Grid labels — same rendering path as city labels (proven to work)
-    // Position at center of map on each grid line
-    const gridLabels: PortMarkerResult["cityLabels"] = [];
-    const MAP_W = 3200, MAP_H = 2400;
-
-    for (const lat of LAT_LINES) {
-      const py = getLatWorldY(lat, MAP_H);
-      const label = this.scene.add.text(MAP_W / 2 - 100, py - 3, `${lat}°N`, {
-        ...txt(12, { bold: true, color: "#ffdd88" }),
-        stroke: "#000000",
-        strokeThickness: 3,
-      });
-      label.setOrigin(0.5, 1);
-      label.setDepth(600);
-      label.setData("isGrid", true);
-      gridLabels.push({ text: label, anchorX: MAP_W / 2 - 100, anchorY: py - 3, offsetPx: 0 });
-    }
-
-    for (const lon of LON_LINES) {
-      const px = getLonWorldX(lon, MAP_W);
-      const label = this.scene.add.text(px + 3, MAP_H / 2 - 50, `${-lon}°W`, {
-        ...txt(12, { bold: true, color: "#ffdd88" }),
-        stroke: "#000000",
-        strokeThickness: 3,
-      });
-      label.setOrigin(0, 0);
-      label.setDepth(600);
-      label.setData("isGrid", true);
-      gridLabels.push({ text: label, anchorX: px + 3, anchorY: MAP_H / 2 - 50, offsetPx: 0 });
-    }
-
-    // Merge grid labels into cityLabels so MainMapScene scales them identically
-    cityLabels.push(...gridLabels);
+    // The degree labels used to be built here, in world space, all thirteen at
+    // one spot: the latitudes at `MAP_W/2 - 100`, the longitudes at
+    // `MAP_H/2 - 50`. Measured over the 45 ports and the three zoom steps that
+    // draw the grid, the label was in frame for 115 of 1755 pairs -- 6.6% --
+    // while 191 lines crossed the view at the widest step. They belong at the
+    // margin of the SCREEN, so `UIOverlayScene.updateGridLabels` draws them
+    // now; it had been written for exactly that and never called (v0.98.0).
 
     return { portSafePositions, cityLabels, coordLabels, cityGraphics: g, flagImages, flagByPort };
   }
