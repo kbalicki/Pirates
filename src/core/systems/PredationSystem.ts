@@ -85,7 +85,19 @@ export const PREY_AGGRESSION_FLOOR = 0.35;
 /** Guns a hull must have over her target before she likes the odds at all. */
 export const PREY_ODDS = 0.7;
 
-/** What a ship is worth defending herself with when she has no stomach for it. */
+/**
+ * What a ship is worth defending herself with when she has no stomach for it:
+ * the share of her fighting weight a hull with `aggression` 0 still puts up.
+ *
+ * Not the same number as `PREY_AGGRESSION_FLOOR`, though it is the same 0.35
+ * (v0.97.0): that one is a gate on a roll, this one is a share of weight. What
+ * it decides, measured on fresh hulls from the spawn table: every rover class
+ * clears `PREY_ODDS` against every trader class, 16 pairs of 16 — the worst,
+ * a pinnace against a brigantine in trade, is a 46 % fight where the gate
+ * starts at about 41 %. So the gate refuses a rover a merchantman only once
+ * she is **damaged**. At 0.5 the pinnace would lose the brigantine; at 0.7,
+ * all four trader classes.
+ */
 export const DEFENCE_FLOOR = 0.35;
 
 export type PreyKind = "plunder" | "police";

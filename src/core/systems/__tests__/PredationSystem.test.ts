@@ -320,3 +320,46 @@ describe("the aggression floor, against the bands it grades", () => {
     }
   });
 });
+
+// ===========================================================================
+// The defence floor is a share, not a gate (v0.97.0)
+// ===========================================================================
+
+/**
+ * `DEFENCE_FLOOR` and `PREY_AGGRESSION_FLOOR` are both 0.35, and TODO asked
+ * whether that is one number or two. Two: the aggression floor is a **gate**
+ * on a roll, the defence floor is the **share of her fighting weight** a hull
+ * with no stomach for it still puts up. They share a value, not a unit.
+ *
+ * What the defence floor decides, measured on fresh hulls from the spawn table:
+ * **every** rover class clears the odds gate against **every** trader class,
+ * 16 pairs of 16. The worst of them — a pinnace against a brigantine in trade
+ * — is a 46 % fight, and the gate (`PREY_ODDS` 0.7) lets her start at about
+ * 41 %. So at full hull the gate never refuses a rover a merchantman; it bites
+ * on **damage**, through the hull factor in `fightingWeight`. Raised to 0.5
+ * the pinnace loses the brigantine, at 0.7 she loses all four.
+ */
+describe("the defence floor, against the pairs it decides", () => {
+  const ROVERS = ["pinnace", "sloop", "brigantine", "frigate"];
+  const TRADERS = ["merchantman", "fluyt", "barque", "brigantine"];
+
+  it("lets every fresh rover class take on every trader class, whatever her will", () => {
+    for (const r of ROVERS) for (const t of TRADERS) for (const will of [0, 0.1]) {
+      const rover = ship("r", { behavior: "pirate", crown: "pirates", classId: r, aggression: 0.8 });
+      const prize = ship("t", { behavior: "trader", classId: t, aggression: will, cargo: { sugar_cane: 10 } });
+      expect(wantsPrey(rover, "pirates", prize, "spain"), `${r} > ${t} @ ${will}`).toBe("plunder");
+    }
+  });
+
+  it("leaves the gate to damage: a rover at a fifth of her hull turns the pinnace's fight down", () => {
+    const rover = ship("r", { behavior: "pirate", crown: "pirates", classId: "pinnace", aggression: 0.8 });
+    rover.ship!.hullHp = rover.ship!.hullMax * 0.2;
+    const prize = ship("t", { behavior: "trader", classId: "merchantman", aggression: 0, cargo: { sugar_cane: 10 } });
+    expect(wantsPrey(rover, "pirates", prize, "spain")).toBeNull();
+  });
+
+  it("is a share of weight, so the same value as the aggression floor is a coincidence of digits", () => {
+    const prize = ship("t", { classId: "merchantman", aggression: 0 });
+    expect(defenceWeight(prize) / fightingWeight(prize)).toBeCloseTo(DEFENCE_FLOOR, 6);
+  });
+});

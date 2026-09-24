@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.96.0.0 · **Branch:** `main`
-**Kod:** 280 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2440 przechodzi, 0 failuje, 0 `todo`** w 89 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.96.1.0 · **Branch:** `main`
+**Kod:** 280 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2443 przechodzi, 0 failuje, 0 `todo`** w 89 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2788,7 +2788,30 @@ Dostał `reliefWatch` i linię HUD-u. Przy okazji: gałąź `playerPresentAt` dl
 portu **nigdy się nie wykonała** i pilnowały jej dwa testy.
 
 **3. Czy generator daje to, czego próg żąda?** — **częściowo zamknięte
-w v0.92.0**, pozycja zostaje. `STORM_SAFE_SAIL` stał **dokładnie na jednej
+w v0.92.0 i v0.96.1**, pozycja zostaje.
+
+*v0.96.1:* `DEFENCE_FLOOR` a `PREY_AGGRESSION_FLOOR` — **dwie liczby**, wspólna wartość
+0,35 to zbieżność cyfr (próg na rzucie vs udział wagi bojowej). Zmierzone: przy 0,35
+**każda** klasa rovera przechodzi `PREY_ODDS` przeciw **każdej** klasie kupca na świeżym
+kadłubie (16/16; najgorsza para pinasa–brygantyna 46% walki przy progu ok. 41%), więc
+bramka szans odmawia wyłącznie uszkodzonemu roverowi. Przypięte w `PredationSystem.test.ts`.
+
+*v0.96.1, pomiar bez decyzji — **ZŁOTO poza kopalnią stoi na `RATIO_MAX` w 45 z 45 portów**.*
+`spotPrice` bierze popyt `(rate || 1) × 30`, więc towar, którego miasto **nie je**,
+dostaje fikcyjny popyt 1 t/dzień; złoto ma zapas 0 wszędzie poza kopalnią, więc
+notowanie = `bazowa × 3,0` (Hawana **276**, Port Royal 264). W mieście-kopalni złoto
+stoi na **77** (zapas dobija do 30 t i tam zostaje; osobny wzór w
+`EconomyTickSystem.ts:~607`, `80 × clamp(30/zapas, 0,6, 2,5)`). Kurs z 30 t: kupno ok.
+2 300, sprzedaż w Hawanie ok. 5 500 brutto — **ok. +3 000 na kurs**, a każdy z 45 portów
+to **jednorazowy zlew** (złota nikt tam nie zjada, zapas nigdy nie spada: przy 30 t na
+kei cena spada do ok. 89). Towary „ani nie produkuje, ani nie je” poza złotem: brak
+(pozostałe 71 notowań w tej grupie ma zapas startowy). **Decyzja dla użytkownika**, nie
+autonomiczna — v0.29.0 celowo dało graczowi „po co płynąć”. Warianty: (a) zostawić;
+(b) złoto poza kopalnią po cenie bazowej (ratio 1) — kurs traci sens; (c) popyt na złoto
+z bogactwa miasta, żeby bogate porty płaciły premię, a zapas się rozchodził;
+(d) sufit dla dóbr bez konsumenta niższy niż 3,0. Przy okazji: **18 z 69** notowań
+producentów stoi na `RATIO_MIN` po 400 dniach (było 7 na starcie) — do sprawdzenia, czy
+to te same pary co w v0.75.0. `STORM_SAFE_SAIL` stał **dokładnie na jednej
 z czterech wartości `SAIL_LEVELS`**, które miał stopniować (0,5 = Pół), więc
 cztery stopnie dawały dwie odpowiedzi, a Refowane były ściśle zdominowane.
 `PREY_AGGRESSION_FLOOR` zbadało pasma agresji: marynarka przechodzi **7 razy na

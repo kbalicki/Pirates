@@ -6,6 +6,21 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.96.1.0",
+    date: "2026-09-24",
+    changes: [
+      "TWO NUMBERS THAT HAPPEN TO BE 0.35",
+      "  How willing a ship must be before she hunts, and how much of her",
+      "  strength a ship with no stomach for a fight still puts up, are both",
+      "  0.35. Measured: they are two numbers. The second decides that every",
+      "  pirate class will go after every merchant class at full hull - the",
+      "  worst match, a pinnace on a trading brigantine, is about a coin toss -",
+      "  and a pirate turns a fat merchantman down only once she is damaged",
+      "  Nothing changes in play; the measurement is pinned so the next",
+      "  change to either has to agree with it",
+    ],
+  },
+  {
     version: "0.96.0.0",
     date: "2026-09-24",
     changes: [
