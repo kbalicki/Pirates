@@ -252,3 +252,29 @@ describe("what the screen says about it", () => {
     }
   });
 });
+
+// ===========================================================================
+// What a squall does to the wind, measured (v0.97.2)
+// ===========================================================================
+
+/**
+ * Two documents said a squall "adds 0.3 to the wind". It adds 0.3 **every
+ * tick** to a wind that already carries last tick's 0.3, so it reaches the
+ * ceiling within three ticks and stays there. The behaviour is pinned as it is,
+ * and the sentences changed; whether a squall should blow a full gale is a
+ * question for the helm (TODO, item 3).
+ */
+describe("a squall's wind", () => {
+  it("is at the ceiling within three ticks and stays there", () => {
+    let w = { windDirRad: 0, windStrength: 0.4, stormActive: true, stormTimer: 400 };
+    let rng = { seed: 3, state: 3 };
+    const seen: number[] = [];
+    for (let i = 0; i < 300; i++) {
+      const r = updateWeather(w, rng, 1, 7, 1, 31);
+      w = r.weather; rng = r.rng;
+      seen.push(w.windStrength);
+    }
+    expect(seen[2]).toBe(1);
+    expect(Math.min(...seen.slice(2))).toBeGreaterThan(0.99);
+  });
+});

@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
 import {
+  stormFloored as floorOf, HURRICANE_HULL_FLOOR as HULL_FLOOR, HURRICANE_RIG_FLOOR as RIG_FLOOR,
+} from "../WeatherFieldSystem.ts";
+import { hullCondition as hullIs, rigCondition as rigIs } from "../DamageSystem.ts";
+import {
   weatherAt,
   weatherAtPlayer,
   hurricaneAt,
@@ -515,5 +519,22 @@ describe("what the captain is told", () => {
       expect(EN[key], key).toBeDefined();
       expect(PL[key], key).toBeDefined();
     }
+  });
+});
+
+// ===========================================================================
+// A floor written as a tier line has to read back as that tier (v0.97.2)
+// ===========================================================================
+
+describe("the hurricane's floors, read back through the tiers", () => {
+  it("leaves every hull crippled and every rig torn, whatever its size", () => {
+    // `43 × 0.4 / 43` is 0.39999999999999997: 22 of the first 400 sizes of
+    // canvas came out of the storm `tattered`, a tier below the promise.
+    const wrong: string[] = [];
+    for (let max = 1; max <= 400; max++) {
+      if (rigIs(floorOf(max, max, 1e9, RIG_FLOOR), max) !== "torn") wrong.push(`rig ${max}`);
+      if (hullIs(floorOf(max, max, 1e9, HULL_FLOOR), max) !== "crippled") wrong.push(`hull ${max}`);
+    }
+    expect(wrong).toEqual([]);
   });
 });

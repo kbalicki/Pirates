@@ -263,3 +263,33 @@ describe("no screen draws words through a template either", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+// ===========================================================================
+// A toast is a screen too (v0.97.2)
+// ===========================================================================
+
+/**
+ * Every sweep above reads `src/game`. The engine in `src/core` does not draw,
+ * but it **writes** what is drawn: a `Toast` event carries its message ready
+ * made, and `WorldRenderer` puts it on the chart as it stands. Landing and
+ * re-embarking said *"Crew has gone ashore."* and *"Crew has returned to
+ * ship."* in English in the Polish game — beside `event.disembarked` and
+ * `event.embarked`, the keys for exactly those sentences, written into the log
+ * two lines above.
+ */
+describe("the engine hands the screen no words of its own", () => {
+  const CORE_SOURCES = import.meta.glob("../../**/*.ts", {
+    query: "?raw", import: "default", eager: true,
+  }) as Record<string, string>;
+
+  it("builds every toast message through t()", () => {
+    const offenders: string[] = [];
+    for (const [path, src] of Object.entries(CORE_SOURCES)) {
+      if (path.includes("__tests__")) continue;
+      for (const m of src.matchAll(/type:\s*"Toast",\s*message:\s*(["'`])/g)) {
+        offenders.push(`${path}: Toast with a ${m[1]}literal${m[1]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+});

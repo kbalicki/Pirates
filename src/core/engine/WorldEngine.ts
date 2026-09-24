@@ -323,13 +323,13 @@ export class WorldEngine {
           // Record landing tick for cooldown (prevents instant re-embark)
           updatedEntities[playerShipId] = { ...updatedPlayer, landedTick: newTime.tick };
           world = addLogEntry({ ...world, time: newTime }, "event.disembarked");
-          allEvents.push({ type: "Toast", message: "Crew has gone ashore." });
+          allEvents.push({ type: "Toast", message: t("event.disembarked") });
         }
 
         // Detect auto-embark (crew walked back to water edge)
         if (prevEntityMode === "landed" && updatedPlayer.mode === "sailing") {
           world = addLogEntry({ ...world, time: newTime }, "event.embarked");
-          allEvents.push({ type: "Toast", message: "Crew has returned to ship." });
+          allEvents.push({ type: "Toast", message: t("event.embarked") });
         }
 
         // 5. Update player location pos

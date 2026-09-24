@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.97.1.0 · **Branch:** `main`
-**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2479 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.97.2.0 · **Branch:** `main`
+**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2482 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2722,8 +2722,8 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   `HUD_ROW` to zwykły obiekt ze stałymi w `UIOverlayScene`; najdłuższa nowa
   linia zmierzona na ekranie ma 374 px przy prawym marginesie, ale to pomiar
   jednego zdania, nie strażnik
-- **`reliefWatch` nie mówi o desancie na miasto, którego gracz nie trzyma i nie
-  broni** — słusznie, bo takiego nie dostanie. Ale **nie mówi też nic o tym, że
+- ~~**`reliefWatch` nie mówi o desancie na miasto, którego gracz nie trzyma i nie
+  broni**~~ ✅ zmierzone v0.97.2 z kodu: miasto zmienia właściciela **tylko** dwiema drogami (szturm gracza w `SiegeSystem`, odsiecz w `ReconquestSystem.settleRelief`), a każde rozstrzygnięcie odsieczy pisze wpis w dzienniku **i** Toast (`reconquest.toast_lost`/`_held`), który `MainMapScene` wyświetla; dni płyną tylko na morzu, więc nie ma chwili, w której Toast by przepadł. — słusznie, bo takiego nie dostanie. Ale **nie mówi też nic o tym, że
   jego własne miasto właśnie zmieniło ręce offscreen**; to robi kanał
   wiadomości i nie zostało sprawdzone, czy faktycznie dociera
 
@@ -2831,7 +2831,22 @@ cztery stopnie dawały dwie odpowiedzi, a Refowane były ściśle zdominowane.
 `PREY_AGGRESSION_FLOOR` zbadało pasma agresji: marynarka przechodzi **7 razy na
 8**, nie „połowę” — tam została liczba, a znikło zdanie. **Nowa forma pytania,
 którą warto zadać każdemu progowi: czy próg nie stoi na jednej z wartości,
-które bramkuje, albo na końcu pasma?** Zostaje: `HURRICANE_*` (pobieżnie
+które bramkuje, albo na końcu pasma?**
+
+*v0.97.2:* **podłogi huraganu SĄ liniami progów** (`HURRICANE_HULL_FLOOR =
+FOUNDERING_THRESHOLD`, `HURRICANE_RIG_FLOOR = RIG_TIERS[1].minFrac`) i obiecują
+„crippled, nigdy foundering” / „torn”. Podłoga to `max × udział`, a próg czyta
+`hp / max` — i dla **22 z pierwszych 400** wartości `sailsMax` (43, 81, 86…) wraca
+0,39999…, czyli `tattered`, stopień niżej. Żadna klasa w `ships.ts` dziś takiej
+liczby nie ma; klasyfikacja progów ma teraz tolerancję 1e-9 i test na 1..400.
+**Szkwał wieje z siłą huraganu**: `+0.3` do siły wiatru dokłada się **co tick**
+do wiatru już podbitego, więc po trzech tickach jest 1,0 (średnio **0,999** przez
+rok symulacji, 115 szkwałów, 3,1% czasu, lipiec–wrzesień ok. 5,7%). Dwa dokumenty
+mówiły „dokłada 0,3”. Zachowanie przypięte testem, zdania poprawione — **decyzja
+dla użytkownika (playtest)**: czy szkwał ma być pełnym sztormem, czy +0,3 nad
+wiatrem bazowym (wtedy średnio ok. 0,8). Przy okazji instrukcja gracza mówiła
+„rwie płótno, jeśli niesiesz więcej niż połowę” — od v0.92.0 rwie też przy
+połowie; poprawione. Zostaje: `HURRICANE_*` (pobieżnie
 sprawdzone, podłogi osiągalne), `RATIO_MIN`/`RATIO_MAX` w `PricingSystem`
 (v0.67.0 już raz na to wpadła), progi reputacji przeciwko rozkładowi zmian
 reputacji, `DEFENCE_FLOOR` (**ta sama wartość 0,35 co `PREY_AGGRESSION_FLOOR`

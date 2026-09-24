@@ -6,6 +6,30 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.97.2.0",
+    date: "2026-09-24",
+    changes: [
+      "\"CREW HAS GONE ASHORE.\" - IN ENGLISH, IN THE POLISH GAME",
+      "  Landing and re-embarking announced themselves with two English",
+      "  sentences written into the engine, beside the translated keys for",
+      "  exactly those sentences. The engine hands the screen no words of its",
+      "  own now, and a test keeps it that way",
+      "A HURRICANE'S FLOOR IS A PROMISE",
+      "  A hurricane can tear canvas down to \"torn\" and no further. The floor",
+      "  is worked out as a share of the ship's canvas and read back the same",
+      "  way, and for 22 of the first 400 sizes of canvas that round trip came",
+      "  out a hair short - \"tattered\", one step worse than promised. No ship",
+      "  in the game has such a size today; none can hit it later",
+      "A SQUALL BLOWS A FULL GALE",
+      "  Two documents and the manual said a squall adds a little to the wind.",
+      "  Measured over a simulated year it holds the wind at full strength, the",
+      "  same as a hurricane's eye. Nothing changes in play; the description",
+      "  now says what happens. The manual also said canvas tears only above",
+      "  half sail - since 0.92 it tears at half sail too. Reef",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.97.1.0",
     date: "2026-09-24",
     changes: [

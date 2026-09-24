@@ -79,6 +79,14 @@ export function updateWeather(
     }
   }
 
+  // Read as "a squall adds 0.3 to the wind" in two documents since v0.38.0.
+  // It adds 0.3 to a wind that already had 0.3 added last tick, so within
+  // three ticks of the first gust the squall is blowing at the ceiling, and
+  // it stays there: measured over a simulated year, mean wind inside a squall
+  // is **0.999** — the same `HURRICANE_WIND` the eye of a hurricane blows at.
+  // Whether a squall should be a full gale or a +0.3 is a question about how
+  // it feels at the helm, so the behaviour is pinned as it is
+  // (`StormSystem.test.ts`) and the sentences are what changed (v0.97.2).
   if (stormActive) {
     newStrength = Math.min(1, newStrength + 0.3);
   }

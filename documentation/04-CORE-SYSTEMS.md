@@ -1618,8 +1618,9 @@ się go wyprowadzić**. Mgła jest czystą funkcją tego, co świat i tak wie:
 1. **cisza.** `FOG_MAX_WIND = 0.35` leży wyraźnie poniżej sezonowej średniej, więc
    mglisty poranek wymaga, żeby wiatr zawędrował w dół — co zdarza się od czasu
    do czasu, a nie według rozkładu. To też powód, dla którego **żaden sztorm nie
-   jest mglisty i nie trzeba było o tym pisać reguły**: szkwał dokłada 0,3 do
-   wiatru, a huragan przybija go do 1.
+   jest mglisty i nie trzeba było o tym pisać reguły**: szkwał i huragan
+   przybijają wiatr do 1 (szkwał dokłada 0,3 co tick, więc po trzech tickach
+   stoi na suficie — zmierzone v0.97.2: średnio 0,999).
 2. **godzina.** Tworzy się po północy, jest najgęstsza przed świtem, wypala się
    do 10:00.
 3. **miejsce.** Pole szumu wartościowego kluczowane **nocą** (nie datą — inaczej
@@ -1741,7 +1742,8 @@ kłamiący o *tym miejscu* byłby gorszy niż brak kompasu.
 
 `WeatherState.stormActive` jest w modelu **od pierwszego commita**. `WeatherSystem`
 losuje szkwał z sezonowej tabeli, prowadzi go 120-600 ticków, dokłada 0,3 do siły
-wiatru i zapisuje go do każdego save'a. **Nie czytało go nic** — ani system, ani
+wiatru **co tick** (czyli w praktyce trzyma go na 1,0 — v0.97.2) i zapisuje go do
+każdego save'a. **Nie czytało go nic** — ani system, ani
 scena, ani renderer; `grep` znajdował producenta i zero odbiorców.
 
 Szkwał istniał więc jako mały dodatkowy pchnięcie na krzywej polarnej i jako nic

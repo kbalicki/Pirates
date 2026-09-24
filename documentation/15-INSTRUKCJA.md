@@ -102,7 +102,8 @@ zawsze. Skróty wzdłuż brzegu to co innego.
 
 ### Pogoda
 
-- **Szkwał** rwie płótno, jeśli niesiesz więcej niż połowę. Zrefuj.
+- **Szkwał** rwie płótno, jeśli niesiesz więcej niż **refowane** — także przy
+  połowie żagli. Wiatr w szkwale wieje z pełną siłą, jak w huraganie. Zrefuj.
 - **Huragan** to zdarzenie świata, które naprawdę wędruje: jedno oko idące drogą
   przez ostrzeżone miasta. Widać je na czarcie razem z trasą. Drze żagle
   **i kadłub**, a widoczność spada do jednej trzeciej.

@@ -71,6 +71,21 @@ export const FOUNDERING_HULL_LOSS_PER_TICK = 0.0005;
 /** Below this fraction of hull the ship is taking water it cannot pump out. */
 export const FOUNDERING_THRESHOLD = HULL_TIERS[2].minFrac; // 0.25
 
+/**
+ * How close to a tier's line a share may fall and still be read as on it.
+ *
+ * Two floors are defined **as** tier lines — the hurricane stops at
+ * `FOUNDERING_THRESHOLD` and at the torn line, "crippled, never foundering" —
+ * and the floor is written as `max × share`, which the tier then reads back as
+ * `hp / max`. In floating point that round trip is not always the share it
+ * started from: `43 × 0.4 / 43` is 0.39999999999999997, so a hull with 43
+ * points of canvas sat out a hurricane one tier lower than the floor promised,
+ * `tattered` instead of `torn` (v0.97.2; no class in `ships.ts` has such a
+ * number today; 22 of the first 400 integers do). A millionth of a hull is not
+ * damage anybody can inflict.
+ */
+const TIER_EPSILON = 1e-9;
+
 function fraction(hp: number, max: number): number {
   if (!(max > 0)) return 0;
   return Math.max(0, Math.min(1, hp / max));
@@ -81,7 +96,7 @@ export function hullCondition(hullHp: number, hullMax: number): HullCondition {
   if (hullHp <= 0) return "sunk";
   const frac = fraction(hullHp, hullMax);
   for (const tier of HULL_TIERS) {
-    if (frac >= tier.minFrac) return tier.id;
+    if (frac >= tier.minFrac - TIER_EPSILON) return tier.id;
   }
   return "foundering";
 }
@@ -90,7 +105,7 @@ export function hullCondition(hullHp: number, hullMax: number): HullCondition {
 export function rigCondition(sailsHp: number, sailsMax: number): RigCondition {
   const frac = fraction(sailsHp, sailsMax);
   for (const tier of RIG_TIERS) {
-    if (frac >= tier.minFrac) return tier.id;
+    if (frac >= tier.minFrac - TIER_EPSILON) return tier.id;
   }
   return "dismasted";
 }
