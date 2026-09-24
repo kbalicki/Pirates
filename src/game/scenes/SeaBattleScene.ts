@@ -23,7 +23,7 @@ import {
   consortTraining,
 } from "../../core/systems/FleetSystem.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
-import { cannonRangeFor } from "../../core/systems/CombatSystem.ts";
+import { cannonRangeFor, BROADSIDE_HALF_ARC } from "../../core/systems/CombatSystem.ts";
 import { BOARDING_RANGE } from "../../core/systems/BoardingSystem.ts";
 import type { CombatEntityState } from "../../core/model/CombatState.ts";
 import type { ShipClassId, FactionId } from "../../core/model/ids.ts";
@@ -813,14 +813,18 @@ export class SeaBattleScene extends Phaser.Scene {
     );
   }
 
-  /** Faint dashed arcs showing port + starboard firing zones (no fore/aft dead-zone). */
+  /**
+   * Faint dashed arcs showing port + starboard firing zones: what the engine's
+   * `bearingSide` lets a broadside bear on, and nothing wider.
+   */
   private drawRangeCircle(cx: number, cy: number, heading: number): void {
     this.rangeCircle.clear();
     const r = this.combatState.cannonRange;
     this.rangeCircle.lineStyle(1.2, 0xffeeaa, 0.28);
     // Starboard arc: centered at Phaser-angle `heading`. Port: centered at `heading + π`.
-    // ±60° from broadside = 120° per side; matches the broadside firing arc.
-    const HALF_ARC = Math.PI / 3;
+    // Until v0.98.3 this was a typed `Math.PI / 3` — ±60° off the beam against
+    // the engine's ±30°, so half of each drawn arc was a promise the guns broke.
+    const HALF_ARC = BROADSIDE_HALF_ARC;
     const drawArc = (centerA: number) => {
       const startA = centerA - HALF_ARC;
       const endA = centerA + HALF_ARC;
@@ -1035,7 +1039,9 @@ export class SeaBattleScene extends Phaser.Scene {
           this.fxManager.spawnHit({ x: tx, y: ty });
           this.cameras.main.shake(80, 0.003);
         } else {
-          // Water splash at miss point + "MISS" floater
+          // Water splash at the miss point. A miss is already an event
+          // (`CannonFired` with `hit: false`), drawn as smoke, flash, report,
+          // the ball's flight and this splash — there is no floater.
           this.spawnWaterSplash({ x: tx, y: ty });
         }
       },
@@ -1139,13 +1145,6 @@ export class SeaBattleScene extends Phaser.Scene {
 
   private handleCombatEvent(event: CombatEvent): void {
     switch (event.type) {
-      case "FxHit": {
-        // Translate combat-coords to screen-coords for FX
-        const screenPos = { x: this.arenaOriginX + event.pos.x, y: this.arenaOriginY + event.pos.y };
-        this.fxManager.spawnHit(screenPos);
-        this.cameras.main.shake(80, 0.003);
-        break;
-      }
       case "CannonFired": {
         const fromPos = event.fromPos ?? this.combatState.entities[event.shipId as string]?.pos;
         const targetPos = event.targetPos ?? (
@@ -1198,6 +1197,9 @@ export class SeaBattleScene extends Phaser.Scene {
       }
       case "DisengageRejected":
         this.flashBanner(t("battle.disengage_too_close"), "#ff8888", 13);
+        break;
+      case "FireRejected":
+        this.flashBanner(t("battle.fire_out_of_arc"), "#ff8888", 13);
         break;
       case "BoardingIncoming":
         this.defendBoarding();

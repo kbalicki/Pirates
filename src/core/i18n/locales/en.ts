@@ -531,6 +531,7 @@ export const EN: LocaleData = {
   "battle.cannot_board": "Get closer to board (≤{{range}} px).",
   "battle.enemy_too_strong": "Enemy too strong — soften first (hull or crew).",
   "battle.disengage_too_close": "Too close to break off — open the range beyond gunshot.",
+  "battle.fire_out_of_arc": "Those guns cannot bear — bring her abeam, not off the bow or the stern.",
   "battle.boarders_away": "Grapnels away — boarders on your deck!",
   "battle.boarded_held": "Thrown back over the side. The deck is yours.",
   "battle.boarded_lost": "They carried the deck — the ship is lost.",

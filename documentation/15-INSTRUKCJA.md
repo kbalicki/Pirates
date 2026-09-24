@@ -352,11 +352,14 @@ zmienia szlak. Informator w tawernie sprzeda Ci jej rozkład.
 
 ### Łuki ognia
 
-Działa strzelają **na boki**, w wycinku ±60° od burty. Prosto przed dziobem
-i za rufą **nie masz czym strzelać**. Cała bitwa morska polega na tym, żeby
+Działa strzelają **na boki**, w wycinku **±30° od prostopadłej** do kadłuba —
+to ten, który arena rysuje przerywaną linią. W całym pasie ±60° od dziobu
+i od rufy **nie masz czym strzelać**; jeśli wydasz rozkaz, gra powie, że działa
+tej burty nie mają celu. Cała bitwa morska polega na tym, żeby
 ustawić burtę i nie dać ustawić jej przeciwnikowi.
 
-Zasięg to **pół szerokości areny**. Dalej kule wpadają do wody.
+Zasięg to **ćwierć szerokości ekranu** (jedna dwunasta areny). Dalej kule
+wpadają do wody.
 
 **Te same łuki obowiązują przeciwnika.** Kiedy zbliża się dziobem, nie ma czym
 strzelać — i odwrotnie: kiedy leży burtą na swoim stanowisku, strzela z tej,

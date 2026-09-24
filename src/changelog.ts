@@ -6,6 +6,37 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.98.3.0",
+    date: "2026-09-24",
+    changes: [
+      "AN ARC THAT PROMISED TWICE WHAT THE GUNS WOULD DO",
+      "  The engine lets a broadside bear within ±30° of the beam - the bow and",
+      "  stern dead zone is ±60°. The arena drew its dashed firing arcs at",
+      "  Math.PI / 3, typed by hand: ±60° of the beam, 120° a side. Half of every",
+      "  arc on the screen was water where Q and E were refused in silence - no",
+      "  event, no sound, no reload. He saw her inside his arc, fired, and",
+      "  nothing happened",
+      "",
+      "  The arc now reads BROADSIDE_HALF_ARC = asin(BROADSIDE_ARC_COS), the same",
+      "  rule the guns obey, and an order that cannot bear answers: 'those guns",
+      "  cannot bear - bring her abeam'. Only the captain's orders are answered;",
+      "  the AI asks every tick and still gets silence",
+      "",
+      "A MISS WAS ALWAYS AN EVENT",
+      "  The backlog said a miss produced no event, so the screen could not",
+      "  splash. It does: CannonFired goes out with hit: false and the target's",
+      "  position, and the battle draws smoke, flash, report, the ball's flight",
+      "  and the splash. The note read 'no damage events' as 'no events'.",
+      "  FxManager's unused splash and smoke were copies of effects the battle",
+      "  already draws, and went, with two CombatEvent variants nothing sent",
+      "",
+      "  The player's manual said ±60° and 'half the arena' too; it says ±30°",
+      "  and a quarter of the screen now",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.98.2.0",
     date: "2026-09-24",
     changes: [

@@ -56,8 +56,6 @@ export type CombatState = {
 
 export type CombatEvent =
   | { type: "Sound"; id: string }
-  | { type: "FxHit"; pos: Vec2 }
-  | { type: "FxSplash"; pos: Vec2 }
   | { type: "CannonFired"; side: "left" | "right"; shipId: EntityId; ammo?: AmmoType; hit?: boolean; targetPos?: Vec2; fromPos?: Vec2 }
   | { type: "ShipDamaged"; shipId: EntityId; hullDelta: number; sailsDelta: number; crewDelta?: number }
   | { type: "Surrender"; shipId: EntityId }
@@ -65,6 +63,12 @@ export type CombatEvent =
   /** She has thrown her grapnels; whoever reads this owes the captain a duel. */
   | { type: "BoardingIncoming"; boarderId: EntityId }
   | { type: "DisengageRejected"; reason: "too_close" }
+  /**
+   * The captain ordered a broadside that cannot bear: the enemy is in the bow
+   * or stern dead zone, or on the other beam. Only the player's own orders
+   * produce it — the AI asks every tick and is answered by silence (v0.98.3).
+   */
+  | { type: "FireRejected"; side: "left" | "right"; reason: "out_of_arc" }
   /** `captured` is from the BOARDER's side: she carried the deck she came for. */
   | {
       type: "BoardingResolved"; boarderId: EntityId; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number;

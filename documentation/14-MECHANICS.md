@@ -1251,7 +1251,11 @@ konsorta, a po drugim strachu inny szlak.
 
 ## 13. Bitwa morska
 
-Arena trzy razy większa od ekranu, trzy typy amunicji, łuki ostrzału ±60°
+Arena trzy razy większa od ekranu, trzy typy amunicji, łuki ostrzału **±30° od
+trawersu** (martwa strefa ±60° od dziobu i od rufy; `BROADSIDE_HALF_ARC` =
+`asin(BROADSIDE_ARC_COS)`, z którego od v0.98.3 rysuje też arena — wcześniej
+rysowała ±60° od trawersu, dwa razy za szeroko, a strzał spoza łuku był
+odrzucany bez słowa; dziś odpowiada `FireRejected`)
 — **te same dla obu burt i dla obu stron walki** (`CombatSystem.bearingSide`,
 v0.85.0; wcześniej działa przeciwnika miały własną kopię tej reguły, która nie
 miała ani łuku, ani burty).

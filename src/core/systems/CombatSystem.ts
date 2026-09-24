@@ -151,6 +151,18 @@ export const HULL_WIDTH = 77;
 export const BROADSIDE_ARC_COS = 0.5;
 
 /**
+ * The same rule seen from the beam: how far either side of square a broadside
+ * can be trained, in radians. A target at `φ` off the beam is `90° − φ` off
+ * the bow, so it bears while `sin φ <= BROADSIDE_ARC_COS` — **±30°** today.
+ *
+ * The arena drew its dashed firing arcs at ±60° off the beam until v0.98.3.0,
+ * a hand-typed `Math.PI / 3` that read the dead zone's half-width as the
+ * arc's: half of every drawn arc was water where `Q`/`E` did nothing at all.
+ * Anything that draws or describes the arc reads this number.
+ */
+export const BROADSIDE_HALF_ARC = Math.asin(BROADSIDE_ARC_COS);
+
+/**
  * Which battery bears on a target, or `null` when it lies in the dead zone.
  *
  * Before v0.85.0 this rule was written twice. The captain's guns obeyed it in

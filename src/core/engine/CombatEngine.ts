@@ -647,8 +647,14 @@ export class CombatEngine {
     // bow/stern dead zone. `bearingSide` is the one reader of that rule since
     // v0.85.0 — the enemy's guns used to carry a copy that had neither half.
     if (target?.ship && bearingSide(entity.heading, entity.pos, target.pos) !== side) {
-      // Silently refuse — no cooldown, no fire event. Player must turn broadside-on.
-      return { state, events: [] };
+      // Refuse — no cooldown, no shot. Until v0.98.3 this was silent for the
+      // player too, while the arena drew the firing arc twice as wide as this
+      // rule: he pressed Q with her inside the dashed line and nothing happened.
+      // The AI is still answered by silence; it asks on every tick.
+      if (shipId === (state.playerShipId as string)) {
+        events.push({ type: "FireRejected", side, reason: "out_of_arc" });
+      }
+      return { state, events };
     }
 
     const reloadTicks = effectiveReloadTicks(

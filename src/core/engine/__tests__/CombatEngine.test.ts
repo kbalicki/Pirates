@@ -23,7 +23,7 @@
  */
 import { describe, it, expect } from "vitest";
 import { CombatEngine, DISENGAGE_RANGE_MUL, BOARDING_COOLDOWN_TICKS, BOARDER_CREW_RATIO, type AiArchetype } from "../CombatEngine.ts";
-import { bearingSide, BROADSIDE_ARC_COS, HULL_WIDTH } from "../../systems/CombatSystem.ts";
+import { bearingSide, BROADSIDE_ARC_COS, BROADSIDE_HALF_ARC, HULL_WIDTH } from "../../systems/CombatSystem.ts";
 import { BOARDING_RANGE, canBoard, resolveBoarding } from "../../systems/BoardingSystem.ts";
 import type { CombatState, CombatEntityState } from "../../model/CombatState.ts";
 import type { EntityId, ShipClassId, FactionId } from "../../model/ids.ts";
@@ -140,6 +140,43 @@ describe("the broadside arc, read in one place", () => {
     expect(wrong.state.entities.p!.ship!.cooldown.left).toBe(0);    // no shot, no reload
     const right = eng.apply(st, [{ type: "FireCannons", side: "right" }], 1);
     expect(right.events.some(e => e.type === "CannonFired" && (e.shipId as string) === "p")).toBe(true);
+  });
+
+  it("tells the captain why, instead of saying nothing (v0.98.3)", () => {
+    const eng = new CombatEngine();
+    const wrong = eng.apply(arena(150), [{ type: "FireCannons", side: "left" }], 1);
+    expect(wrong.events).toContainEqual({ type: "FireRejected", side: "left", reason: "out_of_arc" });
+    const right = eng.apply(arena(150), [{ type: "FireCannons", side: "right" }], 1);
+    expect(right.events.some(e => e.type === "FireRejected")).toBe(false);
+  });
+
+  it("does not answer the AI, which asks every tick", () => {
+    const eng = new CombatEngine();
+    let st = arena(RANGE * 0.6);
+    let refused = 0;
+    for (let i = 0; i < 1200; i++) {
+      const r = eng.apply(st, [], 1);
+      refused += r.events.filter(e => e.type === "FireRejected").length;
+      st = r.state;
+    }
+    expect(refused).toBe(0);
+  });
+
+  it("is ±30° off the beam, and the arena draws that and nothing wider", () => {
+    // The dashed arcs were a typed `Math.PI / 3` — ±60° off the beam — for as
+    // long as they existed, so half of each one was water where Q and E were
+    // refused in silence.
+    expect(BROADSIDE_HALF_ARC * 180 / Math.PI).toBeCloseTo(30, 9);
+    const from = { x: 0, y: 0 };
+    // Heading 0 is north; the starboard beam is east, and `φ` swings aft.
+    const at = (phi: number) => ({ x: Math.cos(phi) * 100, y: Math.sin(phi) * 100 });
+    expect(bearingSide(0, from, at(BROADSIDE_HALF_ARC - 0.01))).toBe("right");
+    expect(bearingSide(0, from, at(BROADSIDE_HALF_ARC + 0.01))).toBeNull();
+    expect(bearingSide(0, from, at(-BROADSIDE_HALF_ARC + 0.01))).toBe("right");
+    expect(bearingSide(0, from, at(-BROADSIDE_HALF_ARC - 0.01))).toBeNull();
+
+    expect(sceneSrc).toContain("const HALF_ARC = BROADSIDE_HALF_ARC;");
+    expect(sceneSrc).not.toMatch(/HALF_ARC\s*=\s*Math\.PI/);
   });
 
   it("gives the enemy's guns the same arc, and both her batteries", () => {

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.98.2.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2531 przechodzi, 0 failuje, 0 `todo`** w 96 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.98.3.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2534 przechodzi, 0 failuje, 0 `todo`** w 96 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3042,13 +3042,16 @@ przy okazji.
 
 **Nowe, nienaprawione (v0.98.0):**
 
-- **Chybienie nie jest zdarzeniem.** `FxManager.spawnSplash` i `spawnSmoke` są
-  napisane i nikt ich nie woła, bo `CombatEngine` przy pudle ustawia **tylko
-  przeładowanie** (`CombatEngine.ts:713`). Ekran nie ma z czego narysować
-  pióropusza wody ani dymu. To zmiana w tym, co silnik **zgłasza** — nowy
-  wariant `CombatEvent` — a nie w rysowaniu, więc świadomie nie w v0.98.0.
-  **Do zmierzenia najpierw: ile salw w typowej bitwie pudłuje?** Jeśli pudło
-  jest rzadkie, brak informacji zwrotnej nie boli.
+- **~~Chybienie nie jest zdarzeniem.~~ ❌ FAŁSZYWE, ale obok była wada ✅ v0.98.3** —
+  chybienie **jest** zdarzeniem: `CannonFired` z `hit: false` i `targetPos` wychodzi
+  przed gałęzią pudła (komentarz „no damage events” czytany jako „no events”), a scena
+  rysuje dym, błysk, huk, lot kuli i plusk. `FxManager.spawnSplash`/`spawnSmoke` były
+  kopiami efektów, które bitwa już ma — usunięte, lista `KEPT` pusta. **Prawdziwa cisza:**
+  arena rysowała łuki ostrzału **±60° od trawersu** (`Math.PI / 3` wpisane ręcznie), silnik
+  strzela w **±30°**, więc połowa narysowanego łuku to woda, w której `Q`/`E` było odrzucane
+  bez słowa. Łuk czyta teraz `BROADSIDE_HALF_ARC`, a odmowa gracza to `FireRejected`
+  z komunikatem. Martwe warianty `FxHit`/`FxSplash` w `CombatEvent` też poszły.
+  Instrukcja mówiła to samo ±60° i „zasięg pół areny” — poprawione.
 - **~~Przemiatanie twierdzeń nie czyta warstwy rysującej.~~ ✅ v0.98.2** — czyta,
   pod `--all`, i mówiło „0 nieaktualnych". Miało rację i było ślepe: QUOTED
   potrzebuje **nazwanej stałej**, a progi warstwy rysującej były gołymi

@@ -93,24 +93,16 @@ const PARKED: Record<string, string> = {
 };
 
 /**
- * Methods kept although nothing calls them, and why.
+ * Methods kept although nothing calls them, and why. Empty since v0.98.3.
  *
- * `FxManager` draws three effects and the battle spawns one. A shot that falls
- * short should splash and a gun that fires should smoke, and both are written
- * -- but `CombatEngine` emits **no event at all** for a miss ("Miss: only
- * cooldown is set; no damage events", CombatEngine.ts:713), so the screen
- * cannot know one happened. Wiring them means adding an event to the engine,
- * which is a change to what the battle reports and not to how it draws.
- * Recorded in TODO rather than done in the dark.
+ * It held `FxManager.spawnSplash` and `spawnSmoke`, kept on the reading that
+ * `CombatEngine` emits nothing for a miss. It does: `CannonFired` goes out
+ * with `hit: false` before the miss branch returns, and `SeaBattleScene`
+ * draws it with its own smoke, flash, ball and splash. The two were copies of
+ * effects the battle already had, and went. The engine's real silence was a
+ * broadside ordered out of arc - `FireRejected` now.
  */
-const KEPT: Record<string, string> = {
-  "spawnSplash()":
-    "a shot falling short has no event to draw on: CombatEngine emits nothing "
-    + "for a miss, so the splash cannot be placed. See TODO.",
-  "spawnSmoke()":
-    "powder smoke on firing, same reason: the gun's report is not an event the "
-    + "screen receives. See TODO.",
-};
+const KEPT: Record<string, string> = {};
 
 function unbuiltClasses(): string[] {
   const out: string[] = [];

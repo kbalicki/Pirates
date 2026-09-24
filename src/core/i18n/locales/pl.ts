@@ -530,6 +530,7 @@ export const PL: LocaleData = {
   "battle.cannot_board": "Podpłyń bliżej (≤{{range}} px), aby abordażować.",
   "battle.enemy_too_strong": "Wróg zbyt silny — osłab go (kadłub lub załoga).",
   "battle.disengage_too_close": "Za blisko, żeby się wycofać — oddal się poza zasięg dział.",
+  "battle.fire_out_of_arc": "Działa tej burty nie mają celu — ustaw go bokiem, nie przed dziobem ani za rufą.",
   "battle.boarders_away": "Rzucają bosaki — idą na twój pokład!",
   "battle.boarded_held": "Zrzuceni z burty. Pokład jest twój.",
   "battle.boarded_lost": "Wdarli się na pokład — statek stracony.",
