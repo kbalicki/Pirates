@@ -565,7 +565,7 @@ z osiemnastu przystań wskazanych osobno, nie z właściciela portu.
 |---|---|---|
 | cena bazowa | `× (0,9 + poziom × 0,05)` | ×0,95 … ×1,15 |
 | produkcja dzienna | `(2 + poziom × 2) × (0,5 + bogactwo/1800)` | **2–12** jednostek |
-| pojemność magazynu | `poziom × 50` dla tego, co uprawia | 50–250 |
+| pojemność magazynu | `8 dni własnej produkcji` dla tego, co uprawia (`PRODUCER_COVER_DAYS`, podłoga 20 t; v0.75.0) | 20–96 t |
 | … dla tego, co importuje | `20 dni własnej konsumpcji`, nie mniej niż 12 t | 12–90 t |
 
 > **Poprawka do własnego wiersza z v0.65.0.** Było tu „4–12", bo `2 + poziom × 2`
@@ -946,7 +946,7 @@ z 27,24 tony, mając na półce 27,2. Każda transakcja woła `repriceItem`, kt�
 liczy z tego, co leży, więc cena potrafiła drgnąć o złotówkę **bez ruchu
 towaru**. Zaokrąglenie idzie teraz przed wyceną.
 
-**Czego pomiar **nie** kazał ruszać.** Sufit producenta (`poziom × 50`)
+**Czego pomiar **nie** kazał ruszać** (v0.66.0 — **nieaktualne od v0.75.0**, gdzie sufit producenta stał się ośmioma dniami własnej produkcji). Sufit producenta (`poziom × 50`)
 przemieciony tak samo — ×50 / ×20 / ×10 — i został przy ×50: przy ×10 cena
 u producenta rośnie tak, że **szlak się odwraca** (rum kupowany w Port Royale
 za 7, sprzedawany w Hawanie za 5). Mnożnik głodu też został przy ×2 — bo to
@@ -1070,6 +1070,12 @@ gracza (patrz niżej).
 **jedzenia i wody**, a nie całej lady. Do v0.64.0 podnosiły wszystkiego — czterdzieści
 ton tytoniu w głodującym mieście dawało 3551 złota zamiast 1534. Teraz warto
 przywieźć **to, czego im brakuje**.
+
+Zdarzenie podwaja cenę, a resztę robi spiżarnia, którą ono opróżnia (konsumpcja ×1.5).
+Zmierzone na osiadłym świecie, wszystkie 45 miast (v0.98.1): żywność kosztuje
+**1,75–2,17×** pierwszego dnia i **1,75–3,83×** dziewięćdziesiątego. Dolny koniec to miasto,
+które samo uprawia żywność (St. Augustine), górny — duże, które ją sprowadza (Hawana).
+Podręcznik mówi „2–4×” i to zdanie pilnuje `producer_shed.test.ts`.
 
 | stała | wartość | znaczenie |
 |---|---|---|

@@ -245,7 +245,8 @@ wszędzie i **nie da się jej nikomu odciąć**.
 Miasto, któremu zabrakło importu, **mówi o tym** w nagłówku portu i na ladzie
 kupca. Wtedy:
 
-- **jedzenie i woda podwajają cenę** — i tylko one,
+- **jedzenie i woda od razu podwajają cenę** — i tylko one — a im dłużej głód trwa,
+  tym drożej: po dwóch–trzech miesiącach **do 4×**,
 - w tawernie jest **pełniej**, bo ludzie tanieją,
 - ludność powoli ubywa,
 - gubernator **kupi zboże wprost z ładowni**, płacąc ceną korony **i reputacją**.
@@ -284,7 +285,7 @@ statku.
 
 | zdarzenie | co znaczy dla Ciebie |
 |---|---|
-| **Głód** | przywieź jedzenie i wodę — podwójna cena, reputacja u gubernatora |
+| **Głód** | przywieź jedzenie i wodę — 2–4× ceny, reputacja u gubernatora |
 | **Zaraza** | drogie jedzenie, **pusta tawerna** — nie werbuj tutaj |
 | **Żniwa** | cukier i jedzenie tanieją o jedną trzecią — kupuj |
 | **Hossa** | wszystko tanieje o jedną piątą, miasto bogaci się szybko |
@@ -462,7 +463,8 @@ ma też **sufit obrony** — nie zbudujesz z niego twierdzy.
 Gubernator, u którego masz dobre notowania **i list kaperski**, zapłaci za
 obronę swojej kolonii. Trzysta złotych plus pięć za każdego napastnika. Trzeba
 **dopłynąć na czas** (najwyżej trzy dni spóźnienia) i **zostać** — do
-dwudziestu pięciu dni.
+dwudziestu pięciu dni. Czekaj **na morzu**, blisko miasta: dni płyną tylko
+wtedy, gdy jesteś na mapie, więc siedząc w porcie nie doczekasz się desantu.
 
 To działa też **u sojusznika Twojego patrona**, i to jest najłatwiejsza praca
 dla kapitana z papierami.

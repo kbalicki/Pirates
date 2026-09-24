@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.98.0.0 · **Branch:** `main`
-**Kod:** 288 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2514 przechodzi, 0 failuje, 0 `todo`** w 95 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.98.1.0 · **Branch:** `main`
+**Kod:** 288 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2517 przechodzi, 0 failuje, 0 `todo`** w 95 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2718,6 +2718,31 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   decyzja**, a żadna czynność w porcie nie kosztuje dnia. **Pomiar na wejściu:**
   ile dat w grze obiecuje graczowi termin i co każdy z nich znaczy, jeśli zegar
   da się zatrzymać do woli
+
+  *Zmierzone v0.97.3 (bez zmiany kodu) — **decyzja dla użytkownika**.* Zegar stoi nie
+  tylko w porcie: `WorldEngine.apply` wraca przed zegarem przy `location.type ===
+  "port"`, a na każdym ekranie nad mapą (port, tawerna, bitwa, pojedynek, szturm,
+  podręcznik, opcje) `MainMapScene` jest zapauzowana (nakładki) albo zatrzymana
+  (port, bitwa, szturm, obrona — `scene.start` ją zastępuje) i `apply` nie jest
+  wołane wcale.
+  **Wizyta w porcie kosztuje 0 czasu gry z konstrukcji**; ta sama bitwa na morzu też.
+  Terminy obiecywane graczowi w dniach, które przez to liczą **wyłącznie dni żeglugi**:
+  kontrakt obronny (`ARRIVAL_GRACE_DAYS` 3, `STATION_LIMIT_DAYS` 25 — „zostań” znaczy
+  „stój na morzu w zasięgu 400”, w porcie desant nie przybliża się ani o dzień),
+  zlecenia informatora (`RAID_DAYS` 30, `RELIEF_DAYS` 24, `HUNT_DAYS` 40), fracht
+  (`CargoContractSystem`), dzierżawa szopy (`LEASE_DAYS` 30), podział łupu
+  (`PLUNDER_INTERVAL_DAYS` 60), handel z wioską (`TRADE_COOLDOWN_DAYS` 10), oddział
+  wojenny (`WAR_PARTY_DAYS` 40), nowy gubernator (`GOVERNOR_NEW_DAYS` 30), blokada
+  (`BLOCKADE_ONSET_DAYS` 2), wszystkie wyprawy koron, huragany, wojny i gospodarka.
+  Nic w porcie nie kosztuje dnia (naprawa, werbunek, handel, stocznia) — zgodnie
+  z „Czego w grze nie ma” w instrukcji (brak czasu budowy). **Warianty:** (a) zapisać
+  jako zasadę („świat czeka, gdy jesteś na lądzie”, jak w Sid Meier's Pirates!) —
+  wtedy jedno zdanie w podręczniku, w jednym miejscu; (b) czynności w porcie kosztują
+  czas (np. naprawa = dni w stoczni) — wtedy terminy wyżej trzeba przemyśleć,
+  bo dziś żaden nie zakłada postoju. Druga sesja zwróciła uwagę, że dopisanie
+  zdania do podręcznika w grze bez decyzji utrwaliłoby przypadek jako regułę — dlatego
+  go tam nie ma; szkic instrukcji (`15-INSTRUKCJA.md`) opisuje stan i mówi to przy
+  kontrakcie obronnym — do zmiany razem z decyzją.
 - **HUD ma teraz siedem wierszy i nic nie pilnuje, że się nie nachodzą.**
   `HUD_ROW` to zwykły obiekt ze stałymi w `UIOverlayScene`; najdłuższa nowa
   linia zmierzona na ekranie ma 374 px przy prawym marginesie, ale to pomiar
@@ -3060,7 +3085,22 @@ nie rusza — na trzech ekranach, od pierwszego commita**. Kod wygląda poprawni
 testu jednostkowego sceny nie ma, a obrazek pokazuje strzałkę stojącą w miejscu.
 Żadne czytanie tego nie znajdzie.
 
-**Podręcznik jest przeczytany do końca.** Wszystkie 130 kluczy `help.*` i cały `battle.help_*`
+**Podręcznik przeczytany drugi raz (v0.98.1), bo reguły zmieniały się po v0.66.0.** 151 kluczy
+`help.*`/`battle.help_*` skonfrontowane z kodem; **13 zdań fałszywych, 9 nieaktualnych**, wszystkie
+poprawione poza `help.ctrl_vision` (klawisz `V` jest zepsuty w kodzie — druga sesja, v0.98.0.0).
+Najcięższe: zasięg dział „pół ekranu” (jest **ćwierć**), strefa ognia „±60° od prostopadłej” (jest
+**±30°**), „sprzedaż podnosi bogactwo” (sprzedaż **zabiera** z kasy miasta), „złoto: nowy szlak
+skarbowy” (nic takiego nie istnieje), abordaż „rozstrzyga siła załóg” (od v0.10.0 **pojedynek**),
+magazyn producenta „poziom × 50” (od v0.75.0 **8 dni** produkcji — przypięte testem), żagle w
+bitwie „obniżają prędkość liniowo” (**progi**). Dwa zdania, których czytanie nie rozstrzygnęło,
+zmierzone: „Głód: 2–4× cena” jest **prawdziwe** (osiadły świat, 45 miast: 1,75–2,17× pierwszego dnia,
+1,75–3,83× dziewięćdziesiątego — zdarzenie podwaja, resztę robi opróżniona spiżarnia) i teraz
+przypięte testem; „ESC — wycofaj się” dostało „dopiero poza 90% zasięgu dział”, przypięte do
+`DISENGAGE_RANGE_MUL` razem ze stroną o liczniku, która tę liczbę znała od zawsze. **Wniosek: podręcznik przeczytany raz nie jest przeczytany — każda
+zmiana reguły musi szukać zdania, które ją opisuje** (do rozważenia: strażnik, który wiąże liczby
+z podręcznika ze stałymi, tak jak `mechanics_doc.test.ts` robi to dla 14-MECHANICS).
+
+~~**Podręcznik jest przeczytany do końca.**~~ (v0.66.0 — patrz wyżej) Wszystkie 130 kluczy `help.*` i cały `battle.help_*`
 skonfrontowane z kodem; dziesięć fałszywych zdań w trzech wydaniach, a ostatnie z nich
 wskazało **błąd mechaniki, nie opisu**. Następne teksty tego samego rodzaju, których nikt
 nie sprawdził wierszami: **drzewa dialogów** (`DialogueSystem` — gubernator, karczmarz,

@@ -8,6 +8,8 @@ import {
 } from "../../data/economyBaselines.ts";
 import { portId, entityId } from "../../model/ids.ts";
 import type { WorldState, WorldEventState, PortRuntimeState } from "../../model/WorldState.ts";
+import { PL } from "../../i18n/locales/pl.ts";
+import { EN } from "../../i18n/locales/en.ts";
 
 // ===========================================================================
 // A producer's warehouse (v0.75.0)
@@ -219,5 +221,55 @@ describe("the price model can see the shed move now", () => {
     );
     expect(hit.ports.havana.prices[STAPLE] / settled.ports.havana.prices[STAPLE])
       .toBeGreaterThan(2);
+  });
+});
+
+describe("the manual's sentence about the shed", () => {
+  /**
+   * The in-game manual said "market level × 50 of what it grows" for ten
+   * releases after v0.75.0 made the shed eight days of the town's own output
+   * — 250 tons in Havana on the page, 96 on the quay (v0.98.1). The range the
+   * page quotes is computed here from the rule it describes.
+   */
+  it("quotes the range the rule actually produces", () => {
+    const caps: number[] = [];
+    for (const key of Object.keys(CITIES)) {
+      for (const item of CITIES[key].produces) caps.push(Math.round(inventoryCap(key, item)));
+    }
+    const lo = Math.min(...caps), hi = Math.max(...caps);
+    expect(PL["help.econ_prices_b2"]).toContain(`od ${lo} do ${hi} ton`);
+    expect(EN["help.econ_prices_b2"]).toContain(`${lo} to ${hi} tons`);
+    expect(PL["help.econ_prices_b2"]).not.toContain("× 50");
+  });
+});
+
+describe("the manual's sentence about a famine", () => {
+  /**
+   * "Famine: carry food in at two to four times the price" was the one line of
+   * the economy page the second reading (v0.98.1) could not settle from the
+   * code, because the event only doubles the price and the rest comes from
+   * the store it drains. Measured over a settled Caribbean, all 45 towns:
+   * food costs 1.75-2.17x on the first day and 1.75-3.83x by the ninetieth;
+   * the low end is a town that grows its own food (St Augustine), the high end
+   * a large one that imports it (Havana). So the sentence is true, and this
+   * is what keeps it true: the three ends of that range, read off the tick.
+   */
+  it("prices food at two to four times the settled price, and never past it", () => {
+    const settled = runDays(makeWorld(), 400);
+    const day = settled.time.day;
+    for (const key of ["havana", "port_royal", "st_augustine"]) {
+      const before = settled.ports[key].prices.food;
+      let w: WorldState = { ...settled, worldEvents: [event("famine", key, day, 90)] };
+      w = runDays(w, 1);
+      const first = w.ports[key].prices.food / before;
+      w = runDays(w, 88);
+      const last = w.ports[key].prices.food / before;
+      expect(first, `${key} day 1`).toBeGreaterThanOrEqual(1.75);
+      expect(first, `${key} day 1`).toBeLessThanOrEqual(2.25);
+      expect(last, `${key} day 89`).toBeGreaterThanOrEqual(first);
+      expect(last, `${key} day 89`).toBeLessThanOrEqual(4);
+    }
+    expect(PL["help.econ_can_b"]).toContain("2–4×");
+    expect(EN["help.econ_can_b"]).toContain("two to four times");
   });
 });

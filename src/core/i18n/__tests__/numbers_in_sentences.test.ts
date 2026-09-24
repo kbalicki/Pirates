@@ -4,6 +4,7 @@ import { EN } from "../locales/en.ts";
 import { t, setLang } from "../index.ts";
 import { BOARDING_RANGE } from "../../systems/BoardingSystem.ts";
 import { HULL_WIDTH } from "../../systems/CombatSystem.ts";
+import { DISENGAGE_RANGE_MUL } from "../../engine/CombatEngine.ts";
 
 // ===========================================================================
 // A number typed into a sentence is a copy nothing keeps (v0.88.0)
@@ -160,5 +161,22 @@ describe("the relief watch line", () => {
     expect(src, "MainMapScene was not read").toBeTruthy();
     const named = [...src.matchAll(/"(relief\.watch_[a-z_]+)"/g)].map(m => m[1]);
     expect([...new Set(named)].sort()).toEqual([...KEYS].sort());
+  });
+});
+
+describe("the break-off distance the manual quotes", () => {
+  /**
+   * `ESC` asks the engine to break off, and the engine grants it only beyond
+   * `DISENGAGE_RANGE_MUL` of the gun range; closer in, the screen answers
+   * "too close". The controls page said only "ESC - disengage" until the
+   * second reading (v0.98.1), while the timeout page three pages later
+   * quoted the 90 % - one number, two sentences, and only one of them knew.
+   */
+  it("names the same share of the gun range on both pages that mention it", () => {
+    const share = `${Math.round(DISENGAGE_RANGE_MUL * 100)}%`;
+    for (const [lang, table] of LOCALES) {
+      expect(table["battle.help_controls_body"], lang).toContain(share);
+      expect(table["battle.help_timeout_body"], lang).toContain(share);
+    }
   });
 });
