@@ -341,6 +341,34 @@ describe("she comes across too", () => {
     expect(r.state.entities.e!.ship!.crew.current).toBeLessThan(st.entities.e!.ship!.crew.current);
   });
 
+  it("says what the deck cost each side, in the event the screen reads (v0.97.1)", () => {
+    const eng = new CombatEngine();
+    let st = grappled();
+    st = eng.apply(st, [], 1).state;
+    const r = eng.apply(st, [], 1);
+    const res = r.events.find(e => e.type === "BoardingResolved") as
+      { boarderLost: number; targetLost: number } | undefined;
+    expect(res).toBeTruthy();
+    // She boarded him: her losses are the boarder's, his are the target's.
+    expect(res!.boarderLost).toBe(st.entities.e!.ship!.crew.current - r.state.entities.e!.ship!.crew.current);
+    expect(res!.targetLost).toBe(st.entities.p!.ship!.crew.current - r.state.entities.p!.ship!.crew.current);
+    expect(res!.boarderLost + res!.targetLost).toBeGreaterThan(0);
+  });
+
+  it("ends a battle once when his boarding carries her deck (v0.97.1)", () => {
+    // Her crew thinned below ten by the melee is also the surrender rule, and
+    // the same tick used to end the battle a second time: "captured" and then
+    // "surrender", both drawn and both paid.
+    const eng = new CombatEngine();
+    const st = arena(50, [40, 14]);
+    st.entities.e!.ship!.hullHp = 20;
+    eng.setDuelResult(true);
+    const r = eng.apply(st, [{ type: "AttemptBoarding" }], 1);
+    const ends = r.events.filter(e => e.type === "BattleEnded") as { outcome: string }[];
+    expect(ends.map(e => e.outcome)).toEqual(["captured"]);
+    expect(r.events.some(e => e.type === "Surrender")).toBe(false);
+  });
+
   it("settles on the next tick when no screen is running the duel", () => {
     const eng = new CombatEngine();
     let st = grappled();

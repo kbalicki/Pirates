@@ -30,6 +30,8 @@ import {
   LEARNED_CEILING,
 } from "../AgingSystem.ts";
 import type { WorldState } from "../../model/WorldState.ts";
+import { PL } from "../../i18n/locales/pl.ts";
+import { EN } from "../../i18n/locales/en.ts";
 import { entityId, shipClassId, factionId } from "../../model/ids.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 
@@ -427,6 +429,17 @@ describe("computeScore", () => {
       const line = computeScore(makeWorld({ day: 365 * years + 1 })).lines
         .find(l => l.key === "retire.line_years")!;
       expect(line.points).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("names the count on every line that has one", () => {
+    // v0.97.1: the first six lines of the ledger printed their amount and the
+    // three added later (towns, family, marriage) did not — "Towns taken" with
+    // 400 points a town and no number of towns. Marriage is a yes, not a count.
+    for (const line of computeScore(makeWorld()).lines) {
+      if (line.key === "retire.line_marriage") continue;
+      expect(PL[line.key], line.key).toContain("{{amount}}");
+      expect(EN[line.key], line.key).toContain("{{amount}}");
     }
   });
 

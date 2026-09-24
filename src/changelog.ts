@@ -6,6 +6,34 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.97.1.0",
+    date: "2026-09-24",
+    changes: [
+      "A BOARDING THAT WON THE BATTLE TWICE",
+      "  Carrying an enemy's deck thins her crew below ten, which is also when",
+      "  a ship strikes her colours. The same moment ended the battle twice:",
+      "  \"SHIP TAKEN!\" and \"THE ENEMY STRIKES!\" drawn on top of each other,",
+      "  and both settled - two purses of gold for one prize. A battle ends once",
+      "THE BOARDING BANNER SAYS WHAT THE DECK COST",
+      "  \"Boarding won!\" now has a second line: the men lost on each side, for",
+      "  your boarding and for theirs",
+      "TWO FRENCH ISLANDS WITH NO FOOD SHIP",
+      "  A town is fed by the quickest supplier, and a supplier of its own crown",
+      "  counts as nearer. For Montserrat and Guadeloupe that was French Florida",
+      "  Keys - past the reach of any coastal run - so neither got a food lane",
+      "  at all, while Bermuda and Port Royal sat within reach. The quickest",
+      "  supplier WITHIN REACH wins now: two new lanes, nothing else moves",
+      "THE RETIREMENT LEDGER COUNTS TOWNS AND FAMILY",
+      "  \"Towns taken\" and \"Family brought home\" printed no number, while every",
+      "  line above them did",
+      "Tools: the constants sweep reads a name's unit from its last word",
+      "  (RAID_DISTANCE_FEE is gold, not a distance); ?fleet=, ?ship= and ?crew=",
+      "  reach ?hail=, ?encounter= and ?approach=; a dead field in the war table",
+      "  is gone",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.97.0.0",
     date: "2026-09-24",
     changes: [

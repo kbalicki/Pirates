@@ -9,6 +9,7 @@ import { pointInLandmass } from "../services/Geometry.ts";
 import { buildPortWaterCache, getPortWaterPos } from "../systems/PortWaterPositions.ts";
 import { findSeaPath, resetSeaGrid } from "../services/Pathfinding.ts";
 import { candidatePorts } from "../systems/FamilyQuestSystem.ts";
+import { tradeRoutes, resetTradeRoutes } from "../systems/TradeRouteSystem.ts";
 import type { WorldState } from "../model/WorldState.ts";
 
 // ===========================================================================
@@ -131,6 +132,22 @@ describe("the real Caribbean", () => {
     );
     expect(unreachable).toEqual(["panama"]);
     expect(keys.filter(isLandlocked)).toEqual(unreachable);
+  });
+
+  /**
+   * v0.97.1: the lane builder chose the quickest supplier and only then asked
+   * whether it was within reach, so a same-crown discount could pick a source
+   * past `MAX_LANE_LENGTH` and leave a town with **no** lane while a nearer
+   * foreign one stood by. Montserrat and Guadeloupe had no food lane; Panamá
+   * has none because nothing sails to it.
+   */
+  it("feeds every town that eats food and has a keel to it", () => {
+    resetTradeRoutes();
+    const fed = new Set(tradeRoutes().filter(r => r.items.includes("food")).map(r => r.to));
+    const hungry = Object.keys(CITIES).filter(k =>
+      CITIES[k].demands.includes("food") && !CITIES[k].produces.includes("food") && !fed.has(k));
+    expect(hungry).toEqual(["panama"]);
+    resetTradeRoutes();
   });
 });
 

@@ -2879,14 +2879,18 @@ Dla każdego portu i każdego towaru, którego **żąda i nie produkuje**:
 1. kandydaci = wszystkie porty produkujące ten towar,
 2. koszt = długość kursu **morzem** (`findSeaPath`), z rabatem
    `SAME_CROWN_DISCOUNT = 0.7` dla portu tej samej korony,
-3. najtańszy wygrywa; powyżej `MAX_LANE_LENGTH = 1500` **szlaku nie ma** — to
-   już nie kabotaż, tylko import zza oceanu,
+3. wygrywa najtańszy **spośród tych w zasięgu** `MAX_LANE_LENGTH = 1500`; gdy
+   żaden nie sięga, **szlaku nie ma** — to już nie kabotaż, tylko import zza
+   oceanu. Do v0.97.1 kolejność była odwrotna (najpierw najtańszy, potem pytanie
+   o zasięg), więc rabat tej samej korony wybierał francuskie Florida Keys
+   (1 546) dla francuskich Montserrat i Gwadelupy i oba miasta zostawały **bez
+   szlaku żywności**, choć Bermudy i Port Royal leżały w zasięgu,
 4. szlaki do tego samego portu z tego samego portu **scalają się** w jeden bieg
    z kilkoma towarami.
 
 Sieć jest czystą funkcją `CITIES` + linii brzegowej, memoizowaną na
-`landmassGeneration()`. Na aktualnej mapie: **81 szlaków**, mediana długości
-579, 28 z nich ma zakręty.
+`landmassGeneration()`. Na aktualnej mapie (v0.97.1): **80 szlaków**; bez
+szlaku żywności zostaje wyłącznie Panamá, do której nie dopływa nic.
 
 **Dwa towary celowo nie mają szlaku i mieć nie będą:**
 

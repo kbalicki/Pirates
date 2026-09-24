@@ -25,7 +25,9 @@ export type HistoricalWar = {
   endMonth: number;
   factions: [string, string];
   headline: string;
-  endHeadline: string;
+  // There was an `endHeadline` here, set to "news.war_end" on every row and
+  // read by nothing: the peace is written by `checkHistoricalWars` with the
+  // key in hand (removed v0.97.1).
 };
 
 export const HISTORICAL_WARS: HistoricalWar[] = [
@@ -35,7 +37,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1648, endMonth: 1,
     factions: ["spain", "netherlands"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "anglo_spanish_war_1",
@@ -43,7 +44,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1604, endMonth: 8,
     factions: ["spain", "england"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "anglo_spanish_war_2",
@@ -51,7 +51,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1630, endMonth: 11,
     factions: ["spain", "england"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "anglo_french_war",
@@ -59,7 +58,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1629, endMonth: 4,
     factions: ["england", "france"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "franco_spanish_war",
@@ -67,7 +65,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1659, endMonth: 11,
     factions: ["france", "spain"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "first_anglo_dutch_war",
@@ -75,7 +72,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1654, endMonth: 4,
     factions: ["england", "netherlands"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "second_anglo_dutch_war",
@@ -83,7 +79,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1667, endMonth: 7,
     factions: ["england", "netherlands"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "war_of_devolution",
@@ -91,7 +86,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1668, endMonth: 5,
     factions: ["france", "spain"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "franco_dutch_war",
@@ -99,7 +93,6 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1678, endMonth: 9,
     factions: ["france", "netherlands"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
   {
     id: "nine_years_war",
@@ -107,6 +100,5 @@ export const HISTORICAL_WARS: HistoricalWar[] = [
     endYear: 1697, endMonth: 9,
     factions: ["france", "england"],
     headline: "news.war_start",
-    endHeadline: "news.war_end",
   },
 ];

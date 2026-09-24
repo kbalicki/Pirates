@@ -365,11 +365,18 @@ export class CombatEngine {
       events.push({ type: "BoardingIncoming", boarderId: boarder.id });
     }
 
-    // Surrender / battle-end checks
+    // Surrender / battle-end checks — unless something earlier in this tick
+    // has already ended it. A boarding that carried her deck leaves her crew
+    // thinned to where `shouldEnemySurrender` says yes, and until v0.97.1 the
+    // tick then ended the battle a second time: the captain was shown "SHIP
+    // TAKEN!" and "THE ENEMY STRIKES!" on top of each other and paid for both.
     const playerShip = updatedEntities[playerId]?.ship;
     const enemyShip = updatedEntities[enemyId]?.ship;
+    const alreadyEnded = events.some(e => e.type === "BattleEnded");
 
-    if (playerShip && playerShip.hullHp <= 0) {
+    if (alreadyEnded) {
+      // One ending per battle.
+    } else if (playerShip && playerShip.hullHp <= 0) {
       events.push({ type: "BattleEnded", outcome: "lose" });
     } else if (enemyShip && enemyShip.hullHp <= 0) {
       events.push({ type: "BattleEnded", outcome: "win", loot: { gold: 50 } });
@@ -541,6 +548,11 @@ export class CombatEngine {
       captured: result.captured,
       playerCrewAfter: result.playerCrewAfter,
       enemyCrewAfter: result.enemyCrewAfter,
+      // What the deck cost each side. The screen said who held it and never
+      // how dearly; the numbers were in this event all along, but as crews
+      // *after*, and the scene has no *before* to subtract them from.
+      boarderLost: Math.max(0, boarder.ship.crew.current - result.playerCrewAfter),
+      targetLost: Math.max(0, target.ship.crew.current - result.enemyCrewAfter),
     });
 
     const newBoarderShip = {

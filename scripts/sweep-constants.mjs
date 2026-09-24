@@ -46,7 +46,17 @@ const DIMS = [
 const CONST_RE = /^\s*(?:export\s+)?const\s+([A-Za-z_][A-Za-z0-9_]*)(?:\s*:\s*number)?\s*=\s*(-?\d+(?:\.\d+)?)\s*;/;
 const LIT_RE = /(?:^|[^.\w])([A-Za-z][A-Za-z0-9_]*)\s*=\s*(-?\d+(?:\.\d+)?)\s*[;,)]/;
 
+/**
+ * The unit a constant's name declares.
+ *
+ * The **last** word is asked first, because that is where a name puts its
+ * unit: `RAID_DISTANCE_FEE` is gold paid for a distance, not a distance, and
+ * reading the words in `DIMS` order filed it under `px` beside the spyglass
+ * (v0.97.1). Only a name whose last word is no unit falls back to any word.
+ */
 function dimOfName(name) {
+  const last = name.split("_").pop() ?? name;
+  for (const [d, re] of DIMS) if (re.test(last)) return d;
   for (const [d, re] of DIMS) if (re.test(name)) return d;
   return null;
 }

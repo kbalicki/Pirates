@@ -66,5 +66,9 @@ export type CombatEvent =
   | { type: "BoardingIncoming"; boarderId: EntityId }
   | { type: "DisengageRejected"; reason: "too_close" }
   /** `captured` is from the BOARDER's side: she carried the deck she came for. */
-  | { type: "BoardingResolved"; boarderId: EntityId; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number }
+  | {
+      type: "BoardingResolved"; boarderId: EntityId; captured: boolean; playerCrewAfter: number; enemyCrewAfter: number;
+      /** Men the boarding side and the boarded side lost on the deck (v0.97.1). */
+      boarderLost: number; targetLost: number;
+    }
   | { type: "BattleEnded"; outcome: "win" | "lose" | "disengaged" | "surrender" | "captured"; loot?: Record<string, number> };

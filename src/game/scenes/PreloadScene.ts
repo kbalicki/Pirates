@@ -525,7 +525,7 @@ export class PreloadScene extends Phaser.Scene {
       return;
     }
     if (params.has("hail")) {
-      const world = this.createHailWorld(params.get("hail") || "havana", false);
+      const world = this.applyDebugCrewState(this.createHailWorld(params.get("hail") || "havana", false), params);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -535,7 +535,10 @@ export class PreloadScene extends Phaser.Scene {
     // the screen opens at 18, which is why that scene went five releases
     // without ever being driven: there was no way into it.
     if (params.has("encounter")) {
-      const world = this.createHailWorld(params.get("encounter") || "havana", true);
+      // `?ship=`, `?crew=` and `?fleet=` reach these three too (v0.97.1): the
+      // encounter screen reads the squadron, and it was the one way in that
+      // could not be given one.
+      const world = this.applyDebugCrewState(this.createHailWorld(params.get("encounter") || "havana", true), params);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;
@@ -543,7 +546,7 @@ export class PreloadScene extends Phaser.Scene {
     // Standing on a town's own anchorage, which is what opens
     // `PortApproachScene` (v0.84.0).
     if (params.has("approach")) {
-      const world = this.createApproachWorld(params.get("approach") || "havana");
+      const world = this.applyDebugCrewState(this.createApproachWorld(params.get("approach") || "havana"), params);
       this.registry.set("worldState", world);
       this.scene.start("MainMapScene", { worldState: world });
       return;

@@ -175,14 +175,20 @@ function network(): Network {
         });
       }
       ranked.sort((a, b) => a.score - b.score);
-      const best = ranked[0];
-      if (!best || best.length > MAX_LANE_LENGTH) continue; // ocean import
+      // The quickest source **within reach**, not the quickest source and then
+      // a check on its reach. Until v0.97.1 the order was the other way round,
+      // and the same-crown discount made it bite: Montserrat and Guadeloupe are
+      // French, their quickest food on the discounted score was French
+      // Florida Keys at 1 546 units — past the 1 500 a lane reaches — so the
+      // town got no food lane at all, while English Port Royal sat at 1 067.
+      const best = ranked.find(r => r.length <= MAX_LANE_LENGTH);
+      if (!best) continue; // ocean import
 
       // Who else could serve this town, and how far the trade would have to
       // reach to do it. A second source twice as far away is still a second
       // source; one on the other side of the sea is not.
       alternates[`${toKey}|${item}`] = ranked
-        .slice(1)
+        .filter(r => r !== best)
         .filter(r => r.length <= MAX_LANE_LENGTH * REROUTE_REACH)
         .map(r => r.from);
 

@@ -528,6 +528,7 @@ export const EN: LocaleData = {
   "battle.boarders_away": "Grapnels away — boarders on your deck!",
   "battle.boarded_held": "Thrown back over the side. The deck is yours.",
   "battle.boarded_lost": "They carried the deck — the ship is lost.",
+  "battle.boarding_cost": "Lost on the deck: {{ours}} {{ours:man}} of ours, {{theirs}} of theirs",
   "battle.defeat_boarded": "DEFEAT! They carried your deck with steel...",
   "battle.capture_note": "ship added to fleet (if slot available)",
   "battle.defeat_flag_shifted": "Your flag shifts to the {{ship}}. {{count}} {{count:man}} came across in the boats.",
@@ -1258,8 +1259,8 @@ export const EN: LocaleData = {
   "family.strike_won_brother": "Your brother takes a sword off the floor and follows you out.",
   "family.strike_won_father": "Your father is thinner than you remember, and still angry.",
   "family.strike_lost": "They throw you into the street. The house is still there tomorrow.",
-  "retire.line_towns": "Towns taken",
-  "retire.line_family": "Family brought home",
+  "retire.line_towns": "Towns taken ({{amount}})",
+  "retire.line_family": "Family brought home ({{amount}})",
   "retire.line_marriage": "Married",
   // -- Native villages (v0.58.0) ---------------------------
   "village.cimatan.name": "Cimatan",

@@ -1211,10 +1211,18 @@ export class SeaBattleScene extends Phaser.Scene {
         const msg = hisBoarding
           ? (event.captured ? t("battle.boarding_won") : t("battle.boarding_lost"))
           : (event.captured ? t("battle.boarded_lost") : t("battle.boarded_held"));
-        this.flashBanner(msg, good ? "#ffee88" : "#ff8888", 16);
+        const ours = hisBoarding ? event.boarderLost : event.targetLost;
+        const theirs = hisBoarding ? event.targetLost : event.boarderLost;
+        this.flashBanner(`${msg}
+${t("battle.boarding_cost", { ours, theirs })}`,
+          good ? "#ffee88" : "#ff8888", 16);
       }
         break;
       case "BattleEnded": {
+        // A battle ends once. The engine guarantees it per tick since v0.97.1;
+        // this is the scene refusing to settle the world twice if it ever
+        // does not.
+        if (this.battleOver) break;
         this.battleOver = true;
         // Let a hull finish going under before the banner covers the screen.
         const sinking = event.outcome === "win" || event.outcome === "lose";

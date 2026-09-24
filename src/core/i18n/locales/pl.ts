@@ -527,6 +527,7 @@ export const PL: LocaleData = {
   "battle.boarders_away": "Rzucają bosaki — idą na twój pokład!",
   "battle.boarded_held": "Zrzuceni z burty. Pokład jest twój.",
   "battle.boarded_lost": "Wdarli się na pokład — statek stracony.",
+  "battle.boarding_cost": "Na pokładzie padło: {{ours}} {{ours:man}} po naszej stronie, {{theirs}} po ich",
   "battle.defeat_boarded": "PORAŻKA! Wzięli twój pokład abordażem...",
   "battle.capture_note": "statek dołącza do floty (jeśli wolny slot)",
   "battle.defeat_flag_shifted": "Bandera przechodzi na {{ship:acc}}. łodziami na jej pokład przechodzi {{count}} {{count:man}}.",
@@ -1255,8 +1256,8 @@ export const PL: LocaleData = {
   "family.strike_won_brother": "Twój brat podnosi szablę z podłogi i idzie za tobą.",
   "family.strike_won_father": "Twój ojciec jest chudszy, niż pamiętasz, i nadal wściekły.",
   "family.strike_lost": "Wyrzucają cię na ulicę. Dom stoi tam nadal.",
-  "retire.line_towns": "Zdobyte miasta",
-  "retire.line_family": "Odzyskana rodzina",
+  "retire.line_towns": "Zdobyte miasta ({{amount}})",
+  "retire.line_family": "Odzyskana rodzina ({{amount}})",
   "retire.line_marriage": "Małżeństwo",
   // -- Wioski Indian (v0.58.0) -----------------------------
   "village.cimatan.name": "Cimatan",

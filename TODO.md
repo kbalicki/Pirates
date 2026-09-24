@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.97.0.0 · **Branch:** `main`
-**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2475 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.97.1.0 · **Branch:** `main`
+**Kod:** 284 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2479 przechodzi, 0 failuje, 0 `todo`** w 92 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2383,13 +2383,13 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 **Znalezione przy czytaniu drzew dialogowych, nienaprawione** (v0.71.0.0), bo rozmyłyby wydanie:
 
-- **Wioski stemplują gotową nazwę do zapisywanego dziennika.** `village.log_trade`
+- ~~**Wioski stemplują gotową nazwę do zapisywanego dziennika.**~~ ✅ już wcześniej (sprawdzone v0.97.1: `NAME_KEY` w `I18n.ts` obejmuje `village`). `village.log_trade`
   i `village.log_war_party` wołają `t(\`village.${key}.name\`)` i wkładają **wynik** do
   `vars` wpisu, który idzie do zapisu — czyli defekt z v0.63.0, wciąż żywy, bo `NAME_KEY`
   w `I18n.ts` obejmuje tylko `port|faction|item|ship`. Przełączenie języka nie przepisuje
   tych wpisów, a odmienić ich (v0.69.0) też się nie da. Poszerzyć `NAME_KEY` o `village`
   i podawać klucz — i przy okazji dopisać wioskom wiersz w `plForms.ts`
-- **`romance.opt_propose_blocked` drukuje „ranga 2”** — surową liczbę (`MARRIAGE_MIN_RANK`),
+- ~~**`romance.opt_propose_blocked` drukuje „ranga 2”**~~ ✅ już wcześniej (sprawdzone v0.97.1: `getRankNameKey` w `PortScene`). — surową liczbę (`MARRIAGE_MIN_RANK`),
   podczas gdy gra ma **nazwane rangi** (`rank.<korona>.<n>`, 24 klucze) i wszędzie indziej
   drukuje nazwę. Korona córki gubernatora jest w tym samym obiekcie, dwie linijki roboty
 - **`village.war_party_already`** („ich wojownicy są już w drodze na {{port}}”) jest prawdą
@@ -2407,7 +2407,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 - ~~**Zgoda liczebnika.**~~ ✅ v0.74.0.0 — i `tavern.rumor_hurricane_bound` razem z 84 innymi
   polskimi zdaniami i 69 angielskimi. Zostało to, czego tabela rzeczowników nie robi: zgoda
   **czasownika i imiesłowu** (pozycja o rodzaju, niżej w tej sekcji)
-- **`endHeadline` w `wars.ts` jest polem martwym** — zadeklarowane i ustawione w dziesięciu
+- ~~**`endHeadline` w `wars.ts` jest polem martwym**~~ ✅ v0.97.1 — skasowane. — zadeklarowane i ustawione w dziesięciu
   wierszach, czytane przez nikogo (peace idzie przez `news.war_end` wpisane wprost
   w `checkHistoricalWars`). Kształt z v0.29.0, do skasowania
 
@@ -2533,10 +2533,10 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   i żadna legenda ich nie wymienia. To jest **decyzja** (wiersz, który wypisuje każdy
   synonim, jest gorszy dla kapitana niż rzecz, którą opisuje) i stoi w tabeli
   `SYNONYM` w teście — ale stoi tam **raz**, zamiast siedem razy w locale
-- **`retire.line_towns`, `_family` i `_marriage` nie mają `({{amount}})`**, a sześć
+- ~~**`retire.line_towns`, `_family` i `_marriage` nie mają `({{amount}})`**~~ ✅ v0.97.1 — miasta i rodzina liczą; małżeństwo to „tak”, nie liczba; test w `PlunderSystem.test.ts`., a sześć
   pierwszych wierszy księgi ma. Drobiazg, ale to ten sam kształt: tabela dopisywana
   później niż jej pierwsze wiersze
-- **`?fleet=` nie wchodzi do `?encounter=` ani `?approach=`.** Nowe flagi budują swój
+- ~~**`?fleet=` nie wchodzi do `?encounter=` ani `?approach=`.**~~ ✅ v0.97.1 — `?hail=`, `?encounter=`, `?approach=` przechodzą przez `applyDebugCrewState`. Nowe flagi budują swój
   świat wprost z `createNewWorldState`, więc `?ship=`, `?crew=`, `?skills=` na nich
   nie działają — tak samo jak nie działały na `?hail=`. Warto by ścieżka debugowa
   miała **jedno** miejsce, w którym dokłada się kapitana do gotowego świata
@@ -2545,7 +2545,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 **Znalezione przy silniku bitwy, nienaprawione** (v0.85.0.0):
 
-- **Przeciwnik nigdy nie wchodzi na pokład.** `runEnemyAI` nie wystawia
+- ~~**Przeciwnik nigdy nie wchodzi na pokład.**~~ ✅ v0.86.0 (sprawdzone v0.97.1). `runEnemyAI` nie wystawia
   `AttemptBoarding` — nigdy, w żadnym stanie. Tryb od stosunku załóg nazywa się
   „boarder” i znaczy wyłącznie „podejdź blisko i strzelaj kartaczem”. Do v0.85.0
   **nie było nawet dokąd podejść**, więc pytania nie dawało się postawić
@@ -2570,7 +2570,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   dwie sekundy, kiedy już nie ma znaczenia. Przydałoby się ostrzeżenie **zanim** ona
   podejdzie: ona schodzi do 40 px tylko w trybie abordażowym, więc stan da się
   odczytać z odległości i stosunku załóg
-- **`BoardingResolved` nie mówi, ile kosztowało odparcie.** Zdarzenie niesie liczby
+- ~~**`BoardingResolved` nie mówi, ile kosztowało odparcie.**~~ ✅ v0.97.1 — zdarzenie niesie `boarderLost`/`targetLost`, baner mówi „Na pokładzie padło: 5 ludzi po naszej stronie, 22 po ich”. **Przy okazji: po udanym abordażu bitwa kończyła się dwa razy** (`captured` + `surrender` w tym samym ticku — przerzedzona załoga to też reguła kapitulacji), dwa panele wyniku na sobie i dwa rozliczenia; silnik kończy bitwę raz na tick, scena odrzuca drugie `BattleEnded`. Zdarzenie niesie liczby
   załóg po starciu, ale ekran pokazuje tylko zdanie „zrzuceni z burty” — kapitan nie
   dowiaduje się, ilu ludzi stracił, choć bywa to połowa załogi
 - **Nie ma abordażu NPC na NPC.** `resolveBoarding` ma dla niego ścieżkę od zawsze
@@ -2597,7 +2597,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 - **`px` miesza dwie przestrzenie.** Piksele areny (bitwa, 3840 wszerz) i piksele
   świata (mapa) leżą w jednej tabeli, bo nazwa nie mówi, w której jest.
   `CANNON_RANGE_ARENA_DIVISOR` ma już `ARENA` w nazwie; reszta nie
-- **`RAID_DISTANCE_FEE = 900` to złoto za odległość, nie odległość.** Przemiatanie
+- ~~**`RAID_DISTANCE_FEE = 900` to złoto za odległość, nie odległość.**~~ ✅ v0.97.1 — `sweep-constants.mjs` czyta jednostkę z **ostatniego** słowa nazwy; przy okazji `DISENGAGE_RANGE_MUL` i cztery `*_CREW_RATIO`/`_FRACTION` przeszły z `px`/`crew` do udziałów. Przemiatanie
   bierze wymiar z nazwy, więc wpadło do `px`. Fałszywe trafienie, ale nazwa jest
   myląca i dla człowieka
 - **Kapitan nie przełoży tony z burty na burtę.** Zmierzone przy pozycji 1 niżej:
@@ -2615,7 +2615,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   domknąłby to
 - **`UIOverlayScene` nie wiąże żadnego klawisza** — zgodnie z zamysłem (to nakładka),
   ale warto to kiedyś zapisać jako regułę, a nie jako brak
-- **Sonda nie umie dojść do większości stanów z fazami.** Fazę łupów szturmu
+- ~~**Sonda nie umie dojść do większości stanów z fazami.**~~ ✅ v0.94.0 (sprawdzone v0.97.1). Fazę łupów szturmu
   udało się przypiąć (`require`), ale `CityDefenseScene`, `DuelScene` i druga
   połowa `PortScene` (sześć lad) mają stany, do których żadna receptura nie
   prowadzi. To jest ta sama praca co `audit-layout.mjs`: recept na scenę jest
@@ -2660,7 +2660,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 - **`pickStormRoad` rozciąga drogę, więc trzy ostrzeżone miasta leżą dalej od
   siebie.** Nie sprawdzone, co to robi z `MapEventSystem.MARK_MAX_PORTS` (4)
   i z czytelnością trasy na czarcie przy małym przybliżeniu
-- **`playerPresentAt` ma martwą gałąź.** Czas płynie **tylko** w `MainMapScene`
+- ~~**`playerPresentAt` ma martwą gałąź.**~~ ✅ v0.93.0. Czas płynie **tylko** w `MainMapScene`
   (`PortScene` nie rusza zegara, a wchodzi się do niej przez `scene.start`, który
   mapę zatrzymuje), więc `tickReconquest` nigdy nie widzi
   `location.type === "port"` — skrót na początku funkcji nie może się wykonać,
@@ -2673,11 +2673,11 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 **Znalezione przy wybrzeżu, nienaprawione** (v0.91.0.0):
 
-- **Kotwicowisko Belize siatka morska uznaje za ląd** (`isSeaCell` = false),
+- ~~**Kotwicowisko Belize siatka morska uznaje za ląd**~~ — zmierzone v0.97.1: **nieszkodliwe**, droga Belize↔Hawana się znajduje, do Belize prowadzą 2 szlaki. Zostaje jako ciekawostka siatki. (`isSeaCell` = false),
   choć wielokąty mówią, że to woda. Komórka siatki ma 40 px i jej brzeg jest
   grubszy od rysowanego — znane od v0.58.0. Droga morska do Belize działa, więc
   nic się nie psuje widocznie, ale to **jedyny taki port z 45**
-- **Montserrat nie ma ani jednego szlaku handlowego** — z zupełnie innego powodu
+- ~~**Montserrat nie ma ani jednego szlaku handlowego**~~ ✅ v0.97.1 — to była **wada budowania szlaków**: najtańszy dostawca był wybierany **przed** sprawdzeniem zasięgu, a rabat tej samej korony wskazywał francuskie Florida Keys (1 546 > 1 500). Montserrat i Gwadelupa nie miały szlaku żywności; teraz Bermudy→Montserrat i Port Royal→Gwadelupa, reszta sieci bez zmian (78 → 80). Test na prawdziwej mapie w `geography.test.ts`. — z zupełnie innego powodu
   niż Panama (osiąga 43 porty). Nie sprawdzone, czy zamierzone
 - **`getFallbackLandmasses` dalej obsługuje `Pathfinding.test.ts`** i to jest
   w porządku (ten plik testuje **algorytm** i mówi to wprost, a odwołuje się do
@@ -2698,7 +2698,7 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
   nie do policzenia
 - **HUD ma dwa stany na cztery stopnie.** „Za dużo płótna" zapala się tak samo
   przy Pół (3,7%) jak przy Pełnych (14,4%). Uczciwe, ale zgrubne
-- **`DEFENCE_FLOOR` i `PREY_AGGRESSION_FLOOR` to obie 0,35** i stoją w tym samym
+- ~~**`DEFENCE_FLOOR` i `PREY_AGGRESSION_FLOOR` to obie 0,35**~~ ✅ v0.96.1 — dwie liczby, pomiar przypięty. i stoją w tym samym
   pliku, dziesięć linii od siebie. Przemiatanie stałych ich nie zestawi, bo nazwy
   deklarują różne wymiary — a to jest dokładnie kształt z v0.87.0
 - **`stormRigLoss` nie dotyczy NPC** (świadomie, v0.38.0). Teraz gdy drabina ma
@@ -2809,9 +2809,23 @@ kei cena spada do ok. 89). Towary „ani nie produkuje, ani nie je” poza złot
 autonomiczna — v0.29.0 celowo dało graczowi „po co płynąć”. Warianty: (a) zostawić;
 (b) złoto poza kopalnią po cenie bazowej (ratio 1) — kurs traci sens; (c) popyt na złoto
 z bogactwa miasta, żeby bogate porty płaciły premię, a zapas się rozchodził;
-(d) sufit dla dóbr bez konsumenta niższy niż 3,0. Przy okazji: **18 z 69** notowań
-producentów stoi na `RATIO_MIN` po 400 dniach (było 7 na starcie) — do sprawdzenia, czy
-to te same pary co w v0.75.0. `STORM_SAFE_SAIL` stał **dokładnie na jednej
+(d) sufit dla dóbr bez konsumenta niższy niż 3,0.
+
+*v0.97.1:* **18 z 69 notowań producentów na `RATIO_MIN` to ta sama przyczyna**, z drugiej
+strony: każdy z nich to towar, którego miasto nie je, a szopa ma ≥ 74 t (8 dni własnej
+produkcji), więc `30 / (zapas + 1) < 0,4`. Skutek: cukier w Hawanie (szopa 96) i na
+Barbadosie (80) kosztuje tyle samo — **3** przy bazowej 8; różnice między dużymi
+producentami znikają, a głębokość rynku zostaje (60 t kupione z 96 podnosi cenę do ok. 6).
+Rozstrzygnięcie złota rozstrzyga i to — fikcyjny popyt `(rate || 1)` jest jednym miejscem.
+
+*v0.97.1, progi reputacji:* **reputacja startowa stoi dokładnie na progach.** Własna
+korona 0 + 20 = **20**, a „przyjazny” to `>= 20`; piraci **−20**, a „nieprzyjazny” to
+`<= −20`. Zmierzone na 84 startach (7 er × 4 korony × 3 ziarna): w **12** jeden wzięty
+kupiec **sojusznika** własnej korony (fala `ACT_TRADER`, −1) spycha ją na 19 = neutralny —
+zamknięty dom gubernatora (`REPUTATION_TO_BE_RECEIVED` 20), brak listu kaperskiego,
+werbunek ×1,0 zamiast ×1,25. Konsekwencja jest uczciwa (bił się z sojusznikiem), a
+margines zero to decyzja; do rozważenia +25/+30 dla własnej korony. Piraci: pierwszy
+wzięty kupiec (+6) otwiera przystań (−14 = neutralny) — wygląda na zamierzone. `STORM_SAFE_SAIL` stał **dokładnie na jednej
 z czterech wartości `SAIL_LEVELS`**, które miał stopniować (0,5 = Pół), więc
 cztery stopnie dawały dwie odpowiedzi, a Refowane były ściśle zdominowane.
 `PREY_AGGRESSION_FLOOR` zbadało pasma agresji: marynarka przechodzi **7 razy na
@@ -3173,9 +3187,8 @@ wiadomości** (`news.*`). Co zostało do przemiecenia poza tym:
   (znalezione w v0.59.0). `EventEffectsSystem.ts:205` ma dla niego `case`,
   `MapEventSystem.ts:62` wymienia go w `NOT_A_TOWN_MARK`, a jedynym zdarzeniem
   kończącym wojnę jest `treaty_signed` (v0.30.0). Zachowanie jest poprawne,
-  martwy jest wyłącznie wariant unii i jego `case`. To samo dotyczy
-  `WarDef.endHeadline` w `wars.ts` — dziesięć wierszy z `"news.war_end"`,
-  a wpis do dziennika bierze ten klucz **na sztywno** (`WorldEventSystem.ts:416`)
+  martwy jest wyłącznie wariant unii i jego `case`. (`WarDef.endHeadline`,
+  wymieniane tu razem z nim, skasowane w v0.97.1.)
 - **`player.retirementScore` zapisywane i nieczytane** (`RetirementSystem.ts:147`). `RetirementScene` liczy wynik od nowa z `computeScore`. Martwe pole w modelu — do skasowania przy okazji, migracji nie potrzebuje (opcjonalne)
 - **Muzyka** — `MusicManager` ma 5 slotów, wypełniony **jeden** (`menu` → `pirate_theme.mp3`). `sailing` / `port` / `tavern` / `battle` = `null`. Ścieżki dla portu i bitwy dałyby najwięcej.
 - ~~**Pathfinding A\***~~ ✅ v0.22.0.0 — A\* po siatce 40 px w `Pathfinding.ts`; kupcy płyną kursem szlaku, reszta NPC dalej steruje reaktywnie (i to jest w porządku dla patrolu bez rozkładu jazdy).
