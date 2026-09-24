@@ -1,12 +1,23 @@
 /**
  * Animated shore waves — white foam lines breaking on coastlines.
- * Visible at zoom in (>5), fade at medium zoom (3-5), invisible at far zoom (<3).
+ * Nothing below `SHORE_FADE_START` (5), full from `SHORE_FADE_FULL` (7) in.
+ * Until v0.98.2.0 this line said *“visible (>5), fade (3-5), invisible (<3)”*
+ * while the comment inside `update` said 7 / 5-7 / below 5 and the code agreed
+ * with the second. **Nothing builds this class** (see `dead_code.test.ts`), so
+ * the contradiction had nowhere to show itself — which is the point: a file
+ * with no reader has no way of telling you its two halves disagree.
  * Uses coastDist grid to find water tiles adjacent to land.
  * Renders small animated white arcs along the shore.
  *
  * Separate module — does not affect other renderers.
  */
-import Phaser from "phaser";
+// Type-only: nothing here touches Phaser's runtime, which is what lets the
+// zoom thresholds below be read in a test without a browser (v0.98.2.0).
+import type Phaser from "phaser";
+
+/** Nothing below this; full from `SHORE_FADE_FULL` in. */
+export const SHORE_FADE_START = 5;
+export const SHORE_FADE_FULL = 7;
 
 const WAVE_DEPTH = -800;
 const CELL = 32;
@@ -68,8 +79,7 @@ export class ShoreWaveRenderer {
     this.time += 0.016;
     const cam = this.scene.cameras.main;
 
-    // Visible at zoom 7+, fade 5-7, invisible below 5
-    const fadeStart = 5, fadeFull = 7;
+    const fadeStart = SHORE_FADE_START, fadeFull = SHORE_FADE_FULL;
     const visibility = cam.zoom < fadeStart ? 0 :
       cam.zoom < fadeFull ? (cam.zoom - fadeStart) / (fadeFull - fadeStart) : 1;
 

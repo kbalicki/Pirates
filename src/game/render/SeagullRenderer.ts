@@ -1,6 +1,9 @@
-import Phaser from "phaser";
+// Type-only: nothing here touches Phaser's runtime, which is what lets the
+// zoom thresholds below be read in a test without a browser (v0.98.2.0).
+import type Phaser from "phaser";
 import { PORTS } from "../../core/data/ports.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
+import { ZOOM_MAX_VALUE } from "../settings/ZoomSetting.ts";
 
 const MIN_SEAGULLS = 80;
 const MAX_SEAGULLS = 150;
@@ -11,7 +14,11 @@ const DRIFT_SPEED = 0.4;
 const WANDER_STRENGTH = 0.02;
 /** Max tiles from land a seagull can be (Manhattan distance). */
 const MAX_COAST_DIST = 6;
-// Seagulls disappear below zoom 3 (handled in update)
+
+/** No gulls below this; half size at `GULL_MAX_ZOOM`, nothing at this one. */
+export const GULL_MIN_ZOOM = 3;
+/** The closest the chart goes, and where a gull is at its biggest. */
+export const GULL_MAX_ZOOM = ZOOM_MAX_VALUE;
 
 interface Seagull {
   gameObject: Phaser.GameObjects.Graphics;
@@ -87,10 +94,14 @@ export class SeagullRenderer {
     const cam = this.scene.cameras.main;
     const dt = this.scene.game.loop.delta;
 
-    // Scale seagulls with zoom: full size at z14 (20x), shrink at lower zoom, invisible below 1.5x
-    // Scale: 50% at max zoom (12), shrink proportionally, disappear below zoom 3
-    const maxZoom = 12;
-    const disappearZoom = 3;
+    // Half size at `GULL_MAX_ZOOM` (12), shrinking to nothing at
+    // `GULL_MIN_ZOOM` (3) — below that there are no gulls at all. The first of
+    // these two lines used to say "full size at z14 (20x) ... invisible below
+    // 1.5x": z14 is 12x, not 20x, and 1.5x is the widest step of the chart,
+    // where a gull has been invisible for as long as this code has existed.
+    // The line under it was right. Two comments, one line of code (v0.98.2.0).
+    const maxZoom = GULL_MAX_ZOOM;
+    const disappearZoom = GULL_MIN_ZOOM;
     const zoomT = Math.max(0, (cam.zoom - disappearZoom) / (maxZoom - disappearZoom)); // 0 at z3, 1 at z12
     const seagullScale = zoomT * 0.5; // max 0.5 at max zoom
     const tooFar = cam.zoom < disappearZoom || seagullScale < 0.02;
@@ -186,7 +197,8 @@ export class SeagullRenderer {
             this.seagullSound = this.scene.sound.add("seagull");
           }
           if (this.seagullSound) {
-            const baseVol = 0.15 + (cam.zoom - SEAGULL_CRY_ZOOM_MIN) / (12 - SEAGULL_CRY_ZOOM_MIN) * 0.25;
+            const baseVol = 0.15
+              + (cam.zoom - SEAGULL_CRY_ZOOM_MIN) / (GULL_MAX_ZOOM - SEAGULL_CRY_ZOOM_MIN) * 0.25;
             const userGain = getSoundGain("seagulls");
             if (userGain > 0) {
               this.seagullSound.play({ volume: baseVol * userGain });

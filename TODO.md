@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.98.1.0 · **Branch:** `main`
-**Kod:** 288 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2517 przechodzi, 0 failuje, 0 `todo`** w 95 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.98.2.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2531 przechodzi, 0 failuje, 0 `todo`** w 96 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3049,11 +3049,15 @@ przy okazji.
   wariant `CombatEvent` — a nie w rysowaniu, więc świadomie nie w v0.98.0.
   **Do zmierzenia najpierw: ile salw w typowej bitwie pudłuje?** Jeśli pudło
   jest rzadkie, brak informacji zwrotnej nie boli.
-- **Przemiatanie twierdzeń nie czyta warstwy rysującej.** `sweep-claims.mjs`
-  chodzi po `core/`. W `src/game/render/` komentarz `MountainRenderer` mówi
-  *„full opacity at zoom >= 4”*, a kod czyta `zoom < 2 ? 0.5 : 1`. Progi zoomu
-  są tam rozsypane (2 / 2,2 / 3 / 4 w sześciu plikach) i każdy jest o czym
-  innym, więc **nie ma czego scalać — jest co sprawdzić**.
+- **~~Przemiatanie twierdzeń nie czyta warstwy rysującej.~~ ✅ v0.98.2** — czyta,
+  pod `--all`, i mówiło „0 nieaktualnych". Miało rację i było ślepe: QUOTED
+  potrzebuje **nazwanej stałej**, a progi warstwy rysującej były gołymi
+  literałami. Przeczytane ręcznie: **siedem fałszywych zdań w pięciu plikach**
+  (m.in. `z14 (20x)` przy dwunastce i `zoom 7-10 (normalized)` — skala, której
+  gra już nie ma). Zmierzone też, że **oczywiste rozszerzenie narzędzia nie
+  działa**: reguła „liczba z komentarza ma wystąpić w kodzie pod nim" zgłasza
+  **69 ze 110** linii, prawie same zdrowe. Lekarstwo: **nazwać progi**, wtedy
+  widzi je stopień, który już istnieje — osiem sprawdzanych maszynowo.
 - **Cztery klasy nigdy nie budowane zostają na dysku**, z powodem w imiennej
   liście strażnika: `MinimapRenderer` (minimapa usunięta w v0.9.2),
   `ShoreWaveRenderer` (udokumentowany eksperyment, sześć nieudanych podejść),

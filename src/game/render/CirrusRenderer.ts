@@ -1,11 +1,20 @@
 /**
  * High-altitude cirrus clouds — thin silver wisps visible at far zoom.
  * Adds depth and sense of height to the map when zoomed out.
- * Only visible below zoom ~5 (disappear when zoomed in close).
+ *
+ * Full below `CIRRUS_FADE_START` (2) and gone from `CIRRUS_FADE_END` (2.5) in,
+ * so they are a thing of the widest two steps of the spyglass and nothing else.
+ * Until v0.98.2.0 this line said *"only visible below zoom ~5"* — twice the
+ * range the code has ever had — and the comment inside `update` said *"full at
+ * zoom 1.5"*, naming a step rather than the threshold above it.
  *
  * Separate module — does not affect other renderers.
  */
 import Phaser from "phaser";
+
+/** Full up to here, then fading; nothing from `CIRRUS_FADE_END` in. */
+export const CIRRUS_FADE_START = 2.0;
+export const CIRRUS_FADE_END = 2.5;
 
 const NUM_WISPS = 40;
 const CIRRUS_DEPTH = 5000; // ABOVE cumulus clouds so always visible
@@ -113,8 +122,7 @@ export class CirrusRenderer {
   update(windDirRad: number, windStrength: number): void {
     const cam = this.scene.cameras.main;
 
-    // Visible only at far zoom — fade fast: full at zoom 1.5, invisible at zoom 2.5
-    const fadeStart = 2.0, fadeEnd = 2.5;
+    const fadeStart = CIRRUS_FADE_START, fadeEnd = CIRRUS_FADE_END;
     const visibility = cam.zoom < fadeStart ? 1.0 :
       cam.zoom < fadeEnd ? 1 - (cam.zoom - fadeStart) / (fadeEnd - fadeStart) : 0;
 

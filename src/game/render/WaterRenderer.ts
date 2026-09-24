@@ -3,9 +3,19 @@
  *
  * Uses the same sea_texture as the base ocean but scrolled at different
  * speeds/angles. Overlapping creates natural wave interference pattern.
- * Visible at zoom 7-10 (normalized). ADD blend mode.
+ *
+ * Nothing below `WAVE_START_ZOOM` (8.85), rising to full at the closest step
+ * the chart has. Until v0.98.2.0 this line read *"visible at zoom 7-10
+ * (normalized)"* — a **normalised 0→10 scale the game no longer has**; the
+ * indicator in the corner stopped speaking it in v0.97.0.0 and the spyglass has
+ * fourteen named steps. The camera figure beside it was right all along.
+ * ADD blend mode.
  */
 import Phaser from "phaser";
+import { ZOOM_MAX_VALUE } from "../settings/ZoomSetting.ts";
+
+/** The chart has to be this close before the swell shows at all. */
+export const WAVE_START_ZOOM = 8.85;
 
 export class WaterRenderer {
   private layer1: Phaser.GameObjects.TileSprite | null = null;
@@ -82,10 +92,11 @@ export class WaterRenderer {
     this.layer2.tilePositionX += Math.sin(angle2) * speed2;
     this.layer2.tilePositionY += -Math.cos(angle2) * speed2;
 
-    // Visible at zoom 7-10 (normalized) = camera 8.85→12
     const cam = this.scene.cameras.main;
     const z = cam.zoom;
-    const waveAlpha = z < 8.85 ? 0 : Math.min(1, (z - 8.85) / (12 - 8.85));
+    const waveAlpha = z < WAVE_START_ZOOM
+      ? 0
+      : Math.min(1, (z - WAVE_START_ZOOM) / (ZOOM_MAX_VALUE - WAVE_START_ZOOM));
     this.layer1.setAlpha(waveAlpha * 0.7);
     this.layer2.setAlpha(waveAlpha * 0.5);
   }

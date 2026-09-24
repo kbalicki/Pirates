@@ -4,10 +4,24 @@
  * occasional snow cap on the biggest peaks.
  *
  * Stable: positions are derived from a seeded RNG so the layout is deterministic.
- * Visibility: faded out at low zoom (overview), full opacity at zoom >= 4.
+ *
+ * Visibility: full from `MOUNTAIN_FULL_ZOOM` (2) in, and **dimmed rather than
+ * hidden** below it — `MOUNTAIN_FAR_ALPHA` (0.5), because at overview zoom the
+ * peaks sit on top of the city dots. Until v0.98.2.0 this line said *"faded out
+ * at low zoom, full opacity at zoom >= 4"*, which was wrong twice: 4 is not a
+ * threshold this file has, and the peaks are never faded out. The method's own
+ * docstring below said the opposite of the header, correctly, for eleven
+ * releases.
  */
-import Phaser from "phaser";
+// Type-only: nothing here touches Phaser's runtime, which is what lets the
+// zoom thresholds below be read in a test without a browser (v0.98.2.0).
+import type Phaser from "phaser";
 import { PORTS } from "../../core/data/ports.ts";
+
+/** Below this the peaks are dimmed; from here in they are drawn in full. */
+export const MOUNTAIN_FULL_ZOOM = 2;
+/** What they fade to at overview zoom, where they overlap the city dots. */
+export const MOUNTAIN_FAR_ALPHA = 0.5;
 
 const CELL = 32;
 const MOUNTAIN_DEPTH = 100; // above land/beach/water, below flags/cities/ships
@@ -155,11 +169,9 @@ export class MountainRenderer {
     }
   }
 
-  /** Adjust visibility based on zoom — visible everywhere, just slightly faded at overview. */
+  /** Visible everywhere; only dimmed at overview zoom. See the header. */
   update(zoom: number): void {
-    // Always visible; fade slightly at z1-z2 (zoom < 2) since they overlap city dots
-    const alpha = zoom < 2 ? 0.5 : 1;
-    this.gfx.setAlpha(alpha);
+    this.gfx.setAlpha(zoom < MOUNTAIN_FULL_ZOOM ? MOUNTAIN_FAR_ALPHA : 1);
   }
 
   destroy(): void {
