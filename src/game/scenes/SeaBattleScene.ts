@@ -5,6 +5,7 @@ import type { CombatCommand } from "../../core/model/Commands.ts";
 import type { EntityId } from "../../core/model/ids.ts";
 import { CombatEngine, DISENGAGE_RANGE_MUL } from "../../core/engine/CombatEngine.ts";
 import { FxManager } from "../render/FxManager.ts";
+import { reloadProgress, newReloadSpan, type ReloadSpan } from "../ui/reloadGauge.ts";
 import { headingToDir8, vec2Dist } from "../../core/services/Geometry.ts";
 import { DIR8_TO_FRAME } from "../render/WorldRenderer.ts";
 import { ShipDamageOverlay } from "../render/ShipDamageOverlay.ts";
@@ -104,6 +105,8 @@ export class SeaBattleScene extends Phaser.Scene {
   private rangeCircle!: Phaser.GameObjects.Graphics;
   /** Reload-progress indicators per ship (drawn each tick). */
   private reloadBars: Record<string, Phaser.GameObjects.Graphics> = {};
+  /** Each bar's current reload length, since the hull only carries what is left. */
+  private reloadSpans = new WeakMap<Phaser.GameObjects.Graphics, ReloadSpan>();
   /** Set when the enemy carried his deck, so the result says so (v0.86.0). */
   private lostToBoarders = false;
   /** Far-distance timeout: ms spent at "very far" distance; after 60s shows countdown 60s. */
@@ -857,9 +860,12 @@ export class SeaBattleScene extends Phaser.Scene {
     const W = 30;
     const H = 5;
     const GAP = 6;
-    const maxCd = 180;
-    const lProg = 1 - Math.max(0, Math.min(1, ship.cooldown.left / maxCd));
-    const rProg = 1 - Math.max(0, Math.min(1, ship.cooldown.right / maxCd));
+    // Measured against the reload this battery is actually working through,
+    // not the best-case 180 ticks it used to assume (v0.98.4, `reloadGauge`).
+    let span = this.reloadSpans.get(g);
+    if (!span) this.reloadSpans.set(g, span = newReloadSpan());
+    const lProg = reloadProgress(span, "left", ship.cooldown.left);
+    const rProg = reloadProgress(span, "right", ship.cooldown.right);
 
     // PORT (left / Q) — red while loading, yellow when ready
     const lx = cx - W - GAP / 2;

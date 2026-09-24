@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.98.3.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2534 przechodzi, 0 failuje, 0 `todo`** w 96 plikach
+**Stan na:** 2026-09-24 · **Wersja:** v0.98.4.0 · **Branch:** `main`
+**Kod:** 291 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2540 przechodzi, 0 failuje, 0 `todo`** w 97 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3052,6 +3052,14 @@ przy okazji.
   bez słowa. Łuk czyta teraz `BROADSIDE_HALF_ARC`, a odmowa gracza to `FireRejected`
   z komunikatem. Martwe warianty `FxHit`/`FxSplash` w `CombatEvent` też poszły.
   Instrukcja mówiła to samo ±60° i „zasięg pół areny” — poprawione.
+- **~~Pasek przeładowania mierzył najlepszą załogę w grze.~~ ✅ v0.98.4** — `drawReload`
+  dzielił pozostały cooldown przez wpisane `180` (`CANNON_COOLDOWN_TICKS`, najszybsza możliwa
+  kadencja), a przeładowanie to `effectiveReloadTicks`, 180–430 ticków. Zmierzone w bitwie
+  `?battle=navy`: załoga startowa kapitana przeładowuje **259 ticków (13 s)**, a stary pasek stał
+  na zerze przez pierwsze **4 s** i zawsze napełniał się w 9 — każda załoga wyglądała jak
+  najlepsza. Teraz `ui/reloadGauge.ts` pamięta długość bieżącego przeładowania (skok cooldownu
+  w górę = nowe przeładowanie, także przy zmianie amunicji). **Wzór sesji:** druga kopia liczby
+  (łuk `Math.PI / 3` w v0.98.3, `z14 (20x)` w v0.98.2, luneta w v0.97.0) — wyprowadzać, nie przepisywać.
 - **~~Przemiatanie twierdzeń nie czyta warstwy rysującej.~~ ✅ v0.98.2** — czyta,
   pod `--all`, i mówiło „0 nieaktualnych". Miało rację i było ślepe: QUOTED
   potrzebuje **nazwanej stałej**, a progi warstwy rysującej były gołymi

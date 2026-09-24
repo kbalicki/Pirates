@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.98.4.0",
+    date: "2026-09-25",
+    changes: [
+      "A RELOAD BAR THAT SHOWED EVERY CREW AS THE BEST ONE",
+      "  The two bars under each hull divided the cooldown left by a typed 180 -",
+      "  CANNON_COOLDOWN_TICKS, the fastest cadence a full, brave, veteran crew",
+      "  can reach. The real reload is effectiveReloadTicks, 180 to about 430",
+      "  ticks (9 to 21 seconds, as the manual says). Measured in a live battle",
+      "  with the captain's opening crew - 20 of 30 men, 80% morale, 30% drill -",
+      "  a reload is 259 ticks, 13 seconds: the old bar sat EMPTY for the first",
+      "  four and then filled in nine, as it did for every crew in the game",
+      "",
+      "  The bar now measures the reload it is in. The hull only carries the",
+      "  ticks left, so the screen remembers each reload's length from the",
+      "  moment the cooldown jumps up - a shot, or a change of shot, which",
+      "  still empties both bars as the manual promises",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.98.3.0",
     date: "2026-09-24",
     changes: [
