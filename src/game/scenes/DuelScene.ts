@@ -12,10 +12,23 @@ import {
   type DuelState,
 } from "../../core/systems/DuelSystem.ts";
 
+/** Where a duel is fought, which decides what the screen calls it. */
+export type DuelSetting = "deck" | "gate" | "dig" | "house";
+
+/** Title, subtitle and victory line for each setting. */
+export const DUEL_TEXT: Record<DuelSetting, { title: string; subtitle: string; won: string }> = {
+  deck: { title: "duel.title", subtitle: "duel.subtitle", won: "duel.won" },
+  gate: { title: "duel.title_gate", subtitle: "duel.subtitle_gate", won: "duel.won_gate" },
+  dig: { title: "duel.title_dig", subtitle: "duel.subtitle_dig", won: "duel.won_dig" },
+  house: { title: "duel.title_house", subtitle: "duel.subtitle_house", won: "duel.won_house" },
+};
+
 /**
- * DuelScene — the captains settle a boarding with steel.
+ * DuelScene — every personal fight in the game, settled with steel.
  *
- * Launched over a paused `SeaBattleScene` when a boarding is accepted. All the
+ * A boarding (the captains, on a deck), the watch at a town gate, the men at a
+ * baited dig and the marquis' guards (`DuelSetting`, v0.99.9). First written
+ * for the boarding: launched over a paused `SeaBattleScene` when one is accepted. All the
  * rules live in `core/systems/DuelSystem.ts`; this scene only draws the state
  * and turns keys into actions, so the fight can be tested without Phaser.
  *
@@ -43,6 +56,15 @@ export class DuelScene extends Phaser.Scene {
 
   /** Told to the caller when the duel ends. */
   private onFinish?: (playerWon: boolean) => void;
+  /**
+   * Where the blades are drawn (v0.99.9). The screen called every fight "A
+   * Duel of Captains", told him to drive the man "to the rail" and cheered
+   * "He yields the deck!" - true of a boarding, and said just the same to the
+   * watch at a town gate, the men at a baited dig and the marquis' guards.
+   */
+  private setting: DuelSetting = "deck";
+  /** The chart's overlay was hidden for the fight and is to come back. */
+  private hidOverlay = false;
 
   constructor() {
     super({ key: "DuelScene" });
@@ -53,7 +75,9 @@ export class DuelScene extends Phaser.Scene {
     enemyFencing: number;
     seed?: number;
     onFinish?: (playerWon: boolean) => void;
+    setting?: DuelSetting;
   }): void {
+    this.setting = data.setting ?? "deck";
     this.duel = createDuel(data.playerFencing, data.enemyFencing, createRng(data.seed ?? Date.now()));
     this.lastAction = null;
     this.resolved = false;
@@ -72,10 +96,24 @@ export class DuelScene extends Phaser.Scene {
     this.panel(cw / 2, ch / 2 - 6, 640, 250);
     this.panel(cw / 2, ch - 66, 640, 104);
 
-    this.add.text(cw / 2, 40, t("duel.title"), txt(26, { bold: true, color: "#ffdd66" }))
+    // The chart's own overlay - compass, date, the map's hints - is a separate
+    // always-on scene and drew over a fight launched from the chart or a town's
+    // gate. Hidden for the duel, given back when it ends.
+    if (this.scene.isActive("UIOverlayScene")) {
+      this.scene.setVisible(false, "UIOverlayScene");
+      this.hidOverlay = true;
+      // On shutdown rather than only at the verdict: however the scene is
+      // stopped, the chart gets its overlay back.
+      this.events.once("shutdown", () => {
+        if (this.hidOverlay) this.scene.setVisible(true, "UIOverlayScene");
+        this.hidOverlay = false;
+      });
+    }
+
+    this.add.text(cw / 2, 40, t(DUEL_TEXT[this.setting].title), txt(26, { bold: true, color: "#ffdd66" }))
       .setOrigin(0.5, 0).setDepth(1);
 
-    this.add.text(cw / 2, 78, t("duel.subtitle"), txt(13, { color: "#aabbcc" }))
+    this.add.text(cw / 2, 78, t(DUEL_TEXT[this.setting].subtitle), txt(13, { color: "#aabbcc" }))
       .setOrigin(0.5, 0).setDepth(1);
 
     // The deck: player's end on the left, enemy's on the right.
@@ -213,7 +251,7 @@ export class DuelScene extends Phaser.Scene {
     const cw = this.cameras.main.width;
     const ch = this.cameras.main.height;
 
-    this.add.text(cw / 2, ch / 2 - 100, won ? t("duel.won") : t("duel.lost"),
+    this.add.text(cw / 2, ch / 2 - 100, won ? t(DUEL_TEXT[this.setting].won) : t("duel.lost"),
       { ...txt(24, { bold: true, color: won ? "#ffdd44" : "#ff8888" }),
         backgroundColor: "#000000cc", padding: { x: 18, y: 10 } })
       .setOrigin(0.5).setDepth(10);

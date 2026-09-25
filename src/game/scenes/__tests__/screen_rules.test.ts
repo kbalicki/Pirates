@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getReputationLevel } from "../../../core/systems/ReputationSystem.ts";
+import { PL } from "../../../core/i18n/locales/pl.ts";
+import { EN } from "../../../core/i18n/locales/en.ts";
 
 // ===========================================================================
 // A screen that restates a rule of the engine restates it wrong (v0.99.5)
@@ -97,5 +99,33 @@ describe("personal fights read their opponents from the engine (v0.99.8)", () =>
     const offenders = Object.entries(SCENES)
       .filter(([, s]) => /enemyFencingFor\(\s*\d/.test(s)).map(([p]) => p);
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("a duel is named for where it is fought (v0.99.9)", () => {
+  // Every fight used to be "A Duel of Captains", "drive him to the rail",
+  // "he yields the deck!" - said to the watch at a gate as to a boarding.
+  const SETTINGS = ["gate", "dig", "house"];
+
+  it("has a title, a subtitle and a victory line in both languages for each", () => {
+    for (const s of SETTINGS) {
+      for (const k of [`duel.title_${s}`, `duel.subtitle_${s}`, `duel.won_${s}`]) {
+        expect(PL[k], k).toBeTruthy();
+        expect(EN[k], k).toBeTruthy();
+      }
+    }
+  });
+
+  it("is told its setting by every caller that is not a boarding", () => {
+    expect(src("PortApproachScene.ts")).toContain('setting: "gate"');
+    expect(src("MainMapScene.ts")).toContain('setting: "dig"');
+    expect(src("PortScene.ts")).toContain('setting: "house"');
+  });
+
+  it("hides the chart's overlay for the fight and gives it back", () => {
+    const duel = src("DuelScene.ts");
+    expect(duel).toContain('setVisible(false, "UIOverlayScene")');
+    expect(duel).toContain('setVisible(true, "UIOverlayScene")');
+    expect(duel).toContain('events.once("shutdown"');
   });
 });

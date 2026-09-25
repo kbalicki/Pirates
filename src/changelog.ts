@@ -6,6 +6,22 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.9.0",
+    date: "2026-09-25",
+    changes: [
+      "A DUEL KNOWS WHERE IT IS FOUGHT",
+      "  Every fight with a blade was 'A Duel of Captains': drive him to the",
+      "  rail, and when he broke, 'He yields the deck!' - said to the watch at a",
+      "  town gate, the men at a baited dig and the marquis' guards alike. Each",
+      "  now has its own title and its own victory line",
+      "",
+      "  And the chart's compass, date and hints no longer hang over a fight",
+      "  started from the chart or a town's gate",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.8.0",
     date: "2026-09-25",
     changes: [

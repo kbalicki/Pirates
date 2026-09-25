@@ -431,6 +431,7 @@ export class PortApproachScene extends Phaser.Scene {
             playerFencing: effectiveSkill(this.worldState, "fencing"),
             enemyFencing: gateWatchFencing(this.worldState, this.portId as string),
             seed: this.worldState.time.day * 53 + (this.portId as string).length * 7,
+            setting: "gate",
             onFinish: (playerWon: boolean) => {
               this.scene.resume();
               if (playerWon) { this.slipIn(); return; }

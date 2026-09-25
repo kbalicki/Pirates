@@ -1748,7 +1748,7 @@ instrukcja dla gracza potrzebuje obu.
 | `ShipEncounterScene` | spotkanie na morzu | manifest, wieści, atak, odejście |
 | `SeaBattleScene` | atak albo napaść | arena, działa, abordaż |
 | `BattleHelpScene` | `H` w bitwie | podręcznik bitwy |
-| `DuelScene` | abordaż, zasadzka przy skarbie, wątek rodzinny | pojedynek na tor przewagi |
+| `DuelScene` | abordaż, zasadzka przy skarbie, wątek rodzinny, straż przy bramie (v0.99.8) | pojedynek na tor przewagi; tytuł i linia wygranej od miejsca walki (`DuelSetting`, v0.99.9) |
 | `CityAssaultScene` | atak na miasto | ostrzał i desant falami |
 | `CityDefenseScene` | obrona miasta | ostrzał cudzej eskadry i szalupy |
 | `VillageScene` | wejście do wioski | barter rumem, wyprawa wojenna |

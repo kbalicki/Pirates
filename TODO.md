@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.8.0 · **Branch:** `main`
-**Kod:** 292 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2590 przechodzi, 0 failuje, 0 `todo`** w 102 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.9.0 · **Branch:** `main`
+**Kod:** 292 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2593 przechodzi, 0 failuje, 0 `todo`** w 102 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3110,9 +3110,9 @@ bitwą) — teraz straż zamyka bramę, zostaje szturm albo odpłynięcie; cena 
 (`fleetShipResale`); kolor marży z pasma reputacji, nie z wpisanego 0,12. ✅ **v0.99.8: pojedynek ze strażą**
 (decyzja użytkownika): wygrana — wejście, przegrana — ¼ sakiewki i zamknięta brama; straż z obrony miasta.
 Ludzie markiza w wątku rodzinnym (`enemyFencingFor(30, 45)` wpisane w `PortScene`) w `FamilyQuestSystem`.
-**Zauważone, nie ruszane:** `DuelScene` ma tytuł „Pojedynek kapitanów” także przy straży, zasadzce i ludziach
-markiza; nad pojedynkiem z mapy wisi nakładka mapy (róża wiatrów, podpowiedzi) — `UIOverlayScene` nie jest
-zatrzymywana, tak jak robi to `CityAssaultScene`.
+✅ **v0.99.9:** `DuelScene` zna scenerię (`DuelSetting`: pokład / brama / dół / dom) — tytuł, podtytuł i
+linia wygranej pasują do przeciwnika (wcześniej „Pojedynek kapitanów”, „zepchnij go do relingu”, „oddaje ci
+pokład!” także przy straży i zasadzce); nakładka mapy schowana na czas walki, przywracana przy `shutdown`.
 Kara za przegraną zasadzkę przy skarbie (¼ sakiewki) przeniesiona do `TreasureSystem` (`AMBUSH_LOSS_SHARE`).
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie

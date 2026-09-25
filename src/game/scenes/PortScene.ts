@@ -1818,6 +1818,7 @@ export class PortScene extends Phaser.Scene {
       playerFencing: effectiveSkill(this.worldState, "fencing"),
       enemyFencing: familyGuardFencing(this.worldState.player.notoriety ?? 0),
       seed: this.worldState.time.day * 131 + here.index * 17,
+      setting: "house",
       onFinish: (playerWon: boolean) => {
         this.scene.resume();
         if (!playerWon) {

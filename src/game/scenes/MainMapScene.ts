@@ -876,6 +876,7 @@ export class MainMapScene extends Phaser.Scene {
       playerFencing: effectiveSkill(this.worldState, "fencing"),
       enemyFencing: ambushFencing(this.worldState.player.notoriety ?? 0),
       seed: this.worldState.time.day * 31 + (captain?.startAge ?? 20),
+      setting: "dig",
       onFinish: (playerWon: boolean) => {
         this.scene.resume();
         const settled = settleAmbush(this.worldState, playerWon, reward);
