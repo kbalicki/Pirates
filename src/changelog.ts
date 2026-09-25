@@ -6,6 +6,20 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.10.0",
+    date: "2026-09-25",
+    changes: [
+      "THE CLOUDS AND THE WATER READ THE CHART'S OWN ZOOM",
+      "  Four places in the drawing layer worked out how far in the camera was",
+      "  from a zoom range typed by hand - 1.5 to 12 - instead of the chart's",
+      "  own ladder, the same second copy the gulls kept until 0.98.2. They",
+      "  read the ladder now; nothing on screen changes today, and nothing",
+      "  drifts when the ladder does",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.9.0",
     date: "2026-09-25",
     changes: [

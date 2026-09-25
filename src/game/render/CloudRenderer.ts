@@ -7,6 +7,7 @@
  * Layers drift at slightly different speeds for parallax effect.
  */
 import Phaser from "phaser";
+import { ZOOM_MIN_VALUE, ZOOM_MAX_VALUE } from "../settings/ZoomSetting.ts";
 
 const MIN_CLOUDS = 800;
 const MAX_CLOUDS = 1300;
@@ -73,7 +74,7 @@ export class CloudRenderer {
 
     // Zoom-based scale: smaller at all zooms (half size at max zoom)
     // At zoom 1.5 (min): scale 0.15, at zoom 12 (max): scale 0.5
-    const zoomScale = 0.15 + (cam.zoom - 1.5) / (12 - 1.5) * 0.35;
+    const zoomScale = 0.15 + (cam.zoom - ZOOM_MIN_VALUE) / (ZOOM_MAX_VALUE - ZOOM_MIN_VALUE) * 0.35;
 
     for (const cloud of this.clouds) {
       const speed = CLOUD_BASE_SPEED * windStrength * cloud.speedMultiplier;

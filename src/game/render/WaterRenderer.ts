@@ -66,7 +66,7 @@ export class WaterRenderer {
     this.layer1.setOrigin(0.5, 0.5);
     this.layer1.setDepth(-998);
     this.layer1.setBlendMode(Phaser.BlendModes.ADD);
-    this.layer1.setTileScale(1 / 12, 1 / 12); // same scale as sea texture
+    this.layer1.setTileScale(1 / ZOOM_MAX_VALUE, 1 / ZOOM_MAX_VALUE); // same scale as sea texture
     this.layer1.setAlpha(0);
 
     // Layer 2: moves at different angle for interference

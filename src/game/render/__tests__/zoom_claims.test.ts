@@ -128,7 +128,8 @@ describe("a threshold the sweep can read", () => {
     // Each of these carried its own `12`.
     const offenders = Object.entries(RENDER)
       .filter(([p]) => !p.includes("__tests__"))
-      .filter(([, s]) => /\(\s*12\s*-\s*[A-Za-z_]/.test(s))
+      // A number after the minus too (v0.99.10): `(12 - 1.5)` in three places.
+      .filter(([, s]) => /\(\s*12\s*-/.test(s) || /zoom - 1\.5\b/.test(s) || /\b1 \/ 12\b/.test(s))
       .map(([p]) => p);
     expect(offenders, "these subtract from a hand-written 12").toEqual([]);
   });

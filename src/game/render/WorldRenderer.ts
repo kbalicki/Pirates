@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { ZOOM_MIN_VALUE, ZOOM_MAX_VALUE } from "../settings/ZoomSetting.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
 import type { WorldEvent } from "../../core/model/Events.ts";
@@ -147,7 +148,7 @@ export class WorldRenderer {
             anchor.setDepth(entity.anchorPos.y - 1);
             // Apply zoom-based scaling (same formula as sailing ships)
             const cam = scene.cameras.main;
-            const t2 = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+            const t2 = Math.min(1, (cam.zoom - ZOOM_MIN_VALUE) / (ZOOM_MAX_VALUE - ZOOM_MIN_VALUE));
             anchor.setScale(0.086 * (0.10 + t2 * 0.23));
             this.anchorSprites.set(id, anchor);
           }
@@ -197,7 +198,7 @@ export class WorldRenderer {
       if (entity.kind === "ship" && curMode !== "landed") {
         const cam = scene.cameras.main;
         const baseScale = 0.086; // for 256px frames
-        const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+        const t = Math.min(1, (cam.zoom - ZOOM_MIN_VALUE) / (ZOOM_MAX_VALUE - ZOOM_MIN_VALUE));
         const zoomFactor = 0.10 + t * 0.23;
         sprite.setScale(baseScale * zoomFactor);
         // Also scale anchor sprite if present
@@ -209,7 +210,7 @@ export class WorldRenderer {
         const anchorSpr = this.anchorSprites.get(id);
         if (anchorSpr) {
           const cam = scene.cameras.main;
-          const t = Math.min(1, (cam.zoom - 1.5) / (12 - 1.5));
+          const t = Math.min(1, (cam.zoom - ZOOM_MIN_VALUE) / (ZOOM_MAX_VALUE - ZOOM_MIN_VALUE));
           anchorSpr.setScale(0.086 * (0.10 + t * 0.23));
         }
       }
