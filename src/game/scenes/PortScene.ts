@@ -45,6 +45,7 @@ import {
   repairRate,
   grainOffer,
   sellGrain,
+  fleetShipResale,
   type GrainOffer,
 } from "../../core/systems/PortInteractionSystem.ts";
 import {
@@ -2213,14 +2214,18 @@ export class PortScene extends Phaser.Scene {
     // number that matters is the round trip — the gap between the two columns
     // above — because that is what he loses on every barrel he handles twice.
     const access = portAccess(this.worldState, portKey);
-    const wide = access.spread > 0.12;
+    // Red where his standing costs him more than a stranger pays, green where
+    // it costs less: read from the band, not from a copy of the neutral
+    // spread typed as 0.12 (v0.99.7).
+    const wide = access.level === "hostile" || access.level === "unfriendly";
+    const narrow = access.level === "friendly" || access.level === "allied";
     this.contentContainer.add(this.add.text(
       this.infoX, this.dlgY + DLG_H - PAD - 48,
       t("port.spread", {
         level: t("rep." + access.level),
         pct: Math.round(access.spread * 200),
       }),
-      txt(11, { color: wide ? "#aa3333" : access.spread < 0.12 ? "#227722" : "#666666" }),
+      txt(11, { color: wide ? "#aa3333" : narrow ? "#227722" : "#666666" }),
     ));
 
     // Hint
@@ -2664,7 +2669,7 @@ export class PortScene extends Phaser.Scene {
         const rowIndex = availableShips.length + fi;
         const isFocused = rowIndex === this.selectedIndex;
         const hullPct = Math.round((esc.hullHp / esc.hullMax) * 100);
-        const sellPrice = Math.floor(escCls.buyPrice * 0.4);
+        const sellPrice = fleetShipResale(esc.classId as string);
         const aboard = Math.round(stowedIn(consortCargo(esc)));
         // The class alone: the section header above already says these are his,
         // and "Fleet ship: Merchantman" ran into the hull column in Polish.

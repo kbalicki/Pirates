@@ -64,3 +64,24 @@ describe("the screens read the captain's default drill", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe("the harbour gate and the yard read the engine (v0.99.7)", () => {
+  it("rolls a sneak against the engine's chance, and never starts a battle with a town", () => {
+    const approach = src("PortApproachScene.ts");
+    expect(approach).toContain("sneakChance(");
+    expect(approach).not.toMatch(/0\.5 \+ morale \* 0\.3/);
+    // A failed sneak started SeaBattleScene against the port id - an enemy with
+    // no hull. The only battle this dialog may open is none at all.
+    expect(approach).not.toContain('"SeaBattleScene"');
+  });
+
+  it("prints the yard's offer from the engine", () => {
+    const port = src("PortScene.ts");
+    expect(port).toContain("fleetShipResale(esc.classId");
+    expect(port).not.toMatch(/buyPrice \* 0\.4/);
+  });
+
+  it("colours the counter's spread by band, not by a copy of the neutral spread", () => {
+    expect(src("PortScene.ts")).not.toMatch(/spread [<>] 0\.12/);
+  });
+});

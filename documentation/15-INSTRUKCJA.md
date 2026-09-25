@@ -158,6 +158,12 @@ Sześć lad, a w zdobytym mieście siódma.
 Nagłówek portu mówi dwie rzeczy od razu: **Twoje notowania tutaj** i czy
 miastu **czegoś brakuje**.
 
+Do **wrogiego** portu możesz się **wkraść** pod obcą banderą. Z załogą w dobrym
+nastroju i nieznanym nazwiskiem udaje się to zwykle trzy razy na cztery; im
+głośniej o Tobie, tym rzadziej. Jeśli straż Cię rozpozna, brama jest zamknięta:
+zostaje szturm albo odpłynięcie. Stocznia odkupi okręt z Twojej floty za
+**40% ceny katalogowej**.
+
 ### Notowania decydują o wszystkim
 
 Reputacja jest **osobna dla każdej korony** i jedna liczba rządzi pięcioma

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.6.0 · **Branch:** `main`
-**Kod:** 291 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2578 przechodzi, 0 failuje, 0 `todo`** w 101 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.7.0 · **Branch:** `main`
+**Kod:** 292 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2584 przechodzi, 0 failuje, 0 `todo`** w 102 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3104,9 +3104,11 @@ martwa gałąź `isGrid` w `MainMapScene` z **drugą** regułą wygaszania siatk
 wpisane `12` jako maks. zoom (dwa miejsca) i `?? 0.3` zamiast `TRAINING_DEFAULT`. Strażnik:
 `screen_rules.test.ts` (żadna scena nie trzyma łańcucha progów reputacji). ✅ **v0.99.6: skaner jest
 narzędziem** — `scripts/sweep-copies.mjs` (pomoc przy czytaniu, nie bramka). Pierwszy przebieg wskazał
-kandydatów na następne wydanie: `PortApproachScene:402` (szansa wślizgnięcia `0.5 + morale*0.3 -
-notoriety*0.005` — reguła w scenie), `PortScene:2667` (sprzedaż okrętu `buyPrice * 0.4` w scenie; czy
-zgadza się z `FleetSystem`?), `PortScene:2216` (próg „szerokiej” marży = spread neutralny 0,12).
+kandydatów — ✅ **v0.99.7 wszystkie trzy**: szansa wślizgnięcia w silniku (`sneakChance`), a **nieudane
+wślizgnięcie otwierało bitwę morską z portem** (przeciwnik bez kadłuba, nie do trafienia, nakładka mapy nad
+bitwą) — teraz straż zamyka bramę, zostaje szturm albo odpłynięcie; cena odsprzedaży okrętu jedną funkcją
+(`fleetShipResale`); kolor marży z pasma reputacji, nie z wpisanego 0,12. **Otwarte (decyzja):** czy
+rozpoznanie przy bramie ma być pojedynkiem ze strażą (jak w Sid Meier's Pirates!) zamiast samego odprawienia.
 Kara za przegraną zasadzkę przy skarbie (¼ sakiewki) przeniesiona do `TreasureSystem` (`AMBUSH_LOSS_SHARE`).
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie

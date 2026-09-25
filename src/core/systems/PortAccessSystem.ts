@@ -237,3 +237,22 @@ export function tradeProceeds(basePrice: number, access: PortAccess, qty: number
     Math.max(0, Math.round(bidExact(basePrice, access) * qty)),
   );
 }
+
+/**
+ * Slipping into a hostile harbour under a false flag (v0.99.7).
+ *
+ * The formula lived in `PortApproachScene` alone - half and half, better with
+ * a steady crew, worse with a famous name. It is kept as it was:
+ *
+ *   chance = SNEAK_BASE + morale x SNEAK_PER_MORALE - notoriety x SNEAK_PER_NOTORIETY
+ *
+ * A fresh captain with a crew at 80 % gets in three times in four; a name
+ * worth 100 notoriety, one time in four.
+ */
+export const SNEAK_BASE = 0.5;
+export const SNEAK_PER_MORALE = 0.3;
+export const SNEAK_PER_NOTORIETY = 0.005;
+
+export function sneakChance(morale: number, notoriety: number): number {
+  return Math.max(0, Math.min(1, SNEAK_BASE + morale * SNEAK_PER_MORALE - notoriety * SNEAK_PER_NOTORIETY));
+}

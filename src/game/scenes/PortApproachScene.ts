@@ -10,6 +10,7 @@ import { tradeIncome } from "../../core/systems/TradeLedgerSystem.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { isPortClosed } from "../../core/systems/EventEffectsSystem.ts";
+import { sneakChance } from "../../core/systems/PortAccessSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
@@ -37,12 +38,15 @@ export class PortApproachScene extends Phaser.Scene {
   }
 
   private isOnFoot = false;
+  /** The watch saw through the false flag; the gate is shut to him (v0.99.7). */
+  private spotted = false;
 
-  init(data: { worldState: WorldState; portId: PortId; isOnFoot?: boolean }): void {
+  init(data: { worldState: WorldState; portId: PortId; isOnFoot?: boolean; spotted?: boolean }): void {
     this.worldState = data.worldState;
     this.portId = data.portId;
     this.portDef = PORTS[this.portId as string];
     this.isOnFoot = data.isOnFoot ?? false;
+    this.spotted = data.spotted === true;
   }
 
   create(): void {
@@ -153,6 +157,17 @@ export class PortApproachScene extends Phaser.Scene {
         wordWrap: { width: DLG_W - PAD * 2 },
       });
       y += 34;
+    } else if (this.spotted) {
+      // Caught at the gate. Until v0.99.7 a failed sneak started a SEA BATTLE
+      // against the port id - an enemy with no hull, no crew and no guns, that
+      // could be neither hit nor beaten, under the chart's own overlay. v0.13.0
+      // fixed exactly that for the storming reply and left this one behind.
+      // Measured, not a fixed 34: in Polish the line wraps to two.
+      const spottedText = this.add.text(infoX, y, t("approach.sneak_spotted"), {
+        ...txt(12, { color: "#aa3333", bold: true }),
+        wordWrap: { width: DLG_W - PAD * 2 },
+      });
+      y += spottedText.height + 12;
     } else if (isHostile) {
       this.actions.push({ label: t("approach.sneak"), action: "sneak" });
     } else {
@@ -398,8 +413,7 @@ export class PortApproachScene extends Phaser.Scene {
       case "sneak": {
         const playerEntity = this.worldState.entities[this.worldState.player.shipId as string];
         const morale = playerEntity?.ship?.crew.morale ?? 0.5;
-        const notoriety = this.worldState.player.notoriety;
-        const chance = 0.5 + morale * 0.3 - notoriety * 0.005;
+        const chance = sneakChance(morale, this.worldState.player.notoriety);
         const roll = Math.random();
 
         if (roll < chance) {
@@ -412,11 +426,11 @@ export class PortApproachScene extends Phaser.Scene {
             isOnFoot: this.isOnFoot,
           });
         } else {
-          this.scene.stop();
-          this.scene.stop("MainMapScene");
-          this.scene.start("SeaBattleScene", {
+          this.scene.restart({
             worldState: this.worldState,
-            enemyId: this.portId,
+            portId: this.portId,
+            isOnFoot: this.isOnFoot,
+            spotted: true,
           });
         }
         break;

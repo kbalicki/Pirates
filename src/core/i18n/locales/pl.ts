@@ -180,6 +180,7 @@ export const PL: LocaleData = {
   "approach.closed": "Port jest zamkni\u0119ty. \u017badna \u0142\u00f3d\u017a nie wyp\u0142ynie ci naprzeciw i \u017caden pilot nie wprowadzi ci\u0119 do \u015brodka.",
   "approach.enter_desc": "Zacumuj i odwiedź port.",
   "approach.sneak": "WKRADNIJ SIĘ",
+  "approach.sneak_spotted": "Straż przejrzała twoją banderę — odpłyń.",
   "approach.sneak_desc_fort": "Spróbuj wejść niezauważenie. Ryzyko wykrycia.",
   "approach.sneak_desc_city": "Zmień banderę i wślizgnij się do portu.",
   "approach.attack": "ATAK",

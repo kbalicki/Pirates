@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.7.0",
+    date: "2026-09-25",
+    changes: [
+      "CAUGHT AT THE GATE",
+      "  Slipping into a hostile harbour under false colours fails about one",
+      "  time in four for a fresh captain - and a failure started a SEA BATTLE",
+      "  against the town itself: an enemy with no hull, no crew and no guns,",
+      "  that could be neither hit nor beaten, with the chart's compass and",
+      "  hints hanging over the fight. The storming reply had exactly this",
+      "  fixed in 0.13.0; the sneak kept it. Now the watch sees through your",
+      "  colours and the gate is shut: storm the town or put about",
+      "",
+      "  The chance itself is unchanged - better with a steady crew, worse with",
+      "  a famous name - and is a rule of the game now rather than of the",
+      "  dialog. So is the yard's offer for one of your ships (40% of her list",
+      "  price), which the shipyard printed from a copy of its own",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.6.0",
     date: "2026-09-25",
     changes: [

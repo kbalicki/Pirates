@@ -624,7 +624,20 @@ export type FleetSellResult = {
   error?: string;
 };
 
-/** Sell an escort ship from the fleet. Returns 40% of buy price. */
+/** What a yard pays for one of his hulls: this share of her list price. */
+export const FLEET_RESALE_SHARE = 0.4;
+
+/**
+ * The yard's offer for a consort of this class (v0.99.7). The shipyard screen
+ * printed its own `buyPrice * 0.4` beside the one `sellFleetShip` paid - the
+ * same number today, two places to keep it.
+ */
+export function fleetShipResale(classId: string): number {
+  const classDef = SHIP_CLASSES[classId];
+  return classDef ? Math.floor(classDef.buyPrice * FLEET_RESALE_SHARE) : 0;
+}
+
+/** Sell an escort ship from the fleet, at `fleetShipResale`. */
 export function sellFleetShip(
   world: WorldState,
   fleetIndex: number,
@@ -635,8 +648,7 @@ export function sellFleetShip(
   }
 
   const escort = fleet[fleetIndex];
-  const classDef = SHIP_CLASSES[escort.classId];
-  const sellPrice = classDef ? Math.floor(classDef.buyPrice * 0.4) : 0;
+  const sellPrice = fleetShipResale(escort.classId as string);
 
   // Her cargo comes ashore into the hulls that remain, as much of it as they
   // will take; the rest is sold with her.

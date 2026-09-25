@@ -554,6 +554,16 @@ i **linię głodu**, gdy miastu zabrakło importu.
 | `HomePortSystem.WAREHOUSE_CAP` | 300 | pojemność magazynu w porcie macierzystym |
 | `PortInteractionSystem.GRANARY_REPUTATION` | 8 | reputacja za sprzedaż zboża do spichlerza |
 | `FamilyQuestSystem.INFORMER_PRICE` | 200 | ile bierze informator za wieść o rodzinie |
+| `PortInteractionSystem.FLEET_RESALE_SHARE` | 0.4 | ile ceny katalogowej stocznia płaci za kadłub z Twojej floty |
+| `PortAccessSystem.SNEAK_BASE` | 0.5 | podstawa szansy wślizgnięcia się do wrogiego portu pod obcą banderą |
+| `PortAccessSystem.SNEAK_PER_MORALE` | 0.3 | ile dokłada morale załogi (0–1) |
+| `PortAccessSystem.SNEAK_PER_NOTORIETY` | 0.005 | ile odbiera każdy punkt sławy |
+
+**Wślizgnięcie się do wrogiego portu** (v0.99.7): przy 80% morale i bez sławy trzy
+razy na cztery, przy sławie 100 raz na cztery. Nieudane — straż rozpoznaje banderę
+i brama jest zamknięta; zostaje szturm albo odpłynięcie. Do v0.99.7 porażka
+otwierała **bitwę morską z portem** — przeciwnikiem bez kadłuba, załogi i dział,
+którego nie dało się ani trafić, ani pokonać.
 
 
 ---
