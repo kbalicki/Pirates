@@ -548,6 +548,14 @@ export class PreloadScene extends Phaser.Scene {
       this.scene.start("MainMapScene", { worldState: world });
       return;
     }
+    // Ashore at Nombre de Dios with the siege world's frigate and people, the
+    // ship at anchor behind: the march on Panamá (v0.99.2). Walk south.
+    if (params.has("isthmus")) {
+      const world = this.applyDebugCrewState(this.createIsthmusWorld(), params);
+      this.registry.set("worldState", world);
+      this.scene.start("MainMapScene", { worldState: world });
+      return;
+    }
     // Standing on a town's own anchorage, which is what opens
     // `PortApproachScene` (v0.84.0).
     if (params.has("approach")) {
@@ -2285,6 +2293,30 @@ export class PreloadScene extends Phaser.Scene {
    * the whole of it. Landmasses have to be loaded first or `getPortWaterPos`
    * answers the quay rather than the water beside it.
    */
+  private createIsthmusWorld(): import("../../core/model/WorldState.ts").WorldState {
+    const base = this.createSiegeWorld();
+    const shipId = base.player.shipId as string;
+    const entity = base.entities[shipId];
+    if (!entity) return base;
+    loadLandmassesFromCache(this);
+    // Sixteen units inland of the town, so its own hail does not fire: the
+    // isthmus here runs from about y 2194 to 2242, and Panamá is at its foot.
+    const town = CITIES.nombre_de_dios.pos;
+    const pos = { x: town.x, y: town.y + 16 };
+    const anchorPos = getPortWaterPos("nombre_de_dios");
+    return {
+      ...base,
+      player: { ...base.player, location: { type: "sea", pos: { ...pos } } },
+      entities: {
+        ...base.entities,
+        [shipId]: {
+          ...entity, mode: "landed" as const, pos, anchorPos: { ...anchorPos },
+          landedTick: base.time.tick, vel: { x: 0, y: 0 }, sailLevel: 0,
+        },
+      },
+    };
+  }
+
   private createApproachWorld(portKey: string): import("../../core/model/WorldState.ts").WorldState {
     const world = createNewWorldState(Date.now());
     const shipId = world.player.shipId as string;

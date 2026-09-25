@@ -151,6 +151,52 @@ describe("the real Caribbean", () => {
   });
 });
 
+/**
+ * The other half of `landlocked` (v0.99.2): a town no keel reaches is reached
+ * on foot. The owner kept Panamá as a town to sack overland, the way Morgan did
+ * in 1671, and that is only a promise if the isthmus is one piece of land on
+ * this chart. Measured: from Nombre de Dios a walker reaches Panamá's hail
+ * circle in about forty 4 px steps - some three game hours at `LAND_WALK_SPEED`.
+ */
+describe("a town without a keel is reached on foot", () => {
+  beforeAll(() => { setLandmasses(loadRealLandmasses()); resetSeaGrid(); });
+  afterAll(() => { setLandmasses([]); resetSeaGrid(); });
+
+  /** 4-connected flood fill over land, in 4 px steps, until `goal` is within `reach`. */
+  function walkSteps(from: { x: number; y: number }, goal: { x: number; y: number }, reach: number): number {
+    const STEP = 4, key = (x: number, y: number) => `${x},${y}`;
+    let frontier = [{ x: Math.round(from.x), y: Math.round(from.y) }];
+    const seen = new Set([key(frontier[0].x, frontier[0].y)]);
+    for (let steps = 0; steps < 2000 && frontier.length; steps++) {
+      const next: { x: number; y: number }[] = [];
+      for (const p of frontier) {
+        if (dist(p, goal) <= reach) return steps;
+        for (const [dx, dy] of [[STEP, 0], [-STEP, 0], [0, STEP], [0, -STEP]]) {
+          const q = { x: p.x + dx, y: p.y + dy };
+          if (seen.has(key(q.x, q.y)) || !onLand(q)) continue;
+          seen.add(key(q.x, q.y));
+          next.push(q);
+        }
+      }
+      frontier = next;
+    }
+    return -1;
+  }
+
+  it("starts the march on land, on the Caribbean side", () => {
+    expect(onLand(CITIES.nombre_de_dios.pos)).toBe(true);
+  });
+
+  it("puts every landlocked town within a walk of a Caribbean port", () => {
+    for (const key of Object.keys(CITIES).filter(isLandlocked)) {
+      // 10 px is the on-foot hail radius (`MainMapScene.findNearPort`).
+      const steps = walkSteps(CITIES.nombre_de_dios.pos, CITIES[key].pos, 10);
+      expect(steps, key).toBeGreaterThan(0);
+      expect(steps, key).toBeLessThan(100);
+    }
+  });
+});
+
 describe("nothing that needs a keel names a town without one", () => {
   const world = { ports: {}, worldFlags: {}, captain: { nationality: "england" } } as unknown as WorldState;
 

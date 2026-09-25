@@ -461,6 +461,16 @@ stracisz prawie połowę.
 Wybieraj miasta **po najeździe Indian** albo **po najeździe piratów**: obrona
 jest wtedy realnie niższa.
 
+### Panamá — lądem
+
+Panamá leży nad Pacyfikiem i **nie dopłyniesz do niej**. Weź ją tak, jak Morgan:
+wpłyń na brzeg przy Nombre de Dios i idź na południe przez przesmyk — to mniej
+więcej godzina marszu. Pod miastem wybierz **szturm**. Dział nie masz, więc nie
+ma ostrzału: od razu desant, a statki czekają nietknięte po drugiej stronie.
+Za to skarbiec — srebro z Peru — jest **ponad dwa razy** bogatszy niż w
+jakimkolwiek innym mieście. Wioska Darién za wojenną drużynę zbije obronę
+o czterdzieści, zanim przyjdziesz.
+
 ### Bronisz miasta
 
 Zdobyte miasto **nie zostaje Twoje samo z siebie**. Korona wraca po swoje:

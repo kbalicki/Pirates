@@ -163,7 +163,17 @@ export type AttackForce = {
 
 export { FLEET_CREW_FRACTION };
 
-export function attackForceFor(world: WorldState): AttackForce {
+/**
+ * How the town is being attacked (v0.99.2).
+ *
+ * `overland`: the captain marched his people across land to it - Panamá, the
+ * one town no keel reaches. No gun is brought, so there is no bombardment and
+ * nothing for the fort to fire back at: the ships lie at anchor on the far
+ * coast, and only the landing party can be lost.
+ */
+export type SiegeOptions = { overland?: boolean };
+
+export function attackForceFor(world: WorldState, opts: SiegeOptions = {}): AttackForce {
   const flagship = world.entities[world.player.shipId as string]?.ship;
   let cannons = flagship?.cannons ?? 0;
   let hullHp = flagship?.hullHp ?? 0;
@@ -183,7 +193,7 @@ export function attackForceFor(world: WorldState): AttackForce {
   }
 
   return {
-    cannons,
+    cannons: opts.overland ? 0 : cannons,
     hullHp,
     hullMax: Math.max(1, hullMax),
     crew,
@@ -217,15 +227,18 @@ export type SiegeState = {
   force: AttackForce;
   round: number;
   phase: SiegePhase;
+  /** Marched overland: no guns, no bombardment, the landing is all there is. */
+  overland?: boolean;
 };
 
-export function createSiege(world: WorldState, portKey: string): SiegeState {
+export function createSiege(world: WorldState, portKey: string, opts: SiegeOptions = {}): SiegeState {
   return {
     portKey,
     fort: garrisonFor(world, portKey),
-    force: attackForceFor(world),
+    force: attackForceFor(world, opts),
     round: 0,
     phase: "bombard",
+    ...(opts.overland ? { overland: true } : {}),
   };
 }
 
@@ -286,6 +299,10 @@ export type BombardRound = {
  * gun's final salvo. There is no way to take a fort for free.
  */
 export function bombardRound(state: SiegeState, rng: RngState): BombardRound {
+  // Nobody offshore to fire, and nothing offshore to fire at.
+  if (state.overland) {
+    return { state, rng, gunsSilenced: 0, wallsBreached: 0, hullLost: 0, crewLost: 0, fleetBroken: false };
+  }
   const fleetRoll = rngNext(rng);
   const fortRoll = rngNext(fleetRoll.state);
 
@@ -555,7 +572,8 @@ export function lootValue(port: PortRuntimeState | undefined, portKey: string): 
   const baseline = getPortBaseline(portKey);
   const wealth = port?.wealth ?? baseline.wealth;
   const population = port?.population ?? baseline.population;
-  return Math.round(wealth * 3 + population * 0.05);
+  const treasury = CITIES[portKey]?.treasury ?? 1;
+  return Math.round(wealth * 3 * treasury + population * 0.05);
 }
 
 /** Share of the loot each ending actually gets into the hold. */

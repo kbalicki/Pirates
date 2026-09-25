@@ -3,6 +3,7 @@ import type { WorldState } from "../../core/model/WorldState.ts";
 import type { PortId } from "../../core/model/ids.ts";
 import type { PortDef } from "../../core/data/ports.ts";
 import { PORTS } from "../../core/data/ports.ts";
+import { isLandlocked } from "../../core/data/cities.ts";
 import { FACTIONS } from "../../core/data/factions.ts";
 import { getReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { tradeIncome } from "../../core/systems/TradeLedgerSystem.ts";
@@ -160,7 +161,9 @@ export class PortApproachScene extends Phaser.Scene {
     // Storming the town is offered wherever there is a town and a ship under
     // you. Before v0.13.0 this reply existed only for hostile forts and started
     // a sea battle against a port id — an enemy with no hull and no guns.
-    if (!this.isOnFoot) {
+    // And on foot at a town no keel reaches (v0.99.2): Panamá is taken the way
+    // Morgan took it, by marching across the isthmus, without guns.
+    if (!this.isOnFoot || isLandlocked(this.portId as string)) {
       this.actions.push({ label: t("approach.assault"), action: "attack" });
     }
     this.actions.push({
@@ -425,6 +428,7 @@ export class PortApproachScene extends Phaser.Scene {
         this.scene.start("CityAssaultScene", {
           worldState: this.worldState,
           portId: this.portId,
+          overland: this.isOnFoot,
         });
         break;
 

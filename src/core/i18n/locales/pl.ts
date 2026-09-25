@@ -1049,6 +1049,8 @@ export const PL: LocaleData = {
   "siege.fleet_crew": "Ludzi: {{now}}   Dział w burcie: {{guns}}",
   "siege.odds": "Szanse na plaży: {{pct}}%   Desant: {{men}} {{men:man}}",
   "siege.controls_bombard": "SPACJA — salwa burtowa    L — desant    ESC — odstąp",
+  "siege.controls_overland": "L — do szturmu    ESC — odstąp",
+  "siege.log_overland": "Przeszliście przesmyk pieszo. Statki stoją po drugiej stronie — nie ma dział, jest tylko szturm.",
   "siege.controls_spoils": "W/S — wybór    {{digits}} — wprost    Enter — potwierdź",
   "siege.log_open": "Bateria otwiera ogień: {{guns}} {{guns:gun}}, {{soldiers}} {{soldiers:man}} za murami.",
   "siege.log_broadside": "Salwa — {{guns}} {{guns:gun}} mniej, {{walls}} muru w gruzach.",

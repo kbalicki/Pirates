@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.2.0",
+    date: "2026-09-25",
+    changes: [
+      "PANAMA IS TAKEN OVERLAND",
+      "  Panama stands on the Pacific, and no keel reaches it from any of the",
+      "  other 44 ports. It stays - a large, rich town - and it is taken the way",
+      "  Morgan took it in 1671: go ashore by Nombre de Dios and march south",
+      "  across the isthmus, about an hour of game time. At its walls on foot",
+      "  the approach now offers 'storm the town'",
+      "",
+      "  An overland assault brings the men and not the guns. There is no",
+      "  bombardment, the fort has nothing to fire at, and the ships wait",
+      "  untouched on the far coast: only the landing party is at risk. What is",
+      "  waiting inside is the silver of Peru - a sack worth 7 250 on the first",
+      "  day, more than twice any other town. A Darien war party still knocks",
+      "  forty off its defence before you arrive",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.1.0",
     date: "2026-09-25",
     changes: [

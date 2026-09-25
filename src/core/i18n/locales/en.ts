@@ -1050,6 +1050,8 @@ export const EN: LocaleData = {
   "siege.fleet_crew": "Hands: {{now}}   Guns bearing: {{guns}}",
   "siege.odds": "Odds ashore: {{pct}}%   Landing party: {{men}} {{men:man}}",
   "siege.controls_bombard": "SPACE — fire a broadside    L — land the men    ESC — break off",
+  "siege.controls_overland": "L — storm the walls    ESC — break off",
+  "siege.log_overland": "You crossed the isthmus on foot. The ships lie on the far coast — no guns, only the assault.",
   "siege.controls_spoils": "W/S — choose    {{digits}} — straight to it    Enter — confirm",
   "siege.log_open": "The battery opens up: {{guns}} {{guns:gun}}, {{soldiers}} {{soldiers:man}} behind the walls.",
   "siege.log_broadside": "Broadside away — {{guns}} {{guns:gun}} dismounted, {{walls}} of wall down.",

@@ -27,7 +27,7 @@ import {
 } from "../SiegeSystem.ts";
 import type { WorldState, PortRuntimeState } from "../../model/WorldState.ts";
 import { entityId, shipClassId, factionId, portId } from "../../model/ids.ts";
-import { CITIES } from "../../data/cities.ts";
+import { CITIES, PANAMA_TREASURY } from "../../data/cities.ts";
 import { SHIP_CLASSES } from "../../data/ships.ts";
 import { MIN_AFLOAT_HULL, mapDamageSpeedMultiplier } from "../DamageSystem.ts";
 import { getPortBaseline } from "../../data/economyBaselines.ts";
@@ -813,5 +813,56 @@ describe("availableSponsors", () => {
   it("never offers the town back to the crown that just lost it", () => {
     const w = makeWorld({ flags: { letter_of_marque_spain: true } });
     expect(availableSponsors(w, FORT)).toEqual([]);
+  });
+});
+
+// ===========================================================================
+// Panamá, taken overland (v0.99.2)
+// ===========================================================================
+
+/**
+ * The owner kept Panamá - the one town no keel reaches - as a large, rich town
+ * to sack on foot. The march brings the men and leaves the guns: no
+ * bombardment, nothing offshore for the fort to hit, and only the landing
+ * party at risk.
+ */
+describe("a town stormed overland", () => {
+  it("brings no guns, so there is nothing to bombard with", () => {
+    const world = makeWorld();
+    const siege = createSiege(world, "panama", { overland: true });
+    expect(siege.overland).toBe(true);
+    expect(siege.force.cannons).toBe(0);
+    expect(siege.force.crew).toBe(attackForceFor(world).crew);
+    expect(createSiege(world, "panama").force.cannons).toBeGreaterThan(0);
+  });
+
+  it("gives the fort nothing to fire at", () => {
+    const siege = createSiege(makeWorld(), "panama", { overland: true });
+    const round = bombardRound(siege, { seed: 9, state: 9 });
+    expect(round.hullLost).toBe(0);
+    expect(round.crewLost).toBe(0);
+    expect(round.fleetBroken).toBe(false);
+    expect(round.state).toBe(siege);
+  });
+
+  it("costs the ships nothing but the men who went", () => {
+    const world = makeWorld();
+    const siege = createSiege(world, "panama", { overland: true });
+    const r = resolveAssault(siege, 60, { seed: 3, state: 3 });
+    const after = writeBackForce(world, siege.force,
+      { ...siege.force, crew: Math.max(0, siege.force.crew - r.attackerLosses) });
+    const before = world.entities[world.player.shipId as string]!.ship!;
+    const ship = after.entities[world.player.shipId as string]!.ship!;
+    expect(ship.hullHp).toBe(before.hullHp);
+    expect(ship.cannons).toBe(before.cannons);
+  });
+
+  it("is worth the march: Panamá's treasury holds the silver of Peru", () => {
+    const panama = lootValue(undefined, "panama");
+    const b = getPortBaseline("panama");
+    expect(panama).toBe(Math.round(b.wealth * 3 * PANAMA_TREASURY + b.population * 0.05));
+    // Twice any other capital at baseline.
+    const best = Math.max(...Object.keys(CITIES).filter(k => k !== "panama").map(k => lootValue(undefined, k)));
+    expect(panama).toBeGreaterThan(best * 1.9);
   });
 });

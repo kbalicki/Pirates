@@ -51,10 +51,27 @@ export type CityDef = {
    * captains.
    *
    * Anything that needs a keel must skip it. Weather, news and prices need
-   * none and do not.
+   * none and do not. A captain on foot does not need one either: since
+   * v0.99.2 a landlocked town can be stormed overland (`SiegeSystem`).
    */
   landlocked?: boolean;
+  /**
+   * How much more than its wealth a town's treasury holds when it is stripped
+   * (v0.99.2). 1 when absent. Panamá is where the silver of Peru waited for
+   * the plate fleet - the reason Morgan crossed the isthmus - so it is the one
+   * town whose sack is worth more than its counting house.
+   */
+  treasury?: number;
 };
+
+/**
+ * Panamá's treasury against its wealth (v0.99.2). The owner asked for a town
+ * "large and rich, lootable overland": it already sits in the top bucket for
+ * both, which alone makes it worth what any capital is (3 200 at baseline).
+ * The Peruvian silver is what makes the march worth it: 2.5 puts a sack at
+ * 7 250, about twice Havana's.
+ */
+export const PANAMA_TREASURY = 2.5;
 
 const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + ((lat * Math.PI) / 180) / 2));
 const Y_TOP = mercY(35);
@@ -160,6 +177,7 @@ export const CITIES: Record<string, CityDef> = {
     type: "city",
     // The Pacific side of the isthmus. See `CityDef.landlocked`.
     landlocked: true,
+    treasury: PANAMA_TREASURY,
     pos: geoToMap(79.5, 8.95),
     dockRadius: 15,
     marketLevel: 5,

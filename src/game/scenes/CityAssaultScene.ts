@@ -70,10 +70,10 @@ export class CityAssaultScene extends Phaser.Scene {
     super({ key: "CityAssaultScene" });
   }
 
-  init(data: { worldState: WorldState; portId: PortId }): void {
+  init(data: { worldState: WorldState; portId: PortId; overland?: boolean }): void {
     this.worldState = data.worldState;
     this.portKey = data.portId as string;
-    this.siege = createSiege(this.worldState, this.portKey);
+    this.siege = createSiege(this.worldState, this.portKey, { overland: data.overland === true });
     this.initialForce = this.siege.force;
     this.phase = "bombard";
     this.busy = false;
@@ -136,6 +136,7 @@ export class CityAssaultScene extends Phaser.Scene {
       this.input.keyboard.on("keydown-DOWN", () => this.moveSelection(1));
     }
 
+    if (this.siege.overland) this.pushLog(t("siege.log_overland"));
     this.pushLog(t("siege.log_open", { guns: this.siege.fort.guns, soldiers: this.siege.fort.soldiers }));
     this.redraw();
   }
@@ -151,6 +152,8 @@ export class CityAssaultScene extends Phaser.Scene {
   private onFire(): void {
     if (this.phase === "spoils") { this.onConfirm(); return; }
     if (this.phase !== "bombard" || this.busy) return;
+    // Marched overland: there are no guns to fire (v0.99.2).
+    if (this.siege.overland) return;
 
     if (this.siege.fort.guns <= 0 && this.siege.fort.walls <= 0) {
       // There is nothing left to knock down. Say so rather than reporting a
@@ -386,7 +389,7 @@ export class CityAssaultScene extends Phaser.Scene {
         this.spoilsTexts.push(label);
       });
     } else if (this.phase === "bombard") {
-      this.controlsText.setText(t("siege.controls_bombard"));
+      this.controlsText.setText(t(this.siege.overland ? "siege.controls_overland" : "siege.controls_bombard"));
     } else {
       this.controlsText.setText("");
     }

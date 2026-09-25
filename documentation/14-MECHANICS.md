@@ -1415,6 +1415,17 @@ Ostrzał rundowy → desant falami → trzy zakończenia; port zmienia właścic
 | `SiegeSystem.ATTACKER_ROUT` | 0.45 | próg rozsypki napastnika |
 | `SiegeSystem.MAX_WAVES` | 6 | ile fal desantu |
 | `SiegeSystem.WAVE_INTENSITY` | 0.18 | siła jednej fali |
+| `cities.PANAMA_TREASURY` | 2.5 | ile razy więcej niż bogactwo trzyma skarbiec Panamy przy łupie |
+
+**Panamá, lądem** (v0.99.2, decyzja użytkownika). Jedyne miasto bez dostępu od
+morza (`landlocked`) bierze się pieszo, jak Morgan w 1671: z Nombre de Dios na
+południe przez przesmyk, ok. godziny gry marszu (`geography.test.ts` mierzy
+drogę po prawdziwym wybrzeżu). Pieszo przy mieście `landlocked` ekran podejścia
+oferuje szturm; oblężenie idzie z `overland` — **zero dział, zero ostrzału**,
+fort nie ma w co strzelać, kadłuby zostają nietknięte, ryzykuje tylko desant.
+Łup = bogactwo × 3 × `treasury` + ludność × 0,05: Panamá na starcie **7 250**
+(każde inne miasto najwyżej ok. 3 200). Wojenna drużyna z wioski Darién
+(−40 obrony) dalej działa i dalej obniża łup.
 
 ### Obrona (gracz broni)
 
