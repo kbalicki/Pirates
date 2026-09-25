@@ -8,7 +8,7 @@ import {
   GOLD_PER_WEALTH,
   MAX_TRADE_WEALTH_PER_DAY,
 } from "../TradeLedgerSystem.ts";
-import { spotPrice, repriceItem, repricePort } from "../PricingSystem.ts";
+import { spotPrice, repriceItem, repricePort, goldAppetite, GOLD_FLOAT_TONS } from "../PricingSystem.ts";
 import { economyDailyTick } from "../EconomyTickSystem.ts";
 import { executeBuy, executeSell, playerBuyPrice, playerSellPrice } from "../EconomySystem.ts";
 import { routesTo, routesFrom } from "../TradeRouteSystem.ts";
@@ -448,9 +448,11 @@ describe("gold", () => {
     expect(hold).toBe(10);
   });
 
-  it("is worth carrying: dear where there is none, cheap where they dig it", () => {
+  it("is worth carrying to a rich town, and not to a poor one (v0.99.1)", () => {
     // The whole reason the event is worth sailing to. A strike town's warehouse
-    // is full, so its quote is low; anywhere else has none at all.
+    // is full, so its quote is low. Until v0.99.1 every other town bid the
+    // ceiling for it; now the bid is the town's wealth, so the run pays into
+    // a capital and not into a fishing harbour.
     const base = makeWorld();
     const struck: WorldState = {
       ...base,
@@ -469,7 +471,59 @@ describe("gold", () => {
     // a high quote and a full one into a low one.
     const priced = runDays(struck, 1);
     const ask = playerBuyPrice(priced, "havana", "gold");
-    const bid = playerSellPrice(priced, "tortuga", "gold");
-    expect(bid).toBeGreaterThan(ask * 1.5);
+    const rich = playerSellPrice(priced, "santo_domingo", "gold");   // wealthy
+    const modest = playerSellPrice(priced, "tortuga", "gold");       // modest
+    expect(rich).toBeGreaterThan(ask * 1.5);
+    expect(modest).toBeLessThan(ask);
+  });
+});
+
+describe("gold a town does not strike (v0.99.1)", () => {
+  /**
+   * Measured before: 45 of 45 counters quoted gold at the ceiling, a poor
+   * town (228) within a fifth of Havana (276), and thirty tons sold in Havana
+   * were thirty tons forty days later. The owner chose demand from wealth.
+   */
+  it("is quoted by the town's wealth on an empty counter", () => {
+    const world = runDays(makeWorld(), 1);
+    const byWealth = new Map<number, number[]>();
+    for (const key of Object.keys(CITIES)) {
+      const w = getPortBaseline(key).wealth;
+      byWealth.set(w, [...(byWealth.get(w) ?? []), world.ports[key].prices.gold]);
+    }
+    const median = (a: number[]) => [...a].sort((x, y) => x - y)[a.length >> 1];
+    const levels = [...byWealth.keys()].sort((a, b) => a - b);
+    for (let i = 1; i < levels.length; i++) {
+      expect(median(byWealth.get(levels[i])!), `wealth ${levels[i]}`)
+        .toBeGreaterThan(median(byWealth.get(levels[i - 1])!));
+    }
+    // And no longer the ceiling everywhere.
+    const atCeiling = Object.keys(CITIES).filter(k =>
+      world.ports[k].prices.gold === spotPrice(k, "gold", 0, 1, 1, 1e9));
+    expect(atCeiling.length).toBeLessThan(Object.keys(CITIES).length);
+  });
+
+  it("is spent back off the quay at the town's appetite", () => {
+    const base = makeWorld();
+    const sold: WorldState = {
+      ...base,
+      ports: { ...base.ports, havana: { ...base.ports.havana, inventory: { ...base.ports.havana.inventory, gold: 30 } } },
+    };
+    const day = runDays(sold, 1).ports.havana;
+    expect(day.inventory.gold).toBeCloseTo(30 - goldAppetite(base.ports.havana.wealth), 0);
+    const later = runDays(sold, 40).ports.havana;
+    expect(later.inventory.gold ?? 0).toBe(0);
+    // Deeper stock, lower bid; the float is gold already in the town's hands.
+    expect(spotPrice("havana", "gold", 30, 1, 1, 900)).toBeLessThan(spotPrice("havana", "gold", 0, 1, 1, 900));
+    expect(GOLD_FLOAT_TONS).toBeGreaterThan(0);
+  });
+
+  it("stays in a strike town, which keeps what it digs", () => {
+    const base = makeWorld();
+    const struck: WorldState = {
+      ...base,
+      ports: { ...base.ports, havana: { ...base.ports.havana, bonusProduces: ["gold"], inventory: { ...base.ports.havana.inventory, gold: 30 } } },
+    };
+    expect(runDays(struck, 5).ports.havana.inventory.gold ?? 0).toBeGreaterThanOrEqual(30);
   });
 });

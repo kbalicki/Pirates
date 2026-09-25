@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.1.0",
+    date: "2026-09-25",
+    changes: [
+      "GOLD IS BOUGHT BY A TOWN'S WEALTH",
+      "  Nobody grows gold or eats it, so the counter gave it a stand-in demand",
+      "  of one ton a day against a shed that is empty everywhere but a strike",
+      "  town. All 45 counters quoted it at the ceiling - a poor fishing town",
+      "  228, Havana 276 - and what the captain sold stayed on the quay for",
+      "  good: thirty tons in Havana were thirty tons forty days later",
+      "",
+      "  Now a town's appetite for gold is its wealth, and it spends what it",
+      "  buys a little every day. On an empty counter a poor town bids 30, a",
+      "  modest one about 55, a prosperous one about 115 and a wealthy one",
+      "  about 180. Thirty tons into Havana fetch 3 931 instead of 5 700, and",
+      "  are gone in about fifteen days, when Havana buys again. A strike run",
+      "  still pays - into a capital, not into a fishing harbour",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.0.0",
     date: "2026-09-25",
     changes: [

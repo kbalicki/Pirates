@@ -489,7 +489,7 @@ export const PL: LocaleData = {
   "help.event_war": "Wojna",
   "help.event_war_fx": "−15% produkcji, +10% ceny (słabnie przez 2 lata), więcej okrętów",
   "help.econ_can_h": "CO MOŻESZ ZROBIĆ",
-  "help.econ_can_b": "• Boom: kup tanio, sprzedaj drogo w sąsiednim porcie.\n• Głód: dowieź żywność za 2–4× cenę.\n• Złoto: miasto zaczyna wydobywać złoto i szybko się bogaci — na jego ladzie złoto jest tanie.\n• Najazd Indian: hiszp. fort osłabiony — okazja dla pirata.\n• ...i możesz o niego poprosić: w wiosce Indian (E z pokładu, płytkie\n  zanurzenie) 6 ton rumu kupuje złoto i zaufanie, a zaufanie — wyprawę.\n• Nowy gubernator: nie ma jeszcze z tobą żadnej sprawy — za\n  odpowiednią sumę odłoży twoją kartę u swojej korony, w swoim\n  mieście i nigdzie indziej.\n• Wojna: weź list kaperski, polowanie na wroga legalne.",
+  "help.econ_can_b": "• Boom: kup tanio, sprzedaj drogo w sąsiednim porcie.\n• Głód: dowieź żywność za 2–4× cenę.\n• Złoto: miasto je wydobywa i się bogaci — tanie tam, drogie w bogatych portach.\n• Najazd Indian: hiszp. fort osłabiony — okazja dla pirata.\n• ...i możesz o niego poprosić: w wiosce Indian (E z pokładu, płytkie\n  zanurzenie) 6 ton rumu kupuje złoto i zaufanie, a zaufanie — wyprawę.\n• Nowy gubernator: nie ma jeszcze z tobą żadnej sprawy — za\n  odpowiednią sumę odłoży twoją kartę u swojej korony, w swoim\n  mieście i nigdzie indziej.\n• Wojna: weź list kaperski, polowanie na wroga legalne.",
   "battle.help_title": "PODRĘCZNIK BITWY",
   "battle.help_close_hint": "H / ESC / SPACJA / kliknij — zamknij",
   "battle.help_page_hint": "A/← — poprzednia   D/→ — następna   H / ESC / SPACJA — zamknij",

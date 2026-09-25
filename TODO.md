@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.0.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2547 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.1.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2550 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2824,7 +2824,11 @@ w v0.92.0 i v0.96.1**, pozycja zostaje.
 kadłubie (16/16; najgorsza para pinasa–brygantyna 46% walki przy progu ok. 41%), więc
 bramka szans odmawia wyłącznie uszkodzonemu roverowi. Przypięte w `PredationSystem.test.ts`.
 
-*v0.96.1, pomiar bez decyzji — **ZŁOTO poza kopalnią stoi na `RATIO_MAX` w 45 z 45 portów**.*
+✅ **v0.99.1: złoto kupuje bogactwo miasta** (decyzja użytkownika): popyt = bogactwo ÷ 450 t/dzień,
+podaż = zapas + 30 t, miasto co dzień wchłania swój apetyt. Pusta lada: biedne 30, skromne ~55,
+zamożne ~115, bogate ~180 (było 228–276 wszędzie); 30 t w Hawanie 3931 (było 5700), znika w ~15 dni.
+**Zostaje osobno:** druga strona tego samego `(rate || 1)` — 18 z 69 notowań producentów na `RATIO_MIN`
+(akapit v0.97.1 niżej) — to nie była decyzja o złocie i nie została ruszona. Opis historyczny: *v0.96.1, pomiar bez decyzji — **ZŁOTO poza kopalnią stoi na `RATIO_MAX` w 45 z 45 portów**.*
 `spotPrice` bierze popyt `(rate || 1) × 30`, więc towar, którego miasto **nie je**,
 dostaje fikcyjny popyt 1 t/dzień; złoto ma zapas 0 wszędzie poza kopalnią, więc
 notowanie = `bazowa × 3,0` (Hawana **276**, Port Royal 264). W mieście-kopalni złoto

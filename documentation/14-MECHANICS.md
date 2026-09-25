@@ -856,8 +856,19 @@ sufitu w trzydzieści.
 | `EconomyTickSystem.IMPORT_SHARE_BLACK_FLAG` | 0.35 | udział dostaw dla miasta pod czarną banderą |
 | `EconomyTickSystem.IMPORT_NOTORIETY_BONUS` | 0.4 | ile do tego dokłada pełna sława kapitana |
 | `PricingSystem.DEMAND_HORIZON_DAYS` | 30 | ile dni konsumpcji znaczy „rynek w równowadze” |
+| `PricingSystem.GOLD_WEALTH_PER_TON` | 450 | ile bogactwa na tonę złota dziennie, którą miasto spoza kopalni wchłania (v0.99.1) |
+| `PricingSystem.GOLD_FLOAT_TONS` | 30 | złoto „już w rękach” miasta, doliczane do zapasu przy wycenie |
 | `economyBaselines.IMPORT_COVER_DAYS` | 20 | ile dni własnego jedzenia trzyma miasto z importu |
 | `economyBaselines.PRODUCER_COVER_DAYS` | 8 | ile dni **własnej produkcji** trzyma producent na nabrzeżu (v0.75.0) |
+
+**Złoto poza kopalnią kupuje bogactwo miasta** (v0.99.1, decyzja użytkownika). Nikt
+go nie je ani nie uprawia, więc do tego wydania dostawało zastępczy popyt 1 t/dzień
+i przy pustej szopie **45 z 45** lad stało na suficie ×3 (biedne miasto 228, Hawana
+276), a sprzedane zostawało na nabrzeżu na zawsze. Teraz popyt = bogactwo ÷ 450 t/dzień,
+podaż = zapas + 30 t, a miasto co dzień wchłania swój apetyt. Zmierzone na osiadłym
+świecie przy pustej ladzie: biedne **30**, skromne ~**55**, zamożne ~**115**, bogate
+~**180**; 30 t sprzedane w Hawanie **3931** (było 5700), zapas znika w ok. 15 dni
+(było: 30 t po 40 dniach). Kurs z kopalni (~77 za tonę) płaci się do bogatych portów.
 
 **Dwadzieścia dni wybrane pomiarem**, nie z powietrza — przemiecione 10 / 15 /
 20 / 30 / 45 / 90 na osiadłej dekadzie:

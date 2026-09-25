@@ -210,7 +210,9 @@ Kupuj tam, gdzie coś rośnie; sprzedawaj tam, gdzie tego nie ma.
 
 Siedem towarów. Cukier, tytoń, kakao i rum to handel; jedzenie i woda to
 zaopatrzenie; **złoto** jest osobne — żadne miasto go nie sprzedaje, pojawia
-się dopiero po odkryciu złoża.
+się dopiero po odkryciu złoża. **Kupuje je bogactwo**: bogaty port płaci za pustą
+ladę ponad dwa razy więcej niż biedny, a sprzedane złoto miasto z dnia na dzień
+wydaje, więc po kilku tygodniach znów kupi.
 
 ### Ceny zmieniają się, kiedy patrzysz
 

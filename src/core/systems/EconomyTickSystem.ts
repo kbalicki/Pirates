@@ -41,7 +41,7 @@ import {
   routeSupplying,
 } from "./TradeRouteSystem.ts";
 import { blockadeEffective, portShutIn, BLOCKADE_SUPPLY_SHARE } from "./BlockadeSystem.ts";
-import { spotPrice } from "./PricingSystem.ts";
+import { spotPrice, goldAppetite } from "./PricingSystem.ts";
 import { deliveryValue, settleDailyLedger } from "./TradeLedgerSystem.ts";
 
 /**
@@ -586,6 +586,14 @@ export function economyDailyTick(world: WorldState): WorldState {
       population -= population * hunger * HUNGER_EXODUS;
     }
 
+    // Gold a town does not strike is spent (v0.99.1): its wealth takes the
+    // day's appetite off the quay, so a port the captain sold thirty tons into
+    // buys again in a few weeks instead of never. A strike town keeps what it
+    // digs; its counter has its own rule below.
+    if (!b.produces.includes("gold") && (inventory["gold"] ?? 0) > 0) {
+      inventory["gold"] = Math.max(0, inventory["gold"] - goldAppetite(port.wealth));
+    }
+
     // Round the stock BEFORE quoting against it (v0.67.0). The rounding used to
     // come after, so the price on the counter was a function of 27.24 tons
     // while the counter held 27.2 — and `repriceItem`, which every trade calls,
@@ -602,7 +610,7 @@ export function economyDailyTick(world: WorldState): WorldState {
     const newPrices: Record<string, number> = {};
     for (const item of itemKeys) {
       if (!ITEMS[item]) continue;
-      newPrices[item] = spotPrice(portKey, item, inventory[item] ?? 0, port.population, priceMulFor(effects, item));
+      newPrices[item] = spotPrice(portKey, item, inventory[item] ?? 0, port.population, priceMulFor(effects, item), port.wealth);
     }
     // Bonus produce "gold" has its own price (very valuable)
     if (port.bonusProduces.includes("gold")) {

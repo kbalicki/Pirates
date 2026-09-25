@@ -490,7 +490,7 @@ export const EN: LocaleData = {
   "help.event_war": "War",
   "help.event_war_fx": "-15% output, +10% prices (fading over 2 years), more warships",
   "help.econ_can_h": "WHAT YOU CAN DO",
-  "help.econ_can_b": "- Boom: buy cheap, sell dear in the next port.\n- Famine: carry food in at two to four times the price.\n- Gold: the town starts mining gold and grows rich fast - gold is cheap on its quay.\n- Native raid: a Spanish fort weakened - a chance for a pirate.\n- ...and you can ask for one: at a native village (E from the deck,\n  shallow draught) six tons of rum buy gold and goodwill, and goodwill\n  buys the war party.\n- New governor: he has no quarrel with you yet - for a price he will\n  put your record with his crown aside, in his town and nowhere else.\n- War: take a letter of marque and the hunting is legal.",
+  "help.econ_can_b": "- Boom: buy cheap, sell dear in the next port.\n- Famine: carry food in at two to four times the price.\n- Gold: the town mines it and grows rich - cheap there, dear in rich ports.\n- Native raid: a Spanish fort weakened - a chance for a pirate.\n- ...and you can ask for one: at a native village (E from the deck,\n  shallow draught) six tons of rum buy gold and goodwill, and goodwill\n  buys the war party.\n- New governor: he has no quarrel with you yet - for a price he will\n  put your record with his crown aside, in his town and nowhere else.\n- War: take a letter of marque and the hunting is legal.",
   "battle.help_title": "BATTLE MANUAL",
   "battle.help_close_hint": "H / ESC / SPACE / click — close",
   "battle.help_page_hint": "A/← — back   D/→ — forward   H / ESC / SPACE — close",

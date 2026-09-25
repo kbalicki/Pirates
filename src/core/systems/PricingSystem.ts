@@ -29,7 +29,7 @@
 import type { WorldState, PortRuntimeState } from "../model/WorldState.ts";
 import { ITEMS } from "../data/items.ts";
 import { getBasePrice } from "../data/prices.ts";
-import { baselineConsumptionRate } from "../data/economyBaselines.ts";
+import { baselineConsumptionRate, getPortBaseline } from "../data/economyBaselines.ts";
 import { getAggregatedEffects, priceMulFor } from "./EventEffectsSystem.ts";
 
 /** How many days of consumption count as "the market is balanced". */
@@ -38,6 +38,34 @@ const DEMAND_HORIZON_DAYS = 30;
 /** Floor and ceiling on supply-to-demand, so a glut never makes a good free. */
 const RATIO_MIN = 0.4;
 const RATIO_MAX = 3.0;
+
+/**
+ * Gold outside a strike town is bought by the town's wealth (v0.99.1).
+ *
+ * Gold is the one good no town grows or eats, so its demand was the `|| 1`
+ * fallback below - one ton a day, thirty in the horizon - against a shed that
+ * is empty everywhere but a strike town. Measured on a settled Caribbean:
+ * **45 of 45** counters quoted it at `RATIO_MAX`, a poor fishing town (228)
+ * within a fifth of Havana (276), and what the captain sold stayed on the quay
+ * for good - thirty tons in Havana were still thirty tons forty days later -
+ * so every port was a one-time sink worth ~3 000 a run. The owner chose
+ * demand from wealth (2026-09-25):
+ *
+ *   appetite = wealth / GOLD_WEALTH_PER_TON          tons a day the town absorbs
+ *   demand   = appetite x DEMAND_HORIZON_DAYS
+ *   supply   = stock + GOLD_FLOAT_TONS               gold already in its hands
+ *
+ * So an empty counter quotes the town's wealth - a wealthy capital (900) twice
+ * the base, a poor one (100) the floor - a sale deepens the stock, and the
+ * town spends it back down at its appetite, day by day (`EconomyTickSystem`).
+ */
+export const GOLD_WEALTH_PER_TON = 450;
+export const GOLD_FLOAT_TONS = 30;
+
+/** Tons of gold a day a town of this wealth takes off its own quay. */
+export function goldAppetite(wealth: number): number {
+  return Math.max(0, wealth) / GOLD_WEALTH_PER_TON;
+}
 
 /**
  * What one unit of `item` fetches on `portKey`'s quay, given that much stock.
@@ -52,7 +80,13 @@ export function spotPrice(
   stock: number,
   population: number,
   priceMul = 1,
+  wealth = getPortBaseline(portKey).wealth,
 ): number {
+  if (item === "gold") {
+    const ratio = goldAppetite(wealth) * DEMAND_HORIZON_DAYS / (Math.max(0, stock) + GOLD_FLOAT_TONS);
+    const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
+    return Math.max(1, Math.round(getBasePrice(portKey, item) * clamped * priceMul));
+  }
   const supply = Math.max(0, stock) + 1;
   const demand = (baselineConsumptionRate(portKey, item, population) || 1) * DEMAND_HORIZON_DAYS;
   const ratio = Math.max(RATIO_MIN, Math.min(RATIO_MAX, demand / supply));
@@ -75,7 +109,7 @@ export function repriceItem(
   const port = world.ports[portKey];
   if (!port || !ITEMS[item]) return null;
   const effects = getAggregatedEffects(world, portKey);
-  const price = spotPrice(portKey, item, port.inventory[item] ?? 0, port.population, priceMulFor(effects, item));
+  const price = spotPrice(portKey, item, port.inventory[item] ?? 0, port.population, priceMulFor(effects, item), port.wealth);
   if (port.prices[item] === price) return port;
   return { ...port, prices: { ...port.prices, [item]: price } };
 }
@@ -102,7 +136,7 @@ export function repricePort(
   let changed = false;
   for (const item of items) {
     if (!ITEMS[item]) continue;
-    const price = spotPrice(portKey, item, stock[item] ?? 0, port.population, priceMulFor(effects, item));
+    const price = spotPrice(portKey, item, stock[item] ?? 0, port.population, priceMulFor(effects, item), port.wealth);
     if (prices[item] === price) continue;
     if (!changed) { prices = { ...prices }; changed = true; }
     prices[item] = price;
