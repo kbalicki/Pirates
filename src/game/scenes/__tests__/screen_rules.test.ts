@@ -85,3 +85,17 @@ describe("the harbour gate and the yard read the engine (v0.99.7)", () => {
     expect(src("PortScene.ts")).not.toMatch(/spread [<>] 0\.12/);
   });
 });
+
+describe("personal fights read their opponents from the engine (v0.99.8)", () => {
+  it("sends the watch at the gate into a duel, with the engine's blade", () => {
+    const approach = src("PortApproachScene.ts");
+    expect(approach).toContain('"DuelScene"');
+    expect(approach).toContain("gateWatchFencing(this.worldState");
+  });
+
+  it("types no crew into enemyFencingFor on any screen", () => {
+    const offenders = Object.entries(SCENES)
+      .filter(([, s]) => /enemyFencingFor\(\s*\d/.test(s)).map(([p]) => p);
+    expect(offenders).toEqual([]);
+  });
+});

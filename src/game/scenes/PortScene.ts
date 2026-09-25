@@ -87,6 +87,7 @@ import {
   freeRelative,
   activeFamilyChain,
   INFORMER_PRICE,
+  familyGuardFencing,
 } from "../../core/systems/FamilyQuestSystem.ts";
 import { buildQuestRegistry } from "../../core/systems/QuestRegistry.ts";
 import {
@@ -132,7 +133,6 @@ import {
   LEASE_DAYS,
 } from "../../core/systems/StorehouseSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
-import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { captainAge } from "../../core/systems/AgingSystem.ts";
 import { computeScore, retire, hasRetired } from "../../core/systems/RetirementSystem.ts";
 import { dividePlunder, plunderStatus, captainShare, CREW_REMAINING_AFTER_SHARE } from "../../core/systems/PlunderSystem.ts";
@@ -1816,7 +1816,7 @@ export class PortScene extends Phaser.Scene {
     this.scene.pause();
     this.scene.launch("DuelScene", {
       playerFencing: effectiveSkill(this.worldState, "fencing"),
-      enemyFencing: enemyFencingFor(30, 45, this.worldState.player.notoriety ?? 0),
+      enemyFencing: familyGuardFencing(this.worldState.player.notoriety ?? 0),
       seed: this.worldState.time.day * 131 + here.index * 17,
       onFinish: (playerWon: boolean) => {
         this.scene.resume();

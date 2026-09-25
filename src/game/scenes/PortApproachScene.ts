@@ -10,7 +10,8 @@ import { tradeIncome } from "../../core/systems/TradeLedgerSystem.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
 import { generateAvailableCrew } from "../../core/systems/PortInteractionSystem.ts";
 import { isPortClosed } from "../../core/systems/EventEffectsSystem.ts";
-import { sneakChance } from "../../core/systems/PortAccessSystem.ts";
+import { sneakChance, gateWatchFencing, settleGateFightLost } from "../../core/systems/PortAccessSystem.ts";
+import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
 import { t } from "../../core/i18n/index.ts";
 import { txt, HINT_ON_LIGHT } from "../ui/textStyle.ts";
 import { usesParchmentUI } from "../settings/AssetPack.ts";
@@ -38,15 +39,18 @@ export class PortApproachScene extends Phaser.Scene {
   }
 
   private isOnFoot = false;
-  /** The watch saw through the false flag; the gate is shut to him (v0.99.7). */
+  /** He lost to the watch at the gate; it is shut to him (v0.99.7, v0.99.8). */
   private spotted = false;
+  /** What the watch took off him, for the line that says so. */
+  private fined = 0;
 
-  init(data: { worldState: WorldState; portId: PortId; isOnFoot?: boolean; spotted?: boolean }): void {
+  init(data: { worldState: WorldState; portId: PortId; isOnFoot?: boolean; spotted?: boolean; fined?: number }): void {
     this.worldState = data.worldState;
     this.portId = data.portId;
     this.portDef = PORTS[this.portId as string];
     this.isOnFoot = data.isOnFoot ?? false;
     this.spotted = data.spotted === true;
+    this.fined = data.fined ?? 0;
   }
 
   create(): void {
@@ -163,7 +167,7 @@ export class PortApproachScene extends Phaser.Scene {
       // could be neither hit nor beaten, under the chart's own overlay. v0.13.0
       // fixed exactly that for the storming reply and left this one behind.
       // Measured, not a fixed 34: in Polish the line wraps to two.
-      const spottedText = this.add.text(infoX, y, t("approach.sneak_spotted"), {
+      const spottedText = this.add.text(infoX, y, t("approach.gate_lost", { gold: this.fined }), {
         ...txt(12, { color: "#aa3333", bold: true }),
         wordWrap: { width: DLG_W - PAD * 2 },
       });
@@ -417,20 +421,28 @@ export class PortApproachScene extends Phaser.Scene {
         const roll = Math.random();
 
         if (roll < chance) {
-          const sneakWorld = generateAvailableCrew(this.worldState, this.portId);
-          this.scene.stop();
-          this.scene.stop("MainMapScene");
-          this.scene.start("PortScene", {
-            worldState: sneakWorld,
-            portId: this.portId,
-            isOnFoot: this.isOnFoot,
-          });
+          this.slipIn();
         } else {
-          this.scene.restart({
-            worldState: this.worldState,
-            portId: this.portId,
-            isOnFoot: this.isOnFoot,
-            spotted: true,
+          // Seen through: the watch comes for him, and it is settled with steel
+          // (v0.99.8). Win and he is in all the same; lose and they take their
+          // share of his purse and shut the gate.
+          this.scene.pause();
+          this.scene.launch("DuelScene", {
+            playerFencing: effectiveSkill(this.worldState, "fencing"),
+            enemyFencing: gateWatchFencing(this.worldState, this.portId as string),
+            seed: this.worldState.time.day * 53 + (this.portId as string).length * 7,
+            onFinish: (playerWon: boolean) => {
+              this.scene.resume();
+              if (playerWon) { this.slipIn(); return; }
+              const settled = settleGateFightLost(this.worldState);
+              this.scene.restart({
+                worldState: settled.world,
+                portId: this.portId,
+                isOnFoot: this.isOnFoot,
+                spotted: true,
+                fined: settled.gold,
+              });
+            },
           });
         }
         break;
@@ -448,8 +460,29 @@ export class PortApproachScene extends Phaser.Scene {
 
       case "leave":
         this.scene.stop();
-        this.scene.resume("MainMapScene");
+        if (this.spotted) {
+          // The fight at the gate changed his purse; the map, paused behind
+          // this dialog, still holds the world from before it. Hand it the new
+          // one, as leaving a town does (`leftPort`: no hail at once).
+          this.registry.set("worldState", this.worldState);
+          this.scene.stop("MainMapScene");
+          this.scene.start("MainMapScene", { worldState: this.worldState, leftPort: true });
+        } else {
+          this.scene.resume("MainMapScene");
+        }
         break;
     }
+  }
+
+  /** Through the gate under false colours: into the town, as if welcome. */
+  private slipIn(): void {
+    const sneakWorld = generateAvailableCrew(this.worldState, this.portId);
+    this.scene.stop();
+    this.scene.stop("MainMapScene");
+    this.scene.start("PortScene", {
+      worldState: sneakWorld,
+      portId: this.portId,
+      isOnFoot: this.isOnFoot,
+    });
   }
 }

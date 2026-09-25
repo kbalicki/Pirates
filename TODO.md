@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.7.0 · **Branch:** `main`
-**Kod:** 292 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2584 przechodzi, 0 failuje, 0 `todo`** w 102 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.8.0 · **Branch:** `main`
+**Kod:** 292 pliki `.ts` · `tsc --noEmit` czysty · `npm test` — **2590 przechodzi, 0 failuje, 0 `todo`** w 102 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3107,8 +3107,12 @@ narzędziem** — `scripts/sweep-copies.mjs` (pomoc przy czytaniu, nie bramka). 
 kandydatów — ✅ **v0.99.7 wszystkie trzy**: szansa wślizgnięcia w silniku (`sneakChance`), a **nieudane
 wślizgnięcie otwierało bitwę morską z portem** (przeciwnik bez kadłuba, nie do trafienia, nakładka mapy nad
 bitwą) — teraz straż zamyka bramę, zostaje szturm albo odpłynięcie; cena odsprzedaży okrętu jedną funkcją
-(`fleetShipResale`); kolor marży z pasma reputacji, nie z wpisanego 0,12. **Otwarte (decyzja):** czy
-rozpoznanie przy bramie ma być pojedynkiem ze strażą (jak w Sid Meier's Pirates!) zamiast samego odprawienia.
+(`fleetShipResale`); kolor marży z pasma reputacji, nie z wpisanego 0,12. ✅ **v0.99.8: pojedynek ze strażą**
+(decyzja użytkownika): wygrana — wejście, przegrana — ¼ sakiewki i zamknięta brama; straż z obrony miasta.
+Ludzie markiza w wątku rodzinnym (`enemyFencingFor(30, 45)` wpisane w `PortScene`) w `FamilyQuestSystem`.
+**Zauważone, nie ruszane:** `DuelScene` ma tytuł „Pojedynek kapitanów” także przy straży, zasadzce i ludziach
+markiza; nad pojedynkiem z mapy wisi nakładka mapy (róża wiatrów, podpowiedzi) — `UIOverlayScene` nie jest
+zatrzymywana, tak jak robi to `CityAssaultScene`.
 Kara za przegraną zasadzkę przy skarbie (¼ sakiewki) przeniesiona do `TreasureSystem` (`AMBUSH_LOSS_SHARE`).
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie

@@ -74,6 +74,8 @@ import { getReputationLevel, type ReputationLevel } from "./ReputationSystem.ts"
 import { portFaction } from "./SiegeSystem.ts";
 import { alliesOfPatrons } from "./PrivateerSystem.ts";
 import { pardonStands, PARDON_FLOOR } from "./PardonSystem.ts";
+import { enemyFencingFor } from "./DuelSystem.ts";
+import { getPortBaseline } from "../data/economyBaselines.ts";
 
 export type PortAccess = {
   /** The crown whose flag flies here today. */
@@ -255,4 +257,28 @@ export const SNEAK_PER_NOTORIETY = 0.005;
 
 export function sneakChance(morale: number, notoriety: number): number {
   return Math.max(0, Math.min(1, SNEAK_BASE + morale * SNEAK_PER_MORALE - notoriety * SNEAK_PER_NOTORIETY));
+}
+
+/**
+ * Seen through at the gate, he fights the watch (v0.99.8, the owner's call:
+ * "a duel with the guard", as in Sid Meier's Pirates!). The watch is as good
+ * as the town's defence - read as `enemyFencingFor` reads a crew, the defence
+ * out of 100 - and as the captain's name is famous.
+ */
+export function gateWatchFencing(world: WorldState, portKey: string): number {
+  const defense = world.ports[portKey]?.defense ?? getPortBaseline(portKey).defense;
+  return enemyFencingFor(defense, 100, world.player.notoriety ?? 0);
+}
+
+/** What losing to the watch costs: this share of the purse, rounded down. */
+export const GATE_FIGHT_LOSS_SHARE = 0.25;
+
+/**
+ * Settle a lost fight at the gate: the watch takes its share of his purse
+ * and turns him away. Returns the world and the gold taken.
+ */
+export function settleGateFightLost(world: WorldState): { world: WorldState; gold: number } {
+  const purse = world.player.gold;
+  const gold = Math.floor(purse * GATE_FIGHT_LOSS_SHARE);
+  return { world: { ...world, player: { ...world.player, gold: purse - gold } }, gold };
 }

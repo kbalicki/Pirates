@@ -37,6 +37,7 @@ import { rngNextInt } from "../services/RNG.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 import { startQuest, findQuest } from "./QuestSystem.ts";
 import { portFaction } from "./SiegeSystem.ts";
+import { enemyFencingFor } from "./DuelSystem.ts";
 
 import { portNameKey } from "../i18n/names.ts";
 export const FAMILY_QUEST_ID = "family_search";
@@ -44,6 +45,19 @@ export const FAMILY_QUEST_ID = "family_search";
 export const FAMILY_STEP_FLAG = "family_step_";
 /** What an informer in a tavern wants for the first name and place. */
 export const INFORMER_PRICE = 200;
+
+/**
+ * The marquis' men in the house where a relative is held, read as
+ * `enemyFencingFor` reads a crew: thirty of forty-five (v0.99.8). Typed into
+ * `PortScene` until then. Losing costs nothing but the walk back - they keep a
+ * captain worth ransoming alive.
+ */
+export const FAMILY_GUARDS_MEN = 30;
+export const FAMILY_GUARDS_OF = 45;
+
+export function familyGuardFencing(notoriety: number): number {
+  return enemyFencingFor(FAMILY_GUARDS_MEN, FAMILY_GUARDS_OF, notoriety);
+}
 
 export type Relative = "sister" | "brother" | "father";
 

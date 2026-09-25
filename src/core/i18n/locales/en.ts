@@ -180,7 +180,7 @@ export const EN: LocaleData = {
   "approach.enter": "ENTER PORT",
   "approach.closed": "The harbour is shut. No boat will come out to you and no pilot will take you in.",
   "approach.enter_desc": "Dock and visit the port.",
-  "approach.sneak_spotted": "The watch saw through your colours - put about.",
+  "approach.gate_lost": "The watch beat you and took {{gold}} gold - put about.",
   "approach.sneak": "SNEAK IN",
   "approach.sneak_desc_fort": "Attempt to enter undetected. Risk of being caught.",
   "approach.sneak_desc_city": "Disguise your flag and slip into port.",

@@ -160,8 +160,10 @@ miastu **czegoś brakuje**.
 
 Do **wrogiego** portu możesz się **wkraść** pod obcą banderą. Z załogą w dobrym
 nastroju i nieznanym nazwiskiem udaje się to zwykle trzy razy na cztery; im
-głośniej o Tobie, tym rzadziej. Jeśli straż Cię rozpozna, brama jest zamknięta:
-zostaje szturm albo odpłynięcie. Stocznia odkupi okręt z Twojej floty za
+głośniej o Tobie, tym rzadziej. Jeśli straż Cię rozpozna, **bijesz się z nią na
+szpady** — im lepiej miasto bronione, tym lepsza straż. Wygrasz: jesteś w środku.
+Przegrasz: zabiorą Ci czwartą część złota i brama jest zamknięta — zostaje
+szturm albo odpłynięcie. Stocznia odkupi okręt z Twojej floty za
 **40% ceny katalogowej**.
 
 ### Notowania decydują o wszystkim

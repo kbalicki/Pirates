@@ -6,6 +6,24 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.8.0",
+    date: "2026-09-25",
+    changes: [
+      "STEEL AT THE GATE",
+      "  When the watch sees through your false colours, it comes for you, and",
+      "  it is settled with the blade - as it always was in Sid Meier's day.",
+      "  The better defended the town, the better the watch, and a famous name",
+      "  brings out a better one still. Win and you are inside all the same;",
+      "  lose and they take a quarter of the gold you carry and shut the gate,",
+      "  leaving you the storm or the open sea",
+      "",
+      "  The marquis' men in the family thread are now numbers of the game",
+      "  rather than of the tavern screen, like the men at a baited dig",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.7.0",
     date: "2026-09-25",
     changes: [

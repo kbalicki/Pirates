@@ -558,9 +558,14 @@ i **linię głodu**, gdy miastu zabrakło importu.
 | `PortAccessSystem.SNEAK_BASE` | 0.5 | podstawa szansy wślizgnięcia się do wrogiego portu pod obcą banderą |
 | `PortAccessSystem.SNEAK_PER_MORALE` | 0.3 | ile dokłada morale załogi (0–1) |
 | `PortAccessSystem.SNEAK_PER_NOTORIETY` | 0.005 | ile odbiera każdy punkt sławy |
+| `PortAccessSystem.GATE_FIGHT_LOSS_SHARE` | 0.25 | ile sakiewki zabiera straż, gdy przegrasz z nią pojedynek przy bramie |
+| `FamilyQuestSystem.FAMILY_GUARDS_MEN` | 30 | ludzie markiza w domu, gdzie trzymają krewnego… |
+| `FamilyQuestSystem.FAMILY_GUARDS_OF` | 45 | …na tylu (szermierka z `enemyFencingFor`, plus sława) |
 
 **Wślizgnięcie się do wrogiego portu** (v0.99.7): przy 80% morale i bez sławy trzy
 razy na cztery, przy sławie 100 raz na cztery. Nieudane — straż rozpoznaje banderę
+i wychodzi **straż**: pojedynek (v0.99.8, decyzja użytkownika), szermierka straży z obrony miasta
+(`enemyFencingFor(obrona, 100, sława)`). Wygrana — wchodzisz; przegrana — straż zabiera ¼ sakiewki
 i brama jest zamknięta; zostaje szturm albo odpłynięcie. Do v0.99.7 porażka
 otwierała **bitwę morską z portem** — przeciwnikiem bez kadłuba, załogi i dział,
 którego nie dało się ani trafić, ani pokonać.
