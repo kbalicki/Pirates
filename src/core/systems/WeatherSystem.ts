@@ -11,6 +11,20 @@ import {
 } from "../data/wind.ts";
 
 /**
+ * What a squall adds to the wind it blows over (v0.99.0).
+ *
+ * Documented as "+0.3" since v0.38.0, and until v0.99.0 it was +0.3 **every
+ * tick** on a wind that already carried last tick's: at the ceiling within
+ * three ticks, mean **0.999** inside a squall over a simulated year — the
+ * `HURRICANE_WIND` of a hurricane's eye. The user chose the documented squall
+ * (2026-09-25): the boost is taken off before the sea reverts and wanders and
+ * put back after, so a squall is the day's wind and 0.3 more. Where that
+ * passes 1 the clamp eats the rest and the base comes back a little low - a
+ * nudge toward the season's mean, which is where it was going anyway.
+ */
+export const SQUALL_WIND_BOOST = 0.3;
+
+/**
  * Update weather with season-aware, mean-reverting wind.
  */
 export function updateWeather(
@@ -43,7 +57,12 @@ export function updateWeather(
   );
 
   // --- Strength: mean-reverting with noise ---
-  const strDiff = seasonal.baseStrength - weather.windStrength;
+  // The stored wind carries last tick's squall on top; the sea underneath it
+  // is what reverts and wanders, and the squall goes back on at the end.
+  const base = weather.stormActive
+    ? Math.max(0, weather.windStrength - SQUALL_WIND_BOOST)
+    : weather.windStrength;
+  const strDiff = seasonal.baseStrength - base;
   const strReversion = strDiff * STRENGTH_REVERSION_RATE * dtTicks;
 
   const { value: strNoise, state: rng2 } = rngNextFloat(
@@ -53,7 +72,7 @@ export function updateWeather(
 
   let newStrength = Math.max(
     0,
-    Math.min(1, weather.windStrength + strReversion + strNoise * dtTicks),
+    Math.min(1, base + strReversion + strNoise * dtTicks),
   );
 
   // --- Storm logic: season-aware ---
@@ -79,16 +98,8 @@ export function updateWeather(
     }
   }
 
-  // Read as "a squall adds 0.3 to the wind" in two documents since v0.38.0.
-  // It adds 0.3 to a wind that already had 0.3 added last tick, so within
-  // three ticks of the first gust the squall is blowing at the ceiling, and
-  // it stays there: measured over a simulated year, mean wind inside a squall
-  // is **0.999** — the same `HURRICANE_WIND` the eye of a hurricane blows at.
-  // Whether a squall should be a full gale or a +0.3 is a question about how
-  // it feels at the helm, so the behaviour is pinned as it is
-  // (`StormSystem.test.ts`) and the sentences are what changed (v0.97.2).
   if (stormActive) {
-    newStrength = Math.min(1, newStrength + 0.3);
+    newStrength = Math.min(1, newStrength + SQUALL_WIND_BOOST);
   }
 
   return {

@@ -71,26 +71,19 @@ function deadMethods(): string[] {
 }
 
 /**
- * A class nothing builds.
+ * Classes kept although nothing builds them, and why. Empty since v0.99.0.
  *
  * Phaser scenes are the exception by design: they are handed to the game as
  * class references in `GameApp`'s `scene: [...]` list and Phaser constructs
  * them, so a scene named there is built even though nothing writes `new`.
+ *
+ * It held four: `MinimapRenderer` (minimap removed in v0.9.2),
+ * `ShoreWaveRenderer` (the six-failed-approaches shore-wave experiment),
+ * `DOMCloudOverlay` (superseded by `CloudRenderer`) and `WindCompassRenderer`
+ * (superseded by `WindCompassWidget`). The user had them deleted
+ * (2026-09-25); the git history keeps the work.
  */
-const PARKED: Record<string, string> = {
-  MinimapRenderer:
-    "the minimap was removed in v0.9.2; the renderer is kept as the drawing, "
-    + "not as a live feature, and nothing on any screen refers to it",
-  ShoreWaveRenderer:
-    "the documented six-failed-approaches experiment (shore waves), parked on "
-    + "purpose rather than abandoned; deleting it would throw away the work",
-  DOMCloudOverlay:
-    "an early DOM-layer cloud attempt, superseded by CloudRenderer, kept for "
-    + "the comparison it records",
-  WindCompassRenderer:
-    "superseded by WindCompassWidget, which draws the compass procedurally on "
-    + "a canvas; this one predates it",
-};
+const PARKED: Record<string, string> = {};
 
 /**
  * Methods kept although nothing calls them, and why. Empty since v0.98.3.

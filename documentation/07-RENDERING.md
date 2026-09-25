@@ -17,13 +17,11 @@ MainMapScene.update()
     │
     ├── CloudRenderer.update()        ← warstwy chmur
     │
-    ├── WindCompassRenderer.update()  ← róża wiatrów
-    │
     ├── SeagullRenderer.update()      ← animowane mewy
     │
-    ├── MinimapRenderer.update()      ← minimapa
-    │
-    └── FxManager                     ← efekty wizualne (eksplozje, trafienia)
+    └── FxManager                     ← trafienie w bitwie (SeaBattleScene)
+
+Róża wiatrów to `WindCompassWidget` w `UIOverlayScene` (proceduralny canvas).
 ```
 
 ## WorldRenderer
@@ -123,17 +121,6 @@ Kamera nie wychodzi poza granice mapy (0,0 do 3200,2400).
 - Culling: +100px margines poza viewport
 - Alpha: 0.3–0.6 (półprzezroczyste)
 
-## WindCompassRenderer
-
-**Funkcja:** `update(windDirection, windStrength)`
-
-- Pozycja: prawy górny róg HUD
-- Elementy:
-  - Róża wiatrów (statyczna tekstura `windrose.png`)
-  - Igła kompasu (obrót = kierunek wiatru, `compass_needle.png`)
-- Wskazuje aktualny kierunek wiatru
-- Siła wiatru wpływa na rozmiar/intensywność igły
-
 ## SeagullRenderer
 
 **Funkcja:** `update(camera, wind)`
@@ -143,20 +130,18 @@ Kamera nie wychodzi poza granice mapy (0,0 do 3200,2400).
 - Ruch: dryfowanie z wiatrem + losowe zmiany kierunku
 - Respawn: gdy mewa wyleci poza viewport
 
-## MinimapRenderer
+## Usunięte (v0.99.0)
 
-**Funkcja:** `update(worldState, camera)`
-
-- Lewy dolny róg HUD
-- Rysuje kontury lądów (z caribbean_geo.json)
-- Pozycja gracza: punkt/strzałka
-- Pozycje portów: kolorowe kropki (kolor frakcji)
-- Viewport kamery: prostokąt
+`WindCompassRenderer` (zastąpiony przez `WindCompassWidget`), `MinimapRenderer`
+(minimapa usunięta w v0.9.2), `DOMCloudOverlay` (zastąpiony przez `CloudRenderer`)
+i `ShoreWaveRenderer` (eksperyment fal przybrzeżnych, sześć nieudanych podejść) —
+nigdy niebudowane, skasowane decyzją użytkownika; zostają w historii gita.
 
 ## FxManager
 
 - Efekty wizualne tworzone na żądanie
-- Typy: eksplozje, trafienia armatnie, rozbryzgi wody
+- Jeden typ: błysk trafienia (`spawnHit`). Dym, plusk i lot kuli rysuje sama
+  `SeaBattleScene` (od v0.98.3 bez kopii w `FxManager`)
 - Każdy FX: sprite z animacją → auto-destroy po zakończeniu
 - Depth sorting: nad statkami, pod HUD
 

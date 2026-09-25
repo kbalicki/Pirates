@@ -52,6 +52,12 @@ Gra to Karaiby w latach 1560–1700, 45 portów pod pięcioma banderami.
 - Minuta jest **ułamkowa** — do wyświetlania służy `clockHHMM`, bo surowy wydruk
   daje `08:5.9936800001`.
 - Rok ma 12 miesięcy o prawdziwej długości (`DAYS_IN_MONTH`), bez lat przestępnych.
+- **Czas płynie tylko na mapie** (reguła od v0.99.0, decyzja użytkownika). Jedyny
+  zegar to `advanceTime`, wołany wyłącznie przez `WorldEngine`, a ten jest
+  budowany wyłącznie przez `MainMapScene`. Port, bitwa, szturm, obrona i każde
+  menu zatrzymują albo pauzują czartę, więc **każdy termin w dniach** — kontrakty,
+  zlecenia, dzierżawa (30), dola załogi (60), wyprawy, gubernatorzy, dzienny tik
+  gospodarki — liczy dni spędzone na mapie. Pilnuje tego `world_clock.test.ts`.
 
 ### Ery
 
@@ -414,6 +420,7 @@ przechodzi tyle, ile się w nich zmieści, a dziennik nazywa tony, które przepa
 
 | stała | wartość | znaczenie |
 |---|---|---|
+| `WeatherSystem.SQUALL_WIND_BOOST` | 0.3 | tyle szkwał dokłada do wiatru, który wieje (raz, nie co tik — do v0.99.0 sumowało się do 1,0; dziś średnio 0,85) |
 | `StormSystem.STORM_SAFE_SAIL` | 0.33 | powyżej tego płótna szkwał je drze |
 | `StormSystem.STORM_RIG_SHARE_PER_TICK` | 0.0004 | ile takielunku ubywa na tik |
 | `StormSystem.STORM_VISION_SHARE` | 0.55 | do ilu spada luneta |
@@ -680,6 +687,12 @@ Reputacja jest **osobna dla każdej korony** i decyduje o pięciu ladach naraz.
 
 *Spread to połowa różnicy między ceną kupna a sprzedaży; round trip to jego
 podwojenie — 24% u neutralnego, 10% u sojusznika.*
+
+**Start** (v0.99.0): własna korona **25** (`OWN_CROWN_START_BONUS`), piraci **−25**,
+reszta 0. Do v0.99.0 było 20 i −20 — dokładnie na progach, więc pierwszy punkt
+kariery zmieniał pasmo: w 12 z 84 startów jeden wzięty kupiec sojusznika spychał
+własną koronę do neutralnej i zamykał dom gubernatora. Pierwszy kupiec wzięty
+piratom (+6) dalej otwiera przystań: −25 + 6 = −19, neutralny.
 
 **Rachunek zaokrągla się raz, na pieniądzach** (v0.76.0). Do tego wydania cena
 jednostkowa była zaokrąglana **dwa razy** — w `spotPrice` i w `buyPrice` —

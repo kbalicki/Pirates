@@ -9,7 +9,7 @@ import {
   STORM_VISION_SHARE,
   STORM_RIG_SHARE_PER_TICK,
 } from "../StormSystem.ts";
-import { updateWeather } from "../WeatherSystem.ts";
+import { updateWeather, SQUALL_WIND_BOOST } from "../WeatherSystem.ts";
 import { SAIL_LEVELS } from "../SailSystem.ts";
 import { entityId } from "../../model/ids.ts";
 import { EN } from "../../i18n/locales/en.ts";
@@ -254,19 +254,21 @@ describe("what the screen says about it", () => {
 });
 
 // ===========================================================================
-// What a squall does to the wind, measured (v0.97.2)
+// What a squall does to the wind (v0.97.2 measured, v0.99.0 decided)
 // ===========================================================================
 
 /**
- * Two documents said a squall "adds 0.3 to the wind". It adds 0.3 **every
- * tick** to a wind that already carries last tick's 0.3, so it reaches the
- * ceiling within three ticks and stays there. The behaviour is pinned as it is,
- * and the sentences changed; whether a squall should blow a full gale is a
- * question for the helm (TODO, item 3).
+ * Two documents said a squall "adds 0.3 to the wind". Until v0.99.0 it added
+ * 0.3 **every tick** to a wind that already carried last tick's, so it sat at
+ * the ceiling from the third tick on - mean 0.999 over a year of squalls. The
+ * user chose the documented squall (2026-09-25). Measured after, over a
+ * simulated year: mean **0.854** inside a squall against 0.536 outside,
+ * highest 0.942, and not one tick at the ceiling.
  */
 describe("a squall's wind", () => {
-  it("is at the ceiling within three ticks and stays there", () => {
-    let w = { windDirRad: 0, windStrength: 0.4, stormActive: true, stormTimer: 400 };
+  it("is the wind underneath and SQUALL_WIND_BOOST more, not a gale that builds", () => {
+    // A squall that has just begun over a 0.4 sea: the stored wind carries it.
+    let w = { windDirRad: 0, windStrength: 0.4 + SQUALL_WIND_BOOST, stormActive: true, stormTimer: 400 };
     let rng = { seed: 3, state: 3 };
     const seen: number[] = [];
     for (let i = 0; i < 300; i++) {
@@ -274,7 +276,21 @@ describe("a squall's wind", () => {
       w = r.weather; rng = r.rng;
       seen.push(w.windStrength);
     }
-    expect(seen[2]).toBe(1);
-    expect(Math.min(...seen.slice(2))).toBeGreaterThan(0.99);
+    expect(SQUALL_WIND_BOOST).toBe(0.3);
+    // The first gust is the day's wind and 0.3 more, give or take one tick of
+    // the sea's own wandering - and it never goes on adding, so no later tick
+    // jumps by anything like the boost again.
+    expect(seen[0]).toBeCloseTo(0.4 + SQUALL_WIND_BOOST, 1);
+    expect(seen[2]).toBeLessThan(0.8);                          // was 1.0 by here
+    for (let i = 1; i < seen.length; i++) {
+      expect(Math.abs(seen[i] - seen[i - 1])).toBeLessThan(0.05);
+    }
+  });
+
+  it("gives the wind back when it ends", () => {
+    let w = { windDirRad: 0, windStrength: 0.7, stormActive: true, stormTimer: 1 };
+    const r = updateWeather(w, { seed: 5, state: 5 }, 1, 7, 1, 31);
+    expect(r.weather.stormActive).toBe(false);
+    expect(r.weather.windStrength).toBeLessThan(0.45);
   });
 });

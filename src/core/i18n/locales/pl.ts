@@ -422,7 +422,7 @@ export const PL: LocaleData = {
   "help.world_caribbean_h": "Karaiby, XVII wiek",
   "help.world_caribbean_b": "45 portów, 5 frakcji: Hiszpania, Anglia, Francja, Holandia, Piraci. 9 klas statków.",
   "help.world_eras_h": "Ery gry",
-  "help.world_eras_b": "1560–1700. Każda era ma inny układ sił i wydarzenia historyczne.",
+  "help.world_eras_b": "1560–1700. Każda era ma inny układ sił i wydarzenia historyczne. Czas płynie tylko na mapie: w porcie i w bitwie świat czeka.",
   "help.world_ports_h": "Porty",
   "help.world_ports_b": "Kliknij miasto na mapie aby zobaczyć informacje. Podejdź blisko aby wejść.",
   "help.world_trade_h": "Handel",

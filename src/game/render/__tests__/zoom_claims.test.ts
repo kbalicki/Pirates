@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import { ZOOM_VALUES, ZOOM_MIN_VALUE, ZOOM_MAX_VALUE } from "../../settings/ZoomSetting.ts";
 import { MOUNTAIN_FULL_ZOOM, MOUNTAIN_FAR_ALPHA } from "../MountainRenderer.ts";
 import { GULL_MIN_ZOOM, GULL_MAX_ZOOM } from "../SeagullRenderer.ts";
-import { SHORE_FADE_START, SHORE_FADE_FULL } from "../ShoreWaveRenderer.ts";
 
 // ===========================================================================
 // The layer that draws had its own idea of the zoom (v0.98.2.0)
@@ -25,7 +24,7 @@ import { SHORE_FADE_START, SHORE_FADE_FULL } from "../ShoreWaveRenderer.ts";
  * | `CirrusRenderer` "only visible below zoom ~5" | gone from **2.5** |
  * | `CirrusRenderer` "full at zoom 1.5" | full below **2.0**; 1.5 is a step, not the threshold |
  * | `WaterRenderer` "visible at zoom 7-10 (normalized)" | a **scale the game no longer has** |
- * | `ShoreWaveRenderer` ">5 / 3-5 / <3" | 7 / 5-7 / below 5 — its own inner comment said so |
+ * | `ShoreWaveRenderer` ">5 / 3-5 / <3" | 7 / 5-7 / below 5 — its own inner comment said so (the file, never built, was deleted in v0.99.0) |
  *
  * `MapEventMarkerRenderer`, `CloudRenderer` and `MainMapScene`'s three were
  * **correct**, so this is drift rather than a house style: the sentences that
@@ -60,11 +59,6 @@ describe("every threshold sits inside the ladder it talks about", () => {
     expect(GULL_MAX_ZOOM).toBe(ZOOM_MAX_VALUE);
   });
 
-  it("keeps the shore waves in order and in range", () => {
-    expect(SHORE_FADE_START).toBeLessThan(SHORE_FADE_FULL);
-    expect(inRange(SHORE_FADE_START)).toBe(true);
-    expect(inRange(SHORE_FADE_FULL)).toBe(true);
-  });
 });
 
 describe("the peaks are dimmed, not hidden", () => {
@@ -106,7 +100,6 @@ describe("a threshold the sweep can read", () => {
     "CirrusRenderer.ts": ["CIRRUS_FADE_START", "CIRRUS_FADE_END"],
     "SeagullRenderer.ts": ["GULL_MIN_ZOOM", "GULL_MAX_ZOOM"],
     "WaterRenderer.ts": ["WAVE_START_ZOOM"],
-    "ShoreWaveRenderer.ts": ["SHORE_FADE_START", "SHORE_FADE_FULL"],
   };
 
   for (const [file, names] of Object.entries(NAMED)) {
@@ -129,7 +122,6 @@ describe("a threshold the sweep can read", () => {
     expect(source("MountainRenderer.ts")).toMatch(/MOUNTAIN_FULL_ZOOM` \(2\)/);
     expect(source("CirrusRenderer.ts")).toMatch(/CIRRUS_FADE_END` \(2\.5\)/);
     expect(source("WaterRenderer.ts")).toMatch(/WAVE_START_ZOOM` \(8\.85\)/);
-    expect(source("ShoreWaveRenderer.ts")).toMatch(/SHORE_FADE_START` \(5\)/);
   });
 
   it("leaves no renderer quoting the chart's maximum by hand", () => {

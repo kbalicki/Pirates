@@ -103,7 +103,8 @@ zawsze. Skróty wzdłuż brzegu to co innego.
 ### Pogoda
 
 - **Szkwał** rwie płótno, jeśli niesiesz więcej niż **refowane** — także przy
-  połowie żagli. Wiatr w szkwale wieje z pełną siłą, jak w huraganie. Zrefuj.
+  połowie żagli. Szkwał dokłada **0,3** do wiatru, który akurat wieje (średnio
+  0,85 przy 0,54 poza szkwałem) — mocno, ale nie huraganowo. Zrefuj.
 - **Huragan** to zdarzenie świata, które naprawdę wędruje: jedno oko idące drogą
   przez ostrzeżone miasta. Widać je na czarcie razem z trasą. Drze żagle
   **i kadłub**, a widoczność spada do jednej trzeciej.
@@ -278,6 +279,12 @@ ma czego przeciąć.
 ---
 
 ## Co się dzieje w świecie
+
+**Czas płynie tylko na mapie** — na morzu i na lądzie. W porcie, w bitwie, przy
+szturmie, przy obronie i w każdym menu świat czeka. Każdy termin w dniach —
+kontrakt, zlecenie, dzierżawa, dola załogi, wyprawa korony, kadencja gubernatora
+— liczy więc dni spędzone na mapie. Handluj w porcie ile chcesz; nic Ci przez to
+nie ucieknie, ale też nic się nie przybliży.
 
 Trzynaście rodzajów zdarzeń. W każdej chwili żyje ich w świecie **około
 szesnastu**. Dowiesz się o nich z tablicy w porcie, z tawerny albo od mijanego

@@ -4,7 +4,7 @@ import type { WorldState } from "../core/model/WorldState.ts";
 import { entityId, factionId, shipClassId } from "../core/model/ids.ts";
 import { createRng } from "../core/services/RNG.ts";
 import { PORTS } from "../core/data/ports.ts";
-import { FACTIONS } from "../core/data/factions.ts";
+import { FACTIONS, OWN_CROWN_START_BONUS } from "../core/data/factions.ts";
 import { SHIP_CLASSES } from "../core/data/ships.ts";
 import { initPortPrices, initPortInventory } from "../core/data/prices.ts";
 import { getPortBaseline } from "../core/data/economyBaselines.ts";
@@ -71,7 +71,7 @@ export function createNewWorldState(
   }
   // Bonus reputation with own nation
   if (reputation[captainProfile.nationality] !== undefined) {
-    reputation[captainProfile.nationality] += 20;
+    reputation[captainProfile.nationality] += OWN_CROWN_START_BONUS;
   }
 
   const sloopClass = SHIP_CLASSES["sloop"];

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-24 · **Wersja:** v0.98.4.0 · **Branch:** `main`
-**Kod:** 291 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2540 przechodzi, 0 failuje, 0 `todo`** w 97 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.0.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2547 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2709,7 +2709,10 @@ flota skarbowa i huragan doszły do `rumorsAt` jako fakty. Szczegóły w notatce
 
 **Znalezione przy obecności, nienaprawione** (v0.93.0.0):
 
-- **Czas nie płynie w porcie, i to jest szersze niż jedna martwa gałąź.**
+- **~~Czas nie płynie w porcie~~ ✅ REGUŁA v0.99.0 (decyzja użytkownika 2026-09-25)** — świat czeka poza
+  mapą; zdanie w podręczniku (`help.world_eras_b`), instrukcji i 14-MECHANICS, `world_clock.test.ts`
+  pilnuje jednego zegara (`advanceTime` ← `WorldEngine` ← `MainMapScene`). Opis historyczny:
+  **Czas nie płynie w porcie, i to jest szersze niż jedna martwa gałąź.**
   `WorldEngine.apply` wraca **przed** przesunięciem zegara, gdy
   `location.type === "port"`, więc **każdy termin w grze** — eskadra korony,
   zlecenie dostawy, kontrakt obronny, `PLUNDER_INTERVAL_DAYS` — **zatrzymuje się
@@ -2843,7 +2846,7 @@ Barbadosie (80) kosztuje tyle samo — **3** przy bazowej 8; różnice między d
 producentami znikają, a głębokość rynku zostaje (60 t kupione z 96 podnosi cenę do ok. 6).
 Rozstrzygnięcie złota rozstrzyga i to — fikcyjny popyt `(rate || 1)` jest jednym miejscem.
 
-*v0.97.1, progi reputacji:* **reputacja startowa stoi dokładnie na progach.** Własna
+*v0.97.1, progi reputacji:* ✅ **v0.99.0: własna korona 25 (`OWN_CROWN_START_BONUS`), piraci −25** (decyzja użytkownika; pierwszy kupiec +6 dalej otwiera przystań, −19). Opis: **reputacja startowa stoi dokładnie na progach.** Własna
 korona 0 + 20 = **20**, a „przyjazny” to `>= 20`; piraci **−20**, a „nieprzyjazny” to
 `<= −20`. Zmierzone na 84 startach (7 er × 4 korony × 3 ziarna): w **12** jeden wzięty
 kupiec **sojusznika** własnej korony (fala `ACT_TRADER`, −1) spycha ją na 19 = neutralny —
@@ -2864,7 +2867,7 @@ FOUNDERING_THRESHOLD`, `HURRICANE_RIG_FLOOR = RIG_TIERS[1].minFrac`) i obiecują
 `hp / max` — i dla **22 z pierwszych 400** wartości `sailsMax` (43, 81, 86…) wraca
 0,39999…, czyli `tattered`, stopień niżej. Żadna klasa w `ships.ts` dziś takiej
 liczby nie ma; klasyfikacja progów ma teraz tolerancję 1e-9 i test na 1..400.
-**Szkwał wieje z siłą huraganu**: `+0.3` do siły wiatru dokłada się **co tick**
+✅ **v0.99.0: szkwał = wiatr + `SQUALL_WIND_BOOST` (0,3), raz, nie co tick** (decyzja użytkownika; zmierzone: średnio 0,854 w szkwale, max 0,942, 0 ticków na 1,0 — **do playtestu**). Opis: **Szkwał wieje z siłą huraganu**: `+0.3` do siły wiatru dokłada się **co tick**
 do wiatru już podbitego, więc po trzech tickach jest 1,0 (średnio **0,999** przez
 rok symulacji, 115 szkwałów, 3,1% czasu, lipiec–wrzesień ok. 5,7%). Dwa dokumenty
 mówiły „dokłada 0,3”. Zachowanie przypięte testem, zdania poprawione — **decyzja
@@ -3069,7 +3072,8 @@ przy okazji.
   działa**: reguła „liczba z komentarza ma wystąpić w kodzie pod nim" zgłasza
   **69 ze 110** linii, prawie same zdrowe. Lekarstwo: **nazwać progi**, wtedy
   widzi je stopień, który już istnieje — osiem sprawdzanych maszynowo.
-- **Cztery klasy nigdy nie budowane zostają na dysku**, z powodem w imiennej
+- **~~Cztery klasy nigdy nie budowane zostają na dysku~~ ✅ v0.99.0 skasowane** (decyzja użytkownika;
+  `PARKED` pusty, `zoom_claims` bez `ShoreWaveRenderer`, 07-RENDERING poprawiony). Opis: z powodem w imiennej
   liście strażnika: `MinimapRenderer` (minimapa usunięta w v0.9.2),
   `ShoreWaveRenderer` (udokumentowany eksperyment, sześć nieudanych podejść),
   `DOMCloudOverlay`, `WindCompassRenderer`. **Decyzja o skasowaniu należy do

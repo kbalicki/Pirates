@@ -423,7 +423,7 @@ export const EN: LocaleData = {
   "help.world_caribbean_h": "The Caribbean, seventeenth century",
   "help.world_caribbean_b": "45 ports, 5 flags: Spain, England, France, the Netherlands, the Brethren. 9 classes of ship.",
   "help.world_eras_h": "Eras",
-  "help.world_eras_b": "1560-1700. Each era has its own balance of power and its own history.",
+  "help.world_eras_b": "1560-1700. Each era has its own balance of power and its own history. Days pass only on the chart: in port and in battle the world waits.",
   "help.world_ports_h": "Ports",
   "help.world_ports_b": "Click a town on the chart to see what is known of it. Sail close to enter.",
   "help.world_trade_h": "Trade",
