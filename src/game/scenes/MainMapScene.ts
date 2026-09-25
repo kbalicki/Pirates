@@ -93,6 +93,7 @@ import { t } from "../../core/i18n/index.ts";
 import { portNameKey } from "../../core/i18n/names.ts";
 import { txt } from "../ui/textStyle.ts";
 import { getSoundGain } from "../settings/SoundSettings.ts";
+import { ZOOM_MAX_VALUE } from "../settings/ZoomSetting.ts";
 import { ShallowWaterRenderer } from "../render/ShallowWaterRenderer.ts";
 import { coastDistanceField, buildDepthField, setDepthField } from "../../core/services/SeaDepth.ts";
 import { getPortWaterPos } from "../../core/systems/PortWaterPositions.ts";
@@ -705,13 +706,13 @@ export class MainMapScene extends Phaser.Scene {
       const seaTex = this.textures.addCanvas(seaKey, mirrorCanvas);
       if (seaTex) seaTex.setFilter(Phaser.Textures.FilterMode.LINEAR);
 
-      // TileSprite: scaled so 1 texture pixel ≈ 1 screen pixel at max zoom (12x)
+      // TileSprite: scaled so 1 texture pixel ≈ 1 screen pixel at the chart's
+      // maximum zoom - read from the ladder, not typed (v0.99.5).
       this.seaTextureTile = this.add.tileSprite(mapW / 2, mapH / 2, mapW, mapH, seaKey);
       this.seaTextureTile.setOrigin(0.5, 0.5);
       this.seaTextureTile.setDepth(-999);
       this.seaTextureTile.setAlpha(0.66);
-      const MAX_ZOOM = 12;
-      this.seaTextureTile.setTileScale(1 / MAX_ZOOM, 1 / MAX_ZOOM);
+      this.seaTextureTile.setTileScale(1 / ZOOM_MAX_VALUE, 1 / ZOOM_MAX_VALUE);
     }
 
     // Cartographic lat/lon grid (visible at far zoom only)
@@ -1264,13 +1265,10 @@ export class MainMapScene extends Phaser.Scene {
 
     // LABELS: constant screen size (inverse zoom)
     const labelScale = 1 / camZoom;
-    const gridAlpha = camZoom < 2.2 ? 1 : camZoom < 3 ? 1 - (camZoom - 2.2) / 0.8 : 0;
+    // No label here is a grid label since v0.98.0 moved them to the screen's
+    // margin (`UIOverlayScene`, one `gridFade`). The branch that faded them on
+    // its own 2.2/3 rule stayed behind, reading a flag nothing sets (v0.99.5).
     for (const entry of this.cityLabels) {
-      const isGrid = entry.text.getData("isGrid");
-      if (isGrid) {
-        entry.text.setVisible(gridAlpha > 0.01);
-        entry.text.setAlpha(gridAlpha);
-      }
       entry.text.setScale(labelScale);
       entry.text.setPosition(
         entry.anchorX + entry.offsetPx / camZoom,
@@ -1293,8 +1291,8 @@ export class MainMapScene extends Phaser.Scene {
     // Sea texture: smooth alpha ramp from zoom 2 to max zoom
     if (this.seaTextureTile) {
       const z = this.cameras.main.zoom;
-      // zoom <2: invisible, zoom 2→12: linear 0→0.50
-      const t = Math.max(0, Math.min(1, (z - 2) / (12 - 2)));
+      // zoom <2: invisible, zoom 2→max: linear 0→0.50
+      const t = Math.max(0, Math.min(1, (z - 2) / (ZOOM_MAX_VALUE - 2)));
       this.seaTextureTile.setAlpha(t * 0.50);
     }
 

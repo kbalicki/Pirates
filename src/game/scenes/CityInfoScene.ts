@@ -11,9 +11,15 @@ import { portNameKey } from "../../core/i18n/names.ts";
 import { txt, HINT_ON_DARK } from "../ui/textStyle.ts";
 import { getPortBaseline } from "../../core/data/economyBaselines.ts";
 import { portFaction } from "../../core/systems/SiegeSystem.ts";
+import { getReputationLevel, type ReputationLevel } from "../../core/systems/ReputationSystem.ts";
 import { liveNews } from "../../core/systems/NewsPhaseSystem.ts";
 import { blockadeDays, blockadeEffective, BLOCKADE_ONSET_DAYS } from "../../core/systems/BlockadeSystem.ts";
 import { routeSupplying, laneThroughput } from "../../core/systems/TradeRouteSystem.ts";
+
+/** One colour per band the engine reads, from `getReputationLevel`. */
+const REP_COLOR: Record<ReputationLevel, string> = {
+  allied: "#44cc44", friendly: "#88cc88", neutral: "#cccccc", unfriendly: "#cc8844", hostile: "#cc4444",
+};
 
 export class CityInfoScene extends Phaser.Scene {
   private portKey!: string;
@@ -220,8 +226,14 @@ export class CityInfoScene extends Phaser.Scene {
 
     // ── Reputation ──
     const rep = this.worldState.player.reputation?.[factionId] ?? 0;
-    const repLevel = rep > 50 ? "allied" : rep > 20 ? "friendly" : rep > -20 ? "neutral" : rep > -50 ? "unfriendly" : "hostile";
-    const repColor = rep > 50 ? "#44cc44" : rep > 20 ? "#88cc88" : rep > -20 ? "#cccccc" : rep > -50 ? "#cc8844" : "#cc4444";
+    // The engine's own bands (v0.99.5). This panel kept a ladder of its own -
+    // allied above 50, friendly above 20, hostile at -50 - against the engine's
+    // 60, 20-inclusive and -60, so at 50-59 it called a captain "allied" whom
+    // every counter treated as friendly, at exactly 20 "neutral" where the
+    // governor received him, and at -50..-59 "hostile" where the shipyard
+    // still sold him a hull.
+    const repLevel = getReputationLevel(rep);
+    const repColor = REP_COLOR[repLevel];
     addRow(t("cityinfo.reputation"),
       `${t("rep." + repLevel)} (${rep})`, repColor);
 

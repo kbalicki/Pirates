@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.5.0",
+    date: "2026-09-25",
+    changes: [
+      "A PANEL THAT KEPT ITS OWN IDEA OF A FRIEND",
+      "  Click a town and the panel names where you stand with its crown. It",
+      "  worked that out on a ladder of its own - allied above 50, friendly",
+      "  above 20, hostile at -50 - where the game draws the lines at 60, at 20",
+      "  inclusive and at -60. So at 50-59 it called you an ally where every",
+      "  counter treated you as a friend, at exactly 20 'neutral' where the",
+      "  governor would receive you, and at -50 to -59 'hostile' where the",
+      "  shipyard still sold you a hull. It now asks the game",
+      "",
+      "  Found by reading the screens for numbers the engine already owns - the",
+      "  same shape as the firing arc and the reload bar. Two smaller ones went",
+      "  with it: a second fade rule for grid labels that have not lived on the",
+      "  chart since 0.98.0, and the chart's maximum zoom typed as 12",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.4.0",
     date: "2026-09-25",
     changes: [

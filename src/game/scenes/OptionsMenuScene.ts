@@ -22,6 +22,7 @@ import { txt, PIRATE_ICONS_FONT, TEXT_RES, HINT_ON_LIGHT } from "../ui/textStyle
 import { getAssetPack, setAssetPack, PACK_LIST, usesParchmentUI } from "../settings/AssetPack.ts";
 import type { AssetPackId } from "../settings/AssetPack.ts";
 import { getZoomLevel, setZoomLevel } from "../settings/ZoomSetting.ts";
+import { TRAINING_DEFAULT } from "../../core/model/CaptainState.ts";
 import { isDebugMode, setDebugMode } from "../settings/DebugSetting.ts";
 import { isFogEnabled, setFogEnabled } from "../settings/FogSetting.ts";
 import type { ZoomLevel } from "../settings/ZoomSetting.ts";
@@ -529,7 +530,7 @@ export class OptionsMenuScene extends Phaser.Scene {
     y += 16;
 
     // Training bar — crew experience under this captain's command (0..1).
-    const training = Math.max(0, Math.min(1, this.worldState.captain?.training ?? 0.3));
+    const training = Math.max(0, Math.min(1, this.worldState.captain?.training ?? TRAINING_DEFAULT));
     const trainingLabel = this.add.text(x + 10, y,
       t("cabin.training", { pct: Math.round(training * 100) }),
       txt(12));
@@ -611,7 +612,7 @@ export class OptionsMenuScene extends Phaser.Scene {
 
     // Fleet ships — show with abandon button (at-sea action; sell is in shipyard)
     const fleet = player.fleet ?? [];
-    const captainTraining = this.worldState.captain?.training ?? 0.3;
+    const captainTraining = this.worldState.captain?.training ?? TRAINING_DEFAULT;
     if (fleet.length > 0) {
       for (let i = 0; i < fleet.length; i++) {
         const fs = fleet[i];

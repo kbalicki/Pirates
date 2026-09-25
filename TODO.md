@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.4.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2566 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.5.0 · **Branch:** `main`
+**Kod:** 290 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2572 przechodzi, 0 failuje, 0 `todo`** w 100 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3095,6 +3095,15 @@ przy okazji.
   `ShoreWaveRenderer` (udokumentowany eksperyment, sześć nieudanych podejść),
   `DOMCloudOverlay`, `WindCompassRenderer`. **Decyzja o skasowaniu należy do
   użytkownika** — to parkowana praca, nie śmieci.
+
+**~~Druga kopia reguły silnika na ekranie.~~ ✅ v0.99.5** — przemiatanie literałów w `src/game/scenes`
+równych stałym z `core` (skaner jednorazowy, poza repo; szum duży, bo rysowanie jest pełne liczb).
+Znalezione: **panel miasta miał własną drabinę reputacji** (50/20/−20/−50 przy silnikowych 60/20/−20/−60;
+przy 50–59 „sojusznik”, przy 20 „neutralny”, przy −50…−59 „wrogi”) — teraz `getReputationLevel`;
+martwa gałąź `isGrid` w `MainMapScene` z **drugą** regułą wygaszania siatki (2,2/3) po v0.98.0;
+wpisane `12` jako maks. zoom (dwa miejsca) i `?? 0.3` zamiast `TRAINING_DEFAULT`. Strażnik:
+`screen_rules.test.ts` (żadna scena nie trzyma łańcucha progów reputacji). **Do rozważenia:** ten skaner
+jako `scripts/` z filtrem na porównania/deklaracje — dał 1 prawdziwe znalezisko na ok. 80 wierszy szumu.
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),
