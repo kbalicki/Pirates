@@ -469,7 +469,8 @@ więcej godzina marszu. Pod miastem wybierz **szturm**. Dział nie masz, więc n
 ma ostrzału: od razu desant, a statki czekają nietknięte po drugiej stronie.
 Za to skarbiec — srebro z Peru — jest **ponad dwa razy** bogatszy niż w
 jakimkolwiek innym mieście. Wioska Darién za wojenną drużynę zbije obronę
-o czterdzieści, zanim przyjdziesz.
+o czterdzieści, zanim przyjdziesz. **Panamy nie zatrzymasz** — żaden okręt nie
+przypłynie tu z odsieczą — więc po zdobyciu zostaje tylko łup.
 
 ### Bronisz miasta
 

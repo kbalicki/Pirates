@@ -15,6 +15,7 @@ import {
   capturePort,
   repulsedAtPort,
   availableSponsors,
+  spoilsOffered,
   writeBackForce,
   lootValue,
   LANDING_FRACTION,
@@ -864,5 +865,25 @@ describe("a town stormed overland", () => {
     // Twice any other capital at baseline.
     const best = Math.max(...Object.keys(CITIES).filter(k => k !== "panama").map(k => lootValue(undefined, k)));
     expect(panama).toBeGreaterThan(best * 1.9);
+  });
+});
+
+describe("what a town over the isthmus offers once it falls (v0.99.3)", () => {
+  it("is sacked and nothing else", () => {
+    const world = makeWorld({ flags: { letter_of_marque_england: true } });
+    expect(spoilsOffered(world, "panama")).toEqual([{ choice: "plunder" }]);
+  });
+
+  it("leaves every town with a keel to it its three endings", () => {
+    const world = makeWorld({ flags: { letter_of_marque_england: true } });
+    expect(spoilsOffered(world, "cartagena").map(o => o.choice)).toEqual(["plunder", "brethren", "sponsor"]);
+    expect(spoilsOffered(world, "cartagena")[2].sponsor).toBe("england");
+  });
+
+  it("is what the assault screen lists", () => {
+    const SRC = import.meta.glob("../../../game/scenes/CityAssaultScene.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const src = Object.values(SRC)[0] ?? "";
+    expect(src).toContain("spoilsOffered(this.worldState, this.portKey)");
+    expect(src).not.toContain("availableSponsors(");
   });
 });

@@ -6,6 +6,29 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.3.0",
+    date: "2026-09-25",
+    changes: [
+      "PANAMA, THE MORNING AFTER",
+      "  Panama cannot be held: no ship can ever bring it relief. Once it falls",
+      "  there is one ending - sack it and march back across the isthmus",
+      "",
+      "  It has no food lane, and that was measured rather than guessed: over two",
+      "  settled years on the real coastline it never went hungry. Imports with",
+      "  no lane still arrive by smugglers, so its food and water stay full.",
+      "  A test now keeps it that way",
+      "",
+      "LEAVING A TOWN ON FOOT",
+      "  A walker leaving a town was set down on the town's own point - for",
+      "  Panama, in the Pacific - and the map, starting fresh, hailed the same",
+      "  town again at once, so leaving on foot opened the dialog he had just",
+      "  closed. He now stands where he stood, and the town hails him again only",
+      "  after he has walked away and come back",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.2.0",
     date: "2026-09-25",
     changes: [

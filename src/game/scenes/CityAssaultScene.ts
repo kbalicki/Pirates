@@ -16,7 +16,7 @@ import {
   landingParty,
   capturePort,
   repulsedAtPort,
-  availableSponsors,
+  spoilsOffered,
   writeBackForce,
   lootValue,
   portFaction,
@@ -263,20 +263,22 @@ export class CityAssaultScene extends Phaser.Scene {
     this.log = this.log.slice(-3);
 
     const loot = lootValue(this.worldState.ports[this.portKey], this.portKey);
-    this.spoils = [
-      { label: t("siege.spoils_plunder", { gold: loot }), choice: "plunder" },
-      { label: t("siege.spoils_brethren", { gold: Math.round(loot * 0.7) }), choice: "brethren" },
-    ];
-    for (const sponsor of availableSponsors(this.worldState, this.portKey)) {
-      this.spoils.push({
-        label: t("siege.spoils_sponsor", {
-          faction: factionNameKey(sponsor),
-          gold: Math.round(loot * 0.5),
-        }),
-        choice: "sponsor",
-        sponsor,
-      });
-    }
+    const offered = spoilsOffered(this.worldState, this.portKey);
+    // Only the sack: a town over the isthmus cannot be held (v0.99.3).
+    if (offered.length === 1) this.log.push(t("siege.log_cannot_hold"));
+    this.spoils = offered.map(({ choice, sponsor }) => {
+      switch (choice) {
+        case "plunder":
+          return { label: t(this.siege.overland ? "siege.spoils_plunder_march" : "siege.spoils_plunder", { gold: loot }), choice };
+        case "brethren":
+          return { label: t("siege.spoils_brethren", { gold: Math.round(loot * 0.7) }), choice };
+        case "sponsor":
+          return {
+            label: t("siege.spoils_sponsor", { faction: factionNameKey(sponsor!), gold: Math.round(loot * 0.5) }),
+            choice, sponsor,
+          };
+      }
+    });
 
     // One number per row, bound once the rows exist. Two endings plus one per
     // letter of marque makes up to five, and the hand-written `1-4` bound in

@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.2.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2556 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.3.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2563 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2797,7 +2797,10 @@ six units of open water"* okazało się **prawdziwe co do jednostki**.
 **~~1. Co Panama ma być?~~ ✅ v0.99.2: miasto do złupienia lądem** (decyzja użytkownika: „duże i bogate,
 możliwe do złupienia z lądu”). Pieszo przy mieście `landlocked` ekran podejścia daje szturm, oblężenie
 `overland` bez dział i bez ostrzału, skarbiec `PANAMA_TREASURY` 2,5 (łup 7 250). Przesmyk z Nombre de Dios
-przechodni (test na prawdziwym wybrzeżu), zweryfikowane w grze `?isthmus`. **Zostaje otwarte:** (1) Panamá
+przechodni (test na prawdziwym wybrzeżu), zweryfikowane w grze `?isthmus`. ✅ **v0.99.3 domknięte:** (1) głód
+zmierzony — **nie ma go** (dwa lata osiadłego świata: głód 0, jedzenie przy suficie szopy; import bez szlaku
+idzie „przemytem”), przypięte testem; (2) po szturmie **tylko łupienie** (`spoilsOffered`); (3) wyjście pieszo
+z portu wraca tam, gdzie gracz stał, i mapa nie woła miasta od razu (`leftPort`). Poprzednio otwarte: (1) Panamá
 nie ma szlaku żywności i skutek tego na jej gospodarkę nie jest zmierzony; (2) zatrzymanie jej dla bractwa
 albo korony po szturmie — miasta nie da się odsieczą obronić od morza; (3) wyjście pieszo z `PortScene`
 stawia gracza w `portDef.pos`, które dla Panamy leży w wodzie (odciąga go powrót na ląd). Opis historyczny: **1. Co Panama ma być?** — **decyzja dla użytkownika, nie do wzięcia

@@ -1065,6 +1065,8 @@ export const PL: LocaleData = {
   "siege.log_thrown_back": "Zrzuceni z plaży. Na piasku zostaje {{lost}} {{lost:man}}.",
   "siege.log_spoils": "{{gold}} złota do ładowni.",
   "siege.spoils_plunder": "Złupić i odpłynąć — {{gold}} złota",
+  "siege.spoils_plunder_march": "Złupić i wrócić przez przesmyk — {{gold}} złota",
+  "siege.log_cannot_hold": "Tego miasta nie utrzymasz: żaden okręt nie przypłynie tu z odsieczą.",
   "siege.spoils_brethren": "Zatrzymać dla bractwa — {{gold}} złota",
   "siege.spoils_sponsor": "Oddać {{faction:dat}} — {{gold}} złota i awans",
   "siege.log_captured": "Zdobyto {{port:acc}}: {{gold}} złota. Miasto podlega teraz {{owner:dat}}.",

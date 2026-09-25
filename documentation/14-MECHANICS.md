@@ -1425,7 +1425,10 @@ oferuje szturm; oblężenie idzie z `overland` — **zero dział, zero ostrzału
 fort nie ma w co strzelać, kadłuby zostają nietknięte, ryzykuje tylko desant.
 Łup = bogactwo × 3 × `treasury` + ludność × 0,05: Panamá na starcie **7 250**
 (każde inne miasto najwyżej ok. 3 200). Wojenna drużyna z wioski Darién
-(−40 obrony) dalej działa i dalej obniża łup.
+(−40 obrony) dalej działa i dalej obniża łup. Po zdobyciu **tylko łupienie**
+(`spoilsOffered`, v0.99.3): miasta bez kila nie da się bronić odsieczą. Bez szlaku
+żywności Panamá **nie głoduje** — import bez szlaku idzie „przemytem”; dwa lata
+osiadłego świata: głód 0 (`geography.test.ts`).
 
 ### Obrona (gracz broni)
 

@@ -39,7 +39,7 @@
 import type { WorldState, RngState, PortRuntimeState } from "../model/WorldState.ts";
 import type { FactionId } from "../model/ids.ts";
 import { factionId as makeFactionId } from "../model/ids.ts";
-import { CITIES, type CitySize } from "../data/cities.ts";
+import { CITIES, isLandlocked, type CitySize } from "../data/cities.ts";
 
 import { getPortBaseline } from "../data/economyBaselines.ts";
 import { rngNext } from "../services/RNG.ts";
@@ -706,6 +706,23 @@ export function repulsedAtPort(world: WorldState, portKey: string): WorldState {
 }
 
 /** Crowns the player holds a letter of marque from, and could hand a town to. */
+/**
+ * The endings a taken town offers, in the order the menu lists them.
+ *
+ * A town no keel reaches is sacked and nothing else (v0.99.3, the owner's
+ * call). Holding it - for the brethren or for a patron - means a garrison the
+ * crown can come back for, and nobody can relieve a town on the Pacific from
+ * the sea: `ReconquestSystem` and the relief orders all sail.
+ */
+export function spoilsOffered(world: WorldState, portKey: string): { choice: SpoilsChoice; sponsor?: string }[] {
+  if (isLandlocked(portKey)) return [{ choice: "plunder" }];
+  return [
+    { choice: "plunder" },
+    { choice: "brethren" },
+    ...availableSponsors(world, portKey).map(sponsor => ({ choice: "sponsor" as const, sponsor })),
+  ];
+}
+
 export function availableSponsors(world: WorldState, portKey: string): string[] {
   const owner = portFaction(world, portKey) as string;
   return ["spain", "england", "france", "netherlands"].filter(

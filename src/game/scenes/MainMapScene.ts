@@ -201,10 +201,14 @@ export class MainMapScene extends Phaser.Scene {
     super({ key: "MainMapScene" });
   }
 
-  init(data?: { worldState?: WorldState }): void {
+  /** Set by a scene that hands the map back from inside a town (v0.99.3). */
+  private leftPort = false;
+
+  init(data?: { worldState?: WorldState; leftPort?: boolean }): void {
     if (data?.worldState) {
       this.worldState = data.worldState;
     }
+    this.leftPort = data?.leftPort === true;
   }
 
   create(): void {
@@ -272,7 +276,12 @@ export class MainMapScene extends Phaser.Scene {
     this.portPromptText.setVisible(false);
 
     this.portDialogOpen = false;
-    this.wasNearPort = false;
+    // Just out of a town's gate, he is still inside its hail: on foot the
+    // walker is handed back where he stood when he hailed it, and before
+    // v0.99.3 the map, starting fresh, hailed the same town again at once -
+    // leaving on foot opened the approach dialog it had just closed. The town
+    // hails again once he has walked out of reach and back.
+    this.wasNearPort = this.leftPort;
 
     // Version label moved to UIOverlayScene
 

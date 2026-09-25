@@ -1066,6 +1066,8 @@ export const EN: LocaleData = {
   "siege.log_thrown_back": "Thrown back off the sand. {{lost}} {{lost:man}} left behind.",
   "siege.log_spoils": "{{gold}} gold into the hold.",
   "siege.spoils_plunder": "Sack the town and sail — {{gold}} gold",
+  "siege.spoils_plunder_march": "Sack the town and march back — {{gold}} gold",
+  "siege.log_cannot_hold": "You cannot hold this town: no ship can ever bring it relief.",
   "siege.spoils_brethren": "Keep it for the brethren — {{gold}} gold",
   "siege.spoils_sponsor": "Hand it to {{faction}} — {{gold}} gold and a rank",
   "siege.log_captured": "Stormed {{port}}: {{gold}} gold. The town now answers to {{owner}}.",

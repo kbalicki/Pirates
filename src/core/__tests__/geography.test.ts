@@ -10,7 +10,11 @@ import { buildPortWaterCache, getPortWaterPos } from "../systems/PortWaterPositi
 import { findSeaPath, resetSeaGrid } from "../services/Pathfinding.ts";
 import { candidatePorts } from "../systems/FamilyQuestSystem.ts";
 import { tradeRoutes, resetTradeRoutes } from "../systems/TradeRouteSystem.ts";
-import type { WorldState } from "../model/WorldState.ts";
+import type { WorldState, PortRuntimeState } from "../model/WorldState.ts";
+import { economyDailyTick } from "../systems/EconomyTickSystem.ts";
+import { initPortPrices, initPortInventory } from "../data/prices.ts";
+import { getPortBaseline } from "../data/economyBaselines.ts";
+import { portId, entityId } from "../model/ids.ts";
 
 // ===========================================================================
 // The coastline the tests never saw (v0.91.0)
@@ -221,5 +225,76 @@ describe("nothing that needs a keel names a town without one", () => {
     for (const name of ["FamilyQuestSystem", "InformantSystem", "CrownCampaignSystem"]) {
       expect(readers.some(p => p.includes(name)), `${name} does not read isLandlocked`).toBe(true);
     }
+  });
+});
+
+/**
+ * Panamá has no food lane - nothing sails to it - and the question the owner
+ * asked (v0.99.3) was whether it starves. Measured on the real coastline over
+ * two settled years: no. A town whose lanes are missing still gets its imports
+ * "by smugglers" (`EconomyTickSystem`, the unbooked trickle), so its food and
+ * water stay at the shed's cap and its hunger at nought. Pinned, so a change
+ * to the import fallback that would starve it is seen.
+ */
+describe("Panamá without a food lane", () => {
+  beforeAll(() => { setLandmasses(loadRealLandmasses()); resetSeaGrid(); resetTradeRoutes(); });
+  afterAll(() => { setLandmasses([]); resetSeaGrid(); resetTradeRoutes(); });
+
+  it("is fed all the same", () => {
+    const ports: Record<string, PortRuntimeState> = {};
+    for (const key of Object.keys(CITIES)) {
+      const b = getPortBaseline(key);
+      ports[key] = {
+        portId: portId(key), factionId: CITIES[key].factionId, prices: initPortPrices(key),
+        inventory: initPortInventory(key), shipyardQueue: [], availableCrew: 10,
+        population: b.population, wealth: b.wealth, defense: b.defense, bonusProduces: [],
+      } as PortRuntimeState;
+    }
+    let w = {
+      version: 12, time: { day: 100, hour: 12, minute: 0, tick: 0 }, rng: { seed: 1, state: 1 },
+      player: { id: entityId("player"), shipId: entityId("player_ship"), gold: 0, notoriety: 0, reputation: {}, ranks: {},
+        location: { type: "sea", pos: { x: 0, y: 0 } }, questLog: [], fleet: [], lastPlunderDay: 1, citiesCaptured: 0, courtship: {} },
+      entities: {}, ports, weather: { windDirRad: 0, windStrength: 0.5, stormActive: false, stormTimer: 0 },
+      worldFlags: {}, eventLog: [], worldEvents: [], knownEventIds: [],
+    } as unknown as WorldState;
+    let worst = 0;
+    for (let d = 0; d < 365; d++) {
+      w = economyDailyTick(w);
+      w = { ...w, time: { ...w.time, day: w.time.day + 1 } };
+      worst = Math.max(worst, w.ports.panama.hunger ?? 0);
+    }
+    expect(worst).toBe(0);
+    expect(w.ports.panama.inventory.food ?? 0).toBeGreaterThan(0);
+    expect(w.ports.panama.population).toBeCloseTo(getPortBaseline("panama").population, -2);
+  });
+});
+
+/**
+ * Leaving a town on foot put the walker at the town's own `pos` until v0.99.3,
+ * and a coastal town's point is often water - Panamá's is 1.5 units into the
+ * Pacific. The rescue that pulls a walker back ashore hid it. He is handed
+ * back where he stood when he hailed the town, which is land because he
+ * walked there.
+ */
+describe("leaving a town on foot", () => {
+  beforeAll(() => { setLandmasses(loadRealLandmasses()); resetSeaGrid(); });
+  afterAll(() => { setLandmasses([]); resetSeaGrid(); });
+
+  it("has a town whose own point is water, which is why it matters", () => {
+    expect(onLand(CITIES.panama.pos)).toBe(false);
+  });
+
+  it("puts him back where he stood, not on the town's point", () => {
+    const SRC = import.meta.glob("../../game/scenes/PortScene.ts", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const src = Object.values(SRC)[0] ?? "";
+    expect(src).toContain("const portPos = entity?.pos ?? portDef?.pos");
+  });
+
+  it("does not have the town hail him again the moment he is out of the gate", () => {
+    const SRC = import.meta.glob(["../../game/scenes/PortScene.ts", "../../game/scenes/MainMapScene.ts"], { query: "?raw", import: "default", eager: true }) as Record<string, string>;
+    const port = Object.entries(SRC).find(([k]) => k.endsWith("PortScene.ts"))![1];
+    const map = Object.entries(SRC).find(([k]) => k.endsWith("MainMapScene.ts"))![1];
+    expect(port).toContain('scene.start("MainMapScene", { worldState: this.worldState, leftPort: true })');
+    expect(map).toContain("this.wasNearPort = this.leftPort;");
   });
 });

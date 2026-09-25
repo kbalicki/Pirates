@@ -2965,9 +2965,13 @@ export class PortScene extends Phaser.Scene {
     const entity = this.worldState.entities[shipId];
 
     if (this.isOnFoot) {
-      // On foot: return to map at port position, still in landed mode
-      // Preserve anchorPos (where ship is parked) so it stays visible
-      const portPos = portDef?.pos ?? this.worldState.player.location.pos;
+      // On foot: back where he stood when he hailed the town, still landed.
+      // That spot is land - he walked to it. The town's own `pos` was used
+      // until v0.99.3, and for a coastal town that point is often water:
+      // Panamá's is 1.5 units into the Pacific, so a captain leaving its gate
+      // was dropped in the sea and pulled back ashore by the walker's rescue.
+      // Preserve anchorPos (where ship is parked) so it stays visible.
+      const portPos = entity?.pos ?? portDef?.pos ?? this.worldState.player.location.pos;
       const updatedEntities = entity
         ? {
             ...this.worldState.entities,
@@ -3033,6 +3037,6 @@ export class PortScene extends Phaser.Scene {
     }
 
     this.registry.set("worldState", this.worldState);
-    this.scene.start("MainMapScene", { worldState: this.worldState });
+    this.scene.start("MainMapScene", { worldState: this.worldState, leftPort: true });
   }
 }
