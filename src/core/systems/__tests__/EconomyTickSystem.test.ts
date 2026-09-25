@@ -730,11 +730,27 @@ describe("an exporter's warehouse — the settled world", () => {
     // a ton. Checked against the v0.67.0 lesson - the numbers are identical at
     // day 400 and at day 900, so this is the equilibrium and not the opening
     // transient.
+    //
+    // Moved a third time in v0.99.4, and **against** the direction the guard
+    // allows - knowingly, on the owner's ruling. A producer's own staple was
+    // quoted from a stand-in demand of thirty tons against its shed, which
+    // priced a small grower's crop ABOVE the base (Santa Marta tobacco x1.4,
+    // Florida Keys food x1.5) and a large one's on the floor. Quoted from how
+    // full the shed is instead: Port Royal 651.1 -> 649.6, Havana 913.1 ->
+    // 909.1, Santiago 626.1 -> 625.6, Santo Domingo unmoved - at worst 0.44%.
+    // Across all 45 towns the total falls 0.48% (20 740.6 -> 20 641.1), and
+    // the whole of it is the premium the inflated quote paid the small
+    // growers: Santa Marta 137.0 -> 110.6 and Florida Keys 115.1 -> 102.1,
+    // both still above their baseline of 100. No town ends below its own.
+    // Same numbers at day 900, so this is the equilibrium.
     const w = runDays(makeFullWorld(), 400);
-    expect(w.ports.port_royal.wealth).toBeCloseTo(651.1, 0);
-    expect(w.ports.havana.wealth).toBeCloseTo(913.1, 0);
-    expect(w.ports.santiago.wealth).toBeCloseTo(626.1, 0);
+    expect(w.ports.port_royal.wealth).toBeCloseTo(649.6, 0);
+    expect(w.ports.havana.wealth).toBeCloseTo(909.1, 0);
+    expect(w.ports.santiago.wealth).toBeCloseTo(625.6, 0);
     expect(w.ports.santo_domingo.wealth).toBeCloseTo(925.1, 0);
+    // And none of the 45 below its own baseline.
+    const below = Object.keys(CITIES).filter(k => w.ports[k].wealth < getPortBaseline(k).wealth - 0.05);
+    expect(below).toEqual([]);
   });
 });
 

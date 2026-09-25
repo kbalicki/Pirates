@@ -29,7 +29,8 @@
 import type { WorldState, PortRuntimeState } from "../model/WorldState.ts";
 import { ITEMS } from "../data/items.ts";
 import { getBasePrice } from "../data/prices.ts";
-import { baselineConsumptionRate, getPortBaseline } from "../data/economyBaselines.ts";
+import { baselineConsumptionRate, getPortBaseline, inventoryCap } from "../data/economyBaselines.ts";
+import { CITIES } from "../data/cities.ts";
 import { getAggregatedEffects, priceMulFor } from "./EventEffectsSystem.ts";
 
 /** How many days of consumption count as "the market is balanced". */
@@ -60,6 +61,26 @@ const RATIO_MAX = 3.0;
  * town spends it back down at its appetite, day by day (`EconomyTickSystem`).
  */
 export const GOLD_WEALTH_PER_TON = 450;
+
+/**
+ * What a producer asks for its own staple when its shed is full (v0.99.4).
+ *
+ * A good the town grows and does not eat had the same `|| 1` stand-in demand
+ * as gold - thirty tons - against a shed sized by v0.75.0 at eight days of the
+ * town's own harvest, 20 to 96 tons. So the quote was a function of the SHED'S
+ * SIZE, and backwards: measured on a settled world, the big growers sat on the
+ * floor (Havana, Cartagena, Barbados sugar at 3 of 8; 13 of 69 pairs at
+ * `RATIO_MIN`, where the first twenty tons bought moved nothing), while a
+ * small one sold its own crop ABOVE the base price - Nombre de Dios cocoa 19
+ * of 13, Rio de la Hacha tobacco 14 of 10 - the one place a staple should be
+ * cheapest. The owner asked for it fixed (2026-09-25).
+ *
+ * Now the quote reads how full the shed is: `PRODUCER_FULL_RATIO x cap /
+ * (stock + 1)` - half the base with the shed full, the base at half, the
+ * ceiling as it empties - the same for a big grower and a small one, so the
+ * difference between them is the base price and how hard they are drawn.
+ */
+export const PRODUCER_FULL_RATIO = 0.5;
 export const GOLD_FLOAT_TONS = 30;
 
 /** Tons of gold a day a town of this wealth takes off its own quay. */
@@ -84,6 +105,12 @@ export function spotPrice(
 ): number {
   if (item === "gold") {
     const ratio = goldAppetite(wealth) * DEMAND_HORIZON_DAYS / (Math.max(0, stock) + GOLD_FLOAT_TONS);
+    const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
+    return Math.max(1, Math.round(getBasePrice(portKey, item) * clamped * priceMul));
+  }
+  const def = CITIES[portKey];
+  if (def && def.produces.includes(item) && !def.demands.includes(item)) {
+    const ratio = PRODUCER_FULL_RATIO * inventoryCap(portKey, item) / (Math.max(0, stock) + 1);
     const clamped = Math.max(RATIO_MIN, Math.min(RATIO_MAX, ratio));
     return Math.max(1, Math.round(getBasePrice(portKey, item) * clamped * priceMul));
   }

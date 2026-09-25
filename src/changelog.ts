@@ -6,6 +6,28 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.4.0",
+    date: "2026-09-25",
+    changes: [
+      "A GROWER'S PRICE READS HIS SHED, NOT ITS SIZE",
+      "  A good a town grows and does not eat was priced from a stand-in demand",
+      "  of thirty tons against a shed of eight days' harvest, 20 to 96 tons -",
+      "  so the quote followed the shed's size, and backwards. The big growers",
+      "  sat on the floor (sugar in Havana, Cartagena and Barbados at 3 of 8; 13",
+      "  of 69 quotes, where the first twenty tons bought moved nothing), while",
+      "  a small one sold its own crop ABOVE the base: cocoa in Nombre de Dios",
+      "  19 of 13, tobacco in Rio de la Hacha 14 of 10",
+      "",
+      "  Now a grower asks half the base with his shed full, the base at half,",
+      "  and the ceiling as it empties - big or small alike, and every ton",
+      "  bought lifts the next. The small growers lose the premium the old",
+      "  quote paid them (Santa Marta 137 -> 111 wealth), and no town ends",
+      "  below its own baseline",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.3.0",
     date: "2026-09-25",
     changes: [

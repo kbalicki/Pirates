@@ -858,6 +858,7 @@ sufitu w trzydzieści.
 | `PricingSystem.DEMAND_HORIZON_DAYS` | 30 | ile dni konsumpcji znaczy „rynek w równowadze” |
 | `PricingSystem.GOLD_WEALTH_PER_TON` | 450 | ile bogactwa na tonę złota dziennie, którą miasto spoza kopalni wchłania (v0.99.1) |
 | `PricingSystem.GOLD_FLOAT_TONS` | 30 | złoto „już w rękach” miasta, doliczane do zapasu przy wycenie |
+| `PricingSystem.PRODUCER_FULL_RATIO` | 0.5 | ile ceny bazowej bierze producent za własny towar przy pełnej szopie (v0.99.4) |
 | `economyBaselines.IMPORT_COVER_DAYS` | 20 | ile dni własnego jedzenia trzyma miasto z importu |
 | `economyBaselines.PRODUCER_COVER_DAYS` | 8 | ile dni **własnej produkcji** trzyma producent na nabrzeżu (v0.75.0) |
 
@@ -869,6 +870,19 @@ podaż = zapas + 30 t, a miasto co dzień wchłania swój apetyt. Zmierzone na o
 świecie przy pustej ladzie: biedne **30**, skromne ~**55**, zamożne ~**115**, bogate
 ~**180**; 30 t sprzedane w Hawanie **3931** (było 5700), zapas znika w ok. 15 dni
 (było: 30 t po 40 dniach). Kurs z kopalni (~77 za tonę) płaci się do bogatych portów.
+
+**Towar producenta czyta szopę, a nie jej rozmiar** (v0.99.4, decyzja użytkownika).
+Towar, który miasto uprawia i którego nie je, dostawał ten sam zastępczy popyt
+30 t co złoto — przeciw szopie o rozmiarze 8 dni własnych zbiorów (20–96 t).
+Cena była więc funkcją **wielkości** szopy i to odwrotnie: duzi producenci na
+podłodze (cukier w Hawanie, Cartagenie, na Barbadosie po 3 przy bazowej 8;
+**13 z 69** par na `RATIO_MIN`, gdzie pierwsze dwadzieścia ton kupionych nie
+ruszało ceny), a mały **drożej od ceny bazowej** — kakao w Nombre de Dios 19
+przy 13, tytoń w Rio de la Hacha 14 przy 10. Teraz cena = baza × 0,5 × szopa ÷
+(zapas + 1): pełna szopa to połowa bazy, połowa szopy to baza, prawie pusta —
+sufit. Żadna para na podłodze, żaden producent drożej od bazy przy pełnej szopie.
+Koszt: suma bogactwa 45 miast −0,48%, cały z premii, którą zawyżona cena płaciła
+małym plantatorom (Santa Marta 137 → 111, Florida Keys 115 → 102 — obie nad bazą 100).
 
 **Dwadzieścia dni wybrane pomiarem**, nie z powietrza — przemiecione 10 / 15 /
 20 / 30 / 45 / 90 na osiadłej dekadzie:

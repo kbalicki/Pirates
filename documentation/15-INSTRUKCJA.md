@@ -206,7 +206,9 @@ cena = cena bazowa × (popyt ÷ podaż) × to, co się w mieście dzieje
 ```
 
 Pusty magazyn podbija cenę **do trzykrotności**, pełny zbija **do 40%**.
-Kupuj tam, gdzie coś rośnie; sprzedawaj tam, gdzie tego nie ma.
+Kupuj tam, gdzie coś rośnie; sprzedawaj tam, gdzie tego nie ma. U producenta
+pełna szopa to **połowa ceny bazowej**, i to u małego tak samo jak u dużego —
+każda kupiona tona podnosi cenę, więc duży ładunek wyjdzie drożej niż pierwsza tona.
 
 Siedem towarów. Cukier, tytoń, kakao i rum to handel; jedzenie i woda to
 zaopatrzenie; **złoto** jest osobne — żadne miasto go nie sprzedaje, pojawia

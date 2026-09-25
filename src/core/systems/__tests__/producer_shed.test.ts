@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { economyDailyTick, townHunger } from "../EconomyTickSystem.ts";
 import { CITIES } from "../../data/cities.ts";
-import { initPortPrices, initPortInventory } from "../../data/prices.ts";
+import { initPortPrices, initPortInventory, getBasePrice } from "../../data/prices.ts";
+import { spotPrice, PRODUCER_FULL_RATIO } from "../PricingSystem.ts";
 import {
   getPortBaseline, baselineProductionRate, baselineConsumptionRate,
   inventoryCap, PRODUCER_COVER_DAYS, IMPORT_COVER_DAYS,
@@ -107,11 +108,11 @@ describe("the shed is sized to what it is for", () => {
   });
 
   it("still leaves the staple cheap at its source, or the trade is pointless", () => {
-    // The floor is not the defect — a full shed *should* be at the floor. The
-    // defect was that nothing could ever leave it. Havana sugar is still three
-    // gold on its own quay, which is what the whole trade loop is built on.
+    // Half the base with the shed full (v0.99.4, `PRODUCER_FULL_RATIO`): Havana
+    // sugar 4 of 8 on its own quay. It was 3 - the floor - until v0.99.4, and
+    // the floor was the defect: the first twenty tons bought moved nothing.
     const w = runDays(makeWorld(), 400);
-    expect(w.ports.havana.prices[STAPLE]).toBe(3);
+    expect(w.ports.havana.prices[STAPLE]).toBe(4);
   });
 
   it("still leaves enough on the quay to fill a hold", () => {
@@ -271,5 +272,39 @@ describe("the manual's sentence about a famine", () => {
     }
     expect(PL["help.econ_can_b"]).toContain("2–4×");
     expect(EN["help.econ_can_b"]).toContain("two to four times");
+  });
+});
+
+describe("a producer's quote reads its shed, not its size (v0.99.4)", () => {
+  /**
+   * Measured before, on a settled world: 13 of 69 producer pairs on
+   * `RATIO_MIN`, and the stand-in demand of thirty tons turned the ratio
+   * upside down - Nombre de Dios cocoa 19 of 13, Rio de la Hacha tobacco 14
+   * of 10, a small grower selling its own crop above the base.
+   */
+  const settled = runDays(makeWorld(), 400);
+  const pairs = Object.keys(CITIES).flatMap(k =>
+    CITIES[k].produces.filter(i => !CITIES[k].demands.includes(i)).map(i => [k, i] as const));
+
+  it("asks at most the base for its own crop with the shed full", () => {
+    const dear = pairs.filter(([k, i]) =>
+      settled.ports[k].inventory[i] >= inventoryCap(k, i) - 0.5 &&
+      settled.ports[k].prices[i] > getBasePrice(k, i));
+    expect(dear).toEqual([]);
+  });
+
+  it("is off the floor, so the first tons bought move the quote", () => {
+    const cap = inventoryCap("havana", STAPLE);
+    const full = spotPrice("havana", STAPLE, cap, 1);
+    const drawn = spotPrice("havana", STAPLE, cap - 30, 1);
+    expect(drawn).toBeGreaterThan(full);
+    expect(spotPrice("havana", STAPLE, cap, 1)).toBe(
+      Math.round(getBasePrice("havana", STAPLE) * PRODUCER_FULL_RATIO * cap / (cap + 1)));
+  });
+
+  it("treats a big grower and a small one alike at a full shed", () => {
+    const ratio = (k: string, i: string) =>
+      spotPrice(k, i, inventoryCap(k, i), 1) / getBasePrice(k, i);
+    expect(Math.abs(ratio("havana", "sugar_cane") - ratio("nombre_de_dios", "cocoa"))).toBeLessThan(0.1);
   });
 });

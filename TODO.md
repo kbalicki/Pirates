@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.3.0 · **Branch:** `main`
-**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2563 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.4.0 · **Branch:** `main`
+**Kod:** 289 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2566 przechodzi, 0 failuje, 0 `todo`** w 99 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -2852,7 +2852,11 @@ autonomiczna — v0.29.0 celowo dało graczowi „po co płynąć”. Warianty: 
 z bogactwa miasta, żeby bogate porty płaciły premię, a zapas się rozchodził;
 (d) sufit dla dóbr bez konsumenta niższy niż 3,0.
 
-*v0.97.1:* **18 z 69 notowań producentów na `RATIO_MIN` to ta sama przyczyna**, z drugiej
+✅ **v0.99.4: towar producenta czyta szopę** (`PRODUCER_FULL_RATIO` 0,5 × szopa ÷ zapas; decyzja użytkownika).
+Zmierzone przed: **13 z 69** par na podłodze, a mali producenci **drożej od bazy** (Nombre de Dios kakao 19/13,
+Rio de la Hacha tytoń 14/10). Po: 0 na podłodze, pełna szopa = połowa bazy u każdego. Suma bogactwa −0,48%
+(premia z zawyżonej ceny małych: Santa Marta 137 → 111, Florida Keys 115 → 102, obie nad bazą 100);
+strażnik osiadłego świata przesunięty świadomie. Opis historyczny: *v0.97.1:* **18 z 69 notowań producentów na `RATIO_MIN` to ta sama przyczyna**, z drugiej
 strony: każdy z nich to towar, którego miasto nie je, a szopa ma ≥ 74 t (8 dni własnej
 produkcji), więc `30 / (zapas + 1) < 0,4`. Skutek: cukier w Hawanie (szopa 96) i na
 Barbadosie (80) kosztuje tyle samo — **3** przy bazowej 8; różnice między dużymi
