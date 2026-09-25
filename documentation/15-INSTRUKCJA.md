@@ -615,7 +615,9 @@ przejdzie pod inną koronę — a to się zdarza.
 
 Mapę kupisz w tawernie w trzech jakościach: im droższa, tym mniejszy krąg do
 przekopania. Kopiesz klawiszem `X` na lądzie. **Co czwarte wykopalisko to
-zasadzka** i kończy się pojedynkiem.
+zasadzka** i kończy się pojedynkiem: wygrasz — skrzynia jest Twoja; przegrasz —
+zostawiają Ci życie i zabierają **czwartą część złota**, które masz przy sobie.
+Im głośniejsze Twoje nazwisko, tym lepsi szermierze czekają przy dole.
 
 ### Wioski Indian
 

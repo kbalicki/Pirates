@@ -26,6 +26,7 @@
 
 import type { WorldState, RngState, Vec2 } from "../model/WorldState.ts";
 import { rngNext, rngNextInt } from "../services/RNG.ts";
+import { enemyFencingFor } from "./DuelSystem.ts";
 import type { QuestDef } from "./QuestSystem.ts";
 
 import { portNameKey } from "../i18n/names.ts";
@@ -52,6 +53,37 @@ export const WARM_MULTIPLIER = 3;
 
 /** Share of maps that turn out to be an ambush. */
 export const AMBUSH_CHANCE = 0.25;
+
+/**
+ * The men waiting by the hole, as `enemyFencingFor` reads a crew: twenty of a
+ * band of thirty (v0.99.6). Typed into `MainMapScene` until then.
+ */
+export const AMBUSH_BAND_MEN = 20;
+export const AMBUSH_BAND_OF = 30;
+
+/**
+ * What losing the fight at the dig costs: this share of the purse, rounded
+ * down (v0.99.6). The rule lived in the map screen's duel callback until
+ * then - a quarter of the captain's gold, written nowhere a player or a test
+ * could read it.
+ */
+export const AMBUSH_LOSS_SHARE = 0.25;
+
+/** The ambushers' blade, from the captain's fame. */
+export function ambushFencing(notoriety: number): number {
+  return enemyFencingFor(AMBUSH_BAND_MEN, AMBUSH_BAND_OF, notoriety);
+}
+
+/**
+ * Settle the fight at a baited dig: the chest if he won, a share of his purse
+ * if he lost. Returns the world and the gold that changed hands (positive).
+ */
+export function settleAmbush(world: WorldState, playerWon: boolean, reward: number): { world: WorldState; gold: number } {
+  const purse = world.player.gold;
+  const gold = playerWon ? reward : Math.floor(purse * AMBUSH_LOSS_SHARE);
+  const next = playerWon ? purse + gold : Math.max(0, purse - gold);
+  return { world: { ...world, player: { ...world.player, gold: next } }, gold };
+}
 
 export type TreasureMap = {
   /** Quest id this map is tracked under. */

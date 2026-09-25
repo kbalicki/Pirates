@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TRAINING_DEFAULT } from "../../core/model/CaptainState.ts";
 import { t } from "../../core/i18n/index.ts";
 import { SHIP_CLASSES } from "../../core/data/ships.ts";
 import { addToFleet } from "../../core/systems/FleetSystem.ts";
@@ -725,7 +726,7 @@ export class PreloadScene extends Phaser.Scene {
       if (!cls) continue;
       const staple = Math.floor(cls.cargoCap / 3);
       const joined = addToFleet(
-        w.player.fleet ?? [], classId, w.captain?.training ?? 0.3,
+        w.player.fleet ?? [], classId, w.captain?.training ?? TRAINING_DEFAULT,
         { crew: Math.round(cls.crewMax * 0.8), morale: 0.8 },
         staple > 0 ? { sugar_cane: staple } : undefined,
       );

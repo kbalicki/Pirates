@@ -1,7 +1,7 @@
 # TODO — Pirates' Chronicles (handoff)
 
-**Stan na:** 2026-09-25 · **Wersja:** v0.99.5.0 · **Branch:** `main`
-**Kod:** 290 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2572 przechodzi, 0 failuje, 0 `todo`** w 100 plikach
+**Stan na:** 2026-09-25 · **Wersja:** v0.99.6.0 · **Branch:** `main`
+**Kod:** 291 plików `.ts` · `tsc --noEmit` czysty · `npm test` — **2578 przechodzi, 0 failuje, 0 `todo`** w 101 plikach
 
 **Repo przeniesione (2026-09-04):** `origin` → https://github.com/kbalicki/Pirates (publiczne).
 Stare firmowe repo **websystemspl/PiratesChronicles jest zarchiwizowane** (2026-09-04, tylko do
@@ -3102,8 +3102,12 @@ Znalezione: **panel miasta miał własną drabinę reputacji** (50/20/−20/−5
 przy 50–59 „sojusznik”, przy 20 „neutralny”, przy −50…−59 „wrogi”) — teraz `getReputationLevel`;
 martwa gałąź `isGrid` w `MainMapScene` z **drugą** regułą wygaszania siatki (2,2/3) po v0.98.0;
 wpisane `12` jako maks. zoom (dwa miejsca) i `?? 0.3` zamiast `TRAINING_DEFAULT`. Strażnik:
-`screen_rules.test.ts` (żadna scena nie trzyma łańcucha progów reputacji). **Do rozważenia:** ten skaner
-jako `scripts/` z filtrem na porównania/deklaracje — dał 1 prawdziwe znalezisko na ok. 80 wierszy szumu.
+`screen_rules.test.ts` (żadna scena nie trzyma łańcucha progów reputacji). ✅ **v0.99.6: skaner jest
+narzędziem** — `scripts/sweep-copies.mjs` (pomoc przy czytaniu, nie bramka). Pierwszy przebieg wskazał
+kandydatów na następne wydanie: `PortApproachScene:402` (szansa wślizgnięcia `0.5 + morale*0.3 -
+notoriety*0.005` — reguła w scenie), `PortScene:2667` (sprzedaż okrętu `buyPrice * 0.4` w scenie; czy
+zgadza się z `FleetSystem`?), `PortScene:2216` (próg „szerokiej” marży = spread neutralny 0,12).
+Kara za przegraną zasadzkę przy skarbie (¼ sakiewki) przeniesiona do `TreasureSystem` (`AMBUSH_LOSS_SHARE`).
 
 **Czego NIE brać bez użytkownika:** sprite'y w pixel arcie (sekcja 6 — dwie
 decyzje, druga wymaga playtestu), muzyka (brakuje **plików audio**, nie kodu),

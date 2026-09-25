@@ -74,9 +74,10 @@ import {
   activeTreasureMaps,
   digOutcome,
   digHintKey,
+  ambushFencing,
+  settleAmbush,
 } from "../../core/systems/TreasureSystem.ts";
 import { effectiveSkill } from "../../core/systems/AgingSystem.ts";
-import { enemyFencingFor } from "../../core/systems/DuelSystem.ts";
 import { isInIrons, windPolar, bestBeatAngle } from "../../core/systems/WeatherSystem.ts";
 import type { EntityState } from "../../core/model/EntityState.ts";
 import type { ShipClassDef } from "../../core/data/ships.ts";
@@ -873,20 +874,14 @@ export class MainMapScene extends Phaser.Scene {
     this.scene.pause();
     this.scene.launch("DuelScene", {
       playerFencing: effectiveSkill(this.worldState, "fencing"),
-      enemyFencing: enemyFencingFor(20, 30, this.worldState.player.notoriety ?? 0),
+      enemyFencing: ambushFencing(this.worldState.player.notoriety ?? 0),
       seed: this.worldState.time.day * 31 + (captain?.startAge ?? 20),
       onFinish: (playerWon: boolean) => {
         this.scene.resume();
-        const gold = this.worldState.player.gold;
-        const delta = playerWon ? reward : -Math.floor(gold * 0.25);
-        this.worldState = {
-          ...this.worldState,
-          player: { ...this.worldState.player, gold: Math.max(0, gold + delta) },
-        };
+        const settled = settleAmbush(this.worldState, playerWon, reward);
+        this.worldState = settled.world;
         this.registry.set("worldState", this.worldState);
-        this.toast(playerWon
-          ? t("treasure.ambush_won", { gold: reward })
-          : t("treasure.ambush_lost", { gold: Math.abs(delta) }));
+        this.toast(t(playerWon ? "treasure.ambush_won" : "treasure.ambush_lost", { gold: settled.gold }));
       },
     });
   }

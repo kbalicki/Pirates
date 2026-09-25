@@ -1599,6 +1599,9 @@ Trzy typy zleceń, po jednym naraz:
 | stała | wartość | znaczenie |
 |---|---|---|
 | `TreasureSystem.AMBUSH_CHANCE` | 0.25 | ile wykopalisk to zasadzka |
+| `TreasureSystem.AMBUSH_LOSS_SHARE` | 0.25 | ile sakiewki zabierają, gdy przegrasz pojedynek przy dole (v0.99.6; wcześniej zapisane tylko w kodzie ekranu mapy) |
+| `TreasureSystem.AMBUSH_BAND_MEN` | 20 | „załoga” zasadzki, z której `enemyFencingFor` liczy jej szermierkę… |
+| `TreasureSystem.AMBUSH_BAND_OF` | 30 | …na tylu (plus sława kapitana) |
 | `TreasureSystem.WARM_MULTIPLIER` | 3 | jak bardzo „ciepło" zawęża szukanie |
 | `TreasureSystem.BURIAL_MAX_OFFSET` | 150 | jak daleko od miasta może być skrzynia |
 

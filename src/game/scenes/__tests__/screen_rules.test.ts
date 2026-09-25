@@ -56,3 +56,11 @@ describe("the chart reads its own maximum zoom", () => {
     expect(map).not.toContain('getData("isGrid")');
   });
 });
+
+describe("the screens read the captain's default drill", () => {
+  it("types no 0.3 for it", () => {
+    // Five copies of `TRAINING_DEFAULT` sat in three scenes until v0.99.6.
+    const offenders = Object.entries(SCENES).filter(([, s]) => /training \?\? 0\.3/.test(s)).map(([p]) => p);
+    expect(offenders).toEqual([]);
+  });
+});

@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { TRAINING_DEFAULT } from "../../core/model/CaptainState.ts";
 import type { WorldState } from "../../core/model/WorldState.ts";
 import type { CombatState, CombatEvent } from "../../core/model/CombatState.ts";
 import type { CombatCommand } from "../../core/model/Commands.ts";
@@ -786,7 +787,7 @@ export class SeaBattleScene extends Phaser.Scene {
       knots = cls.speedBase * playerEntity.sailLevel * windMod * damageMod * 32;
     }
     const cannons = playerEntity.ship.cannons ?? 0;
-    const training = Math.round((this.worldState.captain?.training ?? 0.3) * 100);
+    const training = Math.round((this.worldState.captain?.training ?? TRAINING_DEFAULT) * 100);
     this.statusText.setText(
       `${t("battle.hud_ammo")}: ${ammoLabel}\n` +
       `${t("battle.hud_sails")}: ${sailLabel}\n` +
@@ -1614,7 +1615,7 @@ ${t("battle.boarding_cost", { ours, theirs })}`,
         ? addToFleet(
             player.fleet ?? [],
             enemyWorldEntity.ship.classId as string,
-            w.captain?.training ?? 0.3,
+            w.captain?.training ?? TRAINING_DEFAULT,
             { crew: manning.prizeCrew, morale: manning.prizeMorale },
             prize.prize.spilled,
           )
@@ -1667,7 +1668,7 @@ ${t("battle.boarding_cost", { ours, theirs })}`,
 
     // Captain's crew gains training on victorious outcomes.
     if ((outcome === "win" || outcome === "surrender" || outcome === "captured") && w.captain) {
-      const prev = w.captain.training ?? 0.3;
+      const prev = w.captain.training ?? TRAINING_DEFAULT;
       w = { ...w, captain: { ...w.captain, training: Math.min(1, prev + 0.02) } };
     }
 

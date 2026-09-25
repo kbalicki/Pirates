@@ -6,6 +6,27 @@ export type ChangelogEntry = {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: "0.99.6.0",
+    date: "2026-09-25",
+    changes: [
+      "THE PRICE OF A BAITED DIG, WRITTEN DOWN",
+      "  One map in four is bait, and the dig ends in a fight. Lose it and they",
+      "  take a quarter of the gold you carry - a rule that lived only inside",
+      "  the map screen's duel, where no page of the manual and no test could",
+      "  see it. It is a rule of the game now, stated in the manual: the chest",
+      "  if you win, a quarter of your purse if you lose, and the better known",
+      "  your name, the better the blades waiting by the hole",
+      "",
+      "A SWEEP FOR NUMBERS THE SCREENS RETYPED",
+      "  The firing arc, the reload bar and the town panel's reputation ladder",
+      "  were all one mistake: a number the engine owns, typed again on a",
+      "  screen, and typed wrong. A new tool lists every such candidate for a",
+      "  person to read; its first run found the next three to look at",
+      "",
+      "No save format change",
+    ],
+  },
+  {
     version: "0.99.5.0",
     date: "2026-09-25",
     changes: [
